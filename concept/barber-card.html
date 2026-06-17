@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Barbas &amp; Bigotes — Roster (concepto)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#070707; --panel:#100f0d; --panel2:#1a1815;
+    --ink:#f5f2ec; --muted:#8f8a82;
+    --gold1:#f8ecc2; --gold2:#d4b46a; --gold3:#9c7c34;
+    --silver1:#f4f5f6; --silver2:#c2c6cb; --silver3:#7d8288;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    background:radial-gradient(120% 80% at 50% 0%, #141210 0%, #070707 60%, #000 100%);
+    color:var(--ink);
+    font-family:'Inter',system-ui,sans-serif;
+    min-height:100vh;
+    padding:54px 40px 64px;
+  }
+
+  /* ---------- header / brand ---------- */
+  .brand{text-align:center;margin-bottom:8px}
+  .brand__wordmark{
+    font-family:'Cormorant Garamond',serif;
+    font-weight:600;
+    font-size:54px;
+    letter-spacing:.06em;
+    line-height:1;
+  }
+  .brand__sub{
+    display:flex;align-items:center;justify-content:center;gap:18px;
+    margin-top:14px;color:var(--muted);
+    font-size:13px;letter-spacing:.42em;text-transform:uppercase;
+  }
+  .brand__sub::before,.brand__sub::after{content:"";height:1px;width:120px;background:linear-gradient(90deg,transparent,var(--gold2),transparent)}
+  .brand__tag{
+    text-align:center;margin-top:22px;color:var(--muted);
+    font-size:13px;letter-spacing:.04em;
+  }
+
+  /* ---------- sede sections ---------- */
+  .sede{max-width:1000px;margin:46px auto 0}
+  .sede__title{
+    display:flex;align-items:center;gap:18px;
+    font-family:'Cormorant Garamond',serif;font-style:italic;
+    font-size:26px;color:var(--ink);margin-bottom:26px;
+  }
+  .sede__title span{color:var(--gold2);font-style:normal;font-family:'Inter';font-size:11px;letter-spacing:.34em;text-transform:uppercase;border:1px solid rgba(212,180,106,.4);padding:5px 12px;border-radius:999px}
+  .sede__title::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,rgba(255,255,255,.16),transparent)}
+
+  .roster{display:flex;gap:26px;justify-content:flex-start;flex-wrap:wrap;perspective:1300px}
+
+  /* ---------- card ---------- */
+  .card{
+    width:296px;border-radius:20px;padding:2px;
+    transition:transform .18s ease, box-shadow .25s ease;
+    transform-style:preserve-3d;cursor:pointer;
+  }
+  .card.gold{background:linear-gradient(155deg,var(--gold1),var(--gold2) 46%,var(--gold3))}
+  .card.silver{background:linear-gradient(155deg,var(--silver1),var(--silver2) 46%,var(--silver3))}
+  .card.gold:hover{box-shadow:0 26px 60px -22px rgba(212,180,106,.65)}
+  .card.silver:hover{box-shadow:0 26px 60px -22px rgba(194,198,203,.5)}
+
+  .card__inner{
+    position:relative;border-radius:18px;background:
+      linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,0) 30%),
+      var(--panel);
+    padding:20px 20px 18px;overflow:hidden;
+  }
+  .card__inner::before{ /* sheen */
+    content:"";position:absolute;inset:0;
+    background:linear-gradient(125deg, rgba(255,255,255,.10) 0%, transparent 38%);
+    pointer-events:none;
+  }
+
+  /* top row */
+  .top{display:flex;gap:14px;align-items:flex-start}
+  .meta{display:flex;flex-direction:column;align-items:center;width:64px;flex:none;padding-top:4px}
+  .ovr{font-family:'Cormorant Garamond',serif;font-weight:600;font-size:46px;line-height:.9}
+  .pos{font-size:13px;font-weight:700;letter-spacing:.12em;margin-top:2px}
+  .meta__rule{width:34px;height:1px;background:rgba(255,255,255,.22);margin:9px 0}
+  .tier{font-size:9px;letter-spacing:.22em;text-transform:uppercase;color:var(--muted)}
+  .gold .ovr,.gold .pos{background:linear-gradient(180deg,var(--gold1),var(--gold2));-webkit-background-clip:text;background-clip:text;color:transparent}
+  .silver .ovr,.silver .pos{background:linear-gradient(180deg,#fff,var(--silver2));-webkit-background-clip:text;background-clip:text;color:transparent}
+
+  .portrait{flex:1;display:flex;justify-content:center}
+  .mono{
+    position:relative;width:108px;height:108px;border-radius:50%;
+    display:flex;align-items:center;justify-content:center;
+    background:radial-gradient(circle at 50% 35%, var(--panel2), #0a0908);
+  }
+  .mono::after{content:"";position:absolute;inset:-3px;border-radius:50%;padding:3px;
+    -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
+    -webkit-mask-composite:xor;mask-composite:exclude}
+  .gold .mono::after{background:linear-gradient(150deg,var(--gold1),var(--gold3))}
+  .silver .mono::after{background:linear-gradient(150deg,var(--silver1),var(--silver3))}
+  .mono__txt{font-family:'Cormorant Garamond',serif;font-size:40px;font-weight:600;letter-spacing:.04em;color:var(--ink);z-index:1}
+  .mono__stache{position:absolute;bottom:20px;width:62px;opacity:.16;fill:var(--ink)}
+
+  /* name band */
+  .name{
+    text-align:center;font-family:'Cormorant Garamond',serif;font-weight:600;
+    font-size:30px;letter-spacing:.08em;margin:14px 0 4px;
+  }
+  .name__rule{display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:16px}
+  .name__rule::before,.name__rule::after{content:"";height:1px;width:54px}
+  .gold .name__rule::before,.gold .name__rule::after{background:linear-gradient(90deg,transparent,var(--gold2),transparent)}
+  .silver .name__rule::before,.silver .name__rule::after{background:linear-gradient(90deg,transparent,var(--silver2),transparent)}
+  .name__rule span{font-size:9px;letter-spacing:.26em;text-transform:uppercase;color:var(--muted)}
+
+  /* stats */
+  .stats{display:grid;grid-template-columns:1fr 1fr;gap:11px 22px;margin-bottom:16px}
+  .stat{display:flex;flex-direction:column;gap:5px}
+  .stat__top{display:flex;justify-content:space-between;align-items:baseline}
+  .stat__key{font-size:10px;letter-spacing:.14em;color:var(--muted);text-transform:uppercase}
+  .stat__val{font-size:14px;font-weight:700;font-variant-numeric:tabular-nums}
+  .bar{height:3px;border-radius:3px;background:rgba(255,255,255,.09);overflow:hidden}
+  .bar i{display:block;height:100%;border-radius:3px}
+  .gold .bar i{background:linear-gradient(90deg,var(--gold3),var(--gold1))}
+  .silver .bar i{background:linear-gradient(90deg,var(--silver3),var(--silver1))}
+
+  /* tags */
+  .tags{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;border-top:1px solid rgba(255,255,255,.08);padding-top:14px}
+  .chip{font-size:10px;letter-spacing:.04em;color:var(--ink);opacity:.82;border:1px solid rgba(255,255,255,.16);border-radius:999px;padding:4px 9px}
+
+  /* footer line */
+  .card__foot{display:flex;justify-content:space-between;align-items:center;margin-top:14px;font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted)}
+  .card__foot b{font-family:'Cormorant Garamond',serif;font-style:italic;font-weight:600;letter-spacing:.04em;text-transform:none;font-size:13px;color:var(--ink)}
+
+  .pagefoot{text-align:center;margin-top:60px;color:#5f5b54;font-size:12px;letter-spacing:.06em}
+  .pagefoot b{color:var(--gold2);font-weight:600}
+</style>
+</head>
+<body>
+  <header class="brand">
+    <div class="brand__wordmark">B<span style="font-size:.78em">ARBA</span>S &amp; B<span style="font-size:.78em">IGOTE</span>S</div>
+    <div class="brand__sub">Barbershop</div>
+    <div class="brand__tag">Roster de barberos — concepto de interfaz · tocá una carta</div>
+  </header>
+
+  <main id="app"></main>
+
+  <div class="pagefoot">Concepto <b>FourG Solutions</b> · datos reales del cliente · fotos de barberos pendientes (hoy van con monograma)</div>
+
+<script>
+const STACHE = '<svg class="mono__stache" viewBox="0 0 100 30"><path d="M50 12 C44 3 31 2 21 7 C12 11 6 20 11 21 C15 22 16 16 24 14 C34 11 44 16 50 21 C56 16 66 11 76 14 C84 16 85 22 89 21 C94 20 88 11 79 7 C69 2 56 3 50 12 Z"/></svg>';
+const LABELS={COR:'Corte',DEG:'Degradado',TIJ:'Tijera',BAR:'Barba',COL:'Color',FAC:'Facial'};
+
+const barbers=[
+ {name:'MEYER', ini:'ME', sede:'Parque Venezuela', ovr:90, pos:'DEG', tier:'gold',
+  stats:{COR:82,DEG:95,TIJ:93,BAR:88,COL:68,FAC:86},
+  tags:['Degradados','Tijera','Niños','Relajante de ondas','Diseños','Limpieza facial']},
+ {name:'JHON', ini:'JH', sede:'Parque Venezuela', ovr:89, pos:'CLÁ', tier:'gold',
+  stats:{COR:93,DEG:88,TIJ:90,BAR:87,COL:84,FAC:70},
+  tags:['Clásicos','Keratinas','Peinados','Niños','Tintes planos']},
+ {name:'JUNIOR', ini:'JU', sede:'Parque Venezuela', ovr:88, pos:'COL', tier:'silver',
+  stats:{COR:88,DEG:90,TIJ:78,BAR:88,COL:92,FAC:87},
+  tags:['Colorimetría','Degradados','Clásicos','Barbas','Limpieza facial']},
+ {name:'BRAYAN', ini:'BR', sede:'Plaza de la Paz', ovr:88, pos:'DEG', tier:'silver',
+  stats:{COR:89,DEG:91,TIJ:87,BAR:89,COL:70,FAC:86},
+  tags:['Degradados','Clásicos','Barbas','Depilación cera','Limpieza facial']},
+ {name:'KEVIN', ini:'KE', sede:'Plaza de la Paz', ovr:87, pos:'CLÁ', tier:'silver',
+  stats:{COR:90,DEG:88,TIJ:86,BAR:85,COL:72,FAC:74},
+  tags:['Clásicos','Alisado','Hidratación capilar','Niños','Depilación cera']},
+ {name:'ABEL', ini:'AB', sede:'Plaza de la Paz', ovr:89, pos:'COL', tier:'gold',
+  stats:{COR:91,DEG:90,TIJ:88,BAR:86,COL:90,FAC:70},
+  tags:['Colorimetría','Diseños','Peinados','Clásicos','Niños']},
+];
+
+const statHTML = s => Object.keys(LABELS).map(k=>`
+  <div class="stat">
+    <div class="stat__top"><span class="stat__key">${k}</span><span class="stat__val">${s[k]}</span></div>
+    <div class="bar"><i style="width:${s[k]}%"></i></div>
+  </div>`).join('');
+
+const cardHTML = b => `
+  <article class="card ${b.tier}">
+    <div class="card__inner">
+      <div class="top">
+        <div class="meta">
+          <div class="ovr">${b.ovr}</div>
+          <div class="pos">${b.pos}</div>
+          <div class="meta__rule"></div>
+          <div class="tier">${b.tier==='gold'?'Oro':'Plata'}</div>
+        </div>
+        <div class="portrait"><div class="mono"><span class="mono__txt">${b.ini}</span>${STACHE}</div></div>
+      </div>
+      <div class="name">${b.name}</div>
+      <div class="name__rule"><span>Especialista</span></div>
+      <div class="stats">${statHTML(b.stats)}</div>
+      <div class="tags">${b.tags.map(t=>`<span class="chip">${t}</span>`).join('')}</div>
+      <div class="card__foot"><b>Barbas &amp; Bigotes</b><span>${b.sede}</span></div>
+    </div>
+  </article>`;
+
+const sedes=[...new Set(barbers.map(b=>b.sede))];
+document.getElementById('app').innerHTML = sedes.map(sd=>`
+  <section class="sede">
+    <h2 class="sede__title"><span>Sede</span> ${sd}</h2>
+    <div class="roster">${barbers.filter(b=>b.sede===sd).map(cardHTML).join('')}</div>
+  </section>`).join('');
+
+// pointer tilt
+document.querySelectorAll('.card').forEach(card=>{
+  card.addEventListener('pointermove',e=>{
+    const r=card.getBoundingClientRect();
+    const x=(e.clientX-r.left)/r.width-.5, y=(e.clientY-r.top)/r.height-.5;
+    card.style.transform=`translateY(-8px) rotateX(${(-y*9).toFixed(2)}deg) rotateY(${(x*11).toFixed(2)}deg)`;
+  });
+  card.addEventListener('pointerleave',()=>{card.style.transform='';});
+});
+</script>
+</body>
+</html>
