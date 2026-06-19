@@ -286,6 +286,143 @@ export async function getListaEspera(barberoId?: string | null): Promise<EsperaI
   }));
 }
 
+export type CajaSesionSede = {
+  sede: string;
+  nombre: string;
+  sesionId: string | null;
+  abiertaEn: string | null;
+  metaDia: number;
+  montoApertura: number;
+  efectivo: number;
+  datafono: number;
+  ingresos: number;
+  citas: number;
+};
+
+// Estado de caja por sede: si hay sesión abierta + lo recaudado desde la apertura
+// (o desde el inicio del día si no hay sesión abierta).
+export async function getCajaSesiones(): Promise<CajaSesionSede[]> {
+  const sb = await supabaseServerAuth();
+  const [sedesRes, openRes] = await Promise.all([
+    sb.from("sedes").select("id,nombre").order("nombre"),
+    sb.from("caja_sesiones").select("id,sede_id,meta_dia,monto_apertura,abierta_en").eq("estado", "abierta"),
+  ]);
+  const sedes = (sedesRes.data ?? []) as { id: string; nombre: string }[];
+  const open = (openRes.data ?? []) as {
+    id: string;
+    sede_id: string;
+    meta_dia: number;
+    monto_apertura: number;
+    abierta_en: string;
+  }[];
+  const out: CajaSesionSede[] = [];
+  for (const s of sedes) {
+    const sess = open.find((o) => o.sede_id === s.id);
+    const start = sess ? sess.abierta_en : startOfToday().toISOString();
+    const { data: ventas } = await sb
+      .from("ventas")
+      .select("medio,total")
+      .eq("sede_id", s.id)
+      .gte("creado_en", start);
+    const vs = (ventas ?? []) as { medio: string; total: number }[];
+    const efectivo = vs.filter((v) => v.medio === "efectivo").reduce((a, v) => a + v.total, 0);
+    const datafono = vs.filter((v) => v.medio === "datafono").reduce((a, v) => a + v.total, 0);
+    out.push({
+      sede: s.id,
+      nombre: s.nombre,
+      sesionId: sess?.id ?? null,
+      abiertaEn: sess?.abierta_en ?? null,
+      metaDia: sess?.meta_dia ?? 0,
+      montoApertura: sess?.monto_apertura ?? 0,
+      efectivo,
+      datafono,
+      ingresos: efectivo + datafono,
+      citas: vs.length,
+    });
+  }
+  return out;
+}
+
+export type PendienteCobro = {
+  id: string;
+  sede: string;
+  cliente: string;
+  barbero: string;
+  servicio: string;
+  inicio: string;
+  monto: number;
+};
+
+// Reservas de hoy aún no completadas/canceladas: lo que falta cobrar.
+export async function getReservasPendientesCobro(): Promise<PendienteCobro[]> {
+  const sb = await supabaseServerAuth();
+  const start = startOfToday();
+  const end = new Date(start);
+  end.setDate(end.getDate() + 1);
+  const [resRes, preciosRes] = await Promise.all([
+    sb
+      .from("reservas")
+      .select("id,inicio,sede_id,servicio_id,clientes(nombre),barberos(nombre),servicios(nombre)")
+      .in("estado", ["pendiente", "confirmada", "en_curso"])
+      .gte("inicio", start.toISOString())
+      .lt("inicio", end.toISOString())
+      .order("inicio"),
+    sb.from("servicio_sede").select("servicio_id,sede_id,precio"),
+  ]);
+  const precios = new Map<string, number>();
+  for (const p of (preciosRes.data ?? []) as { servicio_id: string; sede_id: string; precio: number }[]) {
+    precios.set(`${p.servicio_id}|${p.sede_id}`, p.precio);
+  }
+  return ((resRes.data ?? []) as Record<string, unknown>[]).map((r) => ({
+    id: r.id as string,
+    sede: r.sede_id as string,
+    cliente: (r.clientes as { nombre?: string } | null)?.nombre ?? "Cliente",
+    barbero: (r.barberos as { nombre?: string } | null)?.nombre ?? "—",
+    servicio: (r.servicios as { nombre?: string } | null)?.nombre ?? "Servicio",
+    inicio: r.inicio as string,
+    monto: precios.get(`${r.servicio_id as string}|${r.sede_id as string}`) ?? 0,
+  }));
+}
+
+export type CuadreCerrado = {
+  id: string;
+  sede: string;
+  fecha: string;
+  metaDia: number;
+  ingresos: number;
+  efectivo: number;
+  datafono: number;
+  gastos: number;
+  diferencia: number | null;
+  citas: number;
+};
+
+export async function getCuadresAnteriores(limit = 12): Promise<CuadreCerrado[]> {
+  const sb = await supabaseServerAuth();
+  const { data } = await sb
+    .from("caja_sesiones")
+    .select("id,sede_id,cerrada_en,meta_dia,total_efectivo,total_datafono,total_gastos,diferencia,citas,sedes(nombre)")
+    .eq("estado", "cerrada")
+    .order("cerrada_en", { ascending: false })
+    .limit(limit);
+  return ((data ?? []) as Record<string, unknown>[]).map((c) => {
+    const ef = (c.total_efectivo as number) ?? 0;
+    const da = (c.total_datafono as number) ?? 0;
+    return {
+      id: c.id as string,
+      sede: (c.sedes as { nombre?: string } | null)?.nombre ?? (c.sede_id as string),
+      fecha: c.cerrada_en as string,
+      metaDia: (c.meta_dia as number) ?? 0,
+      efectivo: ef,
+      datafono: da,
+      ingresos: ef + da,
+      gastos: (c.total_gastos as number) ?? 0,
+      diferencia: (c.diferencia as number) ?? null,
+      citas: (c.citas as number) ?? 0,
+    };
+  });
+}
+
 export type StaffContext = { rol: string; barberoId: string | null; nombre: string };
 
 // Rol + barbero del usuario logueado (para decidir qué agenda mostrar).

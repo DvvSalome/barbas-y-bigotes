@@ -305,6 +305,73 @@ export async function registrarAdelanto(input: {
   return { ok: true };
 }
 
+// ---------- Sesiones de caja (abrir / cerrar) ----------
+export async function abrirCaja(input: {
+  sede: string;
+  metaDia: number;
+  montoApertura: number;
+}): Promise<ActionResult> {
+  const sb = await supabaseServerAuth();
+  const { error } = await sb.from("caja_sesiones").insert({
+    sede_id: input.sede,
+    meta_dia: input.metaDia,
+    monto_apertura: input.montoApertura,
+    estado: "abierta",
+  });
+  if (error) {
+    if (error.code === "23505") return { ok: false, error: "Ya hay una caja abierta en esa sede." };
+    return { ok: false, error: error.message };
+  }
+  revalidatePath("/admin/cuadre");
+  revalidatePath("/admin");
+  return { ok: true };
+}
+
+export async function cerrarCaja(input: {
+  sesionId: string;
+  sede: string;
+  abiertaEnISO: string;
+  efectivoContado: number;
+  nota: string;
+}): Promise<ActionResult> {
+  const sb = await supabaseServerAuth();
+  // Snapshot de lo recaudado desde que se abrió la caja.
+  const { data: ventas } = await sb
+    .from("ventas")
+    .select("medio,total")
+    .eq("sede_id", input.sede)
+    .gte("creado_en", input.abiertaEnISO);
+  const vs = (ventas ?? []) as { medio: string; total: number }[];
+  const efectivo = vs.filter((v) => v.medio === "efectivo").reduce((a, v) => a + v.total, 0);
+  const datafono = vs.filter((v) => v.medio === "datafono").reduce((a, v) => a + v.total, 0);
+  const { data: gastos } = await sb
+    .from("gastos")
+    .select("monto")
+    .eq("sede_id", input.sede)
+    .gte("creado_en", input.abiertaEnISO);
+  const totalGastos = ((gastos ?? []) as { monto: number }[]).reduce((a, g) => a + g.monto, 0);
+  const diferencia = input.efectivoContado - efectivo;
+
+  const { error } = await sb
+    .from("caja_sesiones")
+    .update({
+      estado: "cerrada",
+      cerrada_en: new Date().toISOString(),
+      total_efectivo: efectivo,
+      total_datafono: datafono,
+      total_gastos: totalGastos,
+      citas: vs.length,
+      efectivo_contado: input.efectivoContado,
+      diferencia,
+      nota: input.nota || null,
+    })
+    .eq("id", input.sesionId);
+  if (error) return { ok: false, error: error.message };
+  revalidatePath("/admin/cuadre");
+  revalidatePath("/admin");
+  return { ok: true };
+}
+
 // Lista de espera (motor de la "notificación alternativa").
 export async function agregarListaEspera(input: {
   sede: string;
