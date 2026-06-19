@@ -26,9 +26,12 @@ const p = (pv: number, pdp: number): Record<SedeId, number> => ({
 
 export const servicios: Servicio[] = [
   // --- Cortes ---
-  { id: "corte", nombre: "Corte clásico / degradado / tijera / niño", categoria: "cortes", duracionMin: 30, precios: p(35000, 30000) },
+  { id: "corte", nombre: "Corte (clásico, degradado, tijera o niño)", categoria: "cortes", duracionMin: 30, precios: p(35000, 30000) },
   { id: "corte-barba", nombre: "Corte y barba", categoria: "cortes", duracionMin: 60, precios: p(45000, 40000) },
+  { id: "corte-cejas", nombre: "Corte y cejas", categoria: "cortes", duracionMin: 40, precios: p(35000, 35000) },
+  { id: "corte-barba-cejas", nombre: "Corte + barba + cejas", categoria: "cortes", duracionMin: 50, precios: p(45000, 45000), esCombo: true },
   { id: "cerquillos", nombre: "Cerquillos", categoria: "cortes", duracionMin: 10, precios: p(15000, 10000) },
+  { id: "cerquillo-barba", nombre: "Cerquillo y barba", categoria: "cortes", duracionMin: 35, precios: p(30000, 30000), esCombo: true },
   // --- Barba ---
   { id: "perfilamiento-barba", nombre: "Perfilamiento de barba", categoria: "barba", duracionMin: 20, precios: p(25000, 20000) },
   { id: "ritual-barba", nombre: "Ritual de barba", categoria: "barba", duracionMin: 30, precios: p(35000, 30000) },
