@@ -15,7 +15,8 @@ export async function getServicios(): Promise<Servicio[]> {
   const sb = supabaseServer();
   const { data } = await sb
     .from("servicios")
-    .select("id,nombre,categoria,duracion_min,es_combo,desde,servicio_sede(sede_id,precio)");
+    .select("id,nombre,categoria,duracion_min,es_combo,desde,servicio_sede(sede_id,precio)")
+    .eq("activo", true);
   return (data ?? []).map((s: Record<string, unknown>) => {
     const precios = {} as Record<SedeId, number>;
     for (const p of (s.servicio_sede as { sede_id: string; precio: number }[]) ?? []) {
@@ -38,7 +39,7 @@ export async function getBarberos(): Promise<Barbero[]> {
   const { data } = await sb
     .from("barberos")
     .select(
-      "id,nombre,sede_id,tipo_contrato,comision_pct,arriendo_mensual,foto_url,destacado,rating,resenas,orden,barbero_especialidades(especialidad)",
+      "id,nombre,sede_id,tipo_contrato,comision_pct,arriendo_mensual,foto_url,destacado,rating,resenas,bio,orden,barbero_especialidades(especialidad)",
     )
     .eq("activo", true)
     .order("sede_id")
@@ -57,6 +58,7 @@ export async function getBarberos(): Promise<Barbero[]> {
     destacado: b.destacado as boolean,
     rating: (b.rating as number) ?? undefined,
     resenas: (b.resenas as number) ?? undefined,
+    bio: (b.bio as string) ?? null,
   }));
 }
 

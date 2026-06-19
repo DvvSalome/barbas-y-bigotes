@@ -43,6 +43,7 @@ export interface Barbero {
   destacado?: boolean;
   rating?: number;
   resenas?: number;
+  bio?: string | null;
 }
 
 export interface Producto {
