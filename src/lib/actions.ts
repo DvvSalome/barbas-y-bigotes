@@ -305,6 +305,54 @@ export async function registrarAdelanto(input: {
   return { ok: true };
 }
 
+// ---------- CRM de cliente: notas, wallet, reseñas ----------
+export async function agregarNotaCliente(input: { clienteRef: string; nota: string }): Promise<ActionResult> {
+  const sb = await supabaseServerAuth();
+  if (!input.nota.trim()) return { ok: false, error: "Escribí la nota" };
+  const { error } = await sb.from("cliente_notas").insert({ cliente_ref: input.clienteRef, nota: input.nota.trim() });
+  if (error) return { ok: false, error: error.message };
+  revalidatePath(`/admin/clientes/${input.clienteRef}`);
+  return { ok: true };
+}
+
+export async function agregarMovWallet(input: {
+  clienteRef: string;
+  tipo: "recarga" | "consumo";
+  monto: number;
+  nota: string;
+}): Promise<ActionResult> {
+  const sb = await supabaseServerAuth();
+  if (!input.monto || input.monto <= 0) return { ok: false, error: "Monto inválido" };
+  const { error } = await sb.from("cliente_wallet_mov").insert({
+    cliente_ref: input.clienteRef,
+    tipo: input.tipo,
+    monto: input.monto,
+    nota: input.nota || null,
+  });
+  if (error) return { ok: false, error: error.message };
+  revalidatePath(`/admin/clientes/${input.clienteRef}`);
+  return { ok: true };
+}
+
+export async function agregarResenaCliente(input: {
+  clienteRef: string;
+  barberoId: string;
+  score: number;
+  nota: string;
+}): Promise<ActionResult> {
+  const sb = await supabaseServerAuth();
+  if (input.score < 1 || input.score > 5) return { ok: false, error: "Puntaje 1 a 5" };
+  const { error } = await sb.from("cliente_resenas").insert({
+    cliente_ref: input.clienteRef,
+    barbero_id: input.barberoId || null,
+    score: input.score,
+    nota: input.nota || null,
+  });
+  if (error) return { ok: false, error: error.message };
+  revalidatePath(`/admin/clientes/${input.clienteRef}`);
+  return { ok: true };
+}
+
 // ---------- Sesiones de caja (abrir / cerrar) ----------
 export async function abrirCaja(input: {
   sede: string;

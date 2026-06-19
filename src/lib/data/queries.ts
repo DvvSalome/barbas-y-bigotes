@@ -423,6 +423,151 @@ export async function getCuadresAnteriores(limit = 12): Promise<CuadreCerrado[]>
   });
 }
 
+export type ClienteRow = {
+  id: string;
+  nombre: string;
+  telefono: string;
+  email: string;
+  visitas: number;
+  facturado: number;
+  ultima: string | null;
+};
+
+export async function getClientes(search = ""): Promise<ClienteRow[]> {
+  const sb = await supabaseServerAuth();
+  let q = sb.from("clientes").select("id,nombre,telefono,email,creado_en");
+  const s = search.trim();
+  if (s) q = q.or(`nombre.ilike.%${s}%,telefono.ilike.%${s}%,email.ilike.%${s}%`);
+  const [clientesRes, ventasRes] = await Promise.all([
+    q.order("nombre"),
+    sb.from("ventas").select("cliente_ref,total,creado_en"),
+  ]);
+  const agg = new Map<string, { visitas: number; facturado: number; ultima: string | null }>();
+  for (const v of (ventasRes.data ?? []) as { cliente_ref: string | null; total: number; creado_en: string }[]) {
+    if (!v.cliente_ref) continue;
+    const a = agg.get(v.cliente_ref) ?? { visitas: 0, facturado: 0, ultima: null };
+    a.visitas += 1;
+    a.facturado += v.total;
+    if (!a.ultima || v.creado_en > a.ultima) a.ultima = v.creado_en;
+    agg.set(v.cliente_ref, a);
+  }
+  return ((clientesRes.data ?? []) as Record<string, unknown>[]).map((c) => {
+    const a = agg.get(c.id as string) ?? { visitas: 0, facturado: 0, ultima: null };
+    return {
+      id: c.id as string,
+      nombre: (c.nombre as string) ?? "Cliente",
+      telefono: (c.telefono as string) ?? "",
+      email: (c.email as string) ?? "",
+      visitas: a.visitas,
+      facturado: a.facturado,
+      ultima: a.ultima,
+    };
+  });
+}
+
+export type ClienteDetalle = {
+  id: string;
+  nombre: string;
+  telefono: string;
+  email: string;
+  notasFicha: string | null;
+  creadoEn: string;
+  visitas: number;
+  facturado: number;
+  ultima: string | null;
+  walletBalance: number;
+  ratingProm: number | null;
+  historial: { id: string; total: number; fecha: string; medio: string; barbero: string; items: string[] }[];
+  reservas: { id: string; inicio: string; estado: string; servicio: string; barbero: string }[];
+  notas: { id: string; nota: string; fecha: string }[];
+  wallet: { id: string; tipo: string; monto: number; nota: string; fecha: string }[];
+  resenas: { id: string; score: number; nota: string; barbero: string; fecha: string }[];
+};
+
+export async function getClienteDetalle(id: string): Promise<ClienteDetalle | null> {
+  const sb = await supabaseServerAuth();
+  const { data: c } = await sb
+    .from("clientes")
+    .select("id,nombre,telefono,email,notas,creado_en")
+    .eq("id", id)
+    .maybeSingle();
+  if (!c) return null;
+  const cli = c as Record<string, unknown>;
+
+  const [ventasRes, reservasRes, notasRes, walletRes, resenasRes] = await Promise.all([
+    sb
+      .from("ventas")
+      .select("id,total,medio,creado_en,barberos(nombre),venta_items(descripcion,cantidad)")
+      .eq("cliente_ref", id)
+      .order("creado_en", { ascending: false })
+      .limit(50),
+    sb
+      .from("reservas")
+      .select("id,inicio,estado,servicios(nombre),barberos(nombre)")
+      .eq("cliente_ref", id)
+      .order("inicio", { ascending: false })
+      .limit(30),
+    sb.from("cliente_notas").select("id,nota,creado_en").eq("cliente_ref", id).order("creado_en", { ascending: false }),
+    sb.from("cliente_wallet_mov").select("id,tipo,monto,nota,creado_en").eq("cliente_ref", id).order("creado_en", { ascending: false }),
+    sb.from("cliente_resenas").select("id,score,nota,creado_en,barberos(nombre)").eq("cliente_ref", id).order("creado_en", { ascending: false }),
+  ]);
+
+  const ventas = (ventasRes.data ?? []) as Record<string, unknown>[];
+  const wallet = (walletRes.data ?? []) as { id: string; tipo: string; monto: number; nota: string | null; creado_en: string }[];
+  const resenas = (resenasRes.data ?? []) as Record<string, unknown>[];
+
+  const facturado = ventas.reduce((a, v) => a + (v.total as number), 0);
+  const ultima = ventas.length ? (ventas[0].creado_en as string) : null;
+  const walletBalance = wallet.reduce((a, w) => a + (w.tipo === "recarga" ? w.monto : -w.monto), 0);
+  const ratingProm = resenas.length
+    ? Math.round((resenas.reduce((a, r) => a + (r.score as number), 0) / resenas.length) * 10) / 10
+    : null;
+
+  return {
+    id: cli.id as string,
+    nombre: (cli.nombre as string) ?? "Cliente",
+    telefono: (cli.telefono as string) ?? "",
+    email: (cli.email as string) ?? "",
+    notasFicha: (cli.notas as string) ?? null,
+    creadoEn: cli.creado_en as string,
+    visitas: ventas.length,
+    facturado,
+    ultima,
+    walletBalance,
+    ratingProm,
+    historial: ventas.map((v) => ({
+      id: v.id as string,
+      total: v.total as number,
+      fecha: v.creado_en as string,
+      medio: v.medio as string,
+      barbero: (v.barberos as { nombre?: string } | null)?.nombre ?? "",
+      items: ((v.venta_items as { descripcion: string; cantidad: number }[]) ?? []).map((i) =>
+        i.cantidad > 1 ? `${i.descripcion} ×${i.cantidad}` : i.descripcion,
+      ),
+    })),
+    reservas: ((reservasRes.data ?? []) as Record<string, unknown>[]).map((r) => ({
+      id: r.id as string,
+      inicio: r.inicio as string,
+      estado: r.estado as string,
+      servicio: (r.servicios as { nombre?: string } | null)?.nombre ?? "—",
+      barbero: (r.barberos as { nombre?: string } | null)?.nombre ?? "—",
+    })),
+    notas: ((notasRes.data ?? []) as { id: string; nota: string; creado_en: string }[]).map((n) => ({
+      id: n.id,
+      nota: n.nota,
+      fecha: n.creado_en,
+    })),
+    wallet: wallet.map((w) => ({ id: w.id, tipo: w.tipo, monto: w.monto, nota: w.nota ?? "", fecha: w.creado_en })),
+    resenas: resenas.map((r) => ({
+      id: r.id as string,
+      score: r.score as number,
+      nota: (r.nota as string) ?? "",
+      barbero: (r.barberos as { nombre?: string } | null)?.nombre ?? "",
+      fecha: r.creado_en as string,
+    })),
+  };
+}
+
 export type StaffContext = { rol: string; barberoId: string | null; nombre: string };
 
 // Rol + barbero del usuario logueado (para decidir qué agenda mostrar).
