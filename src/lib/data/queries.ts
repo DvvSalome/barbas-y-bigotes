@@ -477,11 +477,13 @@ export type ClienteDetalle = {
   ultima: string | null;
   walletBalance: number;
   ratingProm: number | null;
+  puntosBalance: number;
   historial: { id: string; total: number; fecha: string; medio: string; barbero: string; items: string[] }[];
   reservas: { id: string; inicio: string; estado: string; servicio: string; barbero: string }[];
   notas: { id: string; nota: string; fecha: string }[];
   wallet: { id: string; tipo: string; monto: number; nota: string; fecha: string }[];
   resenas: { id: string; score: number; nota: string; barbero: string; fecha: string }[];
+  puntos: { id: string; tipo: string; puntos: number; nota: string; fecha: string }[];
 };
 
 export async function getClienteDetalle(id: string): Promise<ClienteDetalle | null> {
@@ -494,7 +496,7 @@ export async function getClienteDetalle(id: string): Promise<ClienteDetalle | nu
   if (!c) return null;
   const cli = c as Record<string, unknown>;
 
-  const [ventasRes, reservasRes, notasRes, walletRes, resenasRes] = await Promise.all([
+  const [ventasRes, reservasRes, notasRes, walletRes, resenasRes, puntosRes] = await Promise.all([
     sb
       .from("ventas")
       .select("id,total,medio,creado_en,barberos(nombre),venta_items(descripcion,cantidad)")
@@ -510,15 +512,18 @@ export async function getClienteDetalle(id: string): Promise<ClienteDetalle | nu
     sb.from("cliente_notas").select("id,nota,creado_en").eq("cliente_ref", id).order("creado_en", { ascending: false }),
     sb.from("cliente_wallet_mov").select("id,tipo,monto,nota,creado_en").eq("cliente_ref", id).order("creado_en", { ascending: false }),
     sb.from("cliente_resenas").select("id,score,nota,creado_en,barberos(nombre)").eq("cliente_ref", id).order("creado_en", { ascending: false }),
+    sb.from("puntos_mov").select("id,tipo,puntos,nota,creado_en").eq("cliente_ref", id).order("creado_en", { ascending: false }),
   ]);
 
   const ventas = (ventasRes.data ?? []) as Record<string, unknown>[];
   const wallet = (walletRes.data ?? []) as { id: string; tipo: string; monto: number; nota: string | null; creado_en: string }[];
   const resenas = (resenasRes.data ?? []) as Record<string, unknown>[];
+  const puntos = (puntosRes.data ?? []) as { id: string; tipo: string; puntos: number; nota: string | null; creado_en: string }[];
 
   const facturado = ventas.reduce((a, v) => a + (v.total as number), 0);
   const ultima = ventas.length ? (ventas[0].creado_en as string) : null;
   const walletBalance = wallet.reduce((a, w) => a + (w.tipo === "recarga" ? w.monto : -w.monto), 0);
+  const puntosBalance = puntos.reduce((a, p) => a + (p.tipo === "ganado" ? p.puntos : -p.puntos), 0);
   const ratingProm = resenas.length
     ? Math.round((resenas.reduce((a, r) => a + (r.score as number), 0) / resenas.length) * 10) / 10
     : null;
@@ -535,6 +540,7 @@ export async function getClienteDetalle(id: string): Promise<ClienteDetalle | nu
     ultima,
     walletBalance,
     ratingProm,
+    puntosBalance,
     historial: ventas.map((v) => ({
       id: v.id as string,
       total: v.total as number,
@@ -565,7 +571,37 @@ export async function getClienteDetalle(id: string): Promise<ClienteDetalle | nu
       barbero: (r.barberos as { nombre?: string } | null)?.nombre ?? "",
       fecha: r.creado_en as string,
     })),
+    puntos: puntos.map((p) => ({ id: p.id, tipo: p.tipo, puntos: p.puntos, nota: p.nota ?? "", fecha: p.creado_en })),
   };
+}
+
+export type Cupon = {
+  codigo: string;
+  descripcion: string;
+  tipo: string;
+  valor: number;
+  activo: boolean;
+  usos: number;
+  usosMax: number | null;
+  venceEn: string | null;
+};
+
+export async function getCupones(): Promise<Cupon[]> {
+  const sb = await supabaseServerAuth();
+  const { data } = await sb
+    .from("cupones")
+    .select("codigo,descripcion,tipo,valor,activo,usos,usos_max,vence_en")
+    .order("creado_en", { ascending: false });
+  return ((data ?? []) as Record<string, unknown>[]).map((c) => ({
+    codigo: c.codigo as string,
+    descripcion: (c.descripcion as string) ?? "",
+    tipo: c.tipo as string,
+    valor: c.valor as number,
+    activo: c.activo as boolean,
+    usos: (c.usos as number) ?? 0,
+    usosMax: (c.usos_max as number) ?? null,
+    venceEn: (c.vence_en as string) ?? null,
+  }));
 }
 
 export type StaffContext = { rol: string; barberoId: string | null; nombre: string };

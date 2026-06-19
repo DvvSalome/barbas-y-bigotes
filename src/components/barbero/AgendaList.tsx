@@ -8,6 +8,7 @@ import {
   completarReserva,
   actualizarReserva,
   historialCliente,
+  validarCupon,
 } from "@/lib/actions";
 import type { Sede, Barbero, Servicio, Producto } from "@/lib/data/types";
 import type { AgendaItem } from "@/lib/data/queries";
@@ -286,6 +287,10 @@ function CompleteForm({
   const [prodQty, setProdQty] = useState<Record<string, number>>({});
   const [medio, setMedio] = useState("efectivo");
   const [saving, setSaving] = useState(false);
+  const [cupon, setCupon] = useState("");
+  const [cuponInfo, setCuponInfo] = useState<{ ok: boolean; msg: string } | null>(null);
+  const [resumen, setResumen] = useState<{ total: number; descuento: number; puntos: number } | null>(null);
+  const [err, setErr] = useState<string | null>(null);
 
   function setQty(id: string, q: number) {
     setProdQty((prev) => {
@@ -296,8 +301,20 @@ function CompleteForm({
     });
   }
 
+  async function chequearCupon() {
+    if (!cupon.trim()) return;
+    const v = await validarCupon(cupon);
+    if (v.ok) {
+      const detalle = v.tipo === "porcentaje" ? `${v.valor}% de descuento` : `${cop(v.valor!)} de descuento`;
+      setCuponInfo({ ok: true, msg: `${v.codigo}: ${detalle}` });
+    } else {
+      setCuponInfo({ ok: false, msg: v.error ?? "Cupón inválido" });
+    }
+  }
+
   async function submit() {
     setSaving(true);
+    setErr(null);
     const res = await completarReserva({
       reservaId: reserva.id,
       sede: reserva.sede,
@@ -306,10 +323,27 @@ function CompleteForm({
       servicioId: reserva.servicioId,
       medio,
       productos: Object.entries(prodQty).map(([id, cantidad]) => ({ id, cantidad })),
+      cuponCodigo: cupon.trim() || undefined,
     });
     setSaving(false);
-    if (res.ok) onDone();
-    else alert(res.error);
+    if (res.ok) setResumen({ total: res.total ?? 0, descuento: res.descuento ?? 0, puntos: res.puntos ?? 0 });
+    else setErr(res.error ?? "No se pudo completar");
+  }
+
+  if (resumen) {
+    return (
+      <div className="mt-3 rounded-xl border border-accent/40 bg-accent/5 p-4 text-sm">
+        <div className="font-display text-xl text-accent-soft">¡Cobrado!</div>
+        <div className="mt-2 space-y-1">
+          {resumen.descuento > 0 && <div className="text-muted">Descuento aplicado: −{cop(resumen.descuento)}</div>}
+          <div>Total cobrado: <b className="text-ink">{cop(resumen.total)}</b></div>
+          {resumen.puntos > 0 && <div className="text-emerald-400">+{resumen.puntos} puntos de fidelidad para el cliente</div>}
+        </div>
+        <button onClick={onDone} className="mt-3 rounded-full bg-accent px-6 py-2 text-xs font-semibold uppercase tracking-wide text-on-accent transition hover:bg-accent-soft">
+          Listo
+        </button>
+      </div>
+    );
   }
 
   return (
@@ -336,6 +370,26 @@ function CompleteForm({
           })}
         </div>
       )}
+      <div className="mt-4">
+        <div className="mb-1 text-[10px] uppercase tracking-[0.18em] text-muted">Cupón (opcional)</div>
+        <div className="flex gap-2">
+          <input
+            value={cupon}
+            onChange={(e) => { setCupon(e.target.value.toUpperCase()); setCuponInfo(null); }}
+            placeholder="Código"
+            className="flex-1 rounded-lg border border-line bg-bg px-3 py-1.5 text-sm uppercase text-ink placeholder:text-muted focus:border-accent focus:outline-none"
+          />
+          <button type="button" onClick={chequearCupon} className="rounded-lg border border-line px-3 py-1.5 text-xs text-muted transition hover:text-ink">
+            Validar
+          </button>
+        </div>
+        {cuponInfo && (
+          <div className={`mt-1 text-xs ${cuponInfo.ok ? "text-emerald-400" : "text-accent-soft"}`}>{cuponInfo.msg}</div>
+        )}
+      </div>
+
+      {err && <div className="mt-3 rounded-lg border border-accent/40 bg-accent/10 px-3 py-2 text-sm text-accent-soft">{err}</div>}
+
       <div className="mt-4 flex flex-wrap items-center gap-2">
         <div className="flex gap-2">
           {["efectivo", "datafono"].map((m) => (

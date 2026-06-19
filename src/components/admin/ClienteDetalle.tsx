@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { cop } from "@/lib/format";
-import { agregarNotaCliente, agregarMovWallet, agregarResenaCliente } from "@/lib/actions";
+import { agregarNotaCliente, agregarMovWallet, agregarResenaCliente, canjearPuntos } from "@/lib/actions";
 import type { ClienteDetalle as Detalle } from "@/lib/data/queries";
 import type { Barbero } from "@/lib/data/types";
 
@@ -15,13 +15,14 @@ const ESTADO: Record<string, string> = {
   completada: "Completada", cancelada: "Cancelada", no_show: "No llegó",
 };
 
-type Tab = "info" | "historial" | "reservas" | "notas" | "wallet" | "resenas";
+type Tab = "info" | "historial" | "reservas" | "notas" | "wallet" | "fidelidad" | "resenas";
 const TABS: { id: Tab; label: string }[] = [
   { id: "info", label: "Información" },
   { id: "historial", label: "Historial" },
   { id: "reservas", label: "Reservas" },
   { id: "notas", label: "Notas" },
   { id: "wallet", label: "Wallet" },
+  { id: "fidelidad", label: "Fidelidad" },
   { id: "resenas", label: "Reseñas" },
 ];
 
@@ -80,6 +81,7 @@ export function ClienteDetalle({ detalle, barberos }: { detalle: Detalle; barber
         {tab === "reservas" && <ReservasTab d={d} />}
         {tab === "notas" && <NotasTab d={d} />}
         {tab === "wallet" && <WalletTab d={d} />}
+        {tab === "fidelidad" && <FidelidadTab d={d} />}
         {tab === "resenas" && <ResenasTab d={d} barberos={barberos} />}
       </div>
     </div>
@@ -262,6 +264,63 @@ function WalletTab({ d }: { d: Detalle }) {
               </div>
               <span className={w.tipo === "recarga" ? "text-emerald-400" : "text-muted"}>
                 {w.tipo === "recarga" ? "+" : "−"}{cop(w.monto)}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function FidelidadTab({ d }: { d: Detalle }) {
+  const router = useRouter();
+  const [puntos, setPuntos] = useState("");
+  const [nota, setNota] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  async function canjear(e: React.FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    setErr(null);
+    const res = await canjearPuntos({ clienteRef: d.id, puntos: Number(puntos) || 0, nota });
+    setBusy(false);
+    if (res.ok) {
+      setPuntos("");
+      setNota("");
+      router.refresh();
+    } else setErr(res.error ?? "Error");
+  }
+
+  return (
+    <div>
+      <div className="mb-5 rounded-2xl border border-line bg-panel p-5">
+        <div className="text-xs uppercase tracking-wide text-muted">Puntos de fidelidad</div>
+        <div className="font-display text-3xl text-accent-soft">{d.puntosBalance} pts</div>
+        <p className="mt-1 text-xs text-muted">Se ganan automáticamente al cobrar (1 punto por cada $1.000). Canjealos por el premio que defina el negocio.</p>
+
+        <form onSubmit={canjear} className="mt-4 space-y-2">
+          {err && <div className="rounded-lg border border-accent/40 bg-accent/10 px-3 py-2 text-sm text-accent-soft">{err}</div>}
+          <input type="number" value={puntos} onChange={(e) => setPuntos(e.target.value)} placeholder="Puntos a canjear" className={fld} />
+          <input value={nota} onChange={(e) => setNota(e.target.value)} placeholder="Premio / nota (ej. servicio gratis)" className={fld} />
+          <button disabled={busy || d.puntosBalance <= 0} className={btn}>{busy ? "Guardando…" : "Canjear puntos"}</button>
+        </form>
+      </div>
+
+      {!d.puntos.length ? (
+        <Empty>Todavía no acumuló puntos.</Empty>
+      ) : (
+        <div className="space-y-2">
+          {d.puntos.map((p) => (
+            <div key={p.id} className="flex items-center justify-between rounded-xl border border-line bg-panel px-4 py-3 text-sm">
+              <div>
+                <span className="capitalize">{p.tipo}</span>
+                {p.nota ? <span className="text-muted"> · {p.nota}</span> : null}
+                <div className="text-xs text-muted">{fecha(p.fecha)}</div>
+              </div>
+              <span className={p.tipo === "ganado" ? "text-emerald-400" : "text-muted"}>
+                {p.tipo === "ganado" ? "+" : "−"}{p.puntos} pts
               </span>
             </div>
           ))}

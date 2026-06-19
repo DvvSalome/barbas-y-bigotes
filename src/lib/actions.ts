@@ -4,7 +4,46 @@ import { revalidatePath } from "next/cache";
 import { type SupabaseClient } from "@supabase/supabase-js";
 import { supabaseServerAuth, supabaseAdmin } from "@/lib/supabase/server";
 
-export type ActionResult = { ok: boolean; error?: string; total?: number };
+export type ActionResult = { ok: boolean; error?: string; total?: number; descuento?: number; puntos?: number };
+
+// Fidelidad: el cliente gana 1 punto por cada $1.000 cobrados (neto).
+const PUNTOS_POR_COP = 1000;
+
+export type CuponResult = {
+  ok: boolean;
+  error?: string;
+  codigo?: string;
+  tipo?: "porcentaje" | "monto";
+  valor?: number;
+  descripcion?: string | null;
+};
+
+// Valida un cupón y devuelve sus datos (sin aplicarlo). Lo usa el cobro para
+// previsualizar el descuento. La validación autoritativa se repite al cobrar.
+export async function validarCupon(codigo: string): Promise<CuponResult> {
+  const code = (codigo ?? "").trim().toUpperCase();
+  if (!code) return { ok: false, error: "Ingresá un código" };
+  const sb = await supabaseServerAuth();
+  const { data } = await sb
+    .from("cupones")
+    .select("codigo,tipo,valor,activo,usos,usos_max,vence_en,descripcion")
+    .eq("codigo", code)
+    .maybeSingle();
+  if (!data) return { ok: false, error: "Cupón no encontrado" };
+  const c = data as {
+    codigo: string; tipo: "porcentaje" | "monto"; valor: number; activo: boolean;
+    usos: number; usos_max: number | null; vence_en: string | null; descripcion: string | null;
+  };
+  if (!c.activo) return { ok: false, error: "Cupón inactivo" };
+  if (c.usos_max !== null && c.usos >= c.usos_max) return { ok: false, error: "Cupón agotado" };
+  if (c.vence_en && c.vence_en < new Date().toISOString().slice(0, 10)) return { ok: false, error: "Cupón vencido" };
+  return { ok: true, codigo: c.codigo, tipo: c.tipo, valor: c.valor, descripcion: c.descripcion };
+}
+
+function calcDescuento(tipo: string, valor: number, total: number): number {
+  const d = tipo === "porcentaje" ? Math.round((total * valor) / 100) : valor;
+  return Math.max(0, Math.min(d, total)); // nunca más que el total
+}
 
 async function upsertClienteId(
   sb: SupabaseClient,
@@ -192,6 +231,7 @@ export async function completarReserva(input: {
   servicioId: string | null;
   medio: string;
   productos: { id: string; cantidad: number }[];
+  cuponCodigo?: string;
 }): Promise<ActionResult> {
   const sb = await supabaseServerAuth();
   let total = 0;
@@ -234,6 +274,17 @@ export async function completarReserva(input: {
     }
   }
 
+  // Cupón (opcional): valida y descuenta del total.
+  let descuento = 0;
+  let cuponCodigo: string | null = null;
+  if (input.cuponCodigo && input.cuponCodigo.trim()) {
+    const v = await validarCupon(input.cuponCodigo);
+    if (!v.ok) return { ok: false, error: v.error ?? "Cupón inválido" };
+    descuento = calcDescuento(v.tipo!, v.valor!, total);
+    cuponCodigo = v.codigo!;
+  }
+  const totalNeto = Math.max(0, total - descuento);
+
   const { data: venta, error } = await sb
     .from("ventas")
     .insert({
@@ -242,25 +293,101 @@ export async function completarReserva(input: {
       cliente_ref: input.clienteRef,
       reserva_id: input.reservaId,
       medio: input.medio,
-      total,
+      total: totalNeto,
+      descuento,
+      cupon_codigo: cuponCodigo,
     })
     .select("id")
     .single();
   if (error || !venta) return { ok: false, error: error?.message ?? "No se pudo completar" };
+  const ventaId = (venta as { id: string }).id;
 
   if (items.length) {
-    await sb.from("venta_items").insert(
-      items.map((it) => ({ ...it, venta_id: (venta as { id: string }).id })),
-    );
+    await sb.from("venta_items").insert(items.map((it) => ({ ...it, venta_id: ventaId })));
   }
   for (const sel of input.productos) {
     await sb.rpc("decrement_stock", { p_id: sel.id, p_qty: sel.cantidad });
+  }
+  // Registrar uso del cupón.
+  if (cuponCodigo) {
+    const { data: cup } = await sb.from("cupones").select("usos").eq("codigo", cuponCodigo).maybeSingle();
+    await sb.from("cupones").update({ usos: ((cup as { usos?: number } | null)?.usos ?? 0) + 1 }).eq("codigo", cuponCodigo);
+  }
+  // Fidelidad: otorgar puntos por el neto cobrado.
+  const puntos = Math.floor(totalNeto / PUNTOS_POR_COP);
+  if (input.clienteRef && puntos > 0) {
+    await sb.from("puntos_mov").insert({
+      cliente_ref: input.clienteRef,
+      tipo: "ganado",
+      puntos,
+      venta_id: ventaId,
+      nota: "Compra",
+    });
   }
   await sb.from("reservas").update({ estado: "completada" }).eq("id", input.reservaId);
 
   revalidatePath("/barbero");
   revalidatePath("/admin/inventario");
-  return { ok: true, total };
+  return { ok: true, total: totalNeto, descuento, puntos };
+}
+
+// ---------- Cupones (admin) + canje de puntos ----------
+export async function crearCupon(input: {
+  codigo: string;
+  descripcion: string;
+  tipo: "porcentaje" | "monto";
+  valor: number;
+  usosMax: number | null;
+  venceEn: string | null;
+}): Promise<ActionResult> {
+  const sb = await supabaseServerAuth();
+  const code = input.codigo.trim().toUpperCase();
+  if (!code) return { ok: false, error: "Código requerido" };
+  if (!input.valor || input.valor <= 0) return { ok: false, error: "Valor inválido" };
+  if (input.tipo === "porcentaje" && input.valor > 100) return { ok: false, error: "El porcentaje no puede superar 100" };
+  const { error } = await sb.from("cupones").insert({
+    codigo: code,
+    descripcion: input.descripcion || null,
+    tipo: input.tipo,
+    valor: input.valor,
+    usos_max: input.usosMax,
+    vence_en: input.venceEn,
+  });
+  if (error) {
+    if (error.code === "23505") return { ok: false, error: "Ya existe un cupón con ese código." };
+    return { ok: false, error: error.message };
+  }
+  revalidatePath("/admin/cupones");
+  return { ok: true };
+}
+
+export async function toggleCupon(codigo: string, activo: boolean): Promise<ActionResult> {
+  const sb = await supabaseServerAuth();
+  const { error } = await sb.from("cupones").update({ activo }).eq("codigo", codigo);
+  if (error) return { ok: false, error: error.message };
+  revalidatePath("/admin/cupones");
+  return { ok: true };
+}
+
+export async function canjearPuntos(input: { clienteRef: string; puntos: number; nota: string }): Promise<ActionResult> {
+  const sb = await supabaseServerAuth();
+  if (!input.puntos || input.puntos <= 0) return { ok: false, error: "Puntos inválidos" };
+  // Verifica saldo disponible.
+  const { data } = await sb.from("puntos_mov").select("tipo,puntos").eq("cliente_ref", input.clienteRef);
+  const saldo = ((data ?? []) as { tipo: string; puntos: number }[]).reduce(
+    (a, m) => a + (m.tipo === "ganado" ? m.puntos : -m.puntos),
+    0,
+  );
+  if (input.puntos > saldo) return { ok: false, error: `Saldo insuficiente (${saldo} pts)` };
+  const { error } = await sb.from("puntos_mov").insert({
+    cliente_ref: input.clienteRef,
+    tipo: "canjeado",
+    puntos: input.puntos,
+    nota: input.nota || "Canje",
+  });
+  if (error) return { ok: false, error: error.message };
+  revalidatePath(`/admin/clientes/${input.clienteRef}`);
+  return { ok: true };
 }
 
 export async function historialCliente(clienteRef: string) {

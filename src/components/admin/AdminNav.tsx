@@ -10,6 +10,7 @@ const nav = [
   { href: "/admin/precios", label: "Precios por sede" },
   { href: "/admin/inventario", label: "Inventario" },
   { href: "/admin/comisiones", label: "Comisiones" },
+  { href: "/admin/cupones", label: "Cupones" },
   { href: "/barbero", label: "App del barbero" },
 ];
 
