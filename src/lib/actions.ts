@@ -9,6 +9,26 @@ export type ActionResult = { ok: boolean; error?: string; total?: number; descue
 // Fidelidad: el cliente gana 1 punto por cada $1.000 cobrados (neto).
 const PUNTOS_POR_COP = 1000;
 
+// --- Autorización (defensa en profundidad; la RLS es la barrera real) ---
+// Las server actions corren con la sesión del usuario, pero igual revalidamos el
+// rol acá: una action es un endpoint POST invocable directo, no confíes solo en la UI.
+async function requireAdmin(sb: SupabaseClient): Promise<string | null> {
+  const {
+    data: { user },
+  } = await sb.auth.getUser();
+  if (!user) return "No autorizado";
+  const { data } = await sb.from("profiles").select("rol").eq("auth_id", user.id).maybeSingle();
+  if ((data as { rol?: string } | null)?.rol !== "admin") return "Requiere permiso de administrador";
+  return null;
+}
+
+async function requireStaff(sb: SupabaseClient): Promise<string | null> {
+  const {
+    data: { user },
+  } = await sb.auth.getUser();
+  return user ? null : "No autorizado";
+}
+
 export type CuponResult = {
   ok: boolean;
   error?: string;
@@ -24,6 +44,8 @@ export async function validarCupon(codigo: string): Promise<CuponResult> {
   const code = (codigo ?? "").trim().toUpperCase();
   if (!code) return { ok: false, error: "Ingresá un código" };
   const sb = await supabaseServerAuth();
+  const denied = await requireStaff(sb);
+  if (denied) return { ok: false, error: denied };
   const { data } = await sb
     .from("cupones")
     .select("codigo,tipo,valor,activo,usos,usos_max,vence_en,descripcion")
@@ -82,6 +104,8 @@ export async function addProducto(input: {
   comisionPct: number;
 }): Promise<ActionResult> {
   const sb = await supabaseServerAuth();
+  const denied = await requireAdmin(sb);
+  if (denied) return { ok: false, error: denied };
   const { error } = await sb.from("productos").insert({
     nombre: input.nombre,
     sede_id: input.sede,
@@ -181,6 +205,8 @@ export async function registrarWalkin(input: {
   telefono: string;
 }): Promise<ActionResult> {
   const sb = await supabaseServerAuth();
+  const denied = await requireStaff(sb);
+  if (denied) return { ok: false, error: denied };
   const clienteRef = await upsertClienteId(sb, input.clienteNombre, input.telefono);
   const now = new Date();
   let dur = 30;
@@ -216,6 +242,8 @@ export async function actualizarReserva(
   patch: { estado?: string; llegada?: string },
 ): Promise<ActionResult> {
   const sb = await supabaseServerAuth();
+  const denied = await requireStaff(sb);
+  if (denied) return { ok: false, error: denied };
   const { error } = await sb.from("reservas").update(patch).eq("id", reservaId);
   if (error) return { ok: false, error: error.message };
   revalidatePath("/barbero");
@@ -234,6 +262,8 @@ export async function completarReserva(input: {
   cuponCodigo?: string;
 }): Promise<ActionResult> {
   const sb = await supabaseServerAuth();
+  const denied = await requireStaff(sb);
+  if (denied) return { ok: false, error: denied };
   let total = 0;
   const items: Record<string, unknown>[] = [];
 
@@ -308,10 +338,9 @@ export async function completarReserva(input: {
   for (const sel of input.productos) {
     await sb.rpc("decrement_stock", { p_id: sel.id, p_qty: sel.cantidad });
   }
-  // Registrar uso del cupón.
+  // Registrar uso del cupón (atómico: incrementa solo si no superó el tope; sin carrera).
   if (cuponCodigo) {
-    const { data: cup } = await sb.from("cupones").select("usos").eq("codigo", cuponCodigo).maybeSingle();
-    await sb.from("cupones").update({ usos: ((cup as { usos?: number } | null)?.usos ?? 0) + 1 }).eq("codigo", cuponCodigo);
+    await sb.rpc("bump_cupon_uso", { p_codigo: cuponCodigo });
   }
   // Fidelidad: otorgar puntos por el neto cobrado.
   const puntos = Math.floor(totalNeto / PUNTOS_POR_COP);
@@ -341,6 +370,8 @@ export async function crearCupon(input: {
   venceEn: string | null;
 }): Promise<ActionResult> {
   const sb = await supabaseServerAuth();
+  const denied = await requireAdmin(sb);
+  if (denied) return { ok: false, error: denied };
   const code = input.codigo.trim().toUpperCase();
   if (!code) return { ok: false, error: "Código requerido" };
   if (!input.valor || input.valor <= 0) return { ok: false, error: "Valor inválido" };
@@ -363,6 +394,8 @@ export async function crearCupon(input: {
 
 export async function toggleCupon(codigo: string, activo: boolean): Promise<ActionResult> {
   const sb = await supabaseServerAuth();
+  const denied = await requireAdmin(sb);
+  if (denied) return { ok: false, error: denied };
   const { error } = await sb.from("cupones").update({ activo }).eq("codigo", codigo);
   if (error) return { ok: false, error: error.message };
   revalidatePath("/admin/cupones");
@@ -371,6 +404,8 @@ export async function toggleCupon(codigo: string, activo: boolean): Promise<Acti
 
 export async function canjearPuntos(input: { clienteRef: string; puntos: number; nota: string }): Promise<ActionResult> {
   const sb = await supabaseServerAuth();
+  const denied = await requireAdmin(sb);
+  if (denied) return { ok: false, error: denied };
   if (!input.puntos || input.puntos <= 0) return { ok: false, error: "Puntos inválidos" };
   // Verifica saldo disponible.
   const { data } = await sb.from("puntos_mov").select("tipo,puntos").eq("cliente_ref", input.clienteRef);
@@ -402,6 +437,8 @@ export async function registrarGasto(input: {
   descripcion: string;
 }): Promise<ActionResult> {
   const sb = await supabaseServerAuth();
+  const denied = await requireAdmin(sb);
+  if (denied) return { ok: false, error: denied };
   const { error } = await sb.from("gastos").insert({
     sede_id: input.sede,
     categoria: input.categoria,
@@ -420,6 +457,8 @@ export async function registrarAdelanto(input: {
   nota: string;
 }): Promise<ActionResult> {
   const sb = await supabaseServerAuth();
+  const denied = await requireAdmin(sb);
+  if (denied) return { ok: false, error: denied };
   const { error } = await sb.from("adelantos").insert({
     barbero_id: input.barberoId,
     monto: input.monto,
@@ -435,6 +474,8 @@ export async function registrarAdelanto(input: {
 // ---------- CRM de cliente: notas, wallet, reseñas ----------
 export async function agregarNotaCliente(input: { clienteRef: string; nota: string }): Promise<ActionResult> {
   const sb = await supabaseServerAuth();
+  const denied = await requireAdmin(sb);
+  if (denied) return { ok: false, error: denied };
   if (!input.nota.trim()) return { ok: false, error: "Escribí la nota" };
   const { error } = await sb.from("cliente_notas").insert({ cliente_ref: input.clienteRef, nota: input.nota.trim() });
   if (error) return { ok: false, error: error.message };
@@ -449,6 +490,8 @@ export async function agregarMovWallet(input: {
   nota: string;
 }): Promise<ActionResult> {
   const sb = await supabaseServerAuth();
+  const denied = await requireAdmin(sb);
+  if (denied) return { ok: false, error: denied };
   if (!input.monto || input.monto <= 0) return { ok: false, error: "Monto inválido" };
   const { error } = await sb.from("cliente_wallet_mov").insert({
     cliente_ref: input.clienteRef,
@@ -468,6 +511,8 @@ export async function agregarResenaCliente(input: {
   nota: string;
 }): Promise<ActionResult> {
   const sb = await supabaseServerAuth();
+  const denied = await requireAdmin(sb);
+  if (denied) return { ok: false, error: denied };
   if (input.score < 1 || input.score > 5) return { ok: false, error: "Puntaje 1 a 5" };
   const { error } = await sb.from("cliente_resenas").insert({
     cliente_ref: input.clienteRef,
@@ -487,6 +532,8 @@ export async function abrirCaja(input: {
   montoApertura: number;
 }): Promise<ActionResult> {
   const sb = await supabaseServerAuth();
+  const denied = await requireAdmin(sb);
+  if (denied) return { ok: false, error: denied };
   const { error } = await sb.from("caja_sesiones").insert({
     sede_id: input.sede,
     meta_dia: input.metaDia,
@@ -510,6 +557,8 @@ export async function cerrarCaja(input: {
   nota: string;
 }): Promise<ActionResult> {
   const sb = await supabaseServerAuth();
+  const denied = await requireAdmin(sb);
+  if (denied) return { ok: false, error: denied };
   // Snapshot de lo recaudado desde que se abrió la caja.
   const { data: ventas } = await sb
     .from("ventas")
@@ -556,6 +605,8 @@ export async function agregarListaEspera(input: {
   telefono: string;
 }): Promise<ActionResult> {
   const sb = await supabaseServerAuth();
+  const denied = await requireStaff(sb);
+  if (denied) return { ok: false, error: denied };
   const { error } = await sb.from("lista_espera").insert({
     sede_id: input.sede,
     barbero_id: input.barberoId || null,
@@ -571,6 +622,8 @@ export async function agregarListaEspera(input: {
 
 export async function actualizarListaEspera(id: string, estado: string): Promise<ActionResult> {
   const sb = await supabaseServerAuth();
+  const denied = await requireStaff(sb);
+  if (denied) return { ok: false, error: denied };
   const { error } = await sb.from("lista_espera").update({ estado }).eq("id", id);
   if (error) return { ok: false, error: error.message };
   revalidatePath("/barbero");

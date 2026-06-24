@@ -619,7 +619,8 @@ export async function getStaffContext(): Promise<StaffContext> {
     .select("rol,barbero_id,nombre")
     .eq("auth_id", user.id)
     .maybeSingle();
-  if (!data) return { rol: "admin", barberoId: null, nombre: "" };
+  // Fail-closed: sin perfil → rol sin privilegios (no asumir admin).
+  if (!data) return { rol: "none", barberoId: null, nombre: "" };
   const row = data as { rol: string; barbero_id: string | null; nombre: string };
   return { rol: row.rol, barberoId: row.barbero_id ?? null, nombre: row.nombre ?? "" };
 }
