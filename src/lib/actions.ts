@@ -5,7 +5,7 @@ import { type SupabaseClient } from "@supabase/supabase-js";
 import { supabaseServerAuth, supabaseAdmin } from "@/lib/supabase/server";
 import { getStaffContext } from "@/lib/data/queries";
 
-export type ActionResult = { ok: boolean; error?: string; total?: number; descuento?: number; puntos?: number };
+export type ActionResult = { ok: boolean; error?: string; total?: number; descuento?: number; puntos?: number; encolado?: boolean; esperaHasta?: string | null };
 
 // Fidelidad: el cliente gana 1 punto por cada $1.000 cobrados (neto).
 const PUNTOS_POR_COP = 1000;
@@ -75,11 +75,15 @@ async function upsertClienteId(
   nombre: string,
   telefono: string,
   email = "",
+  origen = "registrado",
+  fidelizado = true,
 ): Promise<string | null> {
   const { data } = await sb.rpc("upsert_cliente", {
     p_nombre: nombre ?? "",
     p_telefono: telefono ?? "",
     p_email: email ?? "",
+    p_origen: origen,
+    p_fidelizado: fidelizado,
   });
   return (data as string | null) ?? null;
 }
@@ -143,7 +147,7 @@ export async function createReserva(input: {
     if (clash && clash.length) return { ok: false, error: "Ese horario ya fue tomado. Elegí otro, por favor." };
   }
 
-  const clienteRef = await upsertClienteId(sb, input.clienteNombre, input.telefono, input.email ?? "");
+  const clienteRef = await upsertClienteId(sb, input.clienteNombre, input.telefono, input.email ?? "", "app");
   const { error } = await sb.from("reservas").insert({
     sede_id: input.sede,
     barbero_id: barberoId,
@@ -192,6 +196,7 @@ export async function registrarWalkin(input: {
   servicioId: string;
   clienteNombre: string;
   telefono: string;
+  fidelizar?: boolean;
 }): Promise<ActionResult> {
   const sb = await supabaseServerAuth();
   const staff = await getStaffContext();
@@ -199,7 +204,7 @@ export async function registrarWalkin(input: {
   // El barbero solo agenda walk-ins a su propio nombre (RLS lo exige); el admin elige.
   const barberoId = staff.rol === "admin" ? input.barberoId || null : staff.barberoId;
   if (!barberoId) return { ok: false, error: "No se pudo determinar el barbero" };
-  const clienteRef = await upsertClienteId(sb, input.clienteNombre, input.telefono);
+  const clienteRef = await upsertClienteId(sb, input.clienteNombre, input.telefono, "", "walkin", input.fidelizar ?? true);
   const now = new Date();
   let dur = 30;
   if (input.servicioId) {
@@ -222,7 +227,31 @@ export async function registrarWalkin(input: {
     canal: "walkin",
   });
   if (error) {
-    if (error.code === "23P01") return { ok: false, error: "Ese barbero ya tiene un cliente en ese horario." };
+    // Barbero ocupado (solape detectado por el constraint EXCLUDE) → a la cola, no rechazo.
+    if (error.code === "23P01") {
+      const { data: busy } = await sb
+        .from("reservas")
+        .select("fin")
+        .eq("barbero_id", barberoId)
+        .not("estado", "in", "(cancelada,no_show)")
+        .lt("inicio", fin.toISOString())
+        .gt("fin", now.toISOString())
+        .order("fin")
+        .limit(1);
+      const esperaHasta = (busy?.[0] as { fin?: string } | undefined)?.fin ?? null;
+      const { error: eErr } = await sb.from("lista_espera").insert({
+        sede_id: input.sede,
+        barbero_id: barberoId,
+        servicio_id: input.servicioId || null,
+        cliente_ref: clienteRef,
+        cliente_nombre: input.clienteNombre.trim() || null,
+        telefono: input.telefono.trim() || null,
+        estado: "esperando",
+      });
+      if (eErr) return { ok: false, error: "El barbero está ocupado y no se pudo encolar." };
+      revalidatePath("/barbero");
+      return { ok: true, encolado: true, esperaHasta };
+    }
     return { ok: false, error: error.message };
   }
   revalidatePath("/barbero");
@@ -340,16 +369,20 @@ export async function completarReserva(input: {
   if (cuponCodigo) {
     await sb.rpc("bump_cupon_uso", { p_codigo: cuponCodigo });
   }
-  // Fidelidad: otorgar puntos por el neto cobrado.
-  const puntos = Math.floor(totalNeto / PUNTOS_POR_COP);
+  // Fidelidad: puntos por el neto cobrado, solo si el cliente está inscrito.
+  let puntos = Math.floor(totalNeto / PUNTOS_POR_COP);
   if (input.clienteRef && puntos > 0) {
-    await sb.from("puntos_mov").insert({
-      cliente_ref: input.clienteRef,
-      tipo: "ganado",
-      puntos,
-      venta_id: ventaId,
-      nota: "Compra",
-    });
+    const { data: cli } = await sb.from("clientes").select("fidelizado").eq("id", input.clienteRef).maybeSingle();
+    if ((cli as { fidelizado?: boolean } | null)?.fidelizado === false) puntos = 0;
+    if (puntos > 0) {
+      await sb.from("puntos_mov").insert({
+        cliente_ref: input.clienteRef,
+        tipo: "ganado",
+        puntos,
+        venta_id: ventaId,
+        nota: "Compra",
+      });
+    }
   }
   await sb.from("reservas").update({ estado: "completada" }).eq("id", input.reservaId);
 
@@ -605,15 +638,75 @@ export async function agregarListaEspera(input: {
   const sb = await supabaseServerAuth();
   const denied = await requireStaff(sb);
   if (denied) return { ok: false, error: denied };
+  const clienteRef = await upsertClienteId(sb, input.clienteNombre, input.telefono, "", "walkin");
   const { error } = await sb.from("lista_espera").insert({
     sede_id: input.sede,
     barbero_id: input.barberoId || null,
     servicio_id: input.servicioId || null,
+    cliente_ref: clienteRef,
     cliente_nombre: input.clienteNombre.trim() || null,
     telefono: input.telefono.trim() || null,
     estado: "esperando",
   });
   if (error) return { ok: false, error: error.message };
+  revalidatePath("/barbero");
+  return { ok: true };
+}
+
+// Atender ahora a alguien de la lista de espera: crea la atención en_curso y lo saca de la cola.
+// Reclama la entrada de forma atómica ('asignado' sale del filtro de la cola) para evitar
+// doble atención / carrera con cancelación; revierte el claim si no se pudo crear la atención.
+export async function servirEspera(id: string): Promise<ActionResult> {
+  const sb = await supabaseServerAuth();
+  const staff = await getStaffContext();
+  if (staff.rol !== "admin" && staff.rol !== "barbero") return { ok: false, error: "No autorizado" };
+  // Claim atómico: solo una llamada gana, y solo si sigue en la cola.
+  const { data: claimed } = await sb
+    .from("lista_espera")
+    .update({ estado: "asignado" })
+    .eq("id", id)
+    .in("estado", ["esperando", "notificado"])
+    .select("sede_id,barbero_id,servicio_id,cliente_ref,cliente_nombre,telefono");
+  const ent = (claimed?.[0] ?? null) as {
+    sede_id: string; barbero_id: string | null; servicio_id: string | null;
+    cliente_ref: string | null; cliente_nombre: string | null; telefono: string | null;
+  } | null;
+  if (!ent) return { ok: false, error: "Esa espera ya fue atendida o cancelada" };
+
+  async function revertir() {
+    await sb.from("lista_espera").update({ estado: "esperando" }).eq("id", id);
+  }
+
+  // El barbero se atiende a sí mismo; el admin usa el barbero asignado en la espera.
+  const barberoId = staff.rol === "barbero" ? staff.barberoId : ent.barbero_id;
+  if (!barberoId) {
+    await revertir();
+    return { ok: false, error: "Asigná un barbero a esta espera primero" };
+  }
+  const clienteRef =
+    ent.cliente_ref ?? (await upsertClienteId(sb, ent.cliente_nombre ?? "", ent.telefono ?? "", "", "walkin"));
+  const now = new Date();
+  let dur = 30;
+  if (ent.servicio_id) {
+    const { data: serv } = await sb.from("servicios").select("duracion_min").eq("id", ent.servicio_id).maybeSingle();
+    dur = (serv as { duracion_min?: number } | null)?.duracion_min ?? 30;
+  }
+  const fin = new Date(now.getTime() + dur * 60000);
+  const { error } = await sb.from("reservas").insert({
+    sede_id: ent.sede_id,
+    barbero_id: barberoId,
+    servicio_id: ent.servicio_id,
+    cliente_ref: clienteRef,
+    inicio: now.toISOString(),
+    fin: fin.toISOString(),
+    estado: "en_curso",
+    canal: "walkin",
+  });
+  if (error) {
+    await revertir();
+    if (error.code === "23P01") return { ok: false, error: "El barbero sigue ocupado ahora mismo." };
+    return { ok: false, error: error.message };
+  }
   revalidatePath("/barbero");
   return { ok: true };
 }

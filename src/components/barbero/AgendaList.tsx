@@ -226,6 +226,7 @@ function WalkinForm({
   const [nombre, setNombre] = useState("");
   const [tel, setTel] = useState("");
   const [servicioId, setServicioId] = useState("");
+  const [fidelizar, setFidelizar] = useState(true);
   const [saving, setSaving] = useState(false);
   const sedeBarberos = barberos.filter((b) => b.sede === sede);
 
@@ -236,10 +237,15 @@ function WalkinForm({
       return;
     }
     setSaving(true);
-    const res = await registrarWalkin({ sede, barberoId, servicioId, clienteNombre: nombre, telefono: tel });
+    const res = await registrarWalkin({ sede, barberoId, servicioId, clienteNombre: nombre, telefono: tel, fidelizar });
     setSaving(false);
-    if (res.ok) onDone();
-    else alert(res.error);
+    if (res.ok) {
+      if (res.encolado) {
+        const hasta = res.esperaHasta ? ` (~${hora(res.esperaHasta)})` : "";
+        alert(`El barbero está ocupado. ${nombre.trim() || "El cliente"} quedó en la lista de espera${hasta}.`);
+      }
+      onDone();
+    } else alert(res.error);
   }
 
   return (
@@ -263,6 +269,10 @@ function WalkinForm({
           <option key={s.id} value={s.id}>{s.nombre}</option>
         ))}
       </select>
+      <label className="flex items-center gap-2 text-sm text-muted sm:col-span-2">
+        <input type="checkbox" checked={fidelizar} onChange={(e) => setFidelizar(e.target.checked)} className="accent-accent" />
+        Inscribir en fidelización (gana puntos por la visita)
+      </label>
       <div className="flex gap-2 sm:col-span-2">
         <button disabled={saving} className="rounded-full bg-accent px-6 py-2.5 text-sm font-semibold uppercase tracking-wide text-on-accent transition hover:bg-accent-soft disabled:opacity-50">
           {saving ? "Agregando…" : "Agregar a la agenda"}

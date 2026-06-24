@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { agregarListaEspera, actualizarListaEspera } from "@/lib/actions";
+import { agregarListaEspera, actualizarListaEspera, servirEspera } from "@/lib/actions";
 import type { Sede, Barbero, Servicio } from "@/lib/data/types";
 import type { EsperaItem } from "@/lib/data/queries";
 
@@ -35,6 +35,17 @@ export function EsperaPanel({
     setBusy(true);
     await actualizarListaEspera(id, estado);
     setBusy(false);
+    router.refresh();
+  }
+
+  async function atender(id: string) {
+    setBusy(true);
+    const res = await servirEspera(id);
+    setBusy(false);
+    if (!res.ok) {
+      alert(res.error);
+      return;
+    }
     router.refresh();
   }
 
@@ -105,11 +116,11 @@ export function EsperaPanel({
                   </button>
                 )}
                 <button
-                  onClick={() => setEstado(e.id, "asignado")}
+                  onClick={() => atender(e.id)}
                   disabled={busy}
                   className="rounded-full bg-accent px-3 py-1.5 text-xs font-semibold uppercase text-on-accent transition hover:bg-accent-soft disabled:opacity-50"
                 >
-                  Asignar cupo
+                  Atender ahora
                 </button>
                 <button
                   onClick={() => setEstado(e.id, "cancelado")}
