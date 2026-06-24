@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { type SupabaseClient } from "@supabase/supabase-js";
 import { supabaseServerAuth, supabaseAdmin } from "@/lib/supabase/server";
+import { getStaffContext } from "@/lib/data/queries";
 
 export type ActionResult = { ok: boolean; error?: string; total?: number; descuento?: number; puntos?: number };
 
@@ -67,32 +68,20 @@ function calcDescuento(tipo: string, valor: number, total: number): number {
   return Math.max(0, Math.min(d, total)); // nunca más que el total
 }
 
+// Upsert de cliente por teléfono vía RPC SECURITY DEFINER: dedup correcto sin exponer
+// toda la tabla clientes al barbero (que ahora solo ve por RLS los clientes que atendió).
 async function upsertClienteId(
   sb: SupabaseClient,
   nombre: string,
   telefono: string,
   email = "",
 ): Promise<string | null> {
-  const tel = (telefono ?? "").trim();
-  const mail = (email ?? "").trim();
-  if (tel) {
-    const { data: existing } = await sb
-      .from("clientes")
-      .select("id,email")
-      .eq("telefono", tel)
-      .maybeSingle();
-    if (existing) {
-      const row = existing as { id: string; email: string | null };
-      if (mail && !row.email) await sb.from("clientes").update({ email: mail }).eq("id", row.id);
-      return row.id;
-    }
-  }
-  const { data } = await sb
-    .from("clientes")
-    .insert({ nombre: (nombre ?? "").trim() || "Cliente", telefono: tel || null, email: mail || null })
-    .select("id")
-    .single();
-  return (data as { id: string } | null)?.id ?? null;
+  const { data } = await sb.rpc("upsert_cliente", {
+    p_nombre: nombre ?? "",
+    p_telefono: telefono ?? "",
+    p_email: email ?? "",
+  });
+  return (data as string | null) ?? null;
 }
 
 export async function addProducto(input: {
@@ -205,8 +194,11 @@ export async function registrarWalkin(input: {
   telefono: string;
 }): Promise<ActionResult> {
   const sb = await supabaseServerAuth();
-  const denied = await requireStaff(sb);
-  if (denied) return { ok: false, error: denied };
+  const staff = await getStaffContext();
+  if (staff.rol !== "admin" && staff.rol !== "barbero") return { ok: false, error: "No autorizado" };
+  // El barbero solo agenda walk-ins a su propio nombre (RLS lo exige); el admin elige.
+  const barberoId = staff.rol === "admin" ? input.barberoId || null : staff.barberoId;
+  if (!barberoId) return { ok: false, error: "No se pudo determinar el barbero" };
   const clienteRef = await upsertClienteId(sb, input.clienteNombre, input.telefono);
   const now = new Date();
   let dur = 30;
@@ -221,7 +213,7 @@ export async function registrarWalkin(input: {
   const fin = new Date(now.getTime() + dur * 60000);
   const { error } = await sb.from("reservas").insert({
     sede_id: input.sede,
-    barbero_id: input.barberoId,
+    barbero_id: barberoId,
     servicio_id: input.servicioId || null,
     cliente_ref: clienteRef,
     inicio: now.toISOString(),
@@ -244,8 +236,11 @@ export async function actualizarReserva(
   const sb = await supabaseServerAuth();
   const denied = await requireStaff(sb);
   if (denied) return { ok: false, error: denied };
-  const { error } = await sb.from("reservas").update(patch).eq("id", reservaId);
+  // .select() para detectar 0 filas: bajo RLS, tocar una reserva ajena no es error pero
+  // no afecta filas → avisamos en vez de fingir éxito.
+  const { data, error } = await sb.from("reservas").update(patch).eq("id", reservaId).select("id");
   if (error) return { ok: false, error: error.message };
+  if (!data || data.length === 0) return { ok: false, error: "Reserva no encontrada o sin permiso" };
   revalidatePath("/barbero");
   return { ok: true };
 }
@@ -262,8 +257,10 @@ export async function completarReserva(input: {
   cuponCodigo?: string;
 }): Promise<ActionResult> {
   const sb = await supabaseServerAuth();
-  const denied = await requireStaff(sb);
-  if (denied) return { ok: false, error: denied };
+  const staff = await getStaffContext();
+  if (staff.rol !== "admin" && staff.rol !== "barbero") return { ok: false, error: "No autorizado" };
+  // barbero_id de la venta lo fija el servidor: el barbero cobra a su nombre; el admin puede cobrar por otro.
+  const barberoId = staff.rol === "admin" ? input.barberoId : staff.barberoId;
   let total = 0;
   const items: Record<string, unknown>[] = [];
 
@@ -319,7 +316,7 @@ export async function completarReserva(input: {
     .from("ventas")
     .insert({
       sede_id: input.sede,
-      barbero_id: input.barberoId,
+      barbero_id: barberoId,
       cliente_ref: input.clienteRef,
       reserva_id: input.reservaId,
       medio: input.medio,
@@ -333,7 +330,8 @@ export async function completarReserva(input: {
   const ventaId = (venta as { id: string }).id;
 
   if (items.length) {
-    await sb.from("venta_items").insert(items.map((it) => ({ ...it, venta_id: ventaId })));
+    const { error: itemsErr } = await sb.from("venta_items").insert(items.map((it) => ({ ...it, venta_id: ventaId })));
+    if (itemsErr) return { ok: false, error: "No se pudieron registrar los consumos de la venta" };
   }
   for (const sel of input.productos) {
     await sb.rpc("decrement_stock", { p_id: sel.id, p_qty: sel.cantidad });
