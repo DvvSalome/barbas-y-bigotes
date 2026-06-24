@@ -94,6 +94,7 @@ export function BookingWizard({
   // Disponibilidad real: trae los rangos ocupados del barbero ese día.
   useEffect(() => {
     if (!day || !barbero) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- reset async-fetched availability when inputs are cleared
       setOcupados([]);
       return;
     }
