@@ -2,7 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
-import { Hero } from "@/components/home/Hero";
+import { Hero3D } from "@/components/home/Hero3D";
 import { StatsBand } from "@/components/home/StatsBand";
 import { Reveal } from "@/components/motion/Reveal";
 import { WhyUs } from "@/components/home/WhyUs";
@@ -23,10 +23,14 @@ export default function Home() {
     <>
       <SiteHeader />
       <main>
-        <Hero />
-        <StatsBand />
+        <Hero3D />
+        <Reveal>
+          <StatsBand />
+        </Reveal>
 
-        <WhyUs />
+        <Reveal>
+          <WhyUs />
+        </Reveal>
 
         <ScrollReveal3D />
 
