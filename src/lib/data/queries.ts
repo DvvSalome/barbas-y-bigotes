@@ -624,3 +624,51 @@ export async function getStaffContext(): Promise<StaffContext> {
   const row = data as { rol: string; barbero_id: string | null; nombre: string };
   return { rol: row.rol, barberoId: row.barbero_id ?? null, nombre: row.nombre ?? "" };
 }
+
+// ---------- Portal del cliente ----------
+export type CuentaData = {
+  proximas: { id: string; inicio: string; estado: string; servicio: string; barbero: string; sede: string }[];
+  pasadas: { id: string; inicio: string; estado: string; servicio: string; barbero: string }[];
+  puntosBalance: number;
+  puntos: { tipo: string; puntos: number; nota: string; fecha: string }[];
+  cola: { id: string; estado: string; servicio: string; barbero: string; creadoEn: string }[];
+};
+
+// Datos del cliente logueado. La RLS de cliente (0013) limita todo a lo propio.
+export async function getCuenta(): Promise<CuentaData> {
+  const sb = await supabaseServerAuth();
+  const now = Date.now();
+  const [resR, puntosR, colaR] = await Promise.all([
+    sb.from("reservas").select("id,inicio,estado,sede_id,servicios(nombre),barberos(nombre)").order("inicio", { ascending: false }).limit(40),
+    sb.from("puntos_mov").select("tipo,puntos,nota,creado_en").order("creado_en", { ascending: false }).limit(40),
+    sb.from("lista_espera").select("id,estado,creado_en,servicios(nombre),barberos(nombre)").in("estado", ["esperando", "notificado"]),
+  ]);
+  const reservas = ((resR.data ?? []) as Record<string, unknown>[]).map((r) => ({
+    id: r.id as string,
+    inicio: r.inicio as string,
+    estado: r.estado as string,
+    sede: r.sede_id as string,
+    servicio: (r.servicios as { nombre?: string } | null)?.nombre ?? "—",
+    barbero: (r.barberos as { nombre?: string } | null)?.nombre ?? "—",
+  }));
+  const activos = ["pendiente", "confirmada", "en_curso"];
+  const esProxima = (r: { inicio: string; estado: string }) =>
+    new Date(r.inicio).getTime() >= now && activos.includes(r.estado);
+  const proximas = reservas.filter(esProxima).sort((a, b) => new Date(a.inicio).getTime() - new Date(b.inicio).getTime());
+  const pasadas = reservas.filter((r) => !esProxima(r));
+  const puntos = ((puntosR.data ?? []) as { tipo: string; puntos: number; nota: string | null; creado_en: string }[]).map((p) => ({
+    tipo: p.tipo,
+    puntos: p.puntos,
+    nota: p.nota ?? "",
+    fecha: p.creado_en,
+  }));
+  const puntosBalance = puntos.reduce((a, p) => a + (p.tipo === "ganado" ? p.puntos : -p.puntos), 0);
+  const cola = ((colaR.data ?? []) as Record<string, unknown>[]).map((c) => ({
+    id: c.id as string,
+    estado: c.estado as string,
+    servicio: (c.servicios as { nombre?: string } | null)?.nombre ?? "—",
+    barbero: (c.barberos as { nombre?: string } | null)?.nombre ?? "Cualquiera",
+    creadoEn: c.creado_en as string,
+  }));
+  return { proximas, pasadas, puntosBalance, puntos, cola };
+}

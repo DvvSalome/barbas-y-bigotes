@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { type SupabaseClient } from "@supabase/supabase-js";
 import { supabaseServerAuth, supabaseAdmin } from "@/lib/supabase/server";
 import { getStaffContext } from "@/lib/data/queries";
+import { clienteIdForUser } from "@/lib/cliente-actions";
 
 export type ActionResult = { ok: boolean; error?: string; total?: number; descuento?: number; puntos?: number; encolado?: boolean; esperaHasta?: string | null };
 
@@ -147,7 +148,21 @@ export async function createReserva(input: {
     if (clash && clash.length) return { ok: false, error: "Ese horario ya fue tomado. Elegí otro, por favor." };
   }
 
-  const clienteRef = await upsertClienteId(sb, input.clienteNombre, input.telefono, input.email ?? "", "app");
+  // Si reserva un cliente logueado, atamos la cita a SU ficha (auth_id verificado) para
+  // que aparezca en su portal; si es anónimo, dedup por teléfono.
+  let clienteRef: string | null = null;
+  const {
+    data: { user },
+  } = await (await supabaseServerAuth()).auth.getUser();
+  if (user) {
+    const email = (user.email ?? "").trim().toLowerCase();
+    const meta = (user.user_metadata ?? {}) as Record<string, unknown>;
+    const nombre = (meta.full_name as string) || (meta.name as string) || input.clienteNombre;
+    clienteRef = await clienteIdForUser(sb, user.id, email, nombre);
+  }
+  if (!clienteRef) {
+    clienteRef = await upsertClienteId(sb, input.clienteNombre, input.telefono, input.email ?? "", "app");
+  }
   const { error } = await sb.from("reservas").insert({
     sede_id: input.sede,
     barbero_id: barberoId,

@@ -23,6 +23,12 @@ export function SiteHeader() {
             Barberos
           </Link>
           <Link
+            href="/cuenta"
+            className="text-muted transition hover:text-ink"
+          >
+            Mi cuenta
+          </Link>
+          <Link
             href="/reservar"
             className="rounded-full bg-accent px-5 py-2.5 font-semibold uppercase tracking-wide text-on-accent transition hover:bg-accent-soft"
           >
