@@ -4,76 +4,78 @@ import Script from 'next/script';
 
 export function InteractiveScene() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const initDoneRef = useRef(false);
 
+  // Load scene.js when Three.js is available
   useEffect(() => {
-    const checkAndInit = () => {
-      if (initDoneRef.current) return;
-      if (typeof window !== 'undefined' && (window as any).THREE && (window as any).BarberScene) {
-        initDoneRef.current = true;
-        initScene();
+    const loadSceneScript = () => {
+      if ((window as any).THREE) {
+        // Three.js loaded, now load scene.js
+        const script = document.createElement('script');
+        script.src = '/scene.js';
+        script.async = true;
+        document.body.appendChild(script);
       } else {
-        setTimeout(checkAndInit, 50);
+        // Wait and try again
+        setTimeout(loadSceneScript, 100);
       }
     };
 
-    checkAndInit();
-
-    return () => {
-      const scene = (window as any).BarberScene;
-      if (scene) scene.setPaused(true);
-    };
+    loadSceneScript();
   }, []);
 
-  const initScene = () => {
-    if (!canvasRef.current) return;
+  // Initialize scene when both THREE and BarberScene are available
+  useEffect(() => {
+    const initScene = () => {
+      if (!canvasRef.current) return;
+      if (!(window as any).BarberScene) {
+        setTimeout(initScene, 100);
+        return;
+      }
 
-    const scene = (window as any).BarberScene;
-    scene.init(canvasRef.current);
+      const scene = (window as any).BarberScene;
+      scene.init(canvasRef.current);
 
-    const handleScroll = () => {
-      const scrollHeight = document.documentElement.scrollHeight - window.innerHeight;
-      const scrolled = window.scrollY / scrollHeight;
-      scene.setProgress(scrolled);
+      const handleScroll = () => {
+        const scrollHeight = document.documentElement.scrollHeight - window.innerHeight;
+        const scrolled = window.scrollY / scrollHeight;
+        scene.setProgress(scrolled);
+      };
+
+      let scrollTimeout: NodeJS.Timeout;
+      const handleScrollEvent = () => {
+        scene.setPaused(false);
+        clearTimeout(scrollTimeout);
+        scrollTimeout = setTimeout(() => {
+          scene.setPaused(true);
+        }, 100);
+        handleScroll();
+      };
+
+      window.addEventListener('scroll', handleScrollEvent, { passive: true });
+      window.addEventListener('resize', () => {
+        handleScroll();
+      });
+
+      const observer = new IntersectionObserver(([entry]) => {
+        scene.setPaused(!entry.isIntersecting);
+      });
+      if (canvasRef.current) observer.observe(canvasRef.current);
+
+      return () => {
+        window.removeEventListener('scroll', handleScrollEvent);
+        observer.disconnect();
+      };
     };
 
-    let scrollTimeout: NodeJS.Timeout;
-    const handleScrollEvent = () => {
-      scene.setPaused(false);
-      clearTimeout(scrollTimeout);
-      scrollTimeout = setTimeout(() => {
-        scene.setPaused(true);
-      }, 100);
-      handleScroll();
-    };
-
-    window.addEventListener('scroll', handleScrollEvent, { passive: true });
-    window.addEventListener('resize', () => {
-      handleScroll();
-    });
-
-    const observer = new IntersectionObserver(([entry]) => {
-      scene.setPaused(!entry.isIntersecting);
-    });
-    if (canvasRef.current) observer.observe(canvasRef.current);
-
-    return () => {
-      window.removeEventListener('scroll', handleScrollEvent);
-      observer.disconnect();
-    };
-  };
+    initScene();
+  }, []);
 
   return (
     <>
-      {/* Three.js via CDN */}
+      {/* Three.js via CDN — loads first */}
       <Script
         src="https://cdn.jsdelivr.net/npm/three@r128/build/three.min.js"
         strategy="beforeInteractive"
-      />
-      {/* Scene script — load after Three.js */}
-      <Script
-        src="/scene.js"
-        strategy="afterInteractive"
       />
 
       {/* Canvas container */}
