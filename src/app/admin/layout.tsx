@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { supabaseServerAuth } from "@/lib/supabase/server";
 import { AdminNav } from "@/components/admin/AdminNav";
 import { AdminTopbar } from "@/components/admin/AdminTopbar";
+import { RealtimeRefresh } from "@/components/motion/RealtimeRefresh";
 
 export default async function AdminLayout({
   children,
@@ -24,6 +25,14 @@ export default async function AdminLayout({
 
   return (
     <div className="flex min-h-dvh">
+      <RealtimeRefresh
+        subscriptions={[
+          { table: "reservas" },
+          { table: "ventas" },
+          { table: "gastos" },
+          { table: "caja_sesiones" },
+        ]}
+      />
       <aside className="hidden w-64 shrink-0 border-r border-line bg-panel p-6 md:block">
         <Link href="/" className="font-display text-2xl font-semibold tracking-wide">
           Barbas <span className="text-accent">&amp;</span> Bigotes

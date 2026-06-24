@@ -99,16 +99,19 @@ export function BookingWizard({
       return;
     }
     let cancel = false;
-    setCargandoSlots(true);
-    getDisponibilidad({ barberoId: barbero.id, fechaISO: day.toISOString() })
-      .then((r) => {
+    const fetchSlots = () =>
+      getDisponibilidad({ barberoId: barbero.id, fechaISO: day.toISOString() }).then((r) => {
         if (!cancel) setOcupados(r);
-      })
-      .finally(() => {
-        if (!cancel) setCargandoSlots(false);
       });
+    setCargandoSlots(true);
+    fetchSlots().finally(() => {
+      if (!cancel) setCargandoSlots(false);
+    });
+    // Disponibilidad "casi en vivo": re-consulta cada 15s mientras el cliente elige (sin spinner).
+    const poll = setInterval(fetchSlots, 15000);
     return () => {
       cancel = true;
+      clearInterval(poll);
     };
   }, [day, barbero]);
 

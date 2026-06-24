@@ -10,6 +10,7 @@ import {
 } from "@/lib/data/queries";
 import { AgendaList } from "@/components/barbero/AgendaList";
 import { EsperaPanel } from "@/components/barbero/EsperaPanel";
+import { RealtimeRefresh } from "@/components/motion/RealtimeRefresh";
 
 export const metadata: Metadata = { title: "App del barbero · Barbas & Bigotes" };
 
@@ -27,6 +28,12 @@ export default async function BarberoPage() {
 
   return (
     <main className="mx-auto max-w-5xl px-6 py-10">
+      <RealtimeRefresh
+        subscriptions={[
+          { table: "reservas", filter: filtro ? `barbero_id=eq.${filtro}` : undefined },
+          { table: "lista_espera", filter: filtro ? `barbero_id=eq.${filtro}` : undefined },
+        ]}
+      />
       <h1 className="font-display text-4xl font-semibold uppercase">Agenda de hoy</h1>
       <p className="mt-2 text-sm text-muted">
         Clientes programados y walk-ins. Marcá la llegada, completá la atención y cobrá. El
