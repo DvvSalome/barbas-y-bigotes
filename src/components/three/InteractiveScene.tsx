@@ -72,9 +72,9 @@ export function InteractiveScene() {
 
   return (
     <>
-      {/* Three.js via CDN — loads first */}
+      {/* Three.js via unpkg CDN — loads first */}
       <Script
-        src="https://cdn.jsdelivr.net/npm/three@r128/build/three.min.js"
+        src="https://unpkg.com/three@r128/build/three.min.js"
         strategy="beforeInteractive"
       />
 
