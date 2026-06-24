@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 import { BookingWizard } from "@/components/BookingWizard";
+import { Reveal } from "@/components/motion/Reveal";
 import { getSedes, getBarberos, getServicios } from "@/lib/data/queries";
 
 export const metadata: Metadata = {
@@ -22,12 +23,14 @@ export default async function ReservarPage({
   return (
     <>
       <SiteHeader />
-      <BookingWizard
-        sedes={sedes}
-        barberos={barberos}
-        servicios={servicios}
-        initialBarberoId={barbero}
-      />
+      <Reveal y={20}>
+        <BookingWizard
+          sedes={sedes}
+          barberos={barberos}
+          servicios={servicios}
+          initialBarberoId={barbero}
+        />
+      </Reveal>
       <SiteFooter />
     </>
   );
