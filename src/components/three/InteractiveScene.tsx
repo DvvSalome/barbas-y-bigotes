@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useRef } from 'react';
+import { useLayoutEffect, useRef } from 'react';
 import * as THREE from 'three';
 
 // Inline BarberScene — imported directly, no CDN needed
@@ -207,47 +207,42 @@ const BarberScene = (() => {
 export function InteractiveScene() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  useEffect(() => {
-    // Small delay to ensure canvas is mounted
-    const timer = setTimeout(() => {
-      if (!canvasRef.current) {
-        console.error('Canvas not found');
-        return;
-      }
-      console.log('Initializing BarberScene with canvas:', canvasRef.current);
-      BarberScene.init(canvasRef.current);
+  useLayoutEffect(() => {
+    if (!canvasRef.current) {
+      console.error('Canvas not found');
+      return;
+    }
+    console.log('Initializing BarberScene with canvas:', canvasRef.current);
+    BarberScene.init(canvasRef.current);
 
-      const handleScroll = () => {
-        const scrollHeight = document.documentElement.scrollHeight - window.innerHeight;
-        const scrolled = window.scrollY / scrollHeight;
-        BarberScene.setProgress(scrolled);
-      };
+    const handleScroll = () => {
+      const scrollHeight = document.documentElement.scrollHeight - window.innerHeight;
+      const scrolled = window.scrollY / scrollHeight;
+      BarberScene.setProgress(scrolled);
+    };
 
-      let scrollTimeout: NodeJS.Timeout;
-      const handleScrollEvent = () => {
-        BarberScene.setPaused(false);
-        clearTimeout(scrollTimeout);
-        scrollTimeout = setTimeout(() => {
-          BarberScene.setPaused(true);
-        }, 100);
-        handleScroll();
-      };
+    let scrollTimeout: NodeJS.Timeout;
+    const handleScrollEvent = () => {
+      BarberScene.setPaused(false);
+      clearTimeout(scrollTimeout);
+      scrollTimeout = setTimeout(() => {
+        BarberScene.setPaused(true);
+      }, 100);
+      handleScroll();
+    };
 
-      window.addEventListener('scroll', handleScrollEvent, { passive: true });
-      window.addEventListener('resize', handleScroll);
+    window.addEventListener('scroll', handleScrollEvent, { passive: true });
+    window.addEventListener('resize', handleScroll);
 
-      const observer = new IntersectionObserver(([entry]) => {
-        BarberScene.setPaused(!entry.isIntersecting);
-      });
-      if (canvasRef.current) observer.observe(canvasRef.current);
+    const observer = new IntersectionObserver(([entry]) => {
+      BarberScene.setPaused(!entry.isIntersecting);
+    });
+    if (canvasRef.current) observer.observe(canvasRef.current);
 
-      return () => {
-        window.removeEventListener('scroll', handleScrollEvent);
-        observer.disconnect();
-      };
-    }, 100);
-
-    return () => clearTimeout(timer);
+    return () => {
+      window.removeEventListener('scroll', handleScrollEvent);
+      observer.disconnect();
+    };
   }, []);
 
   return (
