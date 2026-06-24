@@ -33,6 +33,14 @@ function fmtDur(min: number) {
   return `${m}m`;
 }
 
+// Foto por servicio (rota las fotos reales de cortes del cliente, estable por id).
+// Provisional hasta tener foto propia por servicio (ver WeiBook cuando reactiven).
+function fotoServicio(id: string): string {
+  let h = 0;
+  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
+  return `/cortes/corte-${(h % 7) + 1}.jpg`;
+}
+
 function nextDays(n: number) {
   const out: Date[] = [];
   const base = new Date();
@@ -300,9 +308,18 @@ export function BookingWizard({
                             setServicio(s);
                             setStep("horario");
                           }}
-                          className="flex w-full items-center justify-between rounded-xl border border-line bg-panel px-4 py-3 text-left transition hover:border-accent/50"
+                          className="flex w-full items-center gap-3 rounded-xl border border-line bg-panel p-2.5 pr-4 text-left transition hover:border-accent/50"
                         >
-                          <span className="pr-3 text-sm">{s.nombre}</span>
+                          <span className="relative h-14 w-14 shrink-0 overflow-hidden rounded-lg">
+                            <Image
+                              src={fotoServicio(s.id)}
+                              alt=""
+                              fill
+                              sizes="56px"
+                              className="object-cover"
+                            />
+                          </span>
+                          <span className="flex-1 pr-3 text-sm">{s.nombre}</span>
                           <span className="flex shrink-0 items-center gap-3 text-sm">
                             <span className="text-muted">{fmtDur(s.duracionMin)}</span>
                             <span className="text-accent-soft">
