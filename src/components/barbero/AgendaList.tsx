@@ -244,7 +244,7 @@ function WalkinForm({
 
   return (
     <form onSubmit={submit} className="grid gap-3 rounded-2xl border border-line bg-panel p-5 sm:grid-cols-2">
-      <select value={sede} onChange={(e) => { setSede(e.target.value); setBarberoId(""); }} className={fld}>
+      <select value={sede} onChange={(e) => { setSede(e.target.value as typeof sede); setBarberoId(""); }} className={fld}>
         {sedes.map((s) => (
           <option key={s.id} value={s.id}>{s.nombre}</option>
         ))}

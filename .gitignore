@@ -42,3 +42,5 @@ next-env.d.ts
 
 # contenido fuente del cliente (las copias usadas por el sitio viven en /public)
 /contenido cliente/
+
+.vercel

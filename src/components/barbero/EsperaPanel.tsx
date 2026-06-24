@@ -179,7 +179,7 @@ function EsperaForm({
       <select
         value={sede}
         onChange={(e) => {
-          setSede(e.target.value);
+          setSede(e.target.value as typeof sede);
           setBarberoId("");
         }}
         className={fld}

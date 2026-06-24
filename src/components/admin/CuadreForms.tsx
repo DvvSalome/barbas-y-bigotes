@@ -57,7 +57,7 @@ export function CuadreForms({ sedes, barberos }: { sedes: Sede[]; barberos: Barb
     <div className="grid gap-5 md:grid-cols-2">
       <form onSubmit={submitGasto} className="space-y-3 rounded-2xl border border-line bg-panel p-5">
         <h3 className="font-display text-xl">Registrar gasto</h3>
-        <select value={gSede} onChange={(e) => setGSede(e.target.value)} className={fld}>
+        <select value={gSede} onChange={(e) => setGSede(e.target.value as typeof gSede)} className={fld}>
           {sedes.map((s) => (
             <option key={s.id} value={s.id}>{s.nombre}</option>
           ))}

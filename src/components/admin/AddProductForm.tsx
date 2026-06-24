@@ -56,7 +56,7 @@ export function AddProductForm({ sedes }: { sedes: Sede[] }) {
   return (
     <form onSubmit={submit} className="grid gap-3 rounded-2xl border border-line bg-panel p-5 sm:grid-cols-6">
       <input required value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Producto" className={`${input} sm:col-span-2`} />
-      <select value={sede} onChange={(e) => setSede(e.target.value)} className={input}>
+      <select value={sede} onChange={(e) => setSede(e.target.value as typeof sede)} className={input}>
         {sedes.map((s) => (
           <option key={s.id} value={s.id}>{s.nombre}</option>
         ))}
