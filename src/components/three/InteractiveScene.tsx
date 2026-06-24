@@ -4,20 +4,22 @@ import Script from 'next/script';
 
 export function InteractiveScene() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const initDoneRef = useRef(false);
 
   useEffect(() => {
-    // Wait for Three.js to load
-    const checkThree = () => {
-      if (typeof window !== 'undefined' && (window as any).THREE) {
+    const checkAndInit = () => {
+      if (initDoneRef.current) return;
+      if (typeof window !== 'undefined' && (window as any).THREE && (window as any).BarberScene) {
+        initDoneRef.current = true;
         initScene();
-        return;
+      } else {
+        setTimeout(checkAndInit, 50);
       }
-      setTimeout(checkThree, 100);
     };
-    checkThree();
+
+    checkAndInit();
 
     return () => {
-      // Cleanup on unmount
       const scene = (window as any).BarberScene;
       if (scene) scene.setPaused(true);
     };
@@ -29,14 +31,12 @@ export function InteractiveScene() {
     const scene = (window as any).BarberScene;
     scene.init(canvasRef.current);
 
-    // Scroll listener
     const handleScroll = () => {
       const scrollHeight = document.documentElement.scrollHeight - window.innerHeight;
       const scrolled = window.scrollY / scrollHeight;
       scene.setProgress(scrolled);
     };
 
-    // Pause when scrolling or not visible
     let scrollTimeout: NodeJS.Timeout;
     const handleScrollEvent = () => {
       scene.setPaused(false);
@@ -49,11 +49,9 @@ export function InteractiveScene() {
 
     window.addEventListener('scroll', handleScrollEvent, { passive: true });
     window.addEventListener('resize', () => {
-      // Re-render after resize
       handleScroll();
     });
 
-    // Check visibility
     const observer = new IntersectionObserver(([entry]) => {
       scene.setPaused(!entry.isIntersecting);
     });
@@ -72,8 +70,7 @@ export function InteractiveScene() {
         src="https://cdn.jsdelivr.net/npm/three@r128/build/three.min.js"
         strategy="beforeInteractive"
       />
-
-      {/* Scene script */}
+      {/* Scene script — load after Three.js */}
       <Script
         src="/scene.js"
         strategy="afterInteractive"
