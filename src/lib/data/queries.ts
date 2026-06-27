@@ -79,30 +79,6 @@ export async function getProductos(): Promise<Producto[]> {
   }));
 }
 
-export async function getVentasHoy() {
-  const sb = await supabaseServerAuth();
-  const start = new Date();
-  start.setHours(0, 0, 0, 0);
-  const { data } = await sb
-    .from("ventas")
-    .select(
-      "id,medio,total,cliente_nombre,llegada,creado_en,sede_id,barberos(nombre),venta_items(descripcion,cantidad)",
-    )
-    .gte("creado_en", start.toISOString())
-    .order("creado_en", { ascending: false });
-  return ((data ?? []) as Record<string, unknown>[]).map((v) => ({
-    id: v.id as string,
-    medio: v.medio as string,
-    total: v.total as number,
-    cliente: (v.cliente_nombre as string) ?? "",
-    llegada: (v.llegada as string) ?? "",
-    sede: v.sede_id as string,
-    barbero: (v.barberos as { nombre?: string } | null)?.nombre ?? "",
-    items: ((v.venta_items as { descripcion: string; cantidad: number }[]) ?? []).map((i) =>
-      i.cantidad > 1 ? `${i.descripcion} ×${i.cantidad}` : i.descripcion,
-    ),
-  }));
-}
 
 export type AgendaItem = {
   id: string;

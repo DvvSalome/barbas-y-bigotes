@@ -15,7 +15,7 @@ const pad = (i: number) => String(i + 1).padStart(3, "0");
 // (walkthrough real del local). Canvas + secuencia de imágenes (no <video>),
 // pin + scrub con GSAP, preload escalonado, DPR scaling, reduced-motion safe.
 export function ScrollReveal3D() {
-  const wrapRef = useRef<HTMLElement>(null);
+  const wrapRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useGSAP(
@@ -72,15 +72,17 @@ export function ScrollReveal3D() {
       };
       setTimeout(batch, 100);
 
-      resize();
-      window.addEventListener("resize", resize);
+      const resizeObserver = new ResizeObserver(() => {
+        resize();
+      });
+      resizeObserver.observe(canvas);
 
       if (reduce) {
         // Sin scrub: mostramos un frame representativo cuando cargue.
         const mid = Math.floor(FRAME_COUNT / 2);
         loadFrame(mid);
         images[mid].onload = () => draw(mid);
-        return () => window.removeEventListener("resize", resize);
+        return () => resizeObserver.disconnect();
       }
 
       gsap.to(state, {
@@ -98,32 +100,34 @@ export function ScrollReveal3D() {
         onUpdate: () => draw(Math.round(state.frame)),
       });
 
-      return () => window.removeEventListener("resize", resize);
+      return () => resizeObserver.disconnect();
     },
     { scope: wrapRef },
   );
 
   return (
-    <section
-      ref={wrapRef}
-      aria-label="Recorrido por la barbería"
-      className="relative h-screen w-full overflow-hidden bg-bg"
-      style={{ backgroundImage: "url(/scroll/desktop/f_001.webp)", backgroundSize: "cover", backgroundPosition: "center" }}
-    >
-      <canvas ref={canvasRef} className="absolute inset-0 block h-full w-full" />
-      {/* viñeta + gradiente para legibilidad del texto */}
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(120%_120%_at_50%_40%,transparent_30%,rgba(4,3,3,0.55)_100%)]" />
-      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(4,3,3,0.6)_0%,transparent_30%,transparent_60%,rgba(4,3,3,0.85)_100%)]" />
-      <div className="pointer-events-none absolute inset-x-0 top-0 flex flex-col items-center px-6 pt-[14vh] text-center">
-        <p className="mb-4 flex items-center gap-3 text-[11px] uppercase tracking-[0.45em] text-accent">
-          <span className="h-px w-8 bg-accent/50" /> El espacio <span className="h-px w-8 bg-accent/50" />
-        </p>
-        <h2 className="font-display text-5xl font-semibold uppercase leading-[0.95] text-ink drop-shadow-[0_8px_40px_rgba(0,0,0,0.8)] sm:text-7xl">
-          Entrá a la barbería
-        </h2>
-        <p className="mt-4 max-w-md text-balance text-ink/80">
-          Deslizá para recorrer el local. Donde cada corte es un ritual.
-        </p>
+    <section className="mx-auto max-w-6xl px-6 pt-20">
+      <div
+        ref={wrapRef}
+        aria-label="Recorrido por la barbería"
+        className="relative aspect-[9/16] w-full max-w-md mx-auto overflow-hidden rounded-2xl border border-line bg-bg shadow-2xl"
+        style={{ backgroundImage: "url(/scroll/desktop/f_001.webp)", backgroundSize: "cover", backgroundPosition: "center" }}
+      >
+        <canvas ref={canvasRef} className="absolute inset-0 block h-full w-full" />
+        {/* viñeta + gradiente para legibilidad del texto */}
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(120%_120%_at_50%_40%,transparent_30%,rgba(4,3,3,0.55)_100%)]" />
+        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(4,3,3,0.6)_0%,transparent_30%,transparent_60%,rgba(4,3,3,0.85)_100%)]" />
+        <div className="pointer-events-none absolute inset-x-0 top-0 flex flex-col items-center px-6 pt-[12%] text-center">
+          <p className="mb-3 flex items-center gap-3 text-[10px] uppercase tracking-[0.45em] text-accent">
+            <span className="h-px w-6 bg-accent/50" /> El espacio <span className="h-px w-6 bg-accent/50" />
+          </p>
+          <h2 className="font-display text-3xl font-semibold uppercase leading-[0.95] text-ink drop-shadow-[0_8px_40px_rgba(0,0,0,0.8)] sm:text-4xl">
+            Entrá a la barbería
+          </h2>
+          <p className="mt-3 max-w-xs text-balance text-ink/80 text-xs sm:text-xs">
+            Deslizá para recorrer el local. Donde cada corte es un ritual.
+          </p>
+        </div>
       </div>
     </section>
   );

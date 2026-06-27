@@ -44,3 +44,9 @@ next-env.d.ts
 /contenido cliente/
 
 .vercel
+
+# credenciales del cliente — NUNCA al repo
+/docs/credenciales.xlsx
+
+# copia/duplicado local de trabajo
+/antigravity barbas/

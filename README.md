@@ -1,36 +1,86 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Barbas & Bigotes — Barbershop (Barranquilla)
 
-## Getting Started
+Sitio público + panel de gestión para la barbería. **Next.js 16** (App Router, Turbopack, React 19) + **Supabase** (Postgres + Auth + RLS).
 
-First, run the development server:
+> ⚠️ Esta versión de Next.js trae breaking changes vs. lo conocido. Ver `AGENTS.md` antes de tocar APIs/convenciones.
+
+---
+
+## Arrancar en local
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+cp .env.example .env.local   # pedir los valores reales (no están en el repo)
+npm run dev                  # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+`.env.local` (Supabase + n8n) **nunca** se commitea. Variables en `.env.example`:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+| Variable | Para qué |
+|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Cliente Supabase (browser) |
+| `SUPABASE_SERVICE_ROLE_KEY` | Acciones server-side que saltan RLS |
+| `N8N_BASE_URL` / `N8N_API_KEY` | Recordatorios + avisos de cola/lista de espera |
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Proyecto Supabase: `wvmdsxznujklgfezqtfy` · admin: `admin@barbasybigotes.com`.
 
-## Learn More
+---
 
-To learn more about Next.js, take a look at the following resources:
+## Mapa del repo
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```
+src/
+  app/                    # Rutas (App Router)
+    page.tsx              # Landing pública (hero 3D + servicios)
+    barberos/             # Roster público de barberos          [estático]
+    reservar/             # Flujo de reserva de cita            [dinámico]
+    login/  auth/         # Auth (Supabase) + callback OAuth
+    cuenta/               # Portal del cliente
+    barbero/              # Vista del barbero (su agenda/comisiones)
+    admin/                # Panel de gestión:
+      clientes/  comisiones/  cuadre/  cupones/  inventario/  precios/
+  components/
+    home/                 # Secciones de la landing (Hero3D, ScrollReveal3D…)
+    three/                # react-three-fiber (escena 3D del hero)
+    motion/  ui/          # Animación + primitivas de UI
+    admin/ barbero/ cuenta/  # UI por sección del producto
+  lib/
+    supabase/             # Clientes Supabase (browser/server)
+    data/queries.ts       # Lecturas a la BD
+    actions.ts            # Server actions (reservas, ventas, comisiones…)
+supabase/migrations/      # Esquema versionado (0001…0014). Source of truth del schema.
+public/scroll/            # Frames webp del hero scroll-3D (desktop/mobile)
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+---
 
-## Deploy on Vercel
+## Flujo de trabajo (para colaboradores)
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+`main` está protegido por convención (branch protection no está disponible en repos privados free):
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+1. Rama desde `main`: `git checkout -b feat/lo-que-sea`
+2. Commit + push de la rama.
+3. Abrir **PR contra `main`** → CI corre solo.
+4. Merge cuando CI pase (verde).
+
+**No pushear directo a `main`.**
+
+### CI
+
+`.github/workflows/ci.yml` corre en cada push/PR a `main`:
+
+```
+tsc --noEmit   →   eslint   →   next build
+```
+
+Los secrets de Supabase viven en **GitHub → Settings → Secrets and variables → Actions**
+(`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`).
+
+> Nota: `npm run lint` usa `eslint` directo. El código r3f en `src/components/three/`
+> está eximido de `react-hooks/purity` e `immutability` (r3f muta el scene graph por diseño).
+
+### CD (deploy)
+
+Deploy vía **Vercel** (team `fourgsolutions-fgs`): auto-deploy en push a `main` + preview por PR.
+Si la conexión Vercel↔GitHub aún no está hecha, se enlaza desde el dashboard de Vercel
+(Add New → Project → importar este repo).

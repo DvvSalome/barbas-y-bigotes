@@ -1,11 +1,28 @@
 'use client';
-import { InteractiveScene } from '@/components/three/InteractiveScene';
+
+import dynamic from 'next/dynamic';
+
+const InteractiveHeroScene = dynamic(
+  () => import('@/components/three/InteractiveHeroScene').then((m) => m.InteractiveHeroScene),
+  { ssr: false }
+);
 
 export function Hero3D() {
   return (
-    <section className="relative w-full h-screen overflow-hidden">
-      {/* Interactive 3D background */}
-      <InteractiveScene />
+    <section className="relative w-full h-screen overflow-hidden bg-bg">
+      {/* Interactive 3D background wrapper */}
+      <div className="fixed inset-0 z-0 w-screen h-screen overflow-hidden">
+        <InteractiveHeroScene />
+        {/* Vignette veil for text readability */}
+        <div
+          id="scene-veil"
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            background:
+              'radial-gradient(ellipse at center, transparent 0%, rgba(12, 11, 10, 0.75) 100%)',
+          }}
+        />
+      </div>
 
       {/* Overlay content — z-index 10 to sit above canvas (z-0) */}
       <div className="relative z-10 h-full flex flex-col items-center justify-center px-4">

@@ -309,12 +309,31 @@ export async function completarReserva(input: {
   const items: Record<string, unknown>[] = [];
 
   if (input.servicioId) {
-    const { data: p } = await sb
-      .from("servicio_sede")
-      .select("precio,servicios(nombre)")
-      .eq("sede_id", input.sede)
-      .eq("servicio_id", input.servicioId)
-      .maybeSingle();
+    const [pRes, barbRes] = await Promise.all([
+      sb
+        .from("servicio_sede")
+        .select("precio,servicios(nombre)")
+        .eq("sede_id", input.sede)
+        .eq("servicio_id", input.servicioId)
+        .maybeSingle(),
+      barberoId
+        ? sb
+            .from("barberos")
+            .select("tipo_contrato,comision_pct")
+            .eq("id", barberoId)
+            .maybeSingle()
+        : Promise.resolve({ data: null }),
+    ]);
+
+    const p = pRes.data;
+    const barb = barbRes.data;
+
+    let barberComision = 0;
+    const barbRow = barb as { tipo_contrato?: string | null; comision_pct?: number | null } | null;
+    if (barbRow && barbRow.tipo_contrato === "porcentaje") {
+      barberComision = barbRow.comision_pct != null ? Number(barbRow.comision_pct) : 50;
+    }
+
     if (p) {
       const row = p as Record<string, unknown>;
       total += row.precio as number;
@@ -324,13 +343,14 @@ export async function completarReserva(input: {
         descripcion: (row.servicios as { nombre?: string } | null)?.nombre ?? "Servicio",
         cantidad: 1,
         precio_unitario: row.precio,
+        comision_pct: barberComision,
       });
     }
   }
 
   if (input.productos.length) {
     const ids = input.productos.map((p) => p.id);
-    const { data: prods } = await sb.from("productos").select("id,nombre,precio").in("id", ids);
+    const { data: prods } = await sb.from("productos").select("id,nombre,precio,comision_pct").in("id", ids);
     for (const sel of input.productos) {
       const pr = ((prods ?? []) as Record<string, unknown>[]).find((x) => x.id === sel.id);
       if (!pr) continue;
@@ -341,6 +361,7 @@ export async function completarReserva(input: {
         descripcion: pr.nombre,
         cantidad: sel.cantidad,
         precio_unitario: pr.precio,
+        comision_pct: pr.comision_pct !== null ? Number(pr.comision_pct) : 0,
       });
     }
   }
