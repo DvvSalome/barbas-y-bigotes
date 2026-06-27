@@ -81,6 +81,41 @@ Los secrets de Supabase viven en **GitHub → Settings → Secrets and variables
 
 ### CD (deploy)
 
-Deploy vía **Vercel** (team `fourgsolutions-fgs`): auto-deploy en push a `main` + preview por PR.
-Si la conexión Vercel↔GitHub aún no está hecha, se enlaza desde el dashboard de Vercel
-(Add New → Project → importar este repo).
+Deploy vía **Vercel** (team `fourgsolutions-fgs`, plan gratis): cada commit que llega a `main`
+se despliega solo a producción.
+
+⚠️ **Gotcha del plan gratis + repo privado:** Vercel solo construye commits cuyo **autor en GitHub
+es miembro del team**. Por eso:
+
+- Cuando un **miembro del team** mergea/empuja a `main` → **despliega** ✅.
+- Cuando un **colaborador externo** (ej. Isaías) empuja → Vercel lo **bloquea** y aparece un check
+  **Vercel en rojo** en su PR. Es **esperado e inofensivo** — solo no se hace el *preview* de esa rama.
+  El check que decide el merge es **"build" (GitHub Actions)**, NO el de Vercel.
+
+## Runbook de release (flujo $0, probado)
+
+Regla de oro: **los colaboradores externos nunca empujan a `main`. Un miembro del team mergea, y al
+mergear, producción despliega solo.**
+
+**Colaborador (ej. Isaías):**
+1. `git checkout -b feat/lo-que-trabaje` (rama propia, nunca `main`)
+2. commit + `git push -u origin feat/lo-que-trabaje`
+3. Abrir **PR contra `main`**. Previsualiza en local con `npm run dev` (no tendrá preview URL).
+
+**Quien mergea (miembro del team de Vercel):**
+1. Revisar el PR.
+2. Esperar que el check **"build" (GitHub Actions)** esté **verde** ✅. *(Ignorar el check Vercel rojo
+   si el autor es externo — es el bloqueo de preview, no un error.)*
+3. Mergear con **`gh pr merge <n> --merge --delete-branch`** (o el botón "Merge" en GitHub).
+   Usar **merge commit**, no squash/rebase: así el commit tip de `main` queda con autoría del miembro
+   del team y **Vercel lo despliega**. Con squash/rebase el autor sigue siendo el colaborador y Vercel
+   vuelve a bloquear el deploy.
+4. Confirmar verde:
+   ```bash
+   gh run watch --exit-status                                  # CI de main
+   gh api repos/FOURGSOLUTIONS-FGS/barbas-y-bigotes/commits/main/status \
+     -q '.state + " — " + ([.statuses[].context] | join(", "))'  # incluye Vercel:success
+   ```
+
+> Si en el futuro quieren que los colaboradores desplieguen solos + preview URLs por PR, hay que
+> subir el team a **Vercel Pro** y agregarlos como miembros.
