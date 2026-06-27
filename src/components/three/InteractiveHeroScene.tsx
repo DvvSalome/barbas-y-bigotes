@@ -126,8 +126,10 @@ function CameraController() {
     };
 
     const handleScroll = () => {
-      const scrollHeight = document.documentElement.scrollHeight - window.innerHeight;
-      scroll.current = scrollHeight > 0 ? window.scrollY / scrollHeight : 0;
+      // Progress through THIS hero section only (it's one viewport tall),
+      // not the whole document — otherwise the fly-through barely moves
+      // since the page is ~8x taller than the hero.
+      scroll.current = Math.min(1, Math.max(0, window.scrollY / window.innerHeight));
     };
 
     window.addEventListener('mousemove', handleMouseMove);

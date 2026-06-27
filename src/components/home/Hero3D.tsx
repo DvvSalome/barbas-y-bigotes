@@ -10,8 +10,8 @@ const InteractiveHeroScene = dynamic(
 export function Hero3D() {
   return (
     <section className="relative w-full h-screen overflow-hidden bg-bg">
-      {/* Interactive 3D background wrapper */}
-      <div className="fixed inset-0 z-0 w-screen h-screen overflow-hidden">
+      {/* Interactive 3D background — scoped to this section so it scrolls away with the hero, not pinned to the viewport */}
+      <div className="absolute inset-0 z-0">
         <InteractiveHeroScene />
         {/* Vignette veil for text readability */}
         <div
