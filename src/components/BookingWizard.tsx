@@ -7,6 +7,7 @@ import { categorias } from "@/lib/data/seed";
 import { createReserva, getDisponibilidad } from "@/lib/actions";
 import type { Sede, SedeId, Servicio, Barbero, Categoria } from "@/lib/data/types";
 import { cop } from "@/lib/format";
+import { BarberCard } from "@/components/BarberCard";
 
 const OPEN = 9 * 60; // 09:00
 const CLOSE = 20 * 60; // 20:00
@@ -65,16 +66,20 @@ export function BookingWizard({
   barberos,
   servicios,
   initialBarberoId,
+  initialSedeId,
 }: {
   sedes: Sede[];
   barberos: Barbero[];
   servicios: Servicio[];
   initialBarberoId?: string;
+  initialSedeId?: SedeId;
 }) {
   const initialBarbero = barberos.find((b) => b.id === initialBarberoId) ?? null;
+  // La sede de un barbero preseleccionado manda sobre ?sede= si llegan ambos.
+  const initialSede = initialBarbero?.sede ?? initialSedeId ?? null;
 
-  const [step, setStep] = useState<Step>(initialBarbero ? "servicio" : "sede");
-  const [sedeId, setSedeId] = useState<SedeId | null>(initialBarbero?.sede ?? null);
+  const [step, setStep] = useState<Step>(initialBarbero ? "servicio" : initialSede ? "barbero" : "sede");
+  const [sedeId, setSedeId] = useState<SedeId | null>(initialSede);
   const [barbero, setBarbero] = useState<Barbero | null>(initialBarbero);
   const [servicio, setServicio] = useState<Servicio | null>(null);
   const [day, setDay] = useState<Date | null>(null);
@@ -151,7 +156,7 @@ export function BookingWizard({
   const sedeNombre = sedes.find((s) => s.id === sedeId)?.nombre ?? "—";
 
   function reset() {
-    setStep(initialBarbero ? "servicio" : "sede");
+    setStep(initialBarbero ? "servicio" : initialSede ? "barbero" : "sede");
     setServicio(null);
     setDay(null);
     setSlot(null);
@@ -239,51 +244,25 @@ export function BookingWizard({
         )}
 
         {step === "barbero" && (
-          <Section title="Elegí tu barbero" onBack={() => setStep("sede")}>
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
-              {sedeBarberos.map((b) => (
-                <button
-                  key={b.id}
-                  onClick={() => {
-                    setBarbero(b);
-                    setStep("servicio");
-                  }}
-                  className="group overflow-hidden rounded-2xl border border-line bg-panel text-left transition hover:border-accent/50"
-                >
-                  <div className="relative aspect-[4/5] w-full overflow-hidden">
-                    {b.fotoUrl ? (
-                      <Image
-                        src={b.fotoUrl}
-                        alt={b.nombre}
-                        fill
-                        sizes="(max-width:640px) 50vw, 33vw"
-                        className="object-cover transition duration-500 group-hover:scale-105"
-                      />
-                    ) : (
-                      <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-elevated to-panel">
-                        <span className="font-display text-6xl text-accent/30">{b.nombre.charAt(0)}</span>
-                      </div>
-                    )}
-                    {b.destacado && (
-                      <span className="absolute left-2.5 top-2.5 rounded-full bg-accent px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-on-accent">
-                        ★ Top
-                      </span>
-                    )}
-                    <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 to-transparent p-3">
-                      <div className="flex items-center justify-between">
-                        <span className="font-display text-xl text-white">{b.nombre}</span>
-                        {b.rating ? (
-                          <span className="text-xs text-accent-soft">★ {b.rating.toFixed(1)}</span>
-                        ) : null}
-                      </div>
-                      <div className="mt-0.5 line-clamp-1 text-[11px] text-white/70">
-                        {b.especialidades.slice(0, 3).join(" · ")}
-                      </div>
-                    </div>
-                  </div>
-                </button>
-              ))}
-            </div>
+          <Section title={`Elegí tu barbero · ${sedeNombre}`} onBack={() => setStep("sede")}>
+            {sedeBarberos.length ? (
+              <div className="grid gap-5 sm:grid-cols-2">
+                {sedeBarberos.map((b) => (
+                  <BarberCard
+                    key={b.id}
+                    barbero={b}
+                    onSelect={(elegido) => {
+                      setBarbero(elegido);
+                      setStep("servicio");
+                    }}
+                  />
+                ))}
+              </div>
+            ) : (
+              <p className="rounded-xl border border-line bg-panel px-4 py-3 text-sm text-muted">
+                Esta sede no tiene barberos cargados todavía.
+              </p>
+            )}
           </Section>
         )}
 

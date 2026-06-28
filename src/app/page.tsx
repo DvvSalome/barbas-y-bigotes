@@ -2,30 +2,41 @@ import Image from "next/image";
 import Link from "next/link";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
-import { Hero3D } from "@/components/home/Hero3D";
+import { MobileStickyCta } from "@/components/MobileStickyCta";
+import { AmbientSmoke } from "@/components/motion/AmbientSmoke";
+import { HeroVideo } from "@/components/home/HeroVideo";
 import { StatsBand } from "@/components/home/StatsBand";
 import { Reveal } from "@/components/motion/Reveal";
 import { WhyUs } from "@/components/home/WhyUs";
-import { ScrollReveal3D } from "@/components/home/ScrollReveal3D";
+import { Historia } from "@/components/home/Historia";
+import { Servicios } from "@/components/home/Servicios";
 import { Testimonios } from "@/components/home/Testimonios";
 import { Ubicacion } from "@/components/home/Ubicacion";
+import { SedesShowcase } from "@/components/home/SedesShowcase";
 import { sedes } from "@/lib/data/seed";
 
 import { CardTilt } from "@/components/ui/CardTilt";
 
-const sedeFoto: Record<string, string> = {
-  "parque-venezuela": "/sedes/parque-venezuela-frente.jpg",
-  "plaza-de-la-paz": "/sedes/plaza-de-la-paz-frente.jpg",
-};
-
-const cortes = [1, 2, 3, 4, 5, 6, 7];
+// Composición con tamaños mixtos: corte-1 (panorámica) y corte-5 (feature vertical)
+// rompen la grilla uniforme. Spans pensados para una grilla de 6 columnas en sm+.
+const cortes = [
+  { n: 1, span: "sm:col-span-4 sm:row-span-2" },
+  { n: 2, span: "sm:col-span-2" },
+  { n: 3, span: "sm:col-span-2" },
+  { n: 4, span: "sm:col-span-2" },
+  { n: 5, span: "sm:col-span-2 sm:row-span-2" },
+  { n: 6, span: "sm:col-span-2" },
+  { n: 7, span: "sm:col-span-2" },
+];
 
 export default function Home() {
   return (
     <>
+      <AmbientSmoke />
       <SiteHeader />
+      <MobileStickyCta />
       <main>
-        <Hero3D />
+        <HeroVideo />
         <Reveal>
           <StatsBand />
         </Reveal>
@@ -34,48 +45,14 @@ export default function Home() {
           <WhyUs />
         </Reveal>
 
-        <ScrollReveal3D />
+        <Historia />
 
-        {/* sedes */}
-        <section className="mx-auto max-w-6xl px-6 pt-20">
-          <Reveal>
-            <p className="text-xs uppercase tracking-[0.3em] text-accent">Dónde estamos</p>
-            <h2 className="mb-7 font-display text-4xl font-semibold uppercase">Nuestras sedes</h2>
-          </Reveal>
-          <div className="grid gap-5 sm:grid-cols-2">
-            {sedes.map((s, i) => (
-              <Reveal key={s.id} delay={i * 0.08}>
-                <CardTilt maxTilt={6}>
-                  <Link
-                    href="/barberos"
-                    className="group relative block aspect-[4/5] overflow-hidden rounded-2xl border border-line sm:aspect-[16/11]"
-                  >
-                    <Image
-                      src={sedeFoto[s.id]}
-                      alt={`Sede ${s.nombre}`}
-                      fill
-                      sizes="(max-width:640px) 100vw, 50vw"
-                      className="object-cover transition duration-700 ease-out group-hover:scale-105"
-                    />
-                    <div className="absolute inset-0 bg-[linear-gradient(180deg,transparent_30%,rgba(0,0,0,0.9))]" />
-                    <div className="absolute inset-x-5 bottom-5">
-                      <div className="text-xs uppercase tracking-[0.3em] text-accent-soft">Sede</div>
-                      <div className="font-display text-3xl font-semibold uppercase leading-tight">
-                        {s.nombre}
-                      </div>
-                      <span className="mt-1 inline-block text-sm text-ink/85">
-                        Ver disponibilidad →
-                      </span>
-                    </div>
-                  </Link>
-                </CardTilt>
-              </Reveal>
-            ))}
-          </div>
-        </section>
+        <SedesShowcase sedes={sedes} />
+
+        <Servicios />
 
         {/* nuestros trabajos */}
-        <section className="mx-auto max-w-6xl px-6 pt-24">
+        <section className="mx-auto max-w-6xl px-6 pt-14 sm:pt-24">
           <Reveal>
             <div className="mb-7 flex items-end justify-between gap-4">
               <div>
@@ -90,10 +67,10 @@ export default function Home() {
               </Link>
             </div>
           </Reveal>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-            {cortes.map((n, i) => (
-              <Reveal key={n} delay={(i % 3) * 0.07} y={36}>
-                <CardTilt maxTilt={8} scale={1.04} className="group relative aspect-[3/4] overflow-hidden rounded-xl border border-line">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-6 sm:[grid-auto-rows:11rem] lg:[grid-auto-rows:13rem]">
+            {cortes.map(({ n, span }, i) => (
+              <Reveal key={n} delay={(i % 3) * 0.07} y={36} className={span}>
+                <CardTilt maxTilt={8} scale={1.04} className="group relative aspect-[3/4] h-full w-full overflow-hidden rounded-xl border border-line sm:aspect-auto">
                   <Image
                     src={`/cortes/corte-${n}.jpg`}
                     alt={`Trabajo ${n} — Barbas & Bigotes`}
@@ -108,11 +85,11 @@ export default function Home() {
                 </CardTilt>
               </Reveal>
             ))}
-            <Reveal delay={0.07} y={36}>
-              <CardTilt maxTilt={8} scale={1.04}>
+            <Reveal delay={0.07} y={36} className="sm:col-span-2">
+              <CardTilt maxTilt={8} scale={1.04} className="h-full w-full">
                 <Link
                   href="/reservar"
-                  className="flex aspect-[3/4] flex-col items-center justify-center gap-2 rounded-xl border border-accent/40 bg-accent/5 text-center transition hover:bg-accent/10"
+                  className="flex aspect-[3/4] h-full flex-col items-center justify-center gap-2 rounded-xl border border-accent/40 bg-accent/5 text-center transition hover:bg-accent/10 sm:aspect-auto"
                 >
                   <span className="font-display text-3xl uppercase text-accent-soft">Tu turno</span>
                   <span className="text-xs text-muted">Reservar cita →</span>

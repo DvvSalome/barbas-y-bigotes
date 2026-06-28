@@ -7,7 +7,7 @@ const reviews = [
 
 export function Testimonios() {
   return (
-    <section className="mx-auto max-w-6xl px-6 pt-24">
+    <section className="mx-auto max-w-6xl px-6 pt-14 sm:pt-24">
       <p className="text-xs uppercase tracking-[0.3em] text-accent">Lo que dicen</p>
       <h2 className="font-display text-4xl font-semibold uppercase">Clientes felices</h2>
       <div className="mt-8 grid gap-5 md:grid-cols-3">

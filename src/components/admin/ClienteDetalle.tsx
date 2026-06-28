@@ -2,8 +2,10 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { motion } from "motion/react";
 import { cop } from "@/lib/format";
 import { agregarNotaCliente, agregarMovWallet, agregarResenaCliente, canjearPuntos } from "@/lib/actions";
+import { Kpi } from "@/components/admin/Kpi";
 import type { ClienteDetalle as Detalle } from "@/lib/data/queries";
 import type { Barbero } from "@/lib/data/types";
 
@@ -37,8 +39,8 @@ export function ClienteDetalle({ detalle, barberos }: { detalle: Detalle; barber
   return (
     <div>
       <div className="mt-3 flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="font-display text-4xl font-semibold">{d.nombre}</h1>
+        <div className="min-w-0">
+          <h1 className="font-display text-3xl font-semibold sm:text-4xl">{d.nombre}</h1>
           <p className="mt-1 text-sm text-muted">
             {d.telefono || "sin teléfono"}
             {d.email ? ` · ${d.email}` : ""} · cliente desde {fecha(d.creadoEn)}
@@ -53,24 +55,31 @@ export function ClienteDetalle({ detalle, barberos }: { detalle: Detalle; barber
       </div>
 
       <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <Kpi label="Facturado" value={cop(d.facturado)} />
-        <Kpi label="Visitas" value={String(d.visitas)} />
-        <Kpi label="Saldo wallet" value={cop(d.walletBalance)} accent={d.walletBalance > 0} />
-        <Kpi label="Última visita" value={d.ultima ? fecha(d.ultima) : "—"} />
+        <Kpi size="sm" label="Facturado" value={cop(d.facturado)} />
+        <Kpi size="sm" label="Visitas" value={String(d.visitas)} accent={false} />
+        <Kpi size="sm" label="Saldo wallet" value={cop(d.walletBalance)} accent={d.walletBalance > 0} />
+        <Kpi size="sm" label="Última visita" value={d.ultima ? fecha(d.ultima) : "—"} accent={false} />
       </div>
 
-      <div className="mt-8 flex flex-wrap gap-1 border-b border-line">
+      <div className="mt-8 flex gap-1 overflow-x-auto border-b border-line [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {TABS.map((t) => (
           <button
             key={t.id}
             onClick={() => setTab(t.id)}
-            className={`rounded-t-lg px-4 py-2 text-sm transition ${
-              tab === t.id ? "border-b-2 border-accent text-ink" : "text-muted hover:text-ink"
+            className={`relative shrink-0 whitespace-nowrap px-4 py-2.5 text-sm transition ${
+              tab === t.id ? "text-ink" : "text-muted hover:text-ink"
             }`}
           >
             {t.label}
             {t.id === "notas" && d.notas.length ? ` (${d.notas.length})` : ""}
             {t.id === "resenas" && d.resenas.length ? ` (${d.resenas.length})` : ""}
+            {tab === t.id && (
+              <motion.span
+                layoutId="cliente-tab-underline"
+                className="absolute inset-x-2 -bottom-px h-[2px] rounded-full bg-accent"
+                transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+              />
+            )}
           </button>
         ))}
       </div>
@@ -84,15 +93,6 @@ export function ClienteDetalle({ detalle, barberos }: { detalle: Detalle; barber
         {tab === "fidelidad" && <FidelidadTab d={d} />}
         {tab === "resenas" && <ResenasTab d={d} barberos={barberos} />}
       </div>
-    </div>
-  );
-}
-
-function Kpi({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
-  return (
-    <div className="rounded-2xl border border-line bg-panel p-4">
-      <div className="text-xs uppercase tracking-wide text-muted">{label}</div>
-      <div className={`mt-1 font-display text-2xl ${accent ? "text-accent-soft" : ""}`}>{value}</div>
     </div>
   );
 }
@@ -127,12 +127,12 @@ function HistorialTab({ d }: { d: Detalle }) {
   return (
     <div className="space-y-2">
       {d.historial.map((h) => (
-        <div key={h.id} className="flex items-center justify-between rounded-xl border border-line bg-panel px-4 py-3 text-sm">
-          <div>
+        <div key={h.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-line bg-panel px-4 py-3 text-sm">
+          <div className="min-w-0">
             <div>{h.items.join(", ") || "Servicio"}</div>
             <div className="text-xs text-muted">{fecha(h.fecha)} · {h.barbero || "—"} · {h.medio}</div>
           </div>
-          <span className="text-accent-soft">{cop(h.total)}</span>
+          <span className="shrink-0 text-accent-soft">{cop(h.total)}</span>
         </div>
       ))}
     </div>
@@ -144,12 +144,12 @@ function ReservasTab({ d }: { d: Detalle }) {
   return (
     <div className="space-y-2">
       {d.reservas.map((r) => (
-        <div key={r.id} className="flex items-center justify-between rounded-xl border border-line bg-panel px-4 py-3 text-sm">
-          <div>
+        <div key={r.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-line bg-panel px-4 py-3 text-sm">
+          <div className="min-w-0">
             <div>{r.servicio} · {r.barbero}</div>
             <div className="text-xs text-muted">{new Date(r.inicio).toLocaleString("es-CO", { dateStyle: "medium", timeStyle: "short" })}</div>
           </div>
-          <span className="text-xs uppercase tracking-wide text-muted">{ESTADO[r.estado] ?? r.estado}</span>
+          <span className="shrink-0 text-xs uppercase tracking-wide text-muted">{ESTADO[r.estado] ?? r.estado}</span>
         </div>
       ))}
     </div>
@@ -256,13 +256,13 @@ function WalletTab({ d }: { d: Detalle }) {
       ) : (
         <div className="space-y-2">
           {d.wallet.map((w) => (
-            <div key={w.id} className="flex items-center justify-between rounded-xl border border-line bg-panel px-4 py-3 text-sm">
-              <div>
+            <div key={w.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-line bg-panel px-4 py-3 text-sm">
+              <div className="min-w-0">
                 <span className="capitalize">{w.tipo}</span>
                 {w.nota ? <span className="text-muted"> · {w.nota}</span> : null}
                 <div className="text-xs text-muted">{fecha(w.fecha)}</div>
               </div>
-              <span className={w.tipo === "recarga" ? "text-emerald-400" : "text-muted"}>
+              <span className={`shrink-0 ${w.tipo === "recarga" ? "text-emerald-400" : "text-muted"}`}>
                 {w.tipo === "recarga" ? "+" : "−"}{cop(w.monto)}
               </span>
             </div>
@@ -313,13 +313,13 @@ function FidelidadTab({ d }: { d: Detalle }) {
       ) : (
         <div className="space-y-2">
           {d.puntos.map((p) => (
-            <div key={p.id} className="flex items-center justify-between rounded-xl border border-line bg-panel px-4 py-3 text-sm">
-              <div>
+            <div key={p.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-line bg-panel px-4 py-3 text-sm">
+              <div className="min-w-0">
                 <span className="capitalize">{p.tipo}</span>
                 {p.nota ? <span className="text-muted"> · {p.nota}</span> : null}
                 <div className="text-xs text-muted">{fecha(p.fecha)}</div>
               </div>
-              <span className={p.tipo === "ganado" ? "text-emerald-400" : "text-muted"}>
+              <span className={`shrink-0 ${p.tipo === "ganado" ? "text-emerald-400" : "text-muted"}`}>
                 {p.tipo === "ganado" ? "+" : "−"}{p.puntos} pts
               </span>
             </div>

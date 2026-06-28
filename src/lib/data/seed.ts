@@ -87,32 +87,32 @@ export const barberos: Barbero[] = [
   {
     id: "meyer", nombre: "Meyer", sede: "parque-venezuela",
     especialidades: ["Degradados", "Tijera", "Niños", "Barbas", "Relajante de ondas", "Diseños", "Limpieza facial"],
-    tipoContrato: "porcentaje", comisionPct: 50, fotoUrl: null, destacado: true, rating: 4.9, resenas: 212,
+    tipoContrato: "porcentaje", comisionPct: 50, fotoUrl: "/barberos/generico.jpg", destacado: true, rating: 4.9, resenas: 212,
   },
   {
     id: "jhon", nombre: "Jhon", sede: "parque-venezuela",
     especialidades: ["Cortes clásicos", "Niños", "Tijera", "Barba", "Keratinas", "Peinados", "Degradados", "Tintes planos"],
-    tipoContrato: "porcentaje", comisionPct: 50, fotoUrl: null, destacado: true, rating: 4.8, resenas: 176,
+    tipoContrato: "porcentaje", comisionPct: 50, fotoUrl: "/barberos/generico.jpg", destacado: true, rating: 4.8, resenas: 176,
   },
   {
     id: "junior", nombre: "Junior", sede: "parque-venezuela",
     especialidades: ["Degradados", "Clásicos", "Barbas", "Colorimetría", "Limpieza facial"],
-    tipoContrato: "porcentaje", comisionPct: 50, fotoUrl: null, destacado: false, rating: 4.8, resenas: 143,
+    tipoContrato: "porcentaje", comisionPct: 50, fotoUrl: "/barberos/generico.jpg", destacado: false, rating: 4.8, resenas: 143,
   },
   {
     id: "brayan", nombre: "Brayan", sede: "plaza-de-la-paz",
     especialidades: ["Degradados", "Clásicos", "Barbas", "Limpieza facial", "Tijera", "Depilación con cera"],
-    tipoContrato: "porcentaje", comisionPct: 50, fotoUrl: null, destacado: false, rating: 4.9, resenas: 198,
+    tipoContrato: "porcentaje", comisionPct: 50, fotoUrl: "/barberos/generico.jpg", destacado: false, rating: 4.9, resenas: 198,
   },
   {
     id: "kevin", nombre: "Kevin", sede: "plaza-de-la-paz",
     especialidades: ["Degradados", "Clásicos", "Barbas", "Tijera", "Niños", "Alisado", "Hidratación capilar", "Depilación con cera"],
-    tipoContrato: "porcentaje", comisionPct: 50, fotoUrl: null, destacado: false, rating: 4.7, resenas: 121,
+    tipoContrato: "porcentaje", comisionPct: 50, fotoUrl: "/barberos/generico.jpg", destacado: false, rating: 4.7, resenas: 121,
   },
   {
     id: "abel", nombre: "Abel", sede: "plaza-de-la-paz",
     especialidades: ["Degradados", "Clásicos", "Barbas", "Diseños", "Colorimetría", "Peinados", "Niños", "Tijera"],
-    tipoContrato: "porcentaje", comisionPct: 50, fotoUrl: null, destacado: true, rating: 4.9, resenas: 167,
+    tipoContrato: "porcentaje", comisionPct: 50, fotoUrl: "/barberos/generico.jpg", destacado: true, rating: 4.9, resenas: 167,
   },
 ];
 

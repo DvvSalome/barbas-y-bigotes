@@ -41,7 +41,7 @@ const items = [
 
 export function WhyUs() {
   return (
-    <section className="mx-auto max-w-6xl px-6 pt-20">
+    <section className="mx-auto max-w-6xl px-6 pt-12 sm:pt-20">
       <p className="text-xs uppercase tracking-[0.3em] text-accent">Por qué nosotros</p>
       <h2 className="font-display text-4xl font-semibold uppercase">La diferencia</h2>
       <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">

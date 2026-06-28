@@ -12,14 +12,15 @@ export const metadata: Metadata = {
 export default async function ReservarPage({
   searchParams,
 }: {
-  searchParams: Promise<{ barbero?: string }>;
+  searchParams: Promise<{ barbero?: string; sede?: string }>;
 }) {
-  const { barbero } = await searchParams;
+  const { barbero, sede } = await searchParams;
   const [sedes, barberos, servicios] = await Promise.all([
     getSedes(),
     getBarberos(),
     getServicios(),
   ]);
+  const initialSedeId = sedes.find((s) => s.id === sede)?.id;
   return (
     <>
       <SiteHeader />
@@ -29,6 +30,7 @@ export default async function ReservarPage({
           barberos={barberos}
           servicios={servicios}
           initialBarberoId={barbero}
+          initialSedeId={initialSedeId}
         />
       </Reveal>
       <SiteFooter />

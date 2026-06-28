@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { abrirCaja, cerrarCaja } from "@/lib/actions";
 import { cop } from "@/lib/format";
+import { CashIcon } from "@/components/icons";
 import type { CajaSesionSede } from "@/lib/data/queries";
 
 const fld =
@@ -76,15 +77,22 @@ function CajaCard({ caja }: { caja: CajaSesionSede }) {
   }
 
   return (
-    <div className="rounded-2xl border border-line bg-panel p-5">
-      <div className="flex items-center justify-between">
-        <div className="font-display text-2xl">{caja.nombre}</div>
+    <div className={`relative overflow-hidden rounded-2xl border bg-panel p-5 transition ${abierta ? "border-emerald-500/30" : "border-line"}`}>
+      <div className="pointer-events-none absolute -right-8 -top-8 h-24 w-24 rounded-full bg-accent/10 blur-2xl" />
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2.5">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-accent/40 text-accent">
+            <CashIcon className="h-4 w-4" />
+          </div>
+          <div className="font-display text-2xl">{caja.nombre}</div>
+        </div>
         <span
-          className={`rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide ${
+          className={`flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide ${
             abierta ? "bg-emerald-500/15 text-emerald-400" : "bg-white/10 text-muted"
           }`}
         >
-          {abierta ? `Caja abierta · ${desdeHora(caja.abiertaEn!)}` : "Caja cerrada"}
+          <span className={`h-1.5 w-1.5 rounded-full ${abierta ? "bg-emerald-400" : "bg-muted"}`} />
+          {abierta ? `Abierta · ${desdeHora(caja.abiertaEn!)}` : "Cerrada"}
         </span>
       </div>
 
@@ -107,7 +115,10 @@ function CajaCard({ caja }: { caja: CajaSesionSede }) {
 
       {abierta && caja.metaDia > 0 && (
         <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-bg">
-          <div className="h-full rounded-full bg-accent transition-all" style={{ width: `${pct}%` }} />
+          <div
+            className="h-full rounded-full bg-gradient-to-r from-accent to-accent-soft shadow-[0_0_10px_rgba(210,63,52,0.6)] transition-all"
+            style={{ width: `${pct}%` }}
+          />
         </div>
       )}
 

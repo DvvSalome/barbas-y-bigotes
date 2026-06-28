@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { redirect } from "next/navigation";
 import { supabaseServerAuth } from "@/lib/supabase/server";
 import { AdminNav } from "@/components/admin/AdminNav";
@@ -33,15 +34,17 @@ export default async function AdminLayout({
           { table: "caja_sesiones" },
         ]}
       />
-      <aside className="hidden w-64 shrink-0 border-r border-line bg-panel p-6 md:block">
-        <Link href="/" className="font-display text-2xl font-semibold tracking-wide">
-          Barbas <span className="text-accent">&amp;</span> Bigotes
-        </Link>
-        <div className="mb-8 mt-1 text-[10px] uppercase tracking-[0.3em] text-muted">
-          Panel admin
+      <aside className="hidden w-64 shrink-0 border-r border-line bg-panel md:flex md:flex-col">
+        <div className="border-b border-line p-6">
+          <Link href="/" aria-label="Barbas & Bigotes" className="block">
+            <Image src="/brand/logo-lockup.png" alt="Barbas & Bigotes Barbershop" width={1024} height={348} className="h-10 w-auto" priority />
+          </Link>
+          <div className="mt-2 text-[10px] uppercase tracking-[0.3em] text-muted">Panel admin</div>
         </div>
-        <AdminNav />
-        <div className="mt-10 rounded-xl border border-line p-3 text-xs text-muted/80">
+        <div className="flex-1 p-4">
+          <AdminNav />
+        </div>
+        <div className="m-4 rounded-xl border border-accent/25 bg-accent/5 p-3 text-xs text-muted/90">
           Gestionás <span className="text-ink">ambas sedes</span> desde acá.
         </div>
       </aside>
