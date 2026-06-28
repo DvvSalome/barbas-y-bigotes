@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { crearCupon, toggleCupon } from "@/lib/actions";
 import { cop } from "@/lib/format";
+import { TicketIcon } from "@/components/icons";
 import type { Cupon } from "@/lib/data/queries";
 
 const fld = "w-full rounded-lg border border-line bg-bg px-3 py-2 text-ink placeholder:text-muted focus:border-accent focus:outline-none";
@@ -46,7 +47,9 @@ export function CuponesAdmin({ cupones }: { cupones: Cupon[] }) {
   return (
     <div className="grid gap-6 md:grid-cols-2">
       <form onSubmit={crear} className="space-y-3 rounded-2xl border border-line bg-panel p-5">
-        <h3 className="font-display text-xl">Nuevo cupón</h3>
+        <h3 className="flex items-center gap-2 font-display text-xl">
+          <TicketIcon className="h-4 w-4 text-accent" /> Nuevo cupón
+        </h3>
         {err && <div className="rounded-lg border border-accent/40 bg-accent/10 px-3 py-2 text-sm text-accent-soft">{err}</div>}
         <input value={codigo} onChange={(e) => setCodigo(e.target.value.toUpperCase())} placeholder="CÓDIGO (ej. BIENVENIDA)" className={`${fld} uppercase`} />
         <input value={descripcion} onChange={(e) => setDescripcion(e.target.value)} placeholder="Descripción (opcional)" className={fld} />
@@ -74,13 +77,16 @@ export function CuponesAdmin({ cupones }: { cupones: Cupon[] }) {
         ) : (
           <div className="space-y-2">
             {cupones.map((c) => (
-              <div key={c.codigo} className="rounded-xl border border-line bg-panel p-4">
+              <div key={c.codigo} className={`rounded-xl border bg-panel p-4 transition ${c.activo ? "border-line hover:border-accent/30" : "border-line/60 opacity-70"}`}>
                 <div className="flex items-center justify-between">
-                  <span className="font-display text-lg tracking-wide">{c.codigo}</span>
+                  <span className="rounded-md border border-dashed border-accent/40 px-2 py-0.5 font-display text-lg tracking-wide text-accent-soft">
+                    {c.codigo}
+                  </span>
                   <button
                     onClick={() => toggle(c.codigo, !c.activo)}
-                    className={`rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide transition ${c.activo ? "bg-emerald-500/15 text-emerald-400" : "bg-white/10 text-muted"}`}
+                    className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide transition ${c.activo ? "bg-emerald-500/15 text-emerald-400" : "bg-white/10 text-muted"}`}
                   >
+                    <span className={`h-1.5 w-1.5 rounded-full ${c.activo ? "bg-emerald-400" : "bg-muted"}`} />
                     {c.activo ? "Activo" : "Inactivo"}
                   </button>
                 </div>

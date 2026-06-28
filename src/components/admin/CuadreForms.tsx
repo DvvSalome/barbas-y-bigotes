@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { registrarGasto, registrarAdelanto } from "@/lib/actions";
+import { TagIcon, PercentIcon } from "@/components/icons";
 import type { Sede, Barbero } from "@/lib/data/types";
 
 const fld =
@@ -56,7 +57,9 @@ export function CuadreForms({ sedes, barberos }: { sedes: Sede[]; barberos: Barb
   return (
     <div className="grid gap-5 md:grid-cols-2">
       <form onSubmit={submitGasto} className="space-y-3 rounded-2xl border border-line bg-panel p-5">
-        <h3 className="font-display text-xl">Registrar gasto</h3>
+        <h3 className="flex items-center gap-2 font-display text-xl">
+          <TagIcon className="h-4 w-4 text-accent" /> Registrar gasto
+        </h3>
         <select value={gSede} onChange={(e) => setGSede(e.target.value as typeof gSede)} className={fld}>
           {sedes.map((s) => (
             <option key={s.id} value={s.id}>{s.nombre}</option>
@@ -69,7 +72,9 @@ export function CuadreForms({ sedes, barberos }: { sedes: Sede[]; barberos: Barb
       </form>
 
       <form onSubmit={submitAdelanto} className="space-y-3 rounded-2xl border border-line bg-panel p-5">
-        <h3 className="font-display text-xl">Registrar adelanto</h3>
+        <h3 className="flex items-center gap-2 font-display text-xl">
+          <PercentIcon className="h-4 w-4 text-accent" /> Registrar adelanto
+        </h3>
         <select value={aBarbero} onChange={(e) => setABarbero(e.target.value)} className={fld}>
           <option value="">Barbero…</option>
           {barberos.map((b) => (

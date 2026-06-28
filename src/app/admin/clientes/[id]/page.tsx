@@ -17,7 +17,7 @@ export default async function ClienteDetallePage({
 
   return (
     <div className="max-w-4xl">
-      <Link href="/admin/clientes" className="text-sm text-muted transition hover:text-ink">
+      <Link href="/admin/clientes" className="inline-flex items-center gap-1 text-sm text-muted transition hover:text-accent-soft">
         ← Clientes
       </Link>
       <ClienteDetalle detalle={detalle} barberos={barberos} />

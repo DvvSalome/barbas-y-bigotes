@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { addProducto } from "@/lib/actions";
+import { BoxIcon } from "@/components/icons";
 import type { Sede } from "@/lib/data/types";
 
 const input =
@@ -46,15 +47,18 @@ export function AddProductForm({ sedes }: { sedes: Sede[] }) {
     return (
       <button
         onClick={() => setOpen(true)}
-        className="rounded-full bg-accent px-6 py-2.5 text-sm font-semibold uppercase tracking-wide text-on-accent transition hover:bg-accent-soft"
+        className="flex items-center gap-2 rounded-full bg-accent px-6 py-2.5 text-sm font-semibold uppercase tracking-wide text-on-accent transition hover:bg-accent-soft"
       >
-        + Agregar producto
+        <BoxIcon className="h-4 w-4" /> Agregar producto
       </button>
     );
   }
 
   return (
     <form onSubmit={submit} className="grid gap-3 rounded-2xl border border-line bg-panel p-5 sm:grid-cols-6">
+      <h3 className="flex items-center gap-2 font-display text-lg sm:col-span-6">
+        <BoxIcon className="h-4 w-4 text-accent" /> Nuevo producto
+      </h3>
       <input required value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Producto" className={`${input} sm:col-span-2`} />
       <select value={sede} onChange={(e) => setSede(e.target.value as typeof sede)} className={input}>
         {sedes.map((s) => (

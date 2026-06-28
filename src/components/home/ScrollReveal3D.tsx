@@ -7,6 +7,11 @@ import { useGSAP } from "@gsap/react";
 
 gsap.registerPlugin(ScrollTrigger);
 
+// En mobile, mostrar/ocultar la barra de direcciones cambia innerHeight y
+// dispara un recálculo de ScrollTrigger a mitad de scroll — eso es lo que
+// hacía que el pin fallara "a veces" hasta recargar la página.
+ScrollTrigger.config({ ignoreMobileResize: true });
+
 const FRAME_COUNT = 90;
 const PX_PER_FRAME = 18; // ~2vh/frame: snappy, no "qué horror"
 const pad = (i: number) => String(i + 1).padStart(3, "0");
@@ -85,6 +90,26 @@ export function ScrollReveal3D() {
         return () => resizeObserver.disconnect();
       }
 
+      // Las secciones de arriba (hero, historia, etc.) pueden seguir
+      // acomodando su layout (fuentes, imágenes) después de que este efecto
+      // ya midió su start/end — si eso pasa, el pin queda desalineado y el
+      // scroll "no activa" hasta refrescar. Forzamos un recálculo cuando todo
+      // terminó de cargar, pero SOLO si el usuario todavía no llegó a esta
+      // sección: refrescar mientras el pin ya está activo (o ya se pasó) hace
+      // que GSAP recalcule a mitad de scroll y todo "salte" — esa es la
+      // distorsión donde la sección de arriba y el tour parecen moverse juntos.
+      const refreshIfNotReachedYet = () => {
+        if (!wrap) return;
+        const top = wrap.getBoundingClientRect().top;
+        if (top > window.innerHeight) ScrollTrigger.refresh();
+      };
+      window.addEventListener("load", refreshIfNotReachedYet);
+      const settleTimer = setTimeout(refreshIfNotReachedYet, 600);
+
+      // direction.current se actualiza en cada tick de scroll; el draw lo lee
+      // para decidir si anima normal (bajando) o se queda fijo (subiendo).
+      const direction = { current: 1 as 1 | -1 };
+
       gsap.to(state, {
         frame: FRAME_COUNT - 1,
         ease: "none",
@@ -96,17 +121,28 @@ export function ScrollReveal3D() {
           scrub: 0.5,
           pin: true,
           anticipatePin: 1,
+          invalidateOnRefresh: true,
+          onUpdate: (self) => {
+            direction.current = self.direction as 1 | -1;
+          },
         },
-        onUpdate: () => draw(Math.round(state.frame)),
+        // Al subir no se repite el recorrido cuadro por cuadro — se deja fija
+        // la imagen inicial para que el usuario sienta que vuelve directo,
+        // en vez de ver el efecto reproducirse en reversa.
+        onUpdate: () => draw(direction.current === -1 ? 0 : Math.round(state.frame)),
       });
 
-      return () => resizeObserver.disconnect();
+      return () => {
+        resizeObserver.disconnect();
+        window.removeEventListener("load", refreshIfNotReachedYet);
+        clearTimeout(settleTimer);
+      };
     },
     { scope: wrapRef },
   );
 
   return (
-    <section className="mx-auto max-w-6xl px-6 pt-20">
+    <section className="mx-auto max-w-6xl px-6 pt-12 sm:pt-20">
       <div
         ref={wrapRef}
         aria-label="Recorrido por la barbería"
