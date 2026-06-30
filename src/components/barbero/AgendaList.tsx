@@ -9,6 +9,7 @@ import {
   actualizarReserva,
   historialCliente,
   validarCupon,
+  proponerAdelanto,
 } from "@/lib/actions";
 import type { Sede, Barbero, Servicio, Producto } from "@/lib/data/types";
 import type { AgendaItem } from "@/lib/data/queries";
@@ -54,6 +55,8 @@ export function AgendaList({
   const [historyFor, setHistoryFor] = useState<string | null>(null);
   const [history, setHistory] = useState<HistItem[] | null>(null);
   const [busy, setBusy] = useState(false);
+
+  const freeSlots = agenda.filter((item) => ["cancelada", "no_show"].includes(item.estado));
 
   async function setEstado(id: string, patch: { estado?: string; llegada?: string }) {
     setBusy(true);
@@ -103,6 +106,26 @@ export function AgendaList({
         <div className="space-y-3">
           {agenda.map((r) => {
             const done = ["completada", "no_show", "cancelada"].includes(r.estado);
+            
+            // Calculate advancement opportunities
+            const possibleAdvances = freeSlots.filter((fs) => 
+              fs.barberoId === r.barberoId && 
+              new Date(fs.inicio).getTime() < new Date(r.inicio).getTime()
+            );
+            const earliestSlot = possibleAdvances.sort((a, b) => new Date(a.inicio).getTime() - new Date(b.inicio).getTime())[0];
+            
+            let hasPendingProposal = false;
+            let proposedTimeStr = "";
+            if (r.nota) {
+              try {
+                const obj = JSON.parse(r.nota);
+                if (obj.propuesta_adelanto?.estado === "pendiente") {
+                  hasPendingProposal = true;
+                  proposedTimeStr = new Date(obj.propuesta_adelanto.inicio).toLocaleTimeString("es-CO", { hour: "numeric", minute: "2-digit" });
+                }
+              } catch {}
+            }
+
             return (
               <div key={r.id} className="rounded-2xl border border-line bg-panel p-4">
                 <div className="flex flex-wrap items-center justify-between gap-3">
@@ -133,6 +156,33 @@ export function AgendaList({
                         className="rounded-full border border-line px-3 py-1.5 text-xs text-muted transition hover:text-ink"
                       >
                         Ver historial
+                      </button>
+                    )}
+                    {hasPendingProposal && (
+                      <span className="rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-500 px-3 py-1.5 text-xs font-semibold uppercase tracking-wider">
+                        Propuesto {proposedTimeStr}
+                      </span>
+                    )}
+                    {earliestSlot && !done && !hasPendingProposal && (
+                      <button
+                        onClick={async () => {
+                          setBusy(true);
+                          const res = await proponerAdelanto({
+                            reservaId: r.id,
+                            inicioISO: earliestSlot.inicio
+                          });
+                          setBusy(false);
+                          if (res.ok) {
+                            alert("Propuesta de adelanto enviada al cliente.");
+                            router.refresh();
+                          } else {
+                            alert(res.error);
+                          }
+                        }}
+                        disabled={busy}
+                        className="rounded-full border border-accent/40 bg-accent/5 px-3 py-1.5 text-xs text-accent-soft hover:bg-accent/15 transition disabled:opacity-50"
+                      >
+                        Ofrecer Adelanto ({hora(earliestSlot.inicio)})
                       </button>
                     )}
                     {!done && (

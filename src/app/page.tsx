@@ -8,11 +8,11 @@ import { HeroVideo } from "@/components/home/HeroVideo";
 import { StatsBand } from "@/components/home/StatsBand";
 import { Reveal } from "@/components/motion/Reveal";
 import { WhyUs } from "@/components/home/WhyUs";
-import { Historia } from "@/components/home/Historia";
 import { Servicios } from "@/components/home/Servicios";
 import { Testimonios } from "@/components/home/Testimonios";
 import { Ubicacion } from "@/components/home/Ubicacion";
 import { SedesShowcase } from "@/components/home/SedesShowcase";
+import { LiveBarbersStatus } from "@/components/home/LiveBarbersStatus";
 import { sedes } from "@/lib/data/seed";
 
 import { CardTilt } from "@/components/ui/CardTilt";
@@ -41,13 +41,12 @@ export default function Home() {
           <StatsBand />
         </Reveal>
 
+        <SedesShowcase sedes={sedes} />
+        <LiveBarbersStatus />
+
         <Reveal>
           <WhyUs />
         </Reveal>
-
-        <Historia />
-
-        <SedesShowcase sedes={sedes} />
 
         <Servicios />
 

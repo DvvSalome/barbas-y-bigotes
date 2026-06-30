@@ -4,13 +4,23 @@ import { SiteFooter } from "@/components/SiteFooter";
 import { BarberCard } from "@/components/BarberCard";
 import { Reveal } from "@/components/motion/Reveal";
 import { getSedes, getBarberos } from "@/lib/data/queries";
+import { getLiveBarberStatuses } from "@/lib/actions";
 
 export const metadata: Metadata = {
   title: "Barberos · Barbas & Bigotes",
 };
 
 export default async function BarberosPage() {
-  const [sedes, barberos] = await Promise.all([getSedes(), getBarberos()]);
+  const [sedes, barberos, liveStatusesArray] = await Promise.all([
+    getSedes(),
+    getBarberos(),
+    getLiveBarberStatuses(),
+  ]);
+
+  const liveStatuses: Record<string, typeof liveStatusesArray[0]> = {};
+  liveStatusesArray.forEach((s) => {
+    liveStatuses[s.id] = s;
+  });
 
   return (
     <>
@@ -40,7 +50,7 @@ export default async function BarberosPage() {
               <div className="grid gap-7 sm:grid-cols-2 lg:grid-cols-3">
                 {list.map((b, i) => (
                   <Reveal key={b.id} delay={(i % 3) * 0.08} y={36}>
-                    <BarberCard barbero={b} />
+                    <BarberCard barbero={b} liveStatus={liveStatuses[b.id]} />
                   </Reveal>
                 ))}
               </div>

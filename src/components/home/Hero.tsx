@@ -42,10 +42,10 @@ export function Hero() {
           initial={reduce ? false : { opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, delay: 0.1, ease: EASE }}
-          className="mb-9 flex items-center gap-3 text-[11px] uppercase tracking-[0.45em] text-accent"
+          className="mb-9 flex items-center gap-3 text-xs uppercase tracking-[0.3em] text-accent font-semibold"
         >
-          <span className="h-px w-8 bg-accent/50" /> Barbería · Barranquilla{" "}
-          <span className="h-px w-8 bg-accent/50" />
+          <span className="h-px w-8 bg-accent" /> Barbería · Barranquilla{" "}
+          <span className="h-px w-8 bg-accent" />
         </motion.p>
         <h1 className="sr-only">Barbas &amp; Bigotes Barbershop</h1>
         <motion.div

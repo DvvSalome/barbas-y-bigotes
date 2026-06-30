@@ -3,6 +3,8 @@ import Link from "next/link";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 import { ClienteLoginButton, ClienteLogout } from "@/components/cuenta/ClienteAuth";
+import { AdelantoBanner } from "@/components/cuenta/AdelantoBanner";
+import { PushManager } from "@/components/cuenta/PushManager";
 import { ensureCliente } from "@/lib/cliente-actions";
 import { getCuenta } from "@/lib/data/queries";
 
@@ -91,6 +93,8 @@ async function Portal() {
         <ClienteLogout />
       </div>
 
+      <PushManager />
+
       {/* fila / turno */}
       {cola.length > 0 && (
         <section className="mb-8 rounded-2xl border border-accent/40 bg-accent/5 p-5">
@@ -128,18 +132,38 @@ async function Portal() {
         {proximas.length === 0 ? (
           <p className="text-sm text-muted">No tenés citas próximas. <Link href="/reservar" className="text-accent-soft hover:text-accent">Reservá una →</Link></p>
         ) : (
-          <div className="space-y-2">
-            {proximas.map((r) => (
-              <div key={r.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line bg-panel p-4">
-                <div>
-                  <div className="font-semibold">{r.servicio}</div>
-                  <div className="text-sm text-muted">{fechaLarga(r.inicio)} · {r.barbero}</div>
+          <div className="space-y-3">
+            {proximas.map((r) => {
+              let prop: any = null;
+              if (r.nota) {
+                try {
+                  const obj = JSON.parse(r.nota);
+                  if (obj.propuesta_adelanto?.estado === "pendiente") {
+                    prop = obj.propuesta_adelanto;
+                  }
+                } catch {}
+              }
+              return (
+                <div key={r.id} className="space-y-2">
+                  <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line bg-panel p-4">
+                    <div>
+                      <div className="font-semibold">{r.servicio}</div>
+                      <div className="text-sm text-muted">{fechaLarga(r.inicio)} · {r.barbero}</div>
+                    </div>
+                    <span className="rounded-full bg-accent/15 px-3 py-1 text-[10px] uppercase tracking-wide text-accent-soft">
+                      {ESTADO[r.estado] ?? r.estado}
+                    </span>
+                  </div>
+                  {prop && (
+                    <AdelantoBanner
+                      reservaId={r.id}
+                      inicioPropuesto={prop.inicio}
+                      finPropuesto={prop.fin}
+                    />
+                  )}
                 </div>
-                <span className="rounded-full bg-accent/15 px-3 py-1 text-[10px] uppercase tracking-wide text-accent-soft">
-                  {ESTADO[r.estado] ?? r.estado}
-                </span>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </section>

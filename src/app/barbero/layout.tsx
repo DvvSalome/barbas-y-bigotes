@@ -13,6 +13,16 @@ export default async function BarberoLayout({
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
+  
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("rol")
+    .eq("auth_id", user.id)
+    .maybeSingle();
+
+  if ((profile as { rol?: string } | null)?.rol === "cliente") {
+    redirect("/cuenta");
+  }
 
   return (
     <>

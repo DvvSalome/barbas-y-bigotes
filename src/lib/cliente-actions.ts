@@ -46,3 +46,117 @@ export async function ensureCliente(): Promise<CuentaContext> {
   const id = await clienteIdForUser(admin, user.id, email, nombre);
   return { estado: "cliente", clienteId: id ?? undefined };
 }
+
+export async function responderPropuestaAdelanto(
+  reservaId: string,
+  respuesta: "aceptar" | "rechazar",
+): Promise<{ ok: boolean; error?: string }> {
+  const sb = await supabaseServerAuth();
+  const { data: { user } } = await sb.auth.getUser();
+  if (!user) return { ok: false, error: "No autorizado" };
+
+  const admin = supabaseAdmin();
+  const { data: res, error: getErr } = await admin
+    .from("reservas")
+    .select("id, cliente_id, nota, sede_id, barbero_id")
+    .eq("id", reservaId)
+    .maybeSingle();
+
+  if (getErr || !res) return { ok: false, error: "Reserva no encontrada" };
+
+  let notaObj: any = {};
+  try {
+    notaObj = JSON.parse(res.nota || "{}");
+  } catch {
+    notaObj = { text: res.nota || "" };
+  }
+
+  const prop = notaObj.propuesta_adelanto;
+  if (!prop || prop.estado !== "pendiente") {
+    return { ok: false, error: "No hay ninguna propuesta de adelanto pendiente." };
+  }
+
+  if (respuesta === "aceptar") {
+    const start = new Date(prop.inicio);
+    const end = new Date(prop.fin);
+    
+    // Check if the slot is still free (avoid double bookings)
+    const { data: clash } = await admin
+      .from("reservas")
+      .select("id")
+      .eq("barbero_id", res.barbero_id)
+      .not("estado", "in", "(cancelada,no_show)")
+      .not("id", "eq", reservaId)
+      .lt("inicio", end.toISOString())
+      .gt("fin", start.toISOString())
+      .limit(1);
+
+    if (clash && clash.length > 0) {
+      notaObj.propuesta_adelanto.estado = "vencido";
+      await admin.from("reservas").update({ nota: JSON.stringify(notaObj) }).eq("id", reservaId);
+      return { ok: false, error: "Lo sentimos, ese espacio ya fue tomado por otro cliente." };
+    }
+
+    notaObj.propuesta_adelanto.estado = "aceptada";
+    const userNote = notaObj.text || "";
+    
+    const { error: updErr } = await admin
+      .from("reservas")
+      .update({
+        inicio: start.toISOString(),
+        fin: end.toISOString(),
+        nota: userNote.trim() ? userNote.trim() : JSON.stringify(notaObj),
+      })
+      .eq("id", reservaId);
+
+    if (updErr) return { ok: false, error: updErr.message };
+
+  } else {
+    // Rejected
+    notaObj.propuesta_adelanto.estado = "rechazada";
+    await admin
+      .from("reservas")
+      .update({
+        nota: JSON.stringify(notaObj),
+      })
+      .eq("id", reservaId);
+  }
+
+  return { ok: true };
+}
+
+export async function savePushSubscription(
+  subscription: { endpoint: string; keys: { p256dh: string; auth: string } }
+): Promise<{ ok: boolean; error?: string }> {
+  const ctx = await ensureCliente();
+  if (ctx.estado !== "cliente" || !ctx.clienteId) {
+    return { ok: false, error: "No autorizado" };
+  }
+
+  const admin = supabaseAdmin();
+  
+  // Check if subscription already exists based on endpoint
+  const { data: existing } = await admin
+    .from("push_subscriptions")
+    .select("id")
+    .eq("endpoint", subscription.endpoint)
+    .maybeSingle();
+
+  if (existing) {
+    return { ok: true }; // Already saved
+  }
+
+  const { error } = await admin.from("push_subscriptions").insert({
+    cliente_ref: ctx.clienteId,
+    endpoint: subscription.endpoint,
+    p256dh: subscription.keys.p256dh,
+    auth: subscription.keys.auth,
+  });
+
+  if (error) {
+    console.error("Error saving push subscription", error);
+    return { ok: false, error: "Error al guardar suscripción" };
+  }
+
+  return { ok: true };
+}

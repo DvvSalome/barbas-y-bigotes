@@ -94,6 +94,7 @@ export type AgendaItem = {
   clienteRef: string | null;
   cliente: string;
   telefono: string;
+  nota: string | null;
 };
 
 export async function getAgendaHoy(barberoId?: string | null): Promise<AgendaItem[]> {
@@ -105,7 +106,7 @@ export async function getAgendaHoy(barberoId?: string | null): Promise<AgendaIte
   let q = sb
     .from("reservas")
     .select(
-      "id,inicio,estado,canal,llegada,sede_id,servicio_id,barbero_id,cliente_ref,servicios(nombre),barberos(nombre),clientes(nombre,telefono)",
+      "id,inicio,estado,canal,llegada,sede_id,servicio_id,barbero_id,cliente_ref,nota,servicios(nombre),barberos(nombre),clientes(nombre,telefono)",
     )
     .gte("inicio", start.toISOString())
     .lt("inicio", end.toISOString());
@@ -125,6 +126,7 @@ export async function getAgendaHoy(barberoId?: string | null): Promise<AgendaIte
     clienteRef: (r.cliente_ref as string) ?? null,
     cliente: (r.clientes as { nombre?: string } | null)?.nombre ?? "",
     telefono: (r.clientes as { telefono?: string } | null)?.telefono ?? "",
+    nota: r.nota as string | null,
   }));
 }
 
@@ -603,7 +605,7 @@ export async function getStaffContext(): Promise<StaffContext> {
 
 // ---------- Portal del cliente ----------
 export type CuentaData = {
-  proximas: { id: string; inicio: string; estado: string; servicio: string; barbero: string; sede: string }[];
+  proximas: { id: string; inicio: string; estado: string; servicio: string; barbero: string; sede: string; nota: string | null }[];
   pasadas: { id: string; inicio: string; estado: string; servicio: string; barbero: string }[];
   puntosBalance: number;
   puntos: { tipo: string; puntos: number; nota: string; fecha: string }[];
@@ -615,7 +617,7 @@ export async function getCuenta(): Promise<CuentaData> {
   const sb = await supabaseServerAuth();
   const now = Date.now();
   const [resR, puntosR, colaR] = await Promise.all([
-    sb.from("reservas").select("id,inicio,estado,sede_id,servicios(nombre),barberos(nombre)").order("inicio", { ascending: false }).limit(40),
+    sb.from("reservas").select("id,inicio,estado,sede_id,nota,servicios(nombre),barberos(nombre)").order("inicio", { ascending: false }).limit(40),
     sb.from("puntos_mov").select("tipo,puntos,nota,creado_en").order("creado_en", { ascending: false }).limit(40),
     sb.from("lista_espera").select("id,estado,creado_en,servicios(nombre),barberos(nombre)").in("estado", ["esperando", "notificado"]),
   ]);
@@ -624,6 +626,7 @@ export async function getCuenta(): Promise<CuentaData> {
     inicio: r.inicio as string,
     estado: r.estado as string,
     sede: r.sede_id as string,
+    nota: r.nota as string | null,
     servicio: (r.servicios as { nombre?: string } | null)?.nombre ?? "—",
     barbero: (r.barberos as { nombre?: string } | null)?.nombre ?? "—",
   }));

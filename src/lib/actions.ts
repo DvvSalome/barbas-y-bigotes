@@ -756,3 +756,132 @@ export async function actualizarListaEspera(id: string, estado: string): Promise
   revalidatePath("/barbero");
   return { ok: true };
 }
+
+export async function proponerAdelanto(input: {
+  reservaId: string;
+  inicioISO: string;
+}): Promise<ActionResult> {
+  const sb = await supabaseServerAuth();
+  const denied = await requireStaff(sb);
+  if (denied) return { ok: false, error: denied };
+
+  const admin = supabaseAdmin();
+  const { data: res, error: getErr } = await admin
+    .from("reservas")
+    .select("id, nota, cliente_id, servicio_id")
+    .eq("id", input.reservaId)
+    .maybeSingle();
+
+  if (getErr || !res) return { ok: false, error: "Reserva no encontrada." };
+
+  // Fetch service duration
+  let dur = 30;
+  if (res.servicio_id) {
+    const { data: serv } = await admin
+      .from("servicios")
+      .select("duracion_min")
+      .eq("id", res.servicio_id)
+      .maybeSingle();
+    dur = (serv as { duracion_min?: number } | null)?.duracion_min ?? 30;
+  }
+  const fin = new Date(new Date(input.inicioISO).getTime() + dur * 60000);
+
+  let notaObj: any = {};
+  try {
+    notaObj = JSON.parse(res.nota || "{}");
+  } catch {
+    notaObj = { text: res.nota || "" };
+  }
+
+  notaObj.propuesta_adelanto = {
+    inicio: input.inicioISO,
+    fin: fin.toISOString(),
+    estado: "pendiente",
+    creado_en: new Date().toISOString(),
+  };
+
+  const { error: updErr } = await admin
+    .from("reservas")
+    .update({
+      nota: JSON.stringify(notaObj),
+    })
+    .eq("id", input.reservaId);
+
+  if (updErr) return { ok: false, error: updErr.message };
+
+  // Simulate sending email to the client
+  try {
+    if (res.cliente_id) {
+      const { data: profile } = await admin.from("profiles").select("email, nombre").eq("id", res.cliente_id).maybeSingle();
+      if (profile?.email) {
+        console.log(`✉️ [NOTIFICACIÓN DE EMAIL] Enviando propuesta de adelanto a ${profile.nombre} (${profile.email}): Nuevo horario propuesto: ${new Date(input.inicioISO).toLocaleTimeString("es-CO")} - ${fin.toLocaleTimeString("es-CO")}`);
+      }
+    }
+  } catch (emailErr) {
+    console.error("⚠️ Error simulando envío de email:", emailErr);
+  }
+
+  revalidatePath("/barbero");
+  revalidatePath("/cuenta");
+  return { ok: true };
+}
+
+export type BarberLiveStatus = {
+  id: string;
+  nombre: string;
+  sede: string;
+  sedeId: string;
+  fotoUrl: string | null;
+  status: "disponible" | "ocupado" | "no_activo";
+  servicioActual?: string;
+  terminaA?: string;
+};
+
+export async function getLiveBarberStatuses(): Promise<BarberLiveStatus[]> {
+  const admin = supabaseAdmin();
+  
+  // Fetch active barbers with names, sedes, and photos
+  const { data: bData } = await admin
+    .from("barberos")
+    .select("id, nombre, sede_id, foto_url")
+    .eq("activo", true);
+    
+  if (!bData) return [];
+  
+  const now = new Date();
+  const start = new Date(now);
+  start.setHours(0, 0, 0, 0);
+  const end = new Date(start);
+  end.setDate(end.getDate() + 1);
+  
+  // Fetch reservations for today
+  const { data: rData } = await admin
+    .from("reservas")
+    .select("id, inicio, fin, estado, barbero_id, servicios(nombre)")
+    .not("estado", "in", "(cancelada,no_show)")
+    .gte("inicio", start.toISOString())
+    .lt("inicio", end.toISOString());
+    
+  const result: BarberLiveStatus[] = bData.map((b) => {
+    const activeRes = rData?.find((r) => {
+      if (r.barbero_id !== b.id) return false;
+      const rStart = new Date(r.inicio).getTime();
+      const rFin = new Date(r.fin).getTime();
+      const curTime = now.getTime();
+      return curTime >= rStart && curTime <= rFin && ["confirmada", "en_curso"].includes(r.estado);
+    });
+    
+    return {
+      id: b.id,
+      nombre: b.nombre,
+      sede: b.sede_id === "parque-venezuela" ? "Parque Venezuela" : "Plaza de la Paz",
+      sedeId: b.sede_id,
+      fotoUrl: b.foto_url,
+      status: activeRes ? "ocupado" : "disponible",
+      servicioActual: activeRes ? (activeRes.servicios as any)?.nombre : undefined,
+      terminaA: activeRes ? new Date(activeRes.fin).toLocaleTimeString("es-CO", { hour: "numeric", minute: "2-digit" }) : undefined,
+    };
+  });
+  
+  return result;
+}

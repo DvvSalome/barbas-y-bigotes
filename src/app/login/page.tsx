@@ -18,13 +18,30 @@ export default function LoginPage() {
     setLoading(true);
     setErr("");
     const supabase = supabaseBrowser();
-    const { error } = await supabase.auth.signInWithPassword({ email, password: pass });
-    if (error) {
+    const { data: authData, error } = await supabase.auth.signInWithPassword({ email, password: pass });
+    if (error || !authData.user) {
       setLoading(false);
       setErr("Correo o contraseña incorrectos.");
       return;
     }
-    router.push("/admin");
+    
+    // Obtener rol del usuario
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("rol")
+      .eq("auth_id", authData.user.id)
+      .maybeSingle();
+      
+    const rol = (profile as any)?.rol;
+    
+    if (rol === "admin") {
+      router.push("/admin");
+    } else if (rol === "barbero") {
+      router.push("/barbero");
+    } else {
+      router.push("/cuenta");
+    }
+    
     router.refresh();
   }
 
