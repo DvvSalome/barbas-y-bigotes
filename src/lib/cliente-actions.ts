@@ -196,3 +196,69 @@ export async function cancelarReservaCliente(
   revalidatePath("/cuenta");
   return { ok: true };
 }
+
+// Reagendar la propia cita. Misma ventana de 2h que cancelar. Pre-chequea solape
+// EXCLUYENDO la propia reserva; el constraint reservas_no_overlap es la red real.
+export async function reagendarReservaCliente(
+  reservaId: string,
+  inicioISO: string,
+): Promise<{ ok: boolean; error?: string }> {
+  const ctx = await ensureCliente();
+  if (ctx.estado !== "cliente" || !ctx.clienteId) return { ok: false, error: "No autorizado" };
+
+  const admin = supabaseAdmin();
+  const { data: res } = await admin
+    .from("reservas")
+    .select("id, cliente_ref, estado, inicio, barbero_id, servicio_id")
+    .eq("id", reservaId)
+    .maybeSingle();
+  if (!res) return { ok: false, error: "Reserva no encontrada" };
+  const r = res as {
+    cliente_ref: string | null; estado: string; inicio: string;
+    barbero_id: string | null; servicio_id: string | null;
+  };
+
+  if (r.cliente_ref !== ctx.clienteId) return { ok: false, error: "Reserva no encontrada" };
+  if (!["pendiente", "confirmada"].includes(r.estado))
+    return { ok: false, error: "Esta cita ya no se puede reagendar." };
+
+  const limite = Date.now() + CANCELACION_MIN_HORAS * 3600_000;
+  if (new Date(r.inicio).getTime() <= limite)
+    return { ok: false, error: `Las citas solo se reagendan hasta ${CANCELACION_MIN_HORAS} horas antes. Escribinos por WhatsApp.` };
+
+  const nuevoInicio = new Date(inicioISO);
+  if (nuevoInicio.getTime() <= Date.now()) return { ok: false, error: "Elegí un horario futuro." };
+
+  let dur = 30;
+  if (r.servicio_id) {
+    const { data: serv } = await admin.from("servicios").select("duracion_min").eq("id", r.servicio_id).maybeSingle();
+    dur = (serv as { duracion_min?: number } | null)?.duracion_min ?? 30;
+  }
+  const nuevoFin = new Date(nuevoInicio.getTime() + dur * 60000);
+
+  // Pre-chequeo de solape del barbero, excluyendo la propia reserva.
+  if (r.barbero_id) {
+    const { data: clash } = await admin
+      .from("reservas")
+      .select("id")
+      .eq("barbero_id", r.barbero_id)
+      .not("estado", "in", "(cancelada,no_show)")
+      .not("id", "eq", reservaId)
+      .lt("inicio", nuevoFin.toISOString())
+      .gt("fin", nuevoInicio.toISOString())
+      .limit(1);
+    if (clash && clash.length) return { ok: false, error: "Ese horario ya fue tomado. Elegí otro, por favor." };
+  }
+
+  const { error } = await admin
+    .from("reservas")
+    .update({ inicio: nuevoInicio.toISOString(), fin: nuevoFin.toISOString() })
+    .eq("id", reservaId);
+  if (error) {
+    if (error.code === "23P01") return { ok: false, error: "Ese horario ya fue tomado. Elegí otro, por favor." };
+    return { ok: false, error: error.message };
+  }
+  revalidatePath("/cuenta");
+  revalidatePath("/barbero");
+  return { ok: true };
+}
