@@ -12,6 +12,7 @@ import { cop } from "@/lib/format";
 import { BarberCard } from "@/components/BarberCard";
 import { PhotoLightbox } from "@/components/ui/PhotoLightbox";
 import { AnimatePresence, motion } from "motion/react";
+import { STEP, DOW, MON, fmtTime, fmtDur, buildSlots, computeTaken, nextDays } from "@/lib/slots";
 
 const sedeFotoFrente: Record<string, string> = {
   "parque-venezuela": "/sedes/parque-venezuela-frente.jpg",
@@ -34,30 +35,7 @@ const categoriaFotos: Record<Categoria, string> = {
 };
 
 
-const OPEN = 9 * 60; // 09:00
-const CLOSE = 20 * 60; // 20:00
-const STEP = 30; // minutos entre inicios de slot
-
-const DOW = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
-const MON = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
-
 type Step = "sede" | "barbero" | "servicio" | "horario" | "datos" | "ok";
-
-function fmtTime(min: number) {
-  const h = Math.floor(min / 60);
-  const m = min % 60;
-  const ap = h < 12 ? "am" : "pm";
-  const hh = ((h + 11) % 12) + 1;
-  return `${hh}:${m.toString().padStart(2, "0")} ${ap}`;
-}
-
-function fmtDur(min: number) {
-  const h = Math.floor(min / 60);
-  const m = min % 60;
-  if (h && m) return `${h}h ${m}m`;
-  if (h) return `${h}h`;
-  return `${m}m`;
-}
 
 // Foto por servicio (rota las fotos reales de cortes del cliente, estable por id).
 // Provisional hasta tener foto propia por servicio (ver WeiBook cuando reactiven).
@@ -65,17 +43,6 @@ function fotoServicio(id: string): string {
   let h = 0;
   for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
   return `/cortes/corte-${(h % 7) + 1}.jpg`;
-}
-
-function nextDays(n: number) {
-  const out: Date[] = [];
-  const base = new Date();
-  for (let i = 0; i < n; i++) {
-    const d = new Date(base);
-    d.setDate(base.getDate() + i);
-    out.push(d);
-  }
-  return out;
 }
 
 const STEPS: { id: Step; label: string }[] = [
@@ -188,12 +155,7 @@ export function BookingWizard({
     [barberos, sedeId],
   );
   const days = useMemo(() => nextDays(7), []);
-  const slots = useMemo(() => {
-    if (!servicio) return [] as number[];
-    const out: number[] = [];
-    for (let t = OPEN; t + servicio.duracionMin <= CLOSE; t += STEP) out.push(t);
-    return out;
-  }, [servicio]);
+  const slots = useMemo(() => (servicio ? buildSlots(servicio.duracionMin) : ([] as number[])), [servicio]);
 
   // Cargar estados en vivo de los barberos
   useEffect(() => {
@@ -271,25 +233,8 @@ export function BookingWizard({
   }, [day, barbero]);
 
   const taken = useMemo(() => {
-    const s = new Set<number>();
-    if (!day) return s;
-    const dur = servicio?.duracionMin ?? STEP;
-    for (const o of ocupados) {
-      const oi = new Date(o.inicio);
-      const of = new Date(o.fin);
-      const startMin = oi.getHours() * 60 + oi.getMinutes();
-      const endMin = of.getHours() * 60 + of.getMinutes();
-      for (const t of slots) {
-        if (t < endMin && t + dur > startMin) s.add(t);
-      }
-    }
-    // Bloquea horarios ya pasados cuando el día elegido es hoy.
-    const now = new Date();
-    if (day.toDateString() === now.toDateString()) {
-      const nowMin = now.getHours() * 60 + now.getMinutes();
-      for (const t of slots) if (t <= nowMin) s.add(t);
-    }
-    return s;
+    if (!day) return new Set<number>();
+    return computeTaken({ slots, ocupados, day, duracionMin: servicio?.duracionMin ?? STEP });
   }, [day, ocupados, slots, servicio]);
 
   const currentActiveBooking = useMemo(() => {

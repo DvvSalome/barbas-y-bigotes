@@ -5,6 +5,7 @@ import { SiteFooter } from "@/components/SiteFooter";
 import { ClienteLoginButton, ClienteLogout } from "@/components/cuenta/ClienteAuth";
 import { AdelantoBanner } from "@/components/cuenta/AdelantoBanner";
 import { PushManager } from "@/components/cuenta/PushManager";
+import { CitaAcciones } from "@/components/cuenta/CitaAcciones";
 import { ensureCliente } from "@/lib/cliente-actions";
 import { getCuenta } from "@/lib/data/queries";
 
@@ -145,14 +146,22 @@ async function Portal() {
               }
               return (
                 <div key={r.id} className="space-y-2">
-                  <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line bg-panel p-4">
-                    <div>
-                      <div className="font-semibold">{r.servicio}</div>
-                      <div className="text-sm text-muted">{fechaLarga(r.inicio)} · {r.barbero}</div>
+                  <div className="rounded-xl border border-line bg-panel p-4">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <div className="font-semibold">{r.servicio}</div>
+                        <div className="text-sm text-muted">{fechaLarga(r.inicio)} · {r.barbero}</div>
+                      </div>
+                      <span className="rounded-full bg-accent/15 px-3 py-1 text-[10px] uppercase tracking-wide text-accent-soft">
+                        {ESTADO[r.estado] ?? r.estado}
+                      </span>
                     </div>
-                    <span className="rounded-full bg-accent/15 px-3 py-1 text-[10px] uppercase tracking-wide text-accent-soft">
-                      {ESTADO[r.estado] ?? r.estado}
-                    </span>
+                    <CitaAcciones
+                      reservaId={r.id}
+                      barberoId={r.barberoId}
+                      duracionMin={r.duracionMin}
+                      inicio={r.inicio}
+                    />
                   </div>
                   {prop && (
                     <AdelantoBanner
