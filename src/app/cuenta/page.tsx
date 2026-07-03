@@ -159,7 +159,6 @@ async function Portal() {
                     <CitaAcciones
                       reservaId={r.id}
                       barberoId={r.barberoId}
-                      servicioId={r.servicioId}
                       duracionMin={r.duracionMin}
                       inicio={r.inicio}
                     />

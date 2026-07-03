@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getDisponibilidad } from "@/lib/actions";
 import { cancelarReservaCliente, reagendarReservaCliente } from "@/lib/cliente-actions";
@@ -11,13 +11,11 @@ const WA_NUM = "573006734799";
 export function CitaAcciones({
   reservaId,
   barberoId,
-  servicioId,
   duracionMin,
   inicio,
 }: {
   reservaId: string;
   barberoId: string | null;
-  servicioId: string | null;
   duracionMin: number;
   inicio: string;
 }) {
@@ -136,6 +134,7 @@ function ReagendarModal({
   const [cargando, setCargando] = useState(false);
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const reqId = useRef(0);
 
   const slots = buildSlots(duracionMin);
   const taken = day ? computeTaken({ slots, ocupados, day, duracionMin }) : new Set<number>();
@@ -145,8 +144,10 @@ function ReagendarModal({
     setSlot(null);
     setErr(null);
     if (!barberoId) return;
+    const myReq = ++reqId.current;
     setCargando(true);
     const r = await getDisponibilidad({ barberoId, fechaISO: d.toISOString() });
+    if (myReq !== reqId.current) return; // llegó una selección de día más reciente; descartar
     setOcupados(r);
     setCargando(false);
   }

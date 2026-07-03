@@ -191,9 +191,16 @@ export async function cancelarReservaCliente(
       error: `Las citas solo se cancelan hasta ${CANCELACION_MIN_HORAS} horas antes. Escribinos por WhatsApp para cancelar sobre la hora.`,
     };
 
-  const { error } = await admin.from("reservas").update({ estado: "cancelada" }).eq("id", reservaId);
+  const { data: upd, error } = await admin
+    .from("reservas")
+    .update({ estado: "cancelada" })
+    .eq("id", reservaId)
+    .in("estado", ["pendiente", "confirmada"])
+    .select("id");
   if (error) return { ok: false, error: error.message };
+  if (!upd || upd.length === 0) return { ok: false, error: "Esta cita ya no se puede cancelar." };
   revalidatePath("/cuenta");
+  revalidatePath("/barbero");
   return { ok: true };
 }
 
@@ -227,6 +234,7 @@ export async function reagendarReservaCliente(
     return { ok: false, error: `Las citas solo se reagendan hasta ${CANCELACION_MIN_HORAS} horas antes. Escribinos por WhatsApp.` };
 
   const nuevoInicio = new Date(inicioISO);
+  if (isNaN(nuevoInicio.getTime())) return { ok: false, error: "Horario inválido." };
   if (nuevoInicio.getTime() <= Date.now()) return { ok: false, error: "Elegí un horario futuro." };
 
   let dur = 30;
@@ -250,14 +258,17 @@ export async function reagendarReservaCliente(
     if (clash && clash.length) return { ok: false, error: "Ese horario ya fue tomado. Elegí otro, por favor." };
   }
 
-  const { error } = await admin
+  const { data: upd, error } = await admin
     .from("reservas")
     .update({ inicio: nuevoInicio.toISOString(), fin: nuevoFin.toISOString() })
-    .eq("id", reservaId);
+    .eq("id", reservaId)
+    .in("estado", ["pendiente", "confirmada"])
+    .select("id");
   if (error) {
     if (error.code === "23P01") return { ok: false, error: "Ese horario ya fue tomado. Elegí otro, por favor." };
     return { ok: false, error: error.message };
   }
+  if (!upd || upd.length === 0) return { ok: false, error: "Esta cita ya no se puede reagendar." };
   revalidatePath("/cuenta");
   revalidatePath("/barbero");
   return { ok: true };
