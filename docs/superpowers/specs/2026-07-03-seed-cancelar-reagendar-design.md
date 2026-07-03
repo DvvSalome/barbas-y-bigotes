@@ -66,7 +66,7 @@ cancelarReservaCliente(reservaId: string): Promise<{ ok: boolean; error?: string
 1. `ensureCliente()` → si no es `cliente` o sin `clienteId`, `{ ok:false, error:"No autorizado" }`.
 2. Leer la reserva con admin: `select id, cliente_ref, estado, inicio`.
 3. **Propiedad:** `cliente_ref === ctx.clienteId`; si no, error genérico "Reserva no encontrada".
-4. **Guard de estado:** solo cancelable si `estado in ('pendiente','confirmada')` y `inicio > now`. Si ya está `en_curso/completada/cancelada/no_show` → error claro.
+4. **Guard de estado:** solo cancelable si `estado in ('pendiente','confirmada')` y **`inicio > now + CANCELACION_MIN_HORAS`** (ver constante abajo). Si ya está `en_curso/completada/cancelada/no_show` → error claro. Si está dentro de la ventana de 2h → `{ ok:false, error:"Las citas solo se cancelan hasta 2 horas antes. Escribinos por WhatsApp para cancelar sobre la hora." }`.
 5. `update reservas set estado='cancelada' where id=…`.
 6. El trigger `trg_notificar_cola` hace el resto (promueve la cola + n8n email). No hacemos nada más.
 7. `revalidatePath('/cuenta')`.
@@ -76,14 +76,21 @@ cancelarReservaCliente(reservaId: string): Promise<{ ok: boolean; error?: string
 reagendarReservaCliente(reservaId: string, inicioISO: string): Promise<{ ok: boolean; error?: string }>
 ```
 1. Autorización + propiedad igual que cancelar.
-2. Guard: `estado in ('pendiente','confirmada')` y (nuevo) `inicio > now`.
+2. Guard: `estado in ('pendiente','confirmada')`, el **inicio actual** de la cita debe estar fuera de la ventana (`inicio_actual > now + CANCELACION_MIN_HORAS` — no se reagenda sobre la hora, igual que cancelar) y el **nuevo** `inicioISO > now`.
 3. Leer `servicio_id`; obtener `duracion_min` (default 30) → `fin = inicio + dur`.
 4. **Pre-chequeo de solape** contra otras reservas activas del mismo barbero, **excluyendo la propia** (`.not('id','eq',reservaId)`), rango `inicio < fin_nuevo && fin > inicio_nuevo`. Si choca → "Ese horario ya fue tomado, elegí otro".
 5. `update reservas set inicio=…, fin=… where id=…`. El constraint EXCLUDE es la red real ante carreras (código `23P01` → mismo mensaje).
 6. `revalidatePath('/cuenta')`.
 
+### Regla de negocio: ventana de cancelación
+- Constante única **`CANCELACION_MIN_HORAS = 2`** en `src/lib/cliente-actions.ts` (fuente autoritativa server-side). El guard real vive en las server actions; la UI solo refleja el estado para no dead-endear al usuario.
+- Aplica **igual a cancelar y a reagendar**. Dentro de la ventana, ambas acciones se bloquean con el mismo criterio.
+- Racional: un no-show es peor que un cancel tardío (silla vacía sin reemplazo). Por eso, dentro de la ventana no se prohíbe a secas: se ofrece **salida por WhatsApp** para que el cliente avise igual y el staff pueda liberar/rellenar el cupo manualmente.
+- Tuneable a 1h/24h cambiando una sola constante si el dueño lo pide.
+
 ### UI (`/cuenta`, sección "Próximas citas")
 - Cada cita `proxima` gana dos botones: **Cancelar** y **Reagendar**. Componente cliente nuevo (p.ej. `src/components/cuenta/CitaAcciones.tsx`) porque `cuenta/page.tsx` es server component.
+- **Dentro de la ventana de 2h** (calculado en el cliente con el `inicio` de la cita): los botones Cancelar/Reagendar se muestran deshabilitados con la nota "Faltan menos de 2h" y aparece un enlace **"Avisar por WhatsApp"** (reusa el número de `WhatsAppFloatingButton`) con mensaje pre-armado (nombre + hora de la cita). El guard server-side es la barrera real; esto es solo UX.
 - **Cancelar:** confirmación **inline** (no `alert()` nativo): el botón se transforma en "¿Seguro? Sí / No". Al confirmar, llama la action, muestra estado de carga y `router.refresh()`.
 - **Reagendar:** abre un **modal compacto** que reusa `getDisponibilidad(barberoId, día)` — el mismo strip de 7 días + grid de horarios del wizard, con barbero/servicio/sede fijos de la cita. Bloquea slots ocupados y pasados igual que `BookingWizard` (misma lógica `taken`). Al elegir y confirmar, llama `reagendarReservaCliente`.
 - Si la cita no tiene `barbero_id` (reserva “cualquiera”), reagendar se deshabilita con nota (fuera de alcance de este spec).
@@ -119,7 +126,7 @@ reagendarReservaCliente(reservaId: string, inicioISO: string): Promise<{ ok: boo
 - Cancelar/reagendar del lado staff, o mover citas por el barbero.
 - Reagendar citas sin barbero asignado.
 - Tests Playwright (Fase 5).
-- Ventana mínima de cancelación (p.ej. "no cancelar faltando <2h"): por ahora se permite cancelar/reagendar en cualquier momento antes del inicio, para maximizar cupos liberados. Si el cliente lo pide luego, es un guard de una línea.
+- Ventana de cancelación configurable por sede o por servicio: por ahora es una constante global (`CANCELACION_MIN_HORAS = 2`), no un ajuste por-sede. Se sube a config solo si lo piden.
 
 ## Riesgos / notas
 - El seed corre en el proyecto de producción: el borrado **debe** estar filtrado por `origen='demo'` sí o sí. Revisar ese filtro con lupa antes de ejecutarlo.
