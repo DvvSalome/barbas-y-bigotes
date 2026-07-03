@@ -2,6 +2,8 @@
 
 import { type SupabaseClient } from "@supabase/supabase-js";
 import { supabaseServerAuth, supabaseAdmin } from "@/lib/supabase/server";
+import { revalidatePath } from "next/cache";
+import { CANCELACION_MIN_HORAS } from "@/lib/slots";
 
 export type CuentaContext = { estado: "anon" | "staff" | "cliente"; clienteId?: string };
 
@@ -134,7 +136,7 @@ export async function savePushSubscription(
   }
 
   const admin = supabaseAdmin();
-  
+
   // Check if subscription already exists based on endpoint
   const { data: existing } = await admin
     .from("push_subscriptions")
@@ -158,5 +160,39 @@ export async function savePushSubscription(
     return { ok: false, error: "Error al guardar suscripción" };
   }
 
+  return { ok: true };
+}
+
+// Cancelar la propia cita (portal cliente). Verifica propiedad y ventana de 2h.
+// El trigger trg_notificar_cola promueve al siguiente de la lista de espera al cancelar.
+export async function cancelarReservaCliente(
+  reservaId: string,
+): Promise<{ ok: boolean; error?: string }> {
+  const ctx = await ensureCliente();
+  if (ctx.estado !== "cliente" || !ctx.clienteId) return { ok: false, error: "No autorizado" };
+
+  const admin = supabaseAdmin();
+  const { data: res } = await admin
+    .from("reservas")
+    .select("id, cliente_ref, estado, inicio")
+    .eq("id", reservaId)
+    .maybeSingle();
+  if (!res) return { ok: false, error: "Reserva no encontrada" };
+  const r = res as { cliente_ref: string | null; estado: string; inicio: string };
+
+  if (r.cliente_ref !== ctx.clienteId) return { ok: false, error: "Reserva no encontrada" };
+  if (!["pendiente", "confirmada"].includes(r.estado))
+    return { ok: false, error: "Esta cita ya no se puede cancelar." };
+
+  const limite = Date.now() + CANCELACION_MIN_HORAS * 3600_000;
+  if (new Date(r.inicio).getTime() <= limite)
+    return {
+      ok: false,
+      error: `Las citas solo se cancelan hasta ${CANCELACION_MIN_HORAS} horas antes. Escribinos por WhatsApp para cancelar sobre la hora.`,
+    };
+
+  const { error } = await admin.from("reservas").update({ estado: "cancelada" }).eq("id", reservaId);
+  if (error) return { ok: false, error: error.message };
+  revalidatePath("/cuenta");
   return { ok: true };
 }
