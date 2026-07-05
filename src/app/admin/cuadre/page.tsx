@@ -11,6 +11,7 @@ import {
 } from "@/lib/data/queries";
 import { CuadreForms } from "@/components/admin/CuadreForms";
 import { CajaSesiones } from "@/components/admin/CajaSesiones";
+import { MediosPago } from "@/components/admin/MediosPago";
 import { cop } from "@/lib/format";
 import type { TotalesPorMedio } from "@/lib/cobro";
 import { SectionHeader } from "@/components/admin/SectionHeader";
@@ -164,6 +165,10 @@ export default async function CuadrePage() {
 
       <div className="mt-8">
         <CuadreForms sedes={sedes} barberos={barberos} />
+      </div>
+
+      <div className="mt-8">
+        <MediosPago medios={medios} />
       </div>
 
       {cuadre.gastosHoy.length > 0 && (

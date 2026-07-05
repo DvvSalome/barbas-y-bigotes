@@ -777,6 +777,55 @@ export async function cerrarCaja(input: {
   return { ok: true };
 }
 
+// ---------- Medios de pago (admin) ----------
+// slug = nombre en minúsculas, sin tildes, espacios → guiones (ej. "Nequi QR" → "nequi-qr").
+function slugDeMedio(nombre: string): string {
+  return nombre
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/[^a-z0-9-]/g, "");
+}
+
+export async function crearMedioPago(nombre: string): Promise<ActionResult> {
+  const sb = await supabaseServerAuth();
+  const denied = await requireAdmin(sb);
+  if (denied) return { ok: false, error: denied };
+  const nom = (nombre ?? "").trim();
+  const slug = slugDeMedio(nom);
+  if (!nom || !slug) return { ok: false, error: "Escribí el nombre del medio de pago" };
+  // Va al final de la lista: orden = max + 1.
+  const { data: last } = await sb
+    .from("medios_pago")
+    .select("orden")
+    .order("orden", { ascending: false })
+    .limit(1);
+  const orden = ((last?.[0] as { orden?: number } | undefined)?.orden ?? 0) + 1;
+  const { error } = await sb.from("medios_pago").insert({ slug, nombre: nom, activo: true, orden });
+  if (error) {
+    if (error.code === "23505") return { ok: false, error: "Ya existe un medio de pago con ese nombre." };
+    return { ok: false, error: errorPublico("crearMedioPago", error) };
+  }
+  revalidatePath("/admin/cuadre");
+  revalidatePath("/barbero");
+  return { ok: true };
+}
+
+// Sin delete: el histórico de ventas referencia el slug por FK; solo se desactiva.
+export async function toggleMedioPago(slug: string, activo: boolean): Promise<ActionResult> {
+  const sb = await supabaseServerAuth();
+  const denied = await requireAdmin(sb);
+  if (denied) return { ok: false, error: denied };
+  const { data, error } = await sb.from("medios_pago").update({ activo }).eq("slug", slug).select("slug");
+  if (error) return { ok: false, error: errorPublico("toggleMedioPago", error) };
+  if (!data || data.length === 0) return { ok: false, error: "Medio de pago no encontrado" };
+  revalidatePath("/admin/cuadre");
+  revalidatePath("/barbero");
+  return { ok: true };
+}
+
 // Lista de espera (motor de la "notificación alternativa").
 export async function agregarListaEspera(input: {
   sede: string;
