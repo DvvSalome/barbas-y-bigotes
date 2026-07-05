@@ -53,18 +53,20 @@ export async function responderPropuestaAdelanto(
   reservaId: string,
   respuesta: "aceptar" | "rechazar",
 ): Promise<{ ok: boolean; error?: string }> {
-  const sb = await supabaseServerAuth();
-  const { data: { user } } = await sb.auth.getUser();
-  if (!user) return { ok: false, error: "No autorizado" };
+  // Ownership primero: esta action usa supabaseAdmin (bypassa RLS), así que sin
+  // este check cualquier autenticado con un reservaId ajeno aceptaba/rechazaba.
+  const ctx = await ensureCliente();
+  if (ctx.estado !== "cliente" || !ctx.clienteId) return { ok: false, error: "No autorizado" };
 
   const admin = supabaseAdmin();
   const { data: res, error: getErr } = await admin
     .from("reservas")
-    .select("id, cliente_id, nota, sede_id, barbero_id")
+    .select("id, cliente_ref, nota, sede_id, barbero_id")
     .eq("id", reservaId)
     .maybeSingle();
 
   if (getErr || !res) return { ok: false, error: "Reserva no encontrada" };
+  if (res.cliente_ref !== ctx.clienteId) return { ok: false, error: "No autorizado" };
 
   let notaObj: any = {};
   try {

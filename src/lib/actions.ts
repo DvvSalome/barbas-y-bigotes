@@ -767,9 +767,10 @@ export async function proponerAdelanto(input: {
   if (denied) return { ok: false, error: denied };
 
   const admin = supabaseAdmin();
+  // cliente_ref apunta a `clientes` (cliente_id era la columna legacy de profiles, siempre null).
   const { data: res, error: getErr } = await admin
     .from("reservas")
-    .select("id, nota, cliente_id, servicio_id")
+    .select("id, nota, cliente_ref, servicio_id")
     .eq("id", input.reservaId)
     .maybeSingle();
 
@@ -810,17 +811,7 @@ export async function proponerAdelanto(input: {
 
   if (updErr) return { ok: false, error: updErr.message };
 
-  // Simulate sending email to the client
-  try {
-    if (res.cliente_id) {
-      const { data: profile } = await admin.from("profiles").select("email, nombre").eq("id", res.cliente_id).maybeSingle();
-      if (profile?.email) {
-        console.log(`✉️ [NOTIFICACIÓN DE EMAIL] Enviando propuesta de adelanto a ${profile.nombre} (${profile.email}): Nuevo horario propuesto: ${new Date(input.inicioISO).toLocaleTimeString("es-CO")} - ${fin.toLocaleTimeString("es-CO")}`);
-      }
-    }
-  } catch (emailErr) {
-    console.error("⚠️ Error simulando envío de email:", emailErr);
-  }
+  // aviso real al cliente: Bloque 3 (push+email)
 
   revalidatePath("/barbero");
   revalidatePath("/cuenta");
