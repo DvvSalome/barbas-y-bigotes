@@ -81,6 +81,20 @@ export async function getProductos(): Promise<Producto[]> {
 }
 
 
+export type MedioPago = { slug: string; nombre: string; activo: boolean; orden: number };
+
+// Medios de pago activos (botones del cobro). Lectura pública como los catálogos;
+// la validación autoritativa del medio la hace completarReserva server-side.
+export async function getMedios(): Promise<MedioPago[]> {
+  const sb = supabaseServer();
+  const { data } = await sb
+    .from("medios_pago")
+    .select("slug,nombre,activo,orden")
+    .eq("activo", true)
+    .order("orden");
+  return (data ?? []) as MedioPago[];
+}
+
 export type AgendaItem = {
   id: string;
   inicio: string;

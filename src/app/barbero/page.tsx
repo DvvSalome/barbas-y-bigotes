@@ -7,6 +7,7 @@ import {
   getAgendaHoy,
   getListaEspera,
   getStaffContext,
+  getMedios,
 } from "@/lib/data/queries";
 import { AgendaList } from "@/components/barbero/AgendaList";
 import { EsperaPanel } from "@/components/barbero/EsperaPanel";
@@ -17,11 +18,12 @@ export const metadata: Metadata = { title: "App del barbero · Barbas & Bigotes"
 export default async function BarberoPage() {
   const staff = await getStaffContext();
   const filtro = staff.rol === "barbero" ? staff.barberoId : null;
-  const [sedes, barberos, servicios, productos, agenda, espera] = await Promise.all([
+  const [sedes, barberos, servicios, productos, medios, agenda, espera] = await Promise.all([
     getSedes(),
     getBarberos(),
     getServicios(),
     getProductos(),
+    getMedios(),
     getAgendaHoy(filtro),
     getListaEspera(filtro),
   ]);
@@ -46,6 +48,7 @@ export default async function BarberoPage() {
           barberos={barberos}
           servicios={servicios}
           productos={productos}
+          medios={medios}
         />
       </div>
 

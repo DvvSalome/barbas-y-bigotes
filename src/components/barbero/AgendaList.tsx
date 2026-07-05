@@ -11,8 +11,9 @@ import {
   validarCupon,
   proponerAdelanto,
 } from "@/lib/actions";
-import type { Sede, Barbero, Servicio, Producto } from "@/lib/data/types";
-import type { AgendaItem } from "@/lib/data/queries";
+import { calcularCobro } from "@/lib/cobro";
+import type { Sede, SedeId, Barbero, Servicio, Producto } from "@/lib/data/types";
+import type { AgendaItem, MedioPago } from "@/lib/data/queries";
 
 const fld = "w-full rounded-lg border border-line bg-bg px-3 py-2 text-ink focus:border-accent focus:outline-none";
 
@@ -42,15 +43,18 @@ export function AgendaList({
   barberos,
   servicios,
   productos,
+  medios,
 }: {
   agenda: AgendaItem[];
   sedes: Sede[];
   barberos: Barbero[];
   servicios: Servicio[];
   productos: Producto[];
+  medios: MedioPago[];
 }) {
   const router = useRouter();
   const [walkinOpen, setWalkinOpen] = useState(false);
+  const [ventaOpen, setVentaOpen] = useState(false);
   const [completeFor, setCompleteFor] = useState<string | null>(null);
   const [historyFor, setHistoryFor] = useState<string | null>(null);
   const [history, setHistory] = useState<HistItem[] | null>(null);
@@ -75,15 +79,24 @@ export function AgendaList({
 
   return (
     <div>
-      <div className="mb-8">
-        {!walkinOpen ? (
-          <button
-            onClick={() => setWalkinOpen(true)}
-            className="rounded-full bg-accent px-6 py-2.5 text-sm font-semibold uppercase tracking-wide text-on-accent transition hover:bg-accent-soft"
-          >
-            + Cliente sin reserva (walk-in)
-          </button>
-        ) : (
+      <div className="mb-8 space-y-3">
+        {!walkinOpen && !ventaOpen && (
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => setWalkinOpen(true)}
+              className="rounded-full bg-accent px-6 py-2.5 text-sm font-semibold uppercase tracking-wide text-on-accent transition hover:bg-accent-soft"
+            >
+              + Cliente sin reserva (walk-in)
+            </button>
+            <button
+              onClick={() => setVentaOpen(true)}
+              className="rounded-full border border-accent/50 px-6 py-2.5 text-sm font-semibold uppercase tracking-wide text-accent-soft transition hover:bg-accent/10"
+            >
+              Venta rápida
+            </button>
+          </div>
+        )}
+        {walkinOpen && (
           <WalkinForm
             sedes={sedes}
             barberos={barberos}
@@ -93,6 +106,21 @@ export function AgendaList({
               router.refresh();
             }}
             onCancel={() => setWalkinOpen(false)}
+          />
+        )}
+        {ventaOpen && (
+          <CheckoutForm
+            reserva={null}
+            sedes={sedes}
+            barberos={barberos}
+            servicios={servicios}
+            productos={productos}
+            medios={medios}
+            onDone={() => {
+              setVentaOpen(false);
+              router.refresh();
+            }}
+            onCancel={() => setVentaOpen(false)}
           />
         )}
       </div>
@@ -240,9 +268,13 @@ export function AgendaList({
                 )}
 
                 {completeFor === r.id && !done && (
-                  <CompleteForm
+                  <CheckoutForm
                     reserva={r}
-                    productos={productos.filter((p) => p.sede === r.sede)}
+                    sedes={sedes}
+                    barberos={barberos}
+                    servicios={servicios}
+                    productos={productos}
+                    medios={medios}
                     onDone={() => {
                       setCompleteFor(null);
                       router.refresh();
@@ -335,22 +367,64 @@ function WalkinForm({
   );
 }
 
-function CompleteForm({
+const PROPINA_CHIPS = [2000, 5000, 10000];
+
+// Form de cobro: cierra una reserva (servicio fijo + adicionales + consumos +
+// propina + nota) o registra una venta rápida (reserva null: sin cita).
+function CheckoutForm({
   reserva,
+  sedes,
+  barberos,
+  servicios,
   productos,
+  medios,
   onDone,
+  onCancel,
 }: {
-  reserva: AgendaItem;
+  reserva: AgendaItem | null;
+  sedes: Sede[];
+  barberos: Barbero[];
+  servicios: Servicio[];
   productos: Producto[];
+  medios: MedioPago[];
   onDone: () => void;
+  onCancel?: () => void;
 }) {
+  const rapida = !reserva;
+  const [sede, setSede] = useState(reserva?.sede ?? sedes[0]?.id ?? "");
+  const [barberoId, setBarberoId] = useState(""); // venta rápida: el admin puede cobrar por otro
+  const [nombre, setNombre] = useState(""); // venta rápida: nombre del cliente (opcional)
+  const [extras, setExtras] = useState<string[]>([]);
+  const [extrasOpen, setExtrasOpen] = useState(false);
   const [prodQty, setProdQty] = useState<Record<string, number>>({});
-  const [medio, setMedio] = useState("efectivo");
+  const [propina, setPropina] = useState(0);
+  const [nota, setNota] = useState("");
+  const [medio, setMedio] = useState(medios[0]?.slug ?? "");
   const [saving, setSaving] = useState(false);
   const [cupon, setCupon] = useState("");
-  const [cuponInfo, setCuponInfo] = useState<{ ok: boolean; msg: string } | null>(null);
-  const [resumen, setResumen] = useState<{ total: number; descuento: number; puntos: number } | null>(null);
+  const [cuponInfo, setCuponInfo] = useState<{
+    ok: boolean;
+    msg: string;
+    tipo?: "porcentaje" | "monto";
+    valor?: number;
+  } | null>(null);
+  const [resumen, setResumen] = useState<{ total: number; descuento: number; propina: number; puntos: number } | null>(null);
   const [err, setErr] = useState<string | null>(null);
+
+  const sedeId = sede as SedeId;
+  const serviciosSede = servicios.filter((s) => s.precios[sedeId] != null);
+  const productosSede = productos.filter((p) => p.sede === sedeId);
+  const barberosSede = barberos.filter((b) => b.sede === sedeId);
+  const servicioFijo = reserva?.servicioId ? servicios.find((s) => s.id === reserva.servicioId) ?? null : null;
+  const precioFijo = servicioFijo?.precios[sedeId];
+
+  function cambiarSede(id: string) {
+    // Cambiar de sede cambia precios y catálogo: se resetea lo elegido.
+    setSede(id);
+    setBarberoId("");
+    setExtras([]);
+    setProdQty({});
+  }
 
   function setQty(id: string, q: number) {
     setProdQty((prev) => {
@@ -361,42 +435,84 @@ function CompleteForm({
     });
   }
 
+  function toggleExtra(id: string) {
+    setExtras((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  }
+
   async function chequearCupon() {
     if (!cupon.trim()) return;
     const v = await validarCupon(cupon);
     if (v.ok) {
       const detalle = v.tipo === "porcentaje" ? `${v.valor}% de descuento` : `${cop(v.valor!)} de descuento`;
-      setCuponInfo({ ok: true, msg: `${v.codigo}: ${detalle}` });
+      setCuponInfo({ ok: true, msg: `${v.codigo}: ${detalle}`, tipo: v.tipo, valor: v.valor });
     } else {
       setCuponInfo({ ok: false, msg: v.error ?? "Cupón inválido" });
     }
   }
 
+  // Total en vivo con la MISMA matemática del servidor (calcularCobro).
+  const vivo = calcularCobro({
+    items: [
+      ...(precioFijo != null ? [{ precio: precioFijo, cantidad: 1 }] : []),
+      ...extras.map((id) => ({ precio: serviciosSede.find((s) => s.id === id)?.precios[sedeId] ?? 0, cantidad: 1 })),
+      ...Object.entries(prodQty).map(([id, cantidad]) => ({
+        precio: productosSede.find((p) => p.id === id)?.precio ?? 0,
+        cantidad,
+      })),
+    ],
+    cupon: cuponInfo?.ok && cuponInfo.tipo ? { tipo: cuponInfo.tipo, valor: cuponInfo.valor ?? 0 } : null,
+    propina,
+  });
+  const sinItems = rapida && extras.length === 0 && Object.keys(prodQty).length === 0;
+
   async function submit() {
+    if (sinItems) {
+      setErr("Agregá al menos un servicio o producto.");
+      return;
+    }
+    if (!medio) {
+      setErr("Elegí el medio de pago.");
+      return;
+    }
     setSaving(true);
     setErr(null);
     const res = await completarReserva({
-      reservaId: reserva.id,
-      sede: reserva.sede,
-      barberoId: reserva.barberoId,
-      clienteRef: reserva.clienteRef,
-      servicioId: reserva.servicioId,
+      reservaId: reserva?.id ?? null,
+      sede,
+      barberoId: reserva ? reserva.barberoId : barberoId || null,
+      clienteRef: reserva?.clienteRef ?? null,
+      clienteNombre: rapida ? nombre : undefined,
+      servicioId: reserva?.servicioId ?? null,
+      serviciosExtra: extras,
       medio,
       productos: Object.entries(prodQty).map(([id, cantidad]) => ({ id, cantidad })),
+      propina,
+      nota,
       cuponCodigo: cupon.trim() || undefined,
     });
     setSaving(false);
-    if (res.ok) setResumen({ total: res.total ?? 0, descuento: res.descuento ?? 0, puntos: res.puntos ?? 0 });
+    if (res.ok)
+      setResumen({
+        total: res.total ?? 0,
+        descuento: res.descuento ?? 0,
+        propina: res.propina ?? 0,
+        puntos: res.puntos ?? 0,
+      });
     else setErr(res.error ?? "No se pudo completar");
   }
 
   if (resumen) {
     return (
-      <div className="mt-3 rounded-xl border border-accent/40 bg-accent/5 p-4 text-sm">
+      <div className={`${rapida ? "" : "mt-3 "}rounded-xl border border-accent/40 bg-accent/5 p-4 text-sm`}>
         <div className="font-display text-xl text-accent-soft">¡Cobrado!</div>
         <div className="mt-2 space-y-1">
           {resumen.descuento > 0 && <div className="text-muted">Descuento aplicado: −{cop(resumen.descuento)}</div>}
           <div>Total cobrado: <b className="text-ink">{cop(resumen.total)}</b></div>
+          {resumen.propina > 0 && (
+            <div className="text-muted">
+              + {cop(resumen.propina)} de propina · en la mano: <b className="text-ink">{cop(resumen.total + resumen.propina)}</b>
+            </div>
+          )}
           {resumen.puntos > 0 && <div className="text-emerald-400">+{resumen.puntos} puntos de fidelidad para el cliente</div>}
         </div>
         <button onClick={onDone} className="mt-3 rounded-full bg-accent px-6 py-2 text-xs font-semibold uppercase tracking-wide text-on-accent transition hover:bg-accent-soft">
@@ -407,13 +523,83 @@ function CompleteForm({
   }
 
   return (
-    <div className="mt-3 rounded-xl border border-line bg-bg p-4">
+    <div className={`${rapida ? "" : "mt-3 "}rounded-xl border border-line bg-bg p-4`}>
+      {rapida && (
+        <div className="mb-4 grid gap-3 sm:grid-cols-2">
+          <div className="sm:col-span-2 text-[10px] uppercase tracking-[0.18em] text-muted">Venta rápida (sin cita)</div>
+          <select value={sede} onChange={(e) => cambiarSede(e.target.value)} className={fld}>
+            {sedes.map((s) => (
+              <option key={s.id} value={s.id}>{s.nombre}</option>
+            ))}
+          </select>
+          <select value={barberoId} onChange={(e) => setBarberoId(e.target.value)} className={fld}>
+            <option value="">Barbero (opcional)…</option>
+            {barberosSede.map((b) => (
+              <option key={b.id} value={b.id}>{b.nombre}</option>
+            ))}
+          </select>
+          <input
+            value={nombre}
+            onChange={(e) => setNombre(e.target.value)}
+            placeholder="Nombre del cliente (opcional)"
+            className={`${fld} sm:col-span-2`}
+          />
+        </div>
+      )}
+
+      {servicioFijo && (
+        <div className="mb-4 flex items-center justify-between rounded-lg border border-accent/30 bg-accent/5 px-3 py-2 text-sm">
+          <span>
+            {servicioFijo.nombre} <span className="text-muted">· servicio de la cita</span>
+          </span>
+          <span className="text-accent-soft">{precioFijo != null ? cop(precioFijo) : "—"}</span>
+        </div>
+      )}
+
+      <div className="mb-4">
+        <button
+          type="button"
+          onClick={() => setExtrasOpen((v) => !v)}
+          className="flex w-full items-center justify-between text-left text-[10px] uppercase tracking-[0.18em] text-muted transition hover:text-ink"
+        >
+          <span>
+            Servicios adicionales (opcional)
+            {extras.length > 0 && <span className="ml-2 rounded-full bg-accent/15 px-2 py-0.5 text-accent-soft">{extras.length}</span>}
+          </span>
+          <span>{extrasOpen ? "−" : "+"}</span>
+        </button>
+        {extrasOpen && (
+          <div className="mt-2 space-y-1.5">
+            {serviciosSede.length === 0 ? (
+              <p className="text-sm text-muted">Sin servicios con precio en esta sede.</p>
+            ) : (
+              serviciosSede.map((s) => {
+                const activo = extras.includes(s.id);
+                return (
+                  <button
+                    key={s.id}
+                    type="button"
+                    onClick={() => toggleExtra(s.id)}
+                    className={`flex w-full items-center justify-between rounded-lg border px-3 py-2 text-sm transition ${
+                      activo ? "border-accent bg-accent/10 text-ink" : "border-line text-muted hover:text-ink"
+                    }`}
+                  >
+                    <span>{s.nombre}</span>
+                    <span className={activo ? "text-accent-soft" : ""}>{cop(s.precios[sedeId] ?? 0)}</span>
+                  </button>
+                );
+              })
+            )}
+          </div>
+        )}
+      </div>
+
       <div className="mb-2 text-[10px] uppercase tracking-[0.18em] text-muted">Consumos (opcional)</div>
-      {productos.length === 0 ? (
+      {productosSede.length === 0 ? (
         <p className="text-sm text-muted">Sin productos en esta sede.</p>
       ) : (
         <div className="space-y-2">
-          {productos.map((p) => {
+          {productosSede.map((p) => {
             const q = prodQty[p.id] ?? 0;
             return (
               <div key={p.id} className="flex items-center justify-between text-sm">
@@ -430,6 +616,44 @@ function CompleteForm({
           })}
         </div>
       )}
+
+      <div className="mt-4">
+        <div className="mb-1 text-[10px] uppercase tracking-[0.18em] text-muted">Propina (opcional)</div>
+        <div className="flex flex-wrap items-center gap-2">
+          {PROPINA_CHIPS.map((p) => (
+            <button
+              type="button"
+              key={p}
+              onClick={() => setPropina(propina === p ? 0 : p)}
+              className={`rounded-lg border px-3 py-1.5 text-xs transition ${
+                propina === p ? "border-accent bg-accent/10 text-ink" : "border-line text-muted"
+              }`}
+            >
+              {cop(p)}
+            </button>
+          ))}
+          <input
+            type="number"
+            min={0}
+            value={propina || ""}
+            onChange={(e) => setPropina(Math.max(0, Math.floor(Number(e.target.value) || 0)))}
+            placeholder="Otro monto"
+            className="w-32 rounded-lg border border-line bg-bg px-3 py-1.5 text-sm text-ink placeholder:text-muted focus:border-accent focus:outline-none"
+          />
+        </div>
+      </div>
+
+      <div className="mt-4">
+        <div className="mb-1 text-[10px] uppercase tracking-[0.18em] text-muted">Nota</div>
+        <textarea
+          value={nota}
+          onChange={(e) => setNota(e.target.value)}
+          rows={2}
+          placeholder="Observación (opcional)"
+          className="w-full rounded-lg border border-line bg-bg px-3 py-1.5 text-sm text-ink placeholder:text-muted focus:border-accent focus:outline-none"
+        />
+      </div>
+
       <div className="mt-4">
         <div className="mb-1 text-[10px] uppercase tracking-[0.18em] text-muted">Cupón (opcional)</div>
         <div className="flex gap-2">
@@ -448,28 +672,62 @@ function CompleteForm({
         )}
       </div>
 
+      <div className="mt-4 rounded-lg border border-line bg-panel px-3 py-2 text-sm">
+        {vivo.descuento > 0 && (
+          <div className="flex justify-between text-muted">
+            <span>Descuento</span>
+            <span>−{cop(vivo.descuento)}</span>
+          </div>
+        )}
+        <div className="flex justify-between">
+          <span className="text-muted">Total</span>
+          <span>{cop(vivo.total)}</span>
+        </div>
+        {vivo.propina > 0 && (
+          <div className="flex justify-between text-muted">
+            <span>+ Propina</span>
+            <span>{cop(vivo.propina)}</span>
+          </div>
+        )}
+        <div className="mt-1 flex justify-between border-t border-line pt-1 font-semibold">
+          <span>Total a cobrar</span>
+          <span className="text-accent-soft">{cop(vivo.aCobrar)}</span>
+        </div>
+      </div>
+
       {err && <div className="mt-3 rounded-lg border border-accent/40 bg-accent/10 px-3 py-2 text-sm text-accent-soft">{err}</div>}
 
       <div className="mt-4 flex flex-wrap items-center gap-2">
-        <div className="flex gap-2">
-          {["efectivo", "datafono"].map((m) => (
-            <button
-              type="button"
-              key={m}
-              onClick={() => setMedio(m)}
-              className={`rounded-lg border px-3 py-1.5 text-xs transition ${medio === m ? "border-accent bg-accent/10 text-ink" : "border-line text-muted"}`}
-            >
-              {m === "datafono" ? "Datáfono" : "Efectivo"}
-            </button>
-          ))}
+        <div className="flex flex-wrap gap-2">
+          {medios.length === 0 ? (
+            <span className="text-xs text-muted">Sin medios de pago configurados (avisale al admin).</span>
+          ) : (
+            medios.map((m) => (
+              <button
+                type="button"
+                key={m.slug}
+                onClick={() => setMedio(m.slug)}
+                className={`rounded-lg border px-3 py-1.5 text-xs transition ${medio === m.slug ? "border-accent bg-accent/10 text-ink" : "border-line text-muted"}`}
+              >
+                {m.nombre}
+              </button>
+            ))
+          )}
         </div>
-        <button
-          onClick={submit}
-          disabled={saving}
-          className="ml-auto rounded-full bg-accent px-6 py-2 text-xs font-semibold uppercase tracking-wide text-on-accent transition hover:bg-accent-soft disabled:opacity-50"
-        >
-          {saving ? "Guardando…" : "Cobrar y completar"}
-        </button>
+        <div className="ml-auto flex items-center gap-2">
+          {onCancel && (
+            <button type="button" onClick={onCancel} className="rounded-full border border-line px-5 py-2 text-xs text-muted transition hover:text-ink">
+              Cancelar
+            </button>
+          )}
+          <button
+            onClick={submit}
+            disabled={saving}
+            className="rounded-full bg-accent px-6 py-2 text-xs font-semibold uppercase tracking-wide text-on-accent transition hover:bg-accent-soft disabled:opacity-50"
+          >
+            {saving ? "Guardando…" : "Cobrar y completar"}
+          </button>
+        </div>
       </div>
     </div>
   );
