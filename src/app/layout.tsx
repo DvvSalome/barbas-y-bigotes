@@ -20,6 +20,7 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://barbasybigotes.com"),
   title: "Barbas & Bigotes Barbershop",
   description:
     "Reserva tu cita en Barbas & Bigotes — sedes Parque Venezuela y Plaza de la Paz. Cortes, barba, faciales y más.",
