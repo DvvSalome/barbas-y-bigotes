@@ -5,7 +5,7 @@ import { type SupabaseClient } from "@supabase/supabase-js";
 import { supabaseServerAuth, supabaseAdmin } from "@/lib/supabase/server";
 import { getStaffContext } from "@/lib/data/queries";
 import { clienteIdForUser } from "@/lib/cliente-actions";
-import { bogotaDayRange } from "@/lib/slots";
+import { bogotaDayRange, bogotaYmd } from "@/lib/slots";
 import { errorPublico } from "@/lib/errors";
 
 export type ActionResult = { ok: boolean; error?: string; total?: number; descuento?: number; puntos?: number; encolado?: boolean; esperaHasta?: string | null };
@@ -62,7 +62,7 @@ export async function validarCupon(codigo: string): Promise<CuponResult> {
   };
   if (!c.activo) return { ok: false, error: "Cupón inactivo" };
   if (c.usos_max !== null && c.usos >= c.usos_max) return { ok: false, error: "Cupón agotado" };
-  if (c.vence_en && c.vence_en < new Date().toISOString().slice(0, 10)) return { ok: false, error: "Cupón vencido" };
+  if (c.vence_en && c.vence_en < bogotaYmd()) return { ok: false, error: "Cupón vencido" };
   return { ok: true, codigo: c.codigo, tipo: c.tipo, valor: c.valor, descripcion: c.descripcion };
 }
 
