@@ -8,6 +8,8 @@ import { clienteIdForUser } from "@/lib/cliente-actions";
 import { bogotaDayRange, bogotaYmd } from "@/lib/slots";
 import { errorPublico } from "@/lib/errors";
 import { calcularCobro, totalesPorMedio } from "@/lib/cobro";
+import { pushACliente } from "@/lib/push";
+import { fechaHoraBogota } from "@/lib/format";
 
 export type ActionResult = { ok: boolean; error?: string; total?: number; descuento?: number; propina?: number; puntos?: number; encolado?: boolean; esperaHasta?: string | null };
 
@@ -122,10 +124,11 @@ export async function createReserva(input: {
   const inicio = new Date(input.inicioISO);
   const { data: serv } = await sb
     .from("servicios")
-    .select("duracion_min")
+    .select("nombre,duracion_min")
     .eq("id", input.servicioId)
     .maybeSingle();
   const dur = (serv as { duracion_min?: number } | null)?.duracion_min ?? 30;
+  const servicioNombre = (serv as { nombre?: string } | null)?.nombre ?? "Tu cita";
   const fin = new Date(inicio.getTime() + dur * 60000);
 
   // Sin barbero no hay reserva: el EXCLUDE constraint no cubre barbero_id NULL,
@@ -173,6 +176,14 @@ export async function createReserva(input: {
   if (error) {
     if (error.code === "23P01") return { ok: false, error: "Ese horario ya fue tomado. Elegí otro, por favor." };
     return { ok: false, error: errorPublico("createReserva", error) };
+  }
+  // Push DESPUÉS del éxito, nunca bloqueante: pushACliente jamás lanza.
+  if (clienteRef) {
+    await pushACliente(clienteRef, {
+      title: "¡Reserva confirmada! ✂️",
+      body: `${servicioNombre} — ${fechaHoraBogota(inicio)}`,
+      url: "/cuenta",
+    });
   }
   revalidatePath("/barbero");
   return { ok: true };
@@ -975,7 +986,14 @@ export async function proponerAdelanto(input: {
 
   if (updErr) return { ok: false, error: errorPublico("proponerAdelanto", updErr) };
 
-  // aviso real al cliente: Bloque 3 (push+email)
+  // Aviso real al cliente DESPUÉS del éxito (fire-and-forget: jamás lanza).
+  if (res.cliente_ref) {
+    await pushACliente(res.cliente_ref, {
+      title: "Te ofrecemos adelantar tu cita",
+      body: `Hay un cupo más temprano: ${fechaHoraBogota(new Date(input.inicioISO))}. Entrá para aceptar o rechazar.`,
+      url: "/cuenta",
+    });
+  }
 
   revalidatePath("/barbero");
   revalidatePath("/cuenta");

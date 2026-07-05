@@ -5,6 +5,8 @@ import { supabaseServerAuth, supabaseAdmin } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { CANCELACION_MIN_HORAS } from "@/lib/slots";
 import { errorPublico } from "@/lib/errors";
+import { pushACliente } from "@/lib/push";
+import { fechaHoraBogota } from "@/lib/format";
 
 export type CuentaContext = { estado: "anon" | "staff" | "cliente"; clienteId?: string };
 
@@ -202,6 +204,12 @@ export async function cancelarReservaCliente(
     .select("id");
   if (error) return { ok: false, error: errorPublico("cancelarReservaCliente", error) };
   if (!upd || upd.length === 0) return { ok: false, error: "Esta cita ya no se puede cancelar." };
+  // Confirmación DESPUÉS del éxito, nunca bloqueante: pushACliente jamás lanza.
+  await pushACliente(ctx.clienteId, {
+    title: "Cita cancelada",
+    body: `Tu cita fue cancelada (era el ${fechaHoraBogota(new Date(r.inicio))}).`,
+    url: "/cuenta",
+  });
   revalidatePath("/cuenta");
   revalidatePath("/barbero");
   return { ok: true };
@@ -272,6 +280,12 @@ export async function reagendarReservaCliente(
     return { ok: false, error: errorPublico("reagendarReservaCliente", error) };
   }
   if (!upd || upd.length === 0) return { ok: false, error: "Esta cita ya no se puede reagendar." };
+  // Confirmación DESPUÉS del éxito, nunca bloqueante: pushACliente jamás lanza.
+  await pushACliente(ctx.clienteId, {
+    title: "Cita reagendada",
+    body: `Tu cita cambió para ${fechaHoraBogota(nuevoInicio)}.`,
+    url: "/cuenta",
+  });
   revalidatePath("/cuenta");
   revalidatePath("/barbero");
   return { ok: true };
