@@ -50,6 +50,14 @@ export async function loginBarberoPin(
   const { error: oErr } = await sb.auth.verifyOtp({ type: "magiclink", token_hash: tokenHash });
   if (oErr) return { ok: false, error: "No se pudo iniciar sesión. Intentá de nuevo." };
 
+  // Defensa: la sesión minada debe ser exactamente la de este barbero (no dependemos
+  // de la unicidad de email de Supabase; lo verificamos contra el auth_id resuelto).
+  const { data: { user } } = await sb.auth.getUser();
+  if (!user || user.id !== authId) {
+    await sb.auth.signOut();
+    return { ok: false, error: "No se pudo iniciar sesión. Intentá de nuevo." };
+  }
+
   return { ok: true };
 }
 
@@ -82,7 +90,8 @@ export async function desbloquearBarbero(barberoId: string): Promise<{ ok: boole
 export async function getBarberosPinEstado(): Promise<Record<string, { tienePin: boolean; bloqueado: boolean }>> {
   if (!(await esAdmin())) return {};
   const admin = supabaseAdmin();
-  const { data } = await admin.from("barbero_pin").select("barbero_id,pin_hash,bloqueado_hasta");
+  const { data, error } = await admin.from("barbero_pin").select("barbero_id,pin_hash,bloqueado_hasta");
+  if (error) console.error("getBarberosPinEstado:", error.message);
   const now = Date.now();
   const out: Record<string, { tienePin: boolean; bloqueado: boolean }> = {};
   for (const r of (data ?? []) as { barbero_id: string; pin_hash: string; bloqueado_hasta: string | null }[]) {

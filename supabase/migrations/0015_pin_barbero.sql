@@ -13,6 +13,8 @@ create table if not exists public.barbero_pin (
   actualizado_en   timestamptz not null default now()
 );
 alter table public.barbero_pin enable row level security;
+-- Defensa en profundidad: además de RLS deny-all, sin GRANTs de tabla a roles de bajo privilegio.
+revoke all on table public.barbero_pin from anon, authenticated;
 
 -- Setear/rotar PIN.
 create or replace function public.set_pin_barbero(p_barbero_id uuid, p_pin text)
@@ -20,7 +22,7 @@ create or replace function public.set_pin_barbero(p_barbero_id uuid, p_pin text)
 as $$
 begin
   insert into public.barbero_pin (barbero_id, pin_hash, intentos, bloqueado_hasta, actualizado_en)
-  values (p_barbero_id, extensions.crypt(p_pin, extensions.gen_salt('bf')), 0, null, now())
+  values (p_barbero_id, extensions.crypt(p_pin, extensions.gen_salt('bf', 10)), 0, null, now())
   on conflict (barbero_id) do update
     set pin_hash = excluded.pin_hash, intentos = 0, bloqueado_hasta = null, actualizado_en = now();
 end $$;
