@@ -182,13 +182,16 @@ export async function getResumen() {
     sb.from("adelantos").select("monto").gte("fecha", mesInicio),
   ]);
   const vs = (ventasRes.data ?? []) as { total: number; medio: string }[];
+  // Ingresos = TODOS los medios; efectivo/datáfono se desglosan y el resto va en "otros".
+  const ingresosHoy = vs.reduce((a, v) => a + v.total, 0);
   const efectivo = vs.filter((v) => v.medio === "efectivo").reduce((a, v) => a + v.total, 0);
   const datafono = vs.filter((v) => v.medio === "datafono").reduce((a, v) => a + v.total, 0);
+  const otros = ingresosHoy - efectivo - datafono;
   const bajoMinimo = ((prodsRes.data ?? []) as { stock: number; stock_minimo: number }[]).filter(
     (p) => p.stock <= p.stock_minimo,
   ).length;
   const adelantosMes = ((adelRes.data ?? []) as { monto: number }[]).reduce((a, x) => a + x.monto, 0);
-  return { ingresosHoy: efectivo + datafono, efectivo, datafono, citasHoy: vs.length, bajoMinimo, adelantosMes };
+  return { ingresosHoy, efectivo, datafono, otros, citasHoy: vs.length, bajoMinimo, adelantosMes };
 }
 
 export type CuadreSede = {
@@ -196,6 +199,8 @@ export type CuadreSede = {
   nombre: string;
   efectivo: number;
   datafono: number;
+  /** Ventas en los demás medios (Nequi, transferencia, etc.). */
+  otros: number;
   ingresos: number;
   gastos: number;
   neto: number;
@@ -225,20 +230,23 @@ export async function getCuadre() {
     const efectivo = vs.filter((v) => v.medio === "efectivo").reduce((a, v) => a + v.total, 0);
     const datafono = vs.filter((v) => v.medio === "datafono").reduce((a, v) => a + v.total, 0);
     const g = gastos.filter((x) => x.sede_id === s.id).reduce((a, x) => a + x.monto, 0);
-    const ingresos = efectivo + datafono;
-    return { sede: s.id, nombre: s.nombre, efectivo, datafono, ingresos, gastos: g, neto: ingresos - g, citas: vs.length };
+    // Ingresos = TODOS los medios (Nequi, transferencia, etc. incluidos).
+    const ingresos = vs.reduce((a, v) => a + v.total, 0);
+    const otros = ingresos - efectivo - datafono;
+    return { sede: s.id, nombre: s.nombre, efectivo, datafono, otros, ingresos, gastos: g, neto: ingresos - g, citas: vs.length };
   });
 
   const total = porSede.reduce(
     (acc, s) => ({
       efectivo: acc.efectivo + s.efectivo,
       datafono: acc.datafono + s.datafono,
+      otros: acc.otros + s.otros,
       ingresos: acc.ingresos + s.ingresos,
       gastos: acc.gastos + s.gastos,
       neto: acc.neto + s.neto,
       citas: acc.citas + s.citas,
     }),
-    { efectivo: 0, datafono: 0, ingresos: 0, gastos: 0, neto: 0, citas: 0 },
+    { efectivo: 0, datafono: 0, otros: 0, ingresos: 0, gastos: 0, neto: 0, citas: 0 },
   );
 
   return { porSede, total, gastosHoy: gastos };

@@ -104,6 +104,7 @@ export default async function CuadrePage() {
             <div className="mt-3 grid grid-cols-3 gap-3">
               <Stat label="Efectivo" value={cop(s.efectivo)} />
               <Stat label="Datáfono" value={cop(s.datafono)} />
+              <Stat label="Otros" value={cop(s.otros)} />
               <Stat label="Citas" value={s.citas} />
               <Stat label="Ingresos" value={cop(s.ingresos)} />
               <Stat label="Gastos" value={`−${cop(s.gastos)}`} className="text-muted" />
@@ -116,6 +117,7 @@ export default async function CuadrePage() {
           <div className="mt-3 grid grid-cols-3 gap-3">
             <Stat label="Efectivo" value={cop(cuadre.total.efectivo)} />
             <Stat label="Datáfono" value={cop(cuadre.total.datafono)} />
+            <Stat label="Otros" value={cop(cuadre.total.otros)} />
             <Stat label="Citas" value={cuadre.total.citas} />
             <Stat label="Ingresos" value={cop(cuadre.total.ingresos)} />
             <Stat label="Gastos" value={`−${cop(cuadre.total.gastos)}`} className="text-muted" />
@@ -132,6 +134,7 @@ export default async function CuadrePage() {
               <th className="px-4 py-3 text-left font-medium">Sede</th>
               <th className="px-4 py-3 text-right font-medium">Efectivo</th>
               <th className="px-4 py-3 text-right font-medium">Datáfono</th>
+              <th className="px-4 py-3 text-right font-medium">Otros</th>
               <th className="px-4 py-3 text-right font-medium">Ingresos</th>
               <th className="px-4 py-3 text-right font-medium">Gastos</th>
               <th className="px-4 py-3 text-right font-medium">Neto</th>
@@ -144,6 +147,7 @@ export default async function CuadrePage() {
                 <td className="px-4 py-3 font-display text-lg">{s.nombre}</td>
                 <td className="px-4 py-3 text-right">{cop(s.efectivo)}</td>
                 <td className="px-4 py-3 text-right">{cop(s.datafono)}</td>
+                <td className="px-4 py-3 text-right">{cop(s.otros)}</td>
                 <td className="px-4 py-3 text-right">{cop(s.ingresos)}</td>
                 <td className="px-4 py-3 text-right text-muted">−{cop(s.gastos)}</td>
                 <td className="px-4 py-3 text-right font-semibold text-accent-soft">{cop(s.neto)}</td>
@@ -154,6 +158,7 @@ export default async function CuadrePage() {
               <td className="px-4 py-3 font-display text-lg">Total</td>
               <td className="px-4 py-3 text-right">{cop(cuadre.total.efectivo)}</td>
               <td className="px-4 py-3 text-right">{cop(cuadre.total.datafono)}</td>
+              <td className="px-4 py-3 text-right">{cop(cuadre.total.otros)}</td>
               <td className="px-4 py-3 text-right">{cop(cuadre.total.ingresos)}</td>
               <td className="px-4 py-3 text-right text-muted">−{cop(cuadre.total.gastos)}</td>
               <td className="px-4 py-3 text-right font-semibold text-accent-soft">{cop(cuadre.total.neto)}</td>

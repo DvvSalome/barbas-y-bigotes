@@ -18,7 +18,12 @@ const accesos = [
 export default async function AdminHome() {
   const r = await getResumen();
   const kpis = [
-    { label: "Ingresos hoy", value: cop(r.ingresosHoy), hint: `${cop(r.efectivo)} efectivo · ${cop(r.datafono)} datáfono`, Icon: CashIcon },
+    {
+      label: "Ingresos hoy",
+      value: cop(r.ingresosHoy),
+      hint: `${cop(r.efectivo)} efectivo · ${cop(r.datafono)} datáfono${r.otros > 0 ? ` · ${cop(r.otros)} otros` : ""}`,
+      Icon: CashIcon,
+    },
     { label: "Atenciones hoy", value: String(r.citasHoy), hint: "cobradas, ambas sedes", Icon: UsersIcon },
     { label: "Productos bajo mínimo", value: String(r.bajoMinimo), hint: "alerta de stock", Icon: BoxIcon, accent: r.bajoMinimo > 0 },
     { label: "Adelantos del mes", value: cop(r.adelantosMes), hint: "por barbero", Icon: PercentIcon },
