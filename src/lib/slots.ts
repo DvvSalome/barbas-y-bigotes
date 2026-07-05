@@ -60,6 +60,31 @@ export function computeTaken(params: {
   return s;
 }
 
+// ---- Día civil en Bogotá (UTC-5 fijo, Colombia no tiene DST) ----
+// Los servers de Vercel corren en UTC: NUNCA usar setHours(0,0,0,0) para
+// "hoy" en código server. Estos helpers no dependen del TZ del proceso.
+
+// Fecha civil YYYY-MM-DD en Bogotá del instante `base`.
+export function bogotaYmd(base: Date = new Date()): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Bogota",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(base);
+}
+
+// Rango [00:00, 24:00) en Bogotá del día civil que contiene a `base`.
+export function bogotaDayRange(base: Date = new Date()): { desde: Date; hasta: Date } {
+  return bogotaDayRangeDeFecha(bogotaYmd(base));
+}
+
+// Igual, pero para una fecha civil `YYYY-MM-DD` explícita (p.ej. la del wizard).
+export function bogotaDayRangeDeFecha(ymd: string): { desde: Date; hasta: Date } {
+  const desde = new Date(`${ymd}T00:00:00-05:00`);
+  return { desde, hasta: new Date(desde.getTime() + 86_400_000) };
+}
+
 export function nextDays(n: number): Date[] {
   const out: Date[] = [];
   const base = new Date();

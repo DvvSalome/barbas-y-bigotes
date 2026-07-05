@@ -5,6 +5,7 @@ import { type SupabaseClient } from "@supabase/supabase-js";
 import { supabaseServerAuth, supabaseAdmin } from "@/lib/supabase/server";
 import { getStaffContext } from "@/lib/data/queries";
 import { clienteIdForUser } from "@/lib/cliente-actions";
+import { bogotaDayRange } from "@/lib/slots";
 
 export type ActionResult = { ok: boolean; error?: string; total?: number; descuento?: number; puntos?: number; encolado?: boolean; esperaHasta?: string | null };
 
@@ -189,18 +190,16 @@ export async function getDisponibilidad(input: {
 }): Promise<{ inicio: string; fin: string }[]> {
   if (!input.barberoId) return [];
   const sb = supabaseAdmin();
-  const day = new Date(input.fechaISO);
-  const start = new Date(day);
-  start.setHours(0, 0, 0, 0);
-  const end = new Date(start);
-  end.setDate(end.getDate() + 1);
+  // El rango es el del día elegido EN BOGOTÁ: el server corre en UTC y con
+  // setHours(0,0,0,0) la ventana quedaba corrida 5 horas.
+  const { desde, hasta } = bogotaDayRange(new Date(input.fechaISO));
   const { data } = await sb
     .from("reservas")
     .select("inicio,fin")
     .eq("barbero_id", input.barberoId)
     .not("estado", "in", "(cancelada,no_show)")
-    .gte("inicio", start.toISOString())
-    .lt("inicio", end.toISOString());
+    .gte("inicio", desde.toISOString())
+    .lt("inicio", hasta.toISOString());
   return ((data ?? []) as { inicio: string; fin: string }[]).map((r) => ({ inicio: r.inicio, fin: r.fin }));
 }
 
@@ -849,18 +848,16 @@ export async function getLiveBarberStatuses(): Promise<BarberLiveStatus[]> {
   if (!bData) return [];
   
   const now = new Date();
-  const start = new Date(now);
-  start.setHours(0, 0, 0, 0);
-  const end = new Date(start);
-  end.setDate(end.getDate() + 1);
-  
+  // "Hoy" es el día civil en Bogotá (el server corre en UTC).
+  const { desde, hasta } = bogotaDayRange(now);
+
   // Fetch reservations for today
   const { data: rData } = await admin
     .from("reservas")
     .select("id, inicio, fin, estado, barbero_id, servicios(nombre)")
     .not("estado", "in", "(cancelada,no_show)")
-    .gte("inicio", start.toISOString())
-    .lt("inicio", end.toISOString());
+    .gte("inicio", desde.toISOString())
+    .lt("inicio", hasta.toISOString());
     
   const result: BarberLiveStatus[] = bData.map((b) => {
     const activeRes = rData?.find((r) => {
@@ -879,7 +876,7 @@ export async function getLiveBarberStatuses(): Promise<BarberLiveStatus[]> {
       fotoUrl: b.foto_url,
       status: activeRes ? "ocupado" : "disponible",
       servicioActual: activeRes ? (activeRes.servicios as any)?.nombre : undefined,
-      terminaA: activeRes ? new Date(activeRes.fin).toLocaleTimeString("es-CO", { hour: "numeric", minute: "2-digit" }) : undefined,
+      terminaA: activeRes ? new Date(activeRes.fin).toLocaleTimeString("es-CO", { timeZone: "America/Bogota", hour: "numeric", minute: "2-digit" }) : undefined,
     };
   });
   
