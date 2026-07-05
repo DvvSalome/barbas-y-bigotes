@@ -4,6 +4,10 @@ import { BarberoPinLogin } from "@/components/barbero/BarberoPinLogin";
 
 export const metadata: Metadata = { title: "Entrar · Barbas & Bigotes" };
 
+// Gateway de login del staff: no cachear la lista de barberos (un barbero nuevo
+// debe poder entrar sin esperar un rebuild).
+export const dynamic = "force-dynamic";
+
 export default async function EntrarPage() {
   const [barberos, sedes] = await Promise.all([getBarberos(), getSedes()]);
   return (
