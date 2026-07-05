@@ -20,6 +20,7 @@ const ADMIN_SECTIONS = [
   { href: "/admin/clientes", label: "Clientes", Icon: UsersIcon },
   { href: "/admin/precios", label: "Precios por sede", Icon: TagIcon },
   { href: "/admin/inventario", label: "Inventario", Icon: BoxIcon },
+  { href: "/admin/equipo", label: "Equipo", Icon: ScissorsIcon },
   { href: "/admin/comisiones", label: "Comisiones", Icon: PercentIcon },
   { href: "/admin/cupones", label: "Cupones", Icon: TicketIcon },
 ] as const;
