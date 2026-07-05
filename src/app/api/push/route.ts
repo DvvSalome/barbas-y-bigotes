@@ -38,15 +38,20 @@ export async function POST(request: Request) {
     tag: string;
   }>;
   const esTexto = (v: unknown): v is string => typeof v === "string" && v.length > 0;
+  // clienteRef debe ser UUID: si n8n manda la expresión sin evaluar
+  // ("={{ $json.cliente_ref }}"), mejor 400 acá que un 200 que nunca notifica.
+  const esUuid = (v: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
   if (
     !esTexto(p.clienteRef) ||
+    !esUuid(p.clienteRef) ||
     !esTexto(p.title) ||
     !esTexto(p.body) ||
-    (p.url !== undefined && typeof p.url !== "string") ||
+    // Solo rutas internas: el worker abre esta URL con la identidad de la barbería.
+    (p.url !== undefined && !(typeof p.url === "string" && p.url.startsWith("/") && !p.url.startsWith("//"))) ||
     (p.tag !== undefined && typeof p.tag !== "string")
   ) {
     return Response.json(
-      { ok: false, error: "Body inválido: se espera { clienteRef, title, body, url?, tag? }" },
+      { ok: false, error: "Body inválido: se espera { clienteRef (uuid), title, body, url? (ruta interna), tag? }" },
       { status: 400 },
     );
   }

@@ -56,7 +56,9 @@ export function PushManager() {
     (async () => {
       // iOS solo entrega push a la PWA instalada (16.4+): si abrieron el
       // portal en Safari a pelo, en vez de ocultar el card se explica cómo.
-      const esIOS = /iPad|iPhone|iPod/.test(window.navigator.userAgent);
+      // iPadOS 13+ se reporta como "Macintosh": lo delata el touch.
+      const ua = window.navigator.userAgent;
+      const esIOS = /iPad|iPhone|iPod/.test(ua) || (ua.includes("Mac") && "ontouchend" in document);
       const standalone = (window.navigator as { standalone?: boolean }).standalone === true;
       if (esIOS && !standalone) {
         if (vivo) setEstado("ios-instalar");
