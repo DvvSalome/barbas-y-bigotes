@@ -18,6 +18,10 @@ const withPWA = require("@ducanh2912/next-pwa").default({
   reloadOnOnline: true,
   swcMinify: true,
   disable: process.env.NODE_ENV === "development",
+  // Sin conexión y ruta no cacheada → página offline con marca.
+  fallbacks: {
+    document: "/~offline",
+  },
   workboxOptions: {
     disableDevLogs: true,
   },

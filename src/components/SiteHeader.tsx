@@ -14,7 +14,7 @@ export function SiteHeader() {
   ];
 
   return (
-    <header className="sticky top-0 z-50 border-b border-white/[0.04] bg-bg/40 backdrop-blur-md transition-all duration-300">
+    <header className="sticky top-0 z-50 border-b border-white/[0.04] bg-bg/40 pt-[env(safe-area-inset-top)] backdrop-blur-md transition-all duration-300">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 sm:px-6">
         <Link href="/" aria-label="Barbas & Bigotes Barbershop" className="transition hover:opacity-95">
           <Image
