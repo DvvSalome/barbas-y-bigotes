@@ -12,7 +12,7 @@ import { cop } from "@/lib/format";
 import { BarberCard } from "@/components/BarberCard";
 import { PhotoLightbox } from "@/components/ui/PhotoLightbox";
 import { AnimatePresence, motion } from "motion/react";
-import { STEP, DOW, MON, fmtTime, fmtDur, buildSlots, computeTaken, nextDays } from "@/lib/slots";
+import { OPEN, CLOSE, STEP, DOW, MON, fmtTime, fmtDur, buildSlots, computeTaken, nextDays } from "@/lib/slots";
 
 const sedeFotoFrente: Record<string, string> = {
   "parque-venezuela": "/sedes/parque-venezuela-frente.jpg",
@@ -124,12 +124,20 @@ export function BookingWizard({
             if (s) setServicio(s);
           }
           if (actionObj.fecha) {
-            const d = new Date(actionObj.fecha);
+            // "YYYY-MM-DD" a secas se parsea como medianoche UTC (día -1 en
+            // Bogotá); con T00:00:00 se parsea en la zona local del navegador.
+            const d = new Date(`${actionObj.fecha}T00:00:00`);
             const foundDay = days.find((x) => x.toDateString() === d.toDateString());
             if (foundDay) setDay(foundDay);
           }
           if (actionObj.hora !== undefined) {
-            setSlot(Number(actionObj.hora));
+            // El asistente puede mandar cualquier cosa: solo aceptamos minutos
+            // válidos (dentro del horario y alineados al paso); si no, se ignora
+            // en vez de terminar en setHours(NaN) al confirmar.
+            const h = Number(actionObj.hora);
+            if (Number.isFinite(h) && h >= OPEN && h < CLOSE && h % STEP === 0) {
+              setSlot(h);
+            }
           }
 
           setStep("datos");
@@ -267,6 +275,13 @@ export function BookingWizard({
 
   async function confirmar() {
     if (!servicio || !day || slot === null || !sedeId) return;
+    // El path del asistente IA puede llegar acá sin barbero; el server lo
+    // rechaza, pero acá lo cortamos antes y mandamos al paso correcto.
+    if (!barbero) {
+      setErrorMsg("Elegí un barbero para confirmar tu reserva.");
+      setStep("barbero");
+      return;
+    }
     setSaving(true);
     setErrorMsg(null);
     const inicio = new Date(day);

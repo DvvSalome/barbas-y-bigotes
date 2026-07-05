@@ -1,4 +1,5 @@
 import { supabaseServer, supabaseServerAuth } from "@/lib/supabase/server";
+import { bogotaDayRange, bogotaYmd } from "@/lib/slots";
 import type { Sede, SedeId, Servicio, Barbero, Producto, Categoria } from "./types";
 
 export async function getSedes(): Promise<Sede[]> {
@@ -99,17 +100,15 @@ export type AgendaItem = {
 
 export async function getAgendaHoy(barberoId?: string | null): Promise<AgendaItem[]> {
   const sb = await supabaseServerAuth();
-  const start = new Date();
-  start.setHours(0, 0, 0, 0);
-  const end = new Date(start);
-  end.setDate(end.getDate() + 1);
+  // "Hoy" es el día civil en Bogotá, no el del server (Vercel corre en UTC).
+  const { desde, hasta } = bogotaDayRange();
   let q = sb
     .from("reservas")
     .select(
       "id,inicio,estado,canal,llegada,sede_id,servicio_id,barbero_id,cliente_ref,nota,servicios(nombre),barberos(nombre),clientes(nombre,telefono)",
     )
-    .gte("inicio", start.toISOString())
-    .lt("inicio", end.toISOString());
+    .gte("inicio", desde.toISOString())
+    .lt("inicio", hasta.toISOString());
   if (barberoId) q = q.eq("barbero_id", barberoId);
   const { data } = await q.order("inicio");
   return ((data ?? []) as Record<string, unknown>[]).map((r) => ({
@@ -150,20 +149,14 @@ export async function getHistorialCliente(clienteRef: string) {
   }));
 }
 
-function startOfToday() {
-  const d = new Date();
-  d.setHours(0, 0, 0, 0);
-  return d;
-}
-
 export async function getResumen() {
   const sb = await supabaseServerAuth();
-  const start = startOfToday();
-  const monthStart = new Date(start.getFullYear(), start.getMonth(), 1);
+  const { desde } = bogotaDayRange();
+  const mesInicio = `${bogotaYmd().slice(0, 8)}01`; // primer día del mes civil en Bogotá
   const [ventasRes, prodsRes, adelRes] = await Promise.all([
-    sb.from("ventas").select("total,medio").gte("creado_en", start.toISOString()),
+    sb.from("ventas").select("total,medio").gte("creado_en", desde.toISOString()),
     sb.from("productos").select("stock,stock_minimo"),
-    sb.from("adelantos").select("monto").gte("fecha", monthStart.toISOString().slice(0, 10)),
+    sb.from("adelantos").select("monto").gte("fecha", mesInicio),
   ]);
   const vs = (ventasRes.data ?? []) as { total: number; medio: string }[];
   const efectivo = vs.filter((v) => v.medio === "efectivo").reduce((a, v) => a + v.total, 0);
@@ -188,11 +181,11 @@ export type CuadreSede = {
 
 export async function getCuadre() {
   const sb = await supabaseServerAuth();
-  const start = startOfToday();
-  const fechaHoy = start.toISOString().slice(0, 10);
+  const { desde } = bogotaDayRange();
+  const fechaHoy = bogotaYmd();
   const [sedesRes, ventasRes, gastosRes] = await Promise.all([
     sb.from("sedes").select("id,nombre").order("nombre"),
-    sb.from("ventas").select("sede_id,medio,total").gte("creado_en", start.toISOString()),
+    sb.from("ventas").select("sede_id,medio,total").gte("creado_en", desde.toISOString()),
     sb.from("gastos").select("id,sede_id,categoria,descripcion,monto").gte("fecha", fechaHoy),
   ]);
   const ventas = (ventasRes.data ?? []) as { sede_id: string; medio: string; total: number }[];
@@ -296,7 +289,7 @@ export async function getCajaSesiones(): Promise<CajaSesionSede[]> {
   const out: CajaSesionSede[] = [];
   for (const s of sedes) {
     const sess = open.find((o) => o.sede_id === s.id);
-    const start = sess ? sess.abierta_en : startOfToday().toISOString();
+    const start = sess ? sess.abierta_en : bogotaDayRange().desde.toISOString();
     const { data: ventas } = await sb
       .from("ventas")
       .select("medio,total")
@@ -334,16 +327,14 @@ export type PendienteCobro = {
 // Reservas de hoy aún no completadas/canceladas: lo que falta cobrar.
 export async function getReservasPendientesCobro(): Promise<PendienteCobro[]> {
   const sb = await supabaseServerAuth();
-  const start = startOfToday();
-  const end = new Date(start);
-  end.setDate(end.getDate() + 1);
+  const { desde, hasta } = bogotaDayRange();
   const [resRes, preciosRes] = await Promise.all([
     sb
       .from("reservas")
       .select("id,inicio,sede_id,servicio_id,clientes(nombre),barberos(nombre),servicios(nombre)")
       .in("estado", ["pendiente", "confirmada", "en_curso"])
-      .gte("inicio", start.toISOString())
-      .lt("inicio", end.toISOString())
+      .gte("inicio", desde.toISOString())
+      .lt("inicio", hasta.toISOString())
       .order("inicio"),
     sb.from("servicio_sede").select("servicio_id,sede_id,precio"),
   ]);

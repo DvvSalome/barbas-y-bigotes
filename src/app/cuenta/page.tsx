@@ -23,7 +23,9 @@ const ESTADO: Record<string, string> = {
 };
 
 function fechaLarga(iso: string) {
+  // Server component: sin timeZone explícito la hora saldría en UTC (Vercel).
   return new Date(iso).toLocaleString("es-CO", {
+    timeZone: "America/Bogota",
     weekday: "short",
     day: "numeric",
     month: "short",

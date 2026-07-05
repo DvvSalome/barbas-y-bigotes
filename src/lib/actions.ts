@@ -5,6 +5,8 @@ import { type SupabaseClient } from "@supabase/supabase-js";
 import { supabaseServerAuth, supabaseAdmin } from "@/lib/supabase/server";
 import { getStaffContext } from "@/lib/data/queries";
 import { clienteIdForUser } from "@/lib/cliente-actions";
+import { bogotaDayRange, bogotaYmd } from "@/lib/slots";
+import { errorPublico } from "@/lib/errors";
 
 export type ActionResult = { ok: boolean; error?: string; total?: number; descuento?: number; puntos?: number; encolado?: boolean; esperaHasta?: string | null };
 
@@ -60,7 +62,7 @@ export async function validarCupon(codigo: string): Promise<CuponResult> {
   };
   if (!c.activo) return { ok: false, error: "Cupón inactivo" };
   if (c.usos_max !== null && c.usos >= c.usos_max) return { ok: false, error: "Cupón agotado" };
-  if (c.vence_en && c.vence_en < new Date().toISOString().slice(0, 10)) return { ok: false, error: "Cupón vencido" };
+  if (c.vence_en && c.vence_en < bogotaYmd()) return { ok: false, error: "Cupón vencido" };
   return { ok: true, codigo: c.codigo, tipo: c.tipo, valor: c.valor, descripcion: c.descripcion };
 }
 
@@ -108,7 +110,7 @@ export async function addProducto(input: {
     stock_minimo: input.stockMinimo,
     comision_pct: input.comisionPct,
   });
-  if (error) return { ok: false, error: error.message };
+  if (error) return { ok: false, error: errorPublico("addProducto", error) };
   revalidatePath("/admin/inventario");
   return { ok: true };
 }
@@ -133,20 +135,22 @@ export async function createReserva(input: {
   const dur = (serv as { duracion_min?: number } | null)?.duracion_min ?? 30;
   const fin = new Date(inicio.getTime() + dur * 60000);
 
-  const barberoId = input.barberoId || null;
+  // Sin barbero no hay reserva: el EXCLUDE constraint no cubre barbero_id NULL,
+  // así que N reservas caerían en el mismo slot, invisibles para todos los barberos.
+  // (El wizard normal siempre manda barbero; solo el path del asistente IA lo omitía.)
+  if (!input.barberoId) return { ok: false, error: "Elegí un barbero para reservar." };
+  const barberoId = input.barberoId;
   // Pre-chequeo de solape (UX: evita crear el cliente si el cupo ya está tomado).
   // El EXCLUDE constraint en la DB es la garantía real contra carreras concurrentes.
-  if (barberoId) {
-    const { data: clash } = await sb
-      .from("reservas")
-      .select("id")
-      .eq("barbero_id", barberoId)
-      .not("estado", "in", "(cancelada,no_show)")
-      .lt("inicio", fin.toISOString())
-      .gt("fin", inicio.toISOString())
-      .limit(1);
-    if (clash && clash.length) return { ok: false, error: "Ese horario ya fue tomado. Elegí otro, por favor." };
-  }
+  const { data: clash } = await sb
+    .from("reservas")
+    .select("id")
+    .eq("barbero_id", barberoId)
+    .not("estado", "in", "(cancelada,no_show)")
+    .lt("inicio", fin.toISOString())
+    .gt("fin", inicio.toISOString())
+    .limit(1);
+  if (clash && clash.length) return { ok: false, error: "Ese horario ya fue tomado. Elegí otro, por favor." };
 
   // Si reserva un cliente logueado, atamos la cita a SU ficha (auth_id verificado) para
   // que aparezca en su portal; si es anónimo, dedup por teléfono.
@@ -175,7 +179,7 @@ export async function createReserva(input: {
   });
   if (error) {
     if (error.code === "23P01") return { ok: false, error: "Ese horario ya fue tomado. Elegí otro, por favor." };
-    return { ok: false, error: error.message };
+    return { ok: false, error: errorPublico("createReserva", error) };
   }
   revalidatePath("/barbero");
   return { ok: true };
@@ -189,18 +193,16 @@ export async function getDisponibilidad(input: {
 }): Promise<{ inicio: string; fin: string }[]> {
   if (!input.barberoId) return [];
   const sb = supabaseAdmin();
-  const day = new Date(input.fechaISO);
-  const start = new Date(day);
-  start.setHours(0, 0, 0, 0);
-  const end = new Date(start);
-  end.setDate(end.getDate() + 1);
+  // El rango es el del día elegido EN BOGOTÁ: el server corre en UTC y con
+  // setHours(0,0,0,0) la ventana quedaba corrida 5 horas.
+  const { desde, hasta } = bogotaDayRange(new Date(input.fechaISO));
   const { data } = await sb
     .from("reservas")
     .select("inicio,fin")
     .eq("barbero_id", input.barberoId)
     .not("estado", "in", "(cancelada,no_show)")
-    .gte("inicio", start.toISOString())
-    .lt("inicio", end.toISOString());
+    .gte("inicio", desde.toISOString())
+    .lt("inicio", hasta.toISOString());
   return ((data ?? []) as { inicio: string; fin: string }[]).map((r) => ({ inicio: r.inicio, fin: r.fin }));
 }
 
@@ -263,11 +265,11 @@ export async function registrarWalkin(input: {
         telefono: input.telefono.trim() || null,
         estado: "esperando",
       });
-      if (eErr) return { ok: false, error: "El barbero está ocupado y no se pudo encolar." };
+      if (eErr) return { ok: false, error: errorPublico("registrarWalkin", eErr, "El barbero está ocupado y no se pudo encolar.") };
       revalidatePath("/barbero");
       return { ok: true, encolado: true, esperaHasta };
     }
-    return { ok: false, error: error.message };
+    return { ok: false, error: errorPublico("registrarWalkin", error) };
   }
   revalidatePath("/barbero");
   return { ok: true };
@@ -283,7 +285,7 @@ export async function actualizarReserva(
   // .select() para detectar 0 filas: bajo RLS, tocar una reserva ajena no es error pero
   // no afecta filas → avisamos en vez de fingir éxito.
   const { data, error } = await sb.from("reservas").update(patch).eq("id", reservaId).select("id");
-  if (error) return { ok: false, error: error.message };
+  if (error) return { ok: false, error: errorPublico("actualizarReserva", error) };
   if (!data || data.length === 0) return { ok: false, error: "Reserva no encontrada o sin permiso" };
   revalidatePath("/barbero");
   return { ok: true };
@@ -391,12 +393,12 @@ export async function completarReserva(input: {
     })
     .select("id")
     .single();
-  if (error || !venta) return { ok: false, error: error?.message ?? "No se pudo completar" };
+  if (error || !venta) return { ok: false, error: errorPublico("completarReserva", error, "No se pudo completar el cobro. Intentá de nuevo.") };
   const ventaId = (venta as { id: string }).id;
 
   if (items.length) {
     const { error: itemsErr } = await sb.from("venta_items").insert(items.map((it) => ({ ...it, venta_id: ventaId })));
-    if (itemsErr) return { ok: false, error: "No se pudieron registrar los consumos de la venta" };
+    if (itemsErr) return { ok: false, error: errorPublico("completarReserva items", itemsErr, "No se pudieron registrar los consumos de la venta") };
   }
   for (const sel of input.productos) {
     await sb.rpc("decrement_stock", { p_id: sel.id, p_qty: sel.cantidad });
@@ -453,7 +455,7 @@ export async function crearCupon(input: {
   });
   if (error) {
     if (error.code === "23505") return { ok: false, error: "Ya existe un cupón con ese código." };
-    return { ok: false, error: error.message };
+    return { ok: false, error: errorPublico("crearCupon", error) };
   }
   revalidatePath("/admin/cupones");
   return { ok: true };
@@ -464,7 +466,7 @@ export async function toggleCupon(codigo: string, activo: boolean): Promise<Acti
   const denied = await requireAdmin(sb);
   if (denied) return { ok: false, error: denied };
   const { error } = await sb.from("cupones").update({ activo }).eq("codigo", codigo);
-  if (error) return { ok: false, error: error.message };
+  if (error) return { ok: false, error: errorPublico("toggleCupon", error) };
   revalidatePath("/admin/cupones");
   return { ok: true };
 }
@@ -487,7 +489,7 @@ export async function canjearPuntos(input: { clienteRef: string; puntos: number;
     puntos: input.puntos,
     nota: input.nota || "Canje",
   });
-  if (error) return { ok: false, error: error.message };
+  if (error) return { ok: false, error: errorPublico("canjearPuntos", error) };
   revalidatePath(`/admin/clientes/${input.clienteRef}`);
   return { ok: true };
 }
@@ -512,7 +514,7 @@ export async function registrarGasto(input: {
     monto: input.monto,
     descripcion: input.descripcion || null,
   });
-  if (error) return { ok: false, error: error.message };
+  if (error) return { ok: false, error: errorPublico("registrarGasto", error) };
   revalidatePath("/admin/cuadre");
   revalidatePath("/admin");
   return { ok: true };
@@ -532,7 +534,7 @@ export async function registrarAdelanto(input: {
     saldo: input.monto,
     nota: input.nota || null,
   });
-  if (error) return { ok: false, error: error.message };
+  if (error) return { ok: false, error: errorPublico("registrarAdelanto", error) };
   revalidatePath("/admin/cuadre");
   revalidatePath("/admin");
   return { ok: true };
@@ -545,7 +547,7 @@ export async function agregarNotaCliente(input: { clienteRef: string; nota: stri
   if (denied) return { ok: false, error: denied };
   if (!input.nota.trim()) return { ok: false, error: "Escribí la nota" };
   const { error } = await sb.from("cliente_notas").insert({ cliente_ref: input.clienteRef, nota: input.nota.trim() });
-  if (error) return { ok: false, error: error.message };
+  if (error) return { ok: false, error: errorPublico("agregarNotaCliente", error) };
   revalidatePath(`/admin/clientes/${input.clienteRef}`);
   return { ok: true };
 }
@@ -566,7 +568,7 @@ export async function agregarMovWallet(input: {
     monto: input.monto,
     nota: input.nota || null,
   });
-  if (error) return { ok: false, error: error.message };
+  if (error) return { ok: false, error: errorPublico("agregarMovWallet", error) };
   revalidatePath(`/admin/clientes/${input.clienteRef}`);
   return { ok: true };
 }
@@ -587,7 +589,7 @@ export async function agregarResenaCliente(input: {
     score: input.score,
     nota: input.nota || null,
   });
-  if (error) return { ok: false, error: error.message };
+  if (error) return { ok: false, error: errorPublico("agregarResenaCliente", error) };
   revalidatePath(`/admin/clientes/${input.clienteRef}`);
   return { ok: true };
 }
@@ -609,7 +611,7 @@ export async function abrirCaja(input: {
   });
   if (error) {
     if (error.code === "23505") return { ok: false, error: "Ya hay una caja abierta en esa sede." };
-    return { ok: false, error: error.message };
+    return { ok: false, error: errorPublico("abrirCaja", error) };
   }
   revalidatePath("/admin/cuadre");
   revalidatePath("/admin");
@@ -657,7 +659,7 @@ export async function cerrarCaja(input: {
       nota: input.nota || null,
     })
     .eq("id", input.sesionId);
-  if (error) return { ok: false, error: error.message };
+  if (error) return { ok: false, error: errorPublico("cerrarCaja", error) };
   revalidatePath("/admin/cuadre");
   revalidatePath("/admin");
   return { ok: true };
@@ -684,7 +686,7 @@ export async function agregarListaEspera(input: {
     telefono: input.telefono.trim() || null,
     estado: "esperando",
   });
-  if (error) return { ok: false, error: error.message };
+  if (error) return { ok: false, error: errorPublico("agregarListaEspera", error) };
   revalidatePath("/barbero");
   return { ok: true };
 }
@@ -741,7 +743,7 @@ export async function servirEspera(id: string): Promise<ActionResult> {
   if (error) {
     await revertir();
     if (error.code === "23P01") return { ok: false, error: "El barbero sigue ocupado ahora mismo." };
-    return { ok: false, error: error.message };
+    return { ok: false, error: errorPublico("servirEspera", error) };
   }
   revalidatePath("/barbero");
   return { ok: true };
@@ -752,7 +754,7 @@ export async function actualizarListaEspera(id: string, estado: string): Promise
   const denied = await requireStaff(sb);
   if (denied) return { ok: false, error: denied };
   const { error } = await sb.from("lista_espera").update({ estado }).eq("id", id);
-  if (error) return { ok: false, error: error.message };
+  if (error) return { ok: false, error: errorPublico("actualizarListaEspera", error) };
   revalidatePath("/barbero");
   return { ok: true };
 }
@@ -766,9 +768,10 @@ export async function proponerAdelanto(input: {
   if (denied) return { ok: false, error: denied };
 
   const admin = supabaseAdmin();
+  // cliente_ref apunta a `clientes` (cliente_id era la columna legacy de profiles, siempre null).
   const { data: res, error: getErr } = await admin
     .from("reservas")
-    .select("id, nota, cliente_id, servicio_id")
+    .select("id, nota, cliente_ref, servicio_id")
     .eq("id", input.reservaId)
     .maybeSingle();
 
@@ -807,19 +810,9 @@ export async function proponerAdelanto(input: {
     })
     .eq("id", input.reservaId);
 
-  if (updErr) return { ok: false, error: updErr.message };
+  if (updErr) return { ok: false, error: errorPublico("proponerAdelanto", updErr) };
 
-  // Simulate sending email to the client
-  try {
-    if (res.cliente_id) {
-      const { data: profile } = await admin.from("profiles").select("email, nombre").eq("id", res.cliente_id).maybeSingle();
-      if (profile?.email) {
-        console.log(`✉️ [NOTIFICACIÓN DE EMAIL] Enviando propuesta de adelanto a ${profile.nombre} (${profile.email}): Nuevo horario propuesto: ${new Date(input.inicioISO).toLocaleTimeString("es-CO")} - ${fin.toLocaleTimeString("es-CO")}`);
-      }
-    }
-  } catch (emailErr) {
-    console.error("⚠️ Error simulando envío de email:", emailErr);
-  }
+  // aviso real al cliente: Bloque 3 (push+email)
 
   revalidatePath("/barbero");
   revalidatePath("/cuenta");
@@ -849,18 +842,16 @@ export async function getLiveBarberStatuses(): Promise<BarberLiveStatus[]> {
   if (!bData) return [];
   
   const now = new Date();
-  const start = new Date(now);
-  start.setHours(0, 0, 0, 0);
-  const end = new Date(start);
-  end.setDate(end.getDate() + 1);
-  
+  // "Hoy" es el día civil en Bogotá (el server corre en UTC).
+  const { desde, hasta } = bogotaDayRange(now);
+
   // Fetch reservations for today
   const { data: rData } = await admin
     .from("reservas")
     .select("id, inicio, fin, estado, barbero_id, servicios(nombre)")
     .not("estado", "in", "(cancelada,no_show)")
-    .gte("inicio", start.toISOString())
-    .lt("inicio", end.toISOString());
+    .gte("inicio", desde.toISOString())
+    .lt("inicio", hasta.toISOString());
     
   const result: BarberLiveStatus[] = bData.map((b) => {
     const activeRes = rData?.find((r) => {
@@ -879,7 +870,7 @@ export async function getLiveBarberStatuses(): Promise<BarberLiveStatus[]> {
       fotoUrl: b.foto_url,
       status: activeRes ? "ocupado" : "disponible",
       servicioActual: activeRes ? (activeRes.servicios as any)?.nombre : undefined,
-      terminaA: activeRes ? new Date(activeRes.fin).toLocaleTimeString("es-CO", { hour: "numeric", minute: "2-digit" }) : undefined,
+      terminaA: activeRes ? new Date(activeRes.fin).toLocaleTimeString("es-CO", { timeZone: "America/Bogota", hour: "numeric", minute: "2-digit" }) : undefined,
     };
   });
   

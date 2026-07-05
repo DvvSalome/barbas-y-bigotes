@@ -1,28 +1,18 @@
 import Link from "next/link";
 import Image from "next/image";
 import { redirect } from "next/navigation";
-import { supabaseServerAuth } from "@/lib/supabase/server";
+import { getStaffContext } from "@/lib/data/queries";
 
 export default async function BarberoLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const supabase = await supabaseServerAuth();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
-  
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("rol")
-    .eq("auth_id", user.id)
-    .maybeSingle();
-
-  if ((profile as { rol?: string } | null)?.rol === "cliente") {
-    redirect("/cuenta");
-  }
+  // Deny-by-default: solo staff entra. Un cliente Google NO tiene fila en
+  // profiles, así que un guard que solo expulsa rol === 'cliente' lo dejaba pasar.
+  const staff = await getStaffContext();
+  if (staff.rol === "anon") redirect("/entrar");
+  if (staff.rol !== "admin" && staff.rol !== "barbero") redirect("/cuenta");
 
   return (
     <>

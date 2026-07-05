@@ -16,12 +16,18 @@ import { Stat } from "@/components/admin/Stat";
 export const metadata: Metadata = { title: "Cuadre de caja · Admin" };
 
 function horaCorta(iso: string) {
-  const d = new Date(iso);
-  let h = d.getHours();
-  const m = d.getMinutes();
+  // Hora civil en Bogotá sin depender del TZ del proceso (server en UTC).
+  const [h, m] = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "America/Bogota",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  })
+    .format(new Date(iso))
+    .split(":")
+    .map(Number);
   const ap = h < 12 ? "am" : "pm";
-  h = ((h + 11) % 12) + 1;
-  return `${h}:${m.toString().padStart(2, "0")} ${ap}`;
+  return `${((h + 11) % 12) + 1}:${m.toString().padStart(2, "0")} ${ap}`;
 }
 
 export default async function CuadrePage() {
@@ -33,7 +39,7 @@ export default async function CuadrePage() {
     getReservasPendientesCobro(),
     getCuadresAnteriores(),
   ]);
-  const fecha = new Date().toLocaleDateString("es-CO", { weekday: "long", day: "numeric", month: "long" });
+  const fecha = new Date().toLocaleDateString("es-CO", { timeZone: "America/Bogota", weekday: "long", day: "numeric", month: "long" });
   const totalPendiente = pendientes.reduce((a, p) => a + p.monto, 0);
 
   return (
@@ -189,7 +195,7 @@ export default async function CuadrePage() {
               <div key={c.id} className="rounded-2xl border border-line bg-panel p-4">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="text-sm text-muted">
-                    {new Date(c.fecha).toLocaleDateString("es-CO", { day: "numeric", month: "short" })} · {horaCorta(c.fecha)}
+                    {new Date(c.fecha).toLocaleDateString("es-CO", { timeZone: "America/Bogota", day: "numeric", month: "short" })} · {horaCorta(c.fecha)}
                   </div>
                   <span className="rounded-full bg-elevated px-2.5 py-1 text-xs">{c.sede}</span>
                 </div>
@@ -226,7 +232,7 @@ export default async function CuadrePage() {
                 {anteriores.map((c, i) => (
                   <tr key={c.id} className={`transition hover:bg-elevated/50 ${i % 2 ? "bg-panel" : "bg-panel/40"}`}>
                     <td className="px-4 py-3 text-muted">
-                      {new Date(c.fecha).toLocaleDateString("es-CO", { day: "numeric", month: "short" })} · {horaCorta(c.fecha)}
+                      {new Date(c.fecha).toLocaleDateString("es-CO", { timeZone: "America/Bogota", day: "numeric", month: "short" })} · {horaCorta(c.fecha)}
                     </td>
                     <td className="px-4 py-3">{c.sede}</td>
                     <td className="px-4 py-3 text-right text-muted">{c.metaDia ? cop(c.metaDia) : "—"}</td>

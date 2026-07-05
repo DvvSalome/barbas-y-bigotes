@@ -9,7 +9,7 @@ export const metadata: Metadata = { title: "Clientes · Admin" };
 
 function fechaCorta(iso: string | null) {
   if (!iso) return "—";
-  return new Date(iso).toLocaleDateString("es-CO", { day: "numeric", month: "short", year: "2-digit" });
+  return new Date(iso).toLocaleDateString("es-CO", { timeZone: "America/Bogota", day: "numeric", month: "short", year: "2-digit" });
 }
 
 export default async function ClientesPage({

@@ -4,6 +4,7 @@ import { type SupabaseClient } from "@supabase/supabase-js";
 import { supabaseServerAuth, supabaseAdmin } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { CANCELACION_MIN_HORAS } from "@/lib/slots";
+import { errorPublico } from "@/lib/errors";
 
 export type CuentaContext = { estado: "anon" | "staff" | "cliente"; clienteId?: string };
 
@@ -53,18 +54,20 @@ export async function responderPropuestaAdelanto(
   reservaId: string,
   respuesta: "aceptar" | "rechazar",
 ): Promise<{ ok: boolean; error?: string }> {
-  const sb = await supabaseServerAuth();
-  const { data: { user } } = await sb.auth.getUser();
-  if (!user) return { ok: false, error: "No autorizado" };
+  // Ownership primero: esta action usa supabaseAdmin (bypassa RLS), así que sin
+  // este check cualquier autenticado con un reservaId ajeno aceptaba/rechazaba.
+  const ctx = await ensureCliente();
+  if (ctx.estado !== "cliente" || !ctx.clienteId) return { ok: false, error: "No autorizado" };
 
   const admin = supabaseAdmin();
   const { data: res, error: getErr } = await admin
     .from("reservas")
-    .select("id, cliente_id, nota, sede_id, barbero_id")
+    .select("id, cliente_ref, nota, sede_id, barbero_id")
     .eq("id", reservaId)
     .maybeSingle();
 
   if (getErr || !res) return { ok: false, error: "Reserva no encontrada" };
+  if (res.cliente_ref !== ctx.clienteId) return { ok: false, error: "No autorizado" };
 
   let notaObj: any = {};
   try {
@@ -111,7 +114,7 @@ export async function responderPropuestaAdelanto(
       })
       .eq("id", reservaId);
 
-    if (updErr) return { ok: false, error: updErr.message };
+    if (updErr) return { ok: false, error: errorPublico("responderPropuestaAdelanto", updErr) };
 
   } else {
     // Rejected
@@ -197,7 +200,7 @@ export async function cancelarReservaCliente(
     .eq("id", reservaId)
     .in("estado", ["pendiente", "confirmada"])
     .select("id");
-  if (error) return { ok: false, error: error.message };
+  if (error) return { ok: false, error: errorPublico("cancelarReservaCliente", error) };
   if (!upd || upd.length === 0) return { ok: false, error: "Esta cita ya no se puede cancelar." };
   revalidatePath("/cuenta");
   revalidatePath("/barbero");
@@ -266,7 +269,7 @@ export async function reagendarReservaCliente(
     .select("id");
   if (error) {
     if (error.code === "23P01") return { ok: false, error: "Ese horario ya fue tomado. Elegí otro, por favor." };
-    return { ok: false, error: error.message };
+    return { ok: false, error: errorPublico("reagendarReservaCliente", error) };
   }
   if (!upd || upd.length === 0) return { ok: false, error: "Esta cita ya no se puede reagendar." };
   revalidatePath("/cuenta");
