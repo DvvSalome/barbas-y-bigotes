@@ -134,20 +134,22 @@ export async function createReserva(input: {
   const dur = (serv as { duracion_min?: number } | null)?.duracion_min ?? 30;
   const fin = new Date(inicio.getTime() + dur * 60000);
 
-  const barberoId = input.barberoId || null;
+  // Sin barbero no hay reserva: el EXCLUDE constraint no cubre barbero_id NULL,
+  // así que N reservas caerían en el mismo slot, invisibles para todos los barberos.
+  // (El wizard normal siempre manda barbero; solo el path del asistente IA lo omitía.)
+  if (!input.barberoId) return { ok: false, error: "Elegí un barbero para reservar." };
+  const barberoId = input.barberoId;
   // Pre-chequeo de solape (UX: evita crear el cliente si el cupo ya está tomado).
   // El EXCLUDE constraint en la DB es la garantía real contra carreras concurrentes.
-  if (barberoId) {
-    const { data: clash } = await sb
-      .from("reservas")
-      .select("id")
-      .eq("barbero_id", barberoId)
-      .not("estado", "in", "(cancelada,no_show)")
-      .lt("inicio", fin.toISOString())
-      .gt("fin", inicio.toISOString())
-      .limit(1);
-    if (clash && clash.length) return { ok: false, error: "Ese horario ya fue tomado. Elegí otro, por favor." };
-  }
+  const { data: clash } = await sb
+    .from("reservas")
+    .select("id")
+    .eq("barbero_id", barberoId)
+    .not("estado", "in", "(cancelada,no_show)")
+    .lt("inicio", fin.toISOString())
+    .gt("fin", inicio.toISOString())
+    .limit(1);
+  if (clash && clash.length) return { ok: false, error: "Ese horario ya fue tomado. Elegí otro, por favor." };
 
   // Si reserva un cliente logueado, atamos la cita a SU ficha (auth_id verificado) para
   // que aparezca en su portal; si es anónimo, dedup por teléfono.
