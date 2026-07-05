@@ -1,5 +1,6 @@
 import { supabaseServer, supabaseServerAuth } from "@/lib/supabase/server";
 import { bogotaDayRange, bogotaYmd } from "@/lib/slots";
+import { totalesPorMedio, type TotalesPorMedio } from "@/lib/cobro";
 import type { Sede, SedeId, Servicio, Barbero, Producto, Categoria } from "./types";
 
 export async function getSedes(): Promise<Sede[]> {
@@ -92,6 +93,14 @@ export async function getMedios(): Promise<MedioPago[]> {
     .select("slug,nombre,activo,orden")
     .eq("activo", true)
     .order("orden");
+  return (data ?? []) as MedioPago[];
+}
+
+// Todos los medios (activos e inactivos): los administra el admin en /admin/cuadre
+// y sirven para ponerle nombre a los slugs de cierres viejos.
+export async function getMediosTodos(): Promise<MedioPago[]> {
+  const sb = await supabaseServerAuth();
+  const { data } = await sb.from("medios_pago").select("slug,nombre,activo,orden").order("orden");
   return (data ?? []) as MedioPago[];
 }
 
@@ -282,6 +291,10 @@ export type CajaSesionSede = {
   datafono: number;
   ingresos: number;
   citas: number;
+  /** Desglose por medio de pago (slug → total + propina) desde la apertura. */
+  totales: TotalesPorMedio;
+  /** Propinas cobradas en efectivo: entran al cajón para el cuadre. */
+  propinaEfectivo: number;
 };
 
 // Estado de caja por sede: si hay sesión abierta + lo recaudado desde la apertura
@@ -306,12 +319,13 @@ export async function getCajaSesiones(): Promise<CajaSesionSede[]> {
     const start = sess ? sess.abierta_en : bogotaDayRange().desde.toISOString();
     const { data: ventas } = await sb
       .from("ventas")
-      .select("medio,total")
+      .select("medio,total,propina")
       .eq("sede_id", s.id)
       .gte("creado_en", start);
-    const vs = (ventas ?? []) as { medio: string; total: number }[];
-    const efectivo = vs.filter((v) => v.medio === "efectivo").reduce((a, v) => a + v.total, 0);
-    const datafono = vs.filter((v) => v.medio === "datafono").reduce((a, v) => a + v.total, 0);
+    const vs = (ventas ?? []) as { medio: string; total: number; propina: number | null }[];
+    const totales = totalesPorMedio(vs);
+    // Ingresos = TODOS los medios (no solo efectivo + datáfono).
+    const ingresos = Object.values(totales).reduce((a, t) => a + t.total, 0);
     out.push({
       sede: s.id,
       nombre: s.nombre,
@@ -319,10 +333,12 @@ export async function getCajaSesiones(): Promise<CajaSesionSede[]> {
       abiertaEn: sess?.abierta_en ?? null,
       metaDia: sess?.meta_dia ?? 0,
       montoApertura: sess?.monto_apertura ?? 0,
-      efectivo,
-      datafono,
-      ingresos: efectivo + datafono,
+      efectivo: totales.efectivo?.total ?? 0,
+      datafono: totales.datafono?.total ?? 0,
+      ingresos,
       citas: vs.length,
+      totales,
+      propinaEfectivo: totales.efectivo?.propina ?? 0,
     });
   }
   return out;
@@ -378,19 +394,24 @@ export type CuadreCerrado = {
   gastos: number;
   diferencia: number | null;
   citas: number;
+  /** Desglose por medio del cierre (jsonb); null en cierres viejos (solo las 2 columnas legacy). */
+  totales: TotalesPorMedio | null;
 };
 
 export async function getCuadresAnteriores(limit = 12): Promise<CuadreCerrado[]> {
   const sb = await supabaseServerAuth();
   const { data } = await sb
     .from("caja_sesiones")
-    .select("id,sede_id,cerrada_en,meta_dia,total_efectivo,total_datafono,total_gastos,diferencia,citas,sedes(nombre)")
+    .select("id,sede_id,cerrada_en,meta_dia,total_efectivo,total_datafono,totales,total_gastos,diferencia,citas,sedes(nombre)")
     .eq("estado", "cerrada")
     .order("cerrada_en", { ascending: false })
     .limit(limit);
   return ((data ?? []) as Record<string, unknown>[]).map((c) => {
-    const ef = (c.total_efectivo as number) ?? 0;
-    const da = (c.total_datafono as number) ?? 0;
+    const totales = (c.totales as TotalesPorMedio | null) ?? null;
+    const ef = totales ? totales.efectivo?.total ?? 0 : ((c.total_efectivo as number) ?? 0);
+    const da = totales ? totales.datafono?.total ?? 0 : ((c.total_datafono as number) ?? 0);
+    // Cierres nuevos: ingresos = todos los medios; viejos: solo las 2 columnas legacy.
+    const ingresos = totales ? Object.values(totales).reduce((a, t) => a + t.total, 0) : ef + da;
     return {
       id: c.id as string,
       sede: (c.sedes as { nombre?: string } | null)?.nombre ?? (c.sede_id as string),
@@ -398,10 +419,11 @@ export async function getCuadresAnteriores(limit = 12): Promise<CuadreCerrado[]>
       metaDia: (c.meta_dia as number) ?? 0,
       efectivo: ef,
       datafono: da,
-      ingresos: ef + da,
+      ingresos,
       gastos: (c.total_gastos as number) ?? 0,
       diferencia: (c.diferencia as number) ?? null,
       citas: (c.citas as number) ?? 0,
+      totales,
     };
   });
 }

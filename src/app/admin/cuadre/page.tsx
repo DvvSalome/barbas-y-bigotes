@@ -6,10 +6,13 @@ import {
   getCajaSesiones,
   getReservasPendientesCobro,
   getCuadresAnteriores,
+  getMediosTodos,
+  type MedioPago,
 } from "@/lib/data/queries";
 import { CuadreForms } from "@/components/admin/CuadreForms";
 import { CajaSesiones } from "@/components/admin/CajaSesiones";
 import { cop } from "@/lib/format";
+import type { TotalesPorMedio } from "@/lib/cobro";
 import { SectionHeader } from "@/components/admin/SectionHeader";
 import { Stat } from "@/components/admin/Stat";
 
@@ -30,14 +33,26 @@ function horaCorta(iso: string) {
   return `${((h + 11) % 12) + 1}:${m.toString().padStart(2, "0")} ${ap}`;
 }
 
+// Desglose por medio de un cierre nuevo (con snapshot `totales`), con propinas.
+function desgloseCierre(totales: TotalesPorMedio, medios: MedioPago[]) {
+  const ordenDe = new Map(medios.map((m) => [m.slug, m.orden]));
+  const nombreDe = (slug: string) =>
+    medios.find((m) => m.slug === slug)?.nombre ?? slug.charAt(0).toUpperCase() + slug.slice(1);
+  return Object.entries(totales)
+    .sort(([a], [b]) => (ordenDe.get(a) ?? 999) - (ordenDe.get(b) ?? 999))
+    .map(([slug, t]) => `${nombreDe(slug)} ${cop(t.total)}${t.propina > 0 ? ` (+${cop(t.propina)} propina)` : ""}`)
+    .join(" · ");
+}
+
 export default async function CuadrePage() {
-  const [cuadre, sedes, barberos, cajas, pendientes, anteriores] = await Promise.all([
+  const [cuadre, sedes, barberos, cajas, pendientes, anteriores, medios] = await Promise.all([
     getCuadre(),
     getSedes(),
     getBarberos(),
     getCajaSesiones(),
     getReservasPendientesCobro(),
     getCuadresAnteriores(),
+    getMediosTodos(),
   ]);
   const fecha = new Date().toLocaleDateString("es-CO", { timeZone: "America/Bogota", weekday: "long", day: "numeric", month: "long" });
   const totalPendiente = pendientes.reduce((a, p) => a + p.monto, 0);
@@ -47,7 +62,7 @@ export default async function CuadrePage() {
       <SectionHeader eyebrow="Hoy" title="Cuadre de caja" description={<span className="capitalize">{fecha}</span>} />
 
       <div className="mt-8">
-        <CajaSesiones cajas={cajas} />
+        <CajaSesiones cajas={cajas} medios={medios} />
       </div>
 
       {pendientes.length > 0 && (
@@ -210,6 +225,13 @@ export default async function CuadrePage() {
                     className={c.diferencia && c.diferencia !== 0 ? "text-amber-400" : "text-muted"}
                   />
                 </div>
+                {c.totales ? (
+                  <div className="mt-3 border-t border-line pt-2 text-xs text-muted">{desgloseCierre(c.totales, medios)}</div>
+                ) : (
+                  <div className="mt-3 border-t border-line pt-2 text-xs text-muted">
+                    Efectivo {cop(c.efectivo)} · Datáfono {cop(c.datafono)}
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -236,7 +258,12 @@ export default async function CuadrePage() {
                     </td>
                     <td className="px-4 py-3">{c.sede}</td>
                     <td className="px-4 py-3 text-right text-muted">{c.metaDia ? cop(c.metaDia) : "—"}</td>
-                    <td className="px-4 py-3 text-right text-accent-soft">{cop(c.ingresos)}</td>
+                    <td className="px-4 py-3 text-right text-accent-soft">
+                      {cop(c.ingresos)}
+                      <div className="text-[10px] font-normal text-muted">
+                        {c.totales ? desgloseCierre(c.totales, medios) : `Efectivo ${cop(c.efectivo)} · Datáfono ${cop(c.datafono)}`}
+                      </div>
+                    </td>
                     <td className="px-4 py-3 text-right text-muted">−{cop(c.gastos)}</td>
                     <td className={`px-4 py-3 text-right ${c.diferencia && c.diferencia !== 0 ? "text-amber-400" : "text-muted"}`}>
                       {c.diferencia === null ? "—" : `${c.diferencia > 0 ? "+" : ""}${cop(c.diferencia)}`}

@@ -6,7 +6,7 @@
 //
 // (Node ≥23.6 corre TypeScript directo con type stripping; no requiere build.)
 import assert from "node:assert/strict";
-import { calcularCobro, PUNTOS_POR_COP } from "../src/lib/cobro.ts";
+import { calcularCobro, totalesPorMedio, PUNTOS_POR_COP } from "../src/lib/cobro.ts";
 
 // (a) Cobro simple: servicio $25.000 + 2 gaseosas de $5.000, sin cupón ni propina.
 {
@@ -84,6 +84,25 @@ import { calcularCobro, PUNTOS_POR_COP } from "../src/lib/cobro.ts";
   assert.equal(c.total, 0);
   assert.equal(c.aCobrar, 10_000, "solo queda la propina");
   assert.equal(c.puntos, 0);
+}
+
+// (h) Snapshot del cierre de caja: agrupado por medio, propina aparte del total.
+{
+  const t = totalesPorMedio([
+    { medio: "efectivo", total: 20_000, propina: 2_000 },
+    { medio: "efectivo", total: 15_000, propina: 0 },
+    { medio: "nequi", total: 30_000, propina: 5_000 },
+    { medio: "datafono", total: 10_000, propina: null },
+  ]);
+  assert.deepEqual(t.efectivo, { total: 35_000, propina: 2_000 }, "efectivo agrupa sus ventas");
+  assert.deepEqual(t.nequi, { total: 30_000, propina: 5_000 }, "medios nuevos entran al snapshot");
+  assert.deepEqual(t.datafono, { total: 10_000, propina: 0 }, "propina null (ventas viejas) cuenta como 0");
+  assert.equal(t.efectivo.total + t.efectivo.propina, 37_000, "el cajón espera efectivo + propinas en efectivo");
+  assert.equal(
+    Object.values(t).reduce((a, x) => a + x.total, 0),
+    75_000,
+    "ingresos del cierre = TODOS los medios",
+  );
 }
 
 assert.equal(PUNTOS_POR_COP, 1000, "regla de fidelidad: 1 punto por $1.000");

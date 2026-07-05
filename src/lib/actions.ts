@@ -7,7 +7,7 @@ import { getStaffContext } from "@/lib/data/queries";
 import { clienteIdForUser } from "@/lib/cliente-actions";
 import { bogotaDayRange, bogotaYmd } from "@/lib/slots";
 import { errorPublico } from "@/lib/errors";
-import { calcularCobro } from "@/lib/cobro";
+import { calcularCobro, totalesPorMedio } from "@/lib/cobro";
 
 export type ActionResult = { ok: boolean; error?: string; total?: number; descuento?: number; propina?: number; puntos?: number; encolado?: boolean; esperaHasta?: string | null };
 
@@ -735,30 +735,35 @@ export async function cerrarCaja(input: {
   const sb = await supabaseServerAuth();
   const denied = await requireAdmin(sb);
   if (denied) return { ok: false, error: denied };
-  // Snapshot de lo recaudado desde que se abrió la caja.
+  // Snapshot de lo recaudado desde que se abrió la caja, desglosado por medio.
   const { data: ventas } = await sb
     .from("ventas")
-    .select("medio,total")
+    .select("medio,total,propina")
     .eq("sede_id", input.sede)
     .gte("creado_en", input.abiertaEnISO);
-  const vs = (ventas ?? []) as { medio: string; total: number }[];
-  const efectivo = vs.filter((v) => v.medio === "efectivo").reduce((a, v) => a + v.total, 0);
-  const datafono = vs.filter((v) => v.medio === "datafono").reduce((a, v) => a + v.total, 0);
+  const vs = (ventas ?? []) as { medio: string; total: number; propina: number | null }[];
+  const totales = totalesPorMedio(vs);
+  const efectivo = totales.efectivo?.total ?? 0;
+  const datafono = totales.datafono?.total ?? 0;
   const { data: gastos } = await sb
     .from("gastos")
     .select("monto")
     .eq("sede_id", input.sede)
     .gte("creado_en", input.abiertaEnISO);
   const totalGastos = ((gastos ?? []) as { monto: number }[]).reduce((a, g) => a + g.monto, 0);
-  const diferencia = input.efectivoContado - efectivo;
+  // Lo esperado en el cajón incluye las propinas cobradas en efectivo.
+  const esperadoEfectivo = efectivo + (totales.efectivo?.propina ?? 0);
+  const diferencia = input.efectivoContado - esperadoEfectivo;
 
   const { error } = await sb
     .from("caja_sesiones")
     .update({
       estado: "cerrada",
       cerrada_en: new Date().toISOString(),
+      // Columnas legacy pobladas por compat (histórico y UI vieja) + snapshot jsonb.
       total_efectivo: efectivo,
       total_datafono: datafono,
+      totales,
       total_gastos: totalGastos,
       citas: vs.length,
       efectivo_contado: input.efectivoContado,

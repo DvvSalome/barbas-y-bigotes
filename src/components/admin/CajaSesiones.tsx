@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { abrirCaja, cerrarCaja } from "@/lib/actions";
 import { cop } from "@/lib/format";
 import { CashIcon } from "@/components/icons";
-import type { CajaSesionSede } from "@/lib/data/queries";
+import type { CajaSesionSede, MedioPago } from "@/lib/data/queries";
 
 const fld =
   "w-full rounded-lg border border-line bg-bg px-3 py-2 text-ink placeholder:text-muted focus:border-accent focus:outline-none";
@@ -19,20 +19,31 @@ function desdeHora(iso: string) {
   return `${h}:${m.toString().padStart(2, "0")} ${ap}`;
 }
 
-export function CajaSesiones({ cajas }: { cajas: CajaSesionSede[] }) {
+export function CajaSesiones({ cajas, medios }: { cajas: CajaSesionSede[]; medios: MedioPago[] }) {
   return (
     <div className="grid gap-4 sm:grid-cols-2">
       {cajas.map((c) => (
-        <CajaCard key={c.sede} caja={c} />
+        <CajaCard key={c.sede} caja={c} medios={medios} />
       ))}
     </div>
   );
 }
 
-function CajaCard({ caja }: { caja: CajaSesionSede }) {
+function CajaCard({ caja, medios }: { caja: CajaSesionSede; medios: MedioPago[] }) {
   const router = useRouter();
   const abierta = !!caja.sesionId;
   const pct = caja.metaDia > 0 ? Math.min(100, Math.round((caja.ingresos / caja.metaDia) * 100)) : 0;
+
+  // Desglose por medio (ordenado como en la config); slugs sin ficha se capitalizan.
+  const ordenDe = new Map(medios.map((m) => [m.slug, m.orden]));
+  const nombreDe = (slug: string) =>
+    medios.find((m) => m.slug === slug)?.nombre ?? slug.charAt(0).toUpperCase() + slug.slice(1);
+  const desglose = Object.entries(caja.totales)
+    .sort(([a], [b]) => (ordenDe.get(a) ?? 999) - (ordenDe.get(b) ?? 999))
+    .map(([slug, t]) => `${cop(t.total)} ${nombreDe(slug).toLowerCase()}`)
+    .join(" · ");
+  // El cajón debe tener las ventas en efectivo + las propinas en efectivo.
+  const esperadoEfectivo = caja.efectivo + caja.propinaEfectivo;
 
   const [openForm, setOpenForm] = useState(false);
   const [meta, setMeta] = useState("");
@@ -101,7 +112,7 @@ function CajaCard({ caja }: { caja: CajaSesionSede }) {
           <div className="text-xs uppercase tracking-wide text-muted">Recaudado</div>
           <div className="font-display text-3xl text-accent-soft">{cop(caja.ingresos)}</div>
           <div className="mt-0.5 text-xs text-muted">
-            {cop(caja.efectivo)} efectivo · {cop(caja.datafono)} datáfono · {caja.citas} citas
+            {desglose ? `${desglose} · ` : ""}{caja.citas} citas
           </div>
         </div>
         {abierta && caja.metaDia > 0 && (
@@ -140,7 +151,8 @@ function CajaCard({ caja }: { caja: CajaSesionSede }) {
       ) : abierta ? (
         <form onSubmit={cerrar} className="mt-4 space-y-2.5">
           <div className="text-xs text-muted">
-            Esperado en efectivo: <b className="text-ink">{cop(caja.efectivo)}</b>
+            Esperado en efectivo: <b className="text-ink">{cop(esperadoEfectivo)}</b>
+            {caja.propinaEfectivo > 0 && <> (incluye {cop(caja.propinaEfectivo)} de propinas)</>}
           </div>
           <input
             type="number"

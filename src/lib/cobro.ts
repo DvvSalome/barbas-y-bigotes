@@ -59,3 +59,21 @@ export function calcularCobro(input: {
     puntos: Math.floor(total / PUNTOS_POR_COP),
   };
 }
+
+export type TotalesPorMedio = Record<string, { total: number; propina: number }>;
+
+// Agrupa ventas por medio de pago: el snapshot que queda en caja_sesiones.totales
+// y el desglose que muestran las cards de caja. La propina va aparte del total
+// (la propina en efectivo sí entra al cajón para el cuadre).
+export function totalesPorMedio(
+  ventas: { medio: string; total: number; propina?: number | null }[],
+): TotalesPorMedio {
+  const out: TotalesPorMedio = {};
+  for (const v of ventas) {
+    const t = out[v.medio] ?? { total: 0, propina: 0 };
+    t.total += v.total;
+    t.propina += v.propina ?? 0;
+    out[v.medio] = t;
+  }
+  return out;
+}
