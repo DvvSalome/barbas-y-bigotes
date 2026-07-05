@@ -2,6 +2,7 @@
 
 import { supabaseServerAuth, supabaseAdmin } from "@/lib/supabase/server";
 import { getStaffContext } from "@/lib/data/queries";
+import { errorPublico } from "@/lib/errors";
 
 const PINS_TRIVIALES = new Set([
   "000000", "111111", "222222", "333333", "444444", "555555", "666666",
@@ -74,7 +75,7 @@ export async function setearPinBarbero(
   if (!esPinValido(pin)) return { ok: false, error: "PIN inválido (6 dígitos, no triviales como 123456 o 000000)." };
   const admin = supabaseAdmin();
   const { error } = await admin.rpc("set_pin_barbero", { p_barbero_id: barberoId, p_pin: pin });
-  if (error) return { ok: false, error: error.message };
+  if (error) return { ok: false, error: errorPublico("setearPinBarbero", error, "No se pudo guardar el PIN. Intentá de nuevo.") };
   return { ok: true };
 }
 
@@ -82,7 +83,7 @@ export async function desbloquearBarbero(barberoId: string): Promise<{ ok: boole
   if (!(await esAdmin())) return { ok: false, error: "Requiere permiso de administrador" };
   const admin = supabaseAdmin();
   const { error } = await admin.rpc("desbloquear_barbero", { p_barbero_id: barberoId });
-  if (error) return { ok: false, error: error.message };
+  if (error) return { ok: false, error: errorPublico("desbloquearBarbero", error, "No se pudo desbloquear. Intentá de nuevo.") };
   return { ok: true };
 }
 
