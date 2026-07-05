@@ -44,6 +44,7 @@ export function AgendaList({
   servicios,
   productos,
   medios,
+  esAdmin = false,
 }: {
   agenda: AgendaItem[];
   sedes: Sede[];
@@ -51,6 +52,7 @@ export function AgendaList({
   servicios: Servicio[];
   productos: Producto[];
   medios: MedioPago[];
+  esAdmin?: boolean;
 }) {
   const router = useRouter();
   const [walkinOpen, setWalkinOpen] = useState(false);
@@ -116,6 +118,7 @@ export function AgendaList({
             servicios={servicios}
             productos={productos}
             medios={medios}
+            esAdmin={esAdmin}
             onDone={() => {
               setVentaOpen(false);
               router.refresh();
@@ -378,6 +381,7 @@ function CheckoutForm({
   servicios,
   productos,
   medios,
+  esAdmin = false,
   onDone,
   onCancel,
 }: {
@@ -387,6 +391,7 @@ function CheckoutForm({
   servicios: Servicio[];
   productos: Producto[];
   medios: MedioPago[];
+  esAdmin?: boolean;
   onDone: () => void;
   onCancel?: () => void;
 }) {
@@ -532,12 +537,16 @@ function CheckoutForm({
               <option key={s.id} value={s.id}>{s.nombre}</option>
             ))}
           </select>
-          <select value={barberoId} onChange={(e) => setBarberoId(e.target.value)} className={fld}>
-            <option value="">Barbero (opcional)…</option>
-            {barberosSede.map((b) => (
-              <option key={b.id} value={b.id}>{b.nombre}</option>
-            ))}
-          </select>
+          {/* Solo el admin puede atribuir la venta a otro barbero; para el rol
+              barbero el server la registra a su nombre sí o sí. */}
+          {esAdmin && (
+            <select value={barberoId} onChange={(e) => setBarberoId(e.target.value)} className={fld}>
+              <option value="">Barbero (opcional)…</option>
+              {barberosSede.map((b) => (
+                <option key={b.id} value={b.id}>{b.nombre}</option>
+              ))}
+            </select>
+          )}
           <input
             value={nombre}
             onChange={(e) => setNombre(e.target.value)}

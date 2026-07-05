@@ -49,6 +49,7 @@ export default async function BarberoPage() {
           servicios={servicios}
           productos={productos}
           medios={medios}
+          esAdmin={staff.rol === "admin"}
         />
       </div>
 

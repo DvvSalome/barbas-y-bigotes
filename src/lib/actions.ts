@@ -344,17 +344,18 @@ export async function completarReserva(input: {
       .eq("sede_id", input.sede)
       .eq("servicio_id", input.servicioId)
       .maybeSingle();
-    if (p) {
-      const row = p as Record<string, unknown>;
-      items.push({
-        tipo: "servicio",
-        ref_id: input.servicioId,
-        descripcion: (row.servicios as { nombre?: string } | null)?.nombre ?? "Servicio",
-        cantidad: 1,
-        precio_unitario: row.precio,
-        comision_pct: barberComision,
-      });
-    }
+    // Igual que los adicionales: sin precio en la sede se rechaza, no se
+    // completa una venta cobrando $0 por el servicio en silencio.
+    if (!p) return { ok: false, error: "El servicio de la cita no tiene precio en esta sede." };
+    const row = p as Record<string, unknown>;
+    items.push({
+      tipo: "servicio",
+      ref_id: input.servicioId,
+      descripcion: (row.servicios as { nombre?: string } | null)?.nombre ?? "Servicio",
+      cantidad: 1,
+      precio_unitario: row.precio,
+      comision_pct: barberComision,
+    });
   }
 
   // Servicios adicionales: precio por sede vía servicio_sede, misma comisión
@@ -390,7 +391,8 @@ export async function completarReserva(input: {
       const cantidad = Math.floor(sel.cantidad);
       if (!Number.isFinite(cantidad) || cantidad < 1) return { ok: false, error: "Cantidad de producto inválida." };
       const pr = ((prods ?? []) as Record<string, unknown>[]).find((x) => x.id === sel.id);
-      if (!pr) continue;
+      // No descartar en silencio: cobraría menos de lo que el barbero vio en pantalla.
+      if (!pr) return { ok: false, error: "Un producto ya no está disponible. Actualizá la página." };
       items.push({
         tipo: "producto",
         ref_id: sel.id,
