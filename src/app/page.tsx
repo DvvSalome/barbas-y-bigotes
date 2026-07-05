@@ -17,6 +17,10 @@ import { sedes } from "@/lib/data/seed";
 
 import { CardTilt } from "@/components/ui/CardTilt";
 
+// La sección Servicios lee precios de la DB: sin revalidate la página quedaría
+// estática con los precios del build. ISR cada 10 min mantiene la homepage honesta.
+export const revalidate = 600;
+
 // Composición con tamaños mixtos: corte-1 (panorámica) y corte-5 (feature vertical)
 // rompen la grilla uniforme. Spans pensados para una grilla de 6 columnas en sm+.
 const cortes = [

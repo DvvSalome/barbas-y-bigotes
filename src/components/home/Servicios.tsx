@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { Reveal } from "@/components/motion/Reveal";
-import { servicios, categorias } from "@/lib/data/seed";
+import { categorias } from "@/lib/data/seed";
+import { getServicios } from "@/lib/data/queries";
 import type { Servicio } from "@/lib/data/types";
 
-// Selección curada de servicios reales (seed.ts) — no se listan los 38 para
-// mantener la sección breve y escaneable; el detalle completo vive en /reservar.
+// Selección curada — no se listan los 38 para mantener la sección breve y
+// escaneable; el detalle completo vive en /reservar.
 const DESTACADOS_IDS = ["corte", "corte-barba", "ritual-barba", "limpieza-gold", "keratina", "combo-gold"];
 
 function formatCOP(n: number) {
@@ -25,7 +26,10 @@ function precioDisplay(s: Servicio) {
   return { precio: min, desde: Boolean(s.desde) || min !== max };
 }
 
-export function Servicios() {
+// Server component async: los precios salen de la DB (los edita el admin en
+// /admin/precios), no del seed estático — si no, la homepage queda mintiendo.
+export async function Servicios() {
+  const servicios = await getServicios();
   const destacados = DESTACADOS_IDS.map((id) => servicios.find((s) => s.id === id)).filter(
     (s): s is Servicio => Boolean(s),
   );
