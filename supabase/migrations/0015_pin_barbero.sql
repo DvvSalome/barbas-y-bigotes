@@ -1,5 +1,7 @@
 -- 0015_pin_barbero.sql — Login del barbero por PIN de 6 dígitos (hasheado, con bloqueo).
-create extension if not exists pgcrypto;
+-- pgcrypto en el schema 'extensions' (convención Supabase) para calificar crypt/gen_salt y
+-- usar search_path='' en las funciones DEFINER (blindaje contra search_path injection).
+create extension if not exists pgcrypto with schema extensions;
 
 -- Tabla separada (NO en 'barberos', que es de lectura pública). RLS sin policies:
 -- ni anon ni authenticated acceden; solo service_role / funciones SECURITY DEFINER.
@@ -12,14 +14,13 @@ create table if not exists public.barbero_pin (
 );
 alter table public.barbero_pin enable row level security;
 
--- Setear/rotar PIN. search_path incluye extensions para resolver crypt/gen_salt
--- esté pgcrypto en 'public' o 'extensions'.
+-- Setear/rotar PIN.
 create or replace function public.set_pin_barbero(p_barbero_id uuid, p_pin text)
-  returns void language plpgsql security definer set search_path = public, extensions
+  returns void language plpgsql security definer set search_path = ''
 as $$
 begin
   insert into public.barbero_pin (barbero_id, pin_hash, intentos, bloqueado_hasta, actualizado_en)
-  values (p_barbero_id, crypt(p_pin, gen_salt('bf')), 0, null, now())
+  values (p_barbero_id, extensions.crypt(p_pin, extensions.gen_salt('bf')), 0, null, now())
   on conflict (barbero_id) do update
     set pin_hash = excluded.pin_hash, intentos = 0, bloqueado_hasta = null, actualizado_en = now();
 end $$;
@@ -28,7 +29,7 @@ grant execute on function public.set_pin_barbero(uuid, text) to service_role;
 
 -- Verificar PIN con bloqueo por intentos (atómico con FOR UPDATE). Devuelve 'ok'|'bad'|'locked'.
 create or replace function public.verificar_pin_barbero(p_barbero_id uuid, p_pin text)
-  returns text language plpgsql security definer set search_path = public, extensions
+  returns text language plpgsql security definer set search_path = ''
 as $$
 declare
   r public.barbero_pin%rowtype;
@@ -40,7 +41,7 @@ begin
   if r.bloqueado_hasta is not null and r.bloqueado_hasta > now() then
     return 'locked';
   end if;
-  if r.pin_hash = crypt(p_pin, r.pin_hash) then
+  if r.pin_hash = extensions.crypt(p_pin, r.pin_hash) then
     update public.barbero_pin set intentos = 0, bloqueado_hasta = null where barbero_id = p_barbero_id;
     return 'ok';
   else
@@ -56,7 +57,7 @@ grant execute on function public.verificar_pin_barbero(uuid, text) to service_ro
 
 -- Desbloquear (admin).
 create or replace function public.desbloquear_barbero(p_barbero_id uuid)
-  returns void language plpgsql security definer set search_path = public
+  returns void language plpgsql security definer set search_path = ''
 as $$
 begin
   update public.barbero_pin set intentos = 0, bloqueado_hasta = null where barbero_id = p_barbero_id;
