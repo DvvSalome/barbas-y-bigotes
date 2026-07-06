@@ -7,11 +7,11 @@ import { getStaffContext } from "@/lib/data/queries";
 import { clienteIdForUser } from "@/lib/cliente-actions";
 import { bogotaDayRange, bogotaYmd } from "@/lib/slots";
 import { errorPublico } from "@/lib/errors";
+import { calcularCobro, totalesPorMedio } from "@/lib/cobro";
+import { pushACliente } from "@/lib/push";
+import { fechaHoraBogota } from "@/lib/format";
 
-export type ActionResult = { ok: boolean; error?: string; total?: number; descuento?: number; puntos?: number; encolado?: boolean; esperaHasta?: string | null };
-
-// Fidelidad: el cliente gana 1 punto por cada $1.000 cobrados (neto).
-const PUNTOS_POR_COP = 1000;
+export type ActionResult = { ok: boolean; error?: string; total?: number; descuento?: number; propina?: number; puntos?: number; encolado?: boolean; esperaHasta?: string | null };
 
 // --- Autorización (defensa en profundidad; la RLS es la barrera real) ---
 // Las server actions corren con la sesión del usuario, pero igual revalidamos el
@@ -64,11 +64,6 @@ export async function validarCupon(codigo: string): Promise<CuponResult> {
   if (c.usos_max !== null && c.usos >= c.usos_max) return { ok: false, error: "Cupón agotado" };
   if (c.vence_en && c.vence_en < bogotaYmd()) return { ok: false, error: "Cupón vencido" };
   return { ok: true, codigo: c.codigo, tipo: c.tipo, valor: c.valor, descripcion: c.descripcion };
-}
-
-function calcDescuento(tipo: string, valor: number, total: number): number {
-  const d = tipo === "porcentaje" ? Math.round((total * valor) / 100) : valor;
-  return Math.max(0, Math.min(d, total)); // nunca más que el total
 }
 
 // Upsert de cliente por teléfono vía RPC SECURITY DEFINER: dedup correcto sin exponer
@@ -129,10 +124,11 @@ export async function createReserva(input: {
   const inicio = new Date(input.inicioISO);
   const { data: serv } = await sb
     .from("servicios")
-    .select("duracion_min")
+    .select("nombre,duracion_min")
     .eq("id", input.servicioId)
     .maybeSingle();
   const dur = (serv as { duracion_min?: number } | null)?.duracion_min ?? 30;
+  const servicioNombre = (serv as { nombre?: string } | null)?.nombre ?? "Tu cita";
   const fin = new Date(inicio.getTime() + dur * 60000);
 
   // Sin barbero no hay reserva: el EXCLUDE constraint no cubre barbero_id NULL,
@@ -180,6 +176,14 @@ export async function createReserva(input: {
   if (error) {
     if (error.code === "23P01") return { ok: false, error: "Ese horario ya fue tomado. Elegí otro, por favor." };
     return { ok: false, error: errorPublico("createReserva", error) };
+  }
+  // Push DESPUÉS del éxito, nunca bloqueante: pushACliente jamás lanza.
+  if (clienteRef) {
+    await pushACliente(clienteRef, {
+      title: "¡Reserva confirmada! ✂️",
+      body: `${servicioNombre} — ${fechaHoraBogota(inicio)}`,
+      url: "/cuenta",
+    });
   }
   revalidatePath("/barbero");
   return { ok: true };
@@ -291,15 +295,22 @@ export async function actualizarReserva(
   return { ok: true };
 }
 
-// Completar la atención: crea la venta (servicio + consumos) y marca la reserva completada.
+// Completar la atención: cobra el cierre completo (servicio de la reserva +
+// servicios adicionales + consumos + propina + nota) y marca la reserva
+// completada. reservaId null = venta rápida (sin cita: solo productos y/o
+// servicios sueltos, cliente_ref null, nombre libre opcional).
 export async function completarReserva(input: {
-  reservaId: string;
+  reservaId: string | null;
   sede: string;
   barberoId: string | null;
   clienteRef: string | null;
+  clienteNombre?: string; // venta rápida: texto libre opcional → ventas.cliente_nombre
   servicioId: string | null;
+  serviciosExtra?: string[]; // servicios adicionales hechos en el momento
   medio: string;
   productos: { id: string; cantidad: number }[];
+  propina?: number; // entero COP ≥ 0; NO entra al total
+  nota?: string;
   cuponCodigo?: string;
 }): Promise<ActionResult> {
   const sb = await supabaseServerAuth();
@@ -307,41 +318,75 @@ export async function completarReserva(input: {
   if (staff.rol !== "admin" && staff.rol !== "barbero") return { ok: false, error: "No autorizado" };
   // barbero_id de la venta lo fija el servidor: el barbero cobra a su nombre; el admin puede cobrar por otro.
   const barberoId = staff.rol === "admin" ? input.barberoId : staff.barberoId;
-  let total = 0;
+
+  // Medio de pago: validación autoritativa contra la tabla administrable
+  // (service role: la lectura no depende de la RLS del que cobra).
+  const medio = (input.medio ?? "").trim();
+  const { data: medioRow, error: medioErr } = await supabaseAdmin()
+    .from("medios_pago")
+    .select("slug")
+    .eq("slug", medio)
+    .eq("activo", true)
+    .maybeSingle();
+  if (medioErr) return { ok: false, error: errorPublico("completarReserva medio", medioErr) };
+  if (!medioRow) return { ok: false, error: "Medio de pago inválido o inactivo." };
+
   const items: Record<string, unknown>[] = [];
 
-  if (input.servicioId) {
-    const [pRes, barbRes] = await Promise.all([
-      sb
-        .from("servicio_sede")
-        .select("precio,servicios(nombre)")
-        .eq("sede_id", input.sede)
-        .eq("servicio_id", input.servicioId)
-        .maybeSingle(),
-      barberoId
-        ? sb
-            .from("barberos")
-            .select("tipo_contrato,comision_pct")
-            .eq("id", barberoId)
-            .maybeSingle()
-        : Promise.resolve({ data: null }),
-    ]);
-
-    const p = pRes.data;
-    const barb = barbRes.data;
-
-    let barberComision = 0;
+  // Comisión del barbero para los servicios (principal + adicionales).
+  const extras = [...new Set((input.serviciosExtra ?? []).filter(Boolean))];
+  let barberComision = 0;
+  if (barberoId && (input.servicioId || extras.length)) {
+    const { data: barb } = await sb
+      .from("barberos")
+      .select("tipo_contrato,comision_pct")
+      .eq("id", barberoId)
+      .maybeSingle();
     const barbRow = barb as { tipo_contrato?: string | null; comision_pct?: number | null } | null;
     if (barbRow && barbRow.tipo_contrato === "porcentaje") {
       barberComision = barbRow.comision_pct != null ? Number(barbRow.comision_pct) : 50;
     }
+  }
 
-    if (p) {
-      const row = p as Record<string, unknown>;
-      total += row.precio as number;
+  if (input.servicioId) {
+    const { data: p } = await sb
+      .from("servicio_sede")
+      .select("precio,servicios(nombre)")
+      .eq("sede_id", input.sede)
+      .eq("servicio_id", input.servicioId)
+      .maybeSingle();
+    // Igual que los adicionales: sin precio en la sede se rechaza, no se
+    // completa una venta cobrando $0 por el servicio en silencio.
+    if (!p) return { ok: false, error: "El servicio de la cita no tiene precio en esta sede." };
+    const row = p as Record<string, unknown>;
+    items.push({
+      tipo: "servicio",
+      ref_id: input.servicioId,
+      descripcion: (row.servicios as { nombre?: string } | null)?.nombre ?? "Servicio",
+      cantidad: 1,
+      precio_unitario: row.precio,
+      comision_pct: barberComision,
+    });
+  }
+
+  // Servicios adicionales: precio por sede vía servicio_sede, misma comisión
+  // que el principal. Sin precio en la sede → rechazo (nada se cobra "gratis").
+  if (extras.length) {
+    const { data: extRows, error: extErr } = await sb
+      .from("servicio_sede")
+      .select("servicio_id,precio,servicios(nombre)")
+      .eq("sede_id", input.sede)
+      .in("servicio_id", extras);
+    if (extErr) return { ok: false, error: errorPublico("completarReserva extras", extErr) };
+    const porId = new Map(
+      ((extRows ?? []) as Record<string, unknown>[]).map((r) => [r.servicio_id as string, r]),
+    );
+    for (const id of extras) {
+      const row = porId.get(id);
+      if (!row) return { ok: false, error: "Un servicio adicional no tiene precio en esta sede." };
       items.push({
         tipo: "servicio",
-        ref_id: input.servicioId,
+        ref_id: id,
         descripcion: (row.servicios as { nombre?: string } | null)?.nombre ?? "Servicio",
         cantidad: 1,
         precio_unitario: row.precio,
@@ -354,79 +399,166 @@ export async function completarReserva(input: {
     const ids = input.productos.map((p) => p.id);
     const { data: prods } = await sb.from("productos").select("id,nombre,precio,comision_pct").in("id", ids);
     for (const sel of input.productos) {
+      const cantidad = Math.floor(sel.cantidad);
+      if (!Number.isFinite(cantidad) || cantidad < 1) return { ok: false, error: "Cantidad de producto inválida." };
       const pr = ((prods ?? []) as Record<string, unknown>[]).find((x) => x.id === sel.id);
-      if (!pr) continue;
-      total += (pr.precio as number) * sel.cantidad;
+      // No descartar en silencio: cobraría menos de lo que el barbero vio en pantalla.
+      if (!pr) return { ok: false, error: "Un producto ya no está disponible. Actualizá la página." };
       items.push({
         tipo: "producto",
         ref_id: sel.id,
         descripcion: pr.nombre,
-        cantidad: sel.cantidad,
+        cantidad,
         precio_unitario: pr.precio,
         comision_pct: pr.comision_pct !== null ? Number(pr.comision_pct) : 0,
       });
     }
   }
 
-  // Cupón (opcional): valida y descuenta del total.
-  let descuento = 0;
+  // Venta rápida: sin reserva no hay "servicio de la cita"; exigir al menos 1 ítem.
+  if (!input.reservaId && items.length === 0) {
+    return { ok: false, error: "Agregá al menos un servicio o producto para la venta rápida." };
+  }
+
+  // Cupón (opcional): valida y descuenta (sobre servicios + productos, tope el bruto).
+  let cupon: { tipo: "porcentaje" | "monto"; valor: number } | null = null;
   let cuponCodigo: string | null = null;
   if (input.cuponCodigo && input.cuponCodigo.trim()) {
     const v = await validarCupon(input.cuponCodigo);
     if (!v.ok) return { ok: false, error: v.error ?? "Cupón inválido" };
-    descuento = calcDescuento(v.tipo!, v.valor!, total);
+    cupon = { tipo: v.tipo!, valor: v.valor! };
     cuponCodigo = v.codigo!;
   }
-  const totalNeto = Math.max(0, total - descuento);
 
+  // Matemática del cobro (pura, testeada en scripts/check-cobro.ts):
+  // total neto SIN propina; puntos sobre el neto.
+  const cobro = calcularCobro({
+    items: items.map((it) => ({ precio: it.precio_unitario as number, cantidad: it.cantidad as number })),
+    cupon,
+    propina: input.propina,
+  });
+  const nota = (input.nota ?? "").trim() || null;
+
+  // --- Orden anti doble cobro ---
+  // 1) Claim de la reserva ANTES de crear la venta: solo una llamada pasa el
+  //    update condicional; la otra ve 0 filas y no cobra de nuevo.
+  let estadoAnterior: string | null = null;
+  if (input.reservaId) {
+    const { data: prev, error: prevErr } = await sb
+      .from("reservas")
+      .select("estado")
+      .eq("id", input.reservaId)
+      .maybeSingle();
+    if (prevErr) return { ok: false, error: errorPublico("completarReserva reserva", prevErr) };
+    if (!prev) return { ok: false, error: "Reserva no encontrada o sin permiso" };
+    estadoAnterior = (prev as { estado: string }).estado;
+
+    const { data: claimed, error: claimErr } = await sb
+      .from("reservas")
+      .update({ estado: "completada" })
+      .eq("id", input.reservaId)
+      .in("estado", ["pendiente", "confirmada", "en_curso"])
+      .select("id");
+    if (claimErr) return { ok: false, error: errorPublico("completarReserva claim", claimErr) };
+    if (!claimed || claimed.length === 0) {
+      return { ok: false, error: "Esta cita ya fue cobrada o cancelada." };
+    }
+  }
+
+  // Revierte el claim si algo posterior falla (deja la reserva cobrable de nuevo).
+  async function revertirClaim() {
+    if (!input.reservaId || !estadoAnterior) return;
+    const { error: revErr } = await sb.from("reservas").update({ estado: estadoAnterior }).eq("id", input.reservaId);
+    if (revErr) errorPublico("completarReserva revertir", revErr);
+  }
+
+  // 2) La venta. El unique index ventas_reserva_unica es el backstop del claim.
   const { data: venta, error } = await sb
     .from("ventas")
     .insert({
       sede_id: input.sede,
       barbero_id: barberoId,
       cliente_ref: input.clienteRef,
+      cliente_nombre: !input.clienteRef ? (input.clienteNombre ?? "").trim() || null : null,
       reserva_id: input.reservaId,
-      medio: input.medio,
-      total: totalNeto,
-      descuento,
+      medio,
+      total: cobro.total,
+      descuento: cobro.descuento,
       cupon_codigo: cuponCodigo,
+      propina: cobro.propina,
+      nota,
     })
     .select("id")
     .single();
-  if (error || !venta) return { ok: false, error: errorPublico("completarReserva", error, "No se pudo completar el cobro. Intentá de nuevo.") };
+  if (error || !venta) {
+    // 23505 = ya existe una venta para esta reserva: quedó cobrada, no revertir.
+    if (error?.code === "23505") {
+      return { ok: false, error: errorPublico("completarReserva", error, "Esta cita ya fue cobrada.") };
+    }
+    await revertirClaim();
+    return { ok: false, error: errorPublico("completarReserva", error, "No se pudo completar el cobro. Intentá de nuevo.") };
+  }
   const ventaId = (venta as { id: string }).id;
 
+  // 3) Los ítems. Si fallan, NO puede quedar la venta huérfana: se borra la
+  //    venta y se revierte la reserva para reintentar el cobro completo.
   if (items.length) {
     const { error: itemsErr } = await sb.from("venta_items").insert(items.map((it) => ({ ...it, venta_id: ventaId })));
-    if (itemsErr) return { ok: false, error: errorPublico("completarReserva items", itemsErr, "No se pudieron registrar los consumos de la venta") };
+    if (itemsErr) {
+      const { error: delErr } = await sb.from("ventas").delete().eq("id", ventaId);
+      if (delErr) errorPublico("completarReserva borrar venta", delErr);
+      await revertirClaim();
+      return { ok: false, error: errorPublico("completarReserva items", itemsErr, "No se pudieron registrar los consumos de la venta. Intentá de nuevo.") };
+    }
   }
-  for (const sel of input.productos) {
-    await sb.rpc("decrement_stock", { p_id: sel.id, p_qty: sel.cantidad });
+
+  // 4) Efectos secundarios: la venta ya quedó registrada; si algo de esto falla
+  //    NO se aborta el cobro, pero SIEMPRE queda log (nunca tragar en silencio).
+  for (const it of items) {
+    if (it.tipo !== "producto") continue;
+    const { error: stockErr } = await sb.rpc("decrement_stock", { p_id: it.ref_id, p_qty: it.cantidad });
+    if (stockErr) errorPublico("completarReserva decrement_stock", stockErr);
   }
   // Registrar uso del cupón (atómico: incrementa solo si no superó el tope; sin carrera).
   if (cuponCodigo) {
-    await sb.rpc("bump_cupon_uso", { p_codigo: cuponCodigo });
+    const { error: cupErr } = await sb.rpc("bump_cupon_uso", { p_codigo: cuponCodigo });
+    if (cupErr) errorPublico("completarReserva bump_cupon_uso", cupErr);
   }
-  // Fidelidad: puntos por el neto cobrado, solo si el cliente está inscrito.
-  let puntos = Math.floor(totalNeto / PUNTOS_POR_COP);
+  // Fidelidad: puntos por el neto cobrado (sin propina), solo si el cliente está inscrito.
+  let puntos = input.clienteRef ? cobro.puntos : 0;
   if (input.clienteRef && puntos > 0) {
     const { data: cli } = await sb.from("clientes").select("fidelizado").eq("id", input.clienteRef).maybeSingle();
     if ((cli as { fidelizado?: boolean } | null)?.fidelizado === false) puntos = 0;
     if (puntos > 0) {
-      await sb.from("puntos_mov").insert({
+      const { error: ptsErr } = await sb.from("puntos_mov").insert({
         cliente_ref: input.clienteRef,
         tipo: "ganado",
         puntos,
         venta_id: ventaId,
         nota: "Compra",
       });
+      if (ptsErr) {
+        errorPublico("completarReserva puntos_mov", ptsErr);
+        puntos = 0;
+      }
     }
   }
-  await sb.from("reservas").update({ estado: "completada" }).eq("id", input.reservaId);
+
+  // Push post-servicio: invita a calificar la visita en /cuenta. Solo para citas
+  // reales (con reserva y cliente vinculado); la venta rápida no tiene qué calificar.
+  // Fire-and-forget DESPUÉS del éxito del cobro: pushACliente jamás lanza.
+  if (input.reservaId && input.clienteRef) {
+    await pushACliente(input.clienteRef, {
+      title: "¿Cómo estuvo tu corte? ✂️",
+      body: "Contanos con una calificación. Te toma 10 segundos.",
+      url: "/cuenta",
+      tag: "califica",
+    });
+  }
 
   revalidatePath("/barbero");
   revalidatePath("/admin/inventario");
-  return { ok: true, total: totalNeto, descuento, puntos };
+  return { ok: true, total: cobro.total, descuento: cobro.descuento, propina: cobro.propina, puntos };
 }
 
 // ---------- Cupones (admin) + canje de puntos ----------
@@ -628,30 +760,35 @@ export async function cerrarCaja(input: {
   const sb = await supabaseServerAuth();
   const denied = await requireAdmin(sb);
   if (denied) return { ok: false, error: denied };
-  // Snapshot de lo recaudado desde que se abrió la caja.
+  // Snapshot de lo recaudado desde que se abrió la caja, desglosado por medio.
   const { data: ventas } = await sb
     .from("ventas")
-    .select("medio,total")
+    .select("medio,total,propina")
     .eq("sede_id", input.sede)
     .gte("creado_en", input.abiertaEnISO);
-  const vs = (ventas ?? []) as { medio: string; total: number }[];
-  const efectivo = vs.filter((v) => v.medio === "efectivo").reduce((a, v) => a + v.total, 0);
-  const datafono = vs.filter((v) => v.medio === "datafono").reduce((a, v) => a + v.total, 0);
+  const vs = (ventas ?? []) as { medio: string; total: number; propina: number | null }[];
+  const totales = totalesPorMedio(vs);
+  const efectivo = totales.efectivo?.total ?? 0;
+  const datafono = totales.datafono?.total ?? 0;
   const { data: gastos } = await sb
     .from("gastos")
     .select("monto")
     .eq("sede_id", input.sede)
     .gte("creado_en", input.abiertaEnISO);
   const totalGastos = ((gastos ?? []) as { monto: number }[]).reduce((a, g) => a + g.monto, 0);
-  const diferencia = input.efectivoContado - efectivo;
+  // Lo esperado en el cajón incluye las propinas cobradas en efectivo.
+  const esperadoEfectivo = efectivo + (totales.efectivo?.propina ?? 0);
+  const diferencia = input.efectivoContado - esperadoEfectivo;
 
   const { error } = await sb
     .from("caja_sesiones")
     .update({
       estado: "cerrada",
       cerrada_en: new Date().toISOString(),
+      // Columnas legacy pobladas por compat (histórico y UI vieja) + snapshot jsonb.
       total_efectivo: efectivo,
       total_datafono: datafono,
+      totales,
       total_gastos: totalGastos,
       citas: vs.length,
       efectivo_contado: input.efectivoContado,
@@ -662,6 +799,55 @@ export async function cerrarCaja(input: {
   if (error) return { ok: false, error: errorPublico("cerrarCaja", error) };
   revalidatePath("/admin/cuadre");
   revalidatePath("/admin");
+  return { ok: true };
+}
+
+// ---------- Medios de pago (admin) ----------
+// slug = nombre en minúsculas, sin tildes, espacios → guiones (ej. "Nequi QR" → "nequi-qr").
+function slugDeMedio(nombre: string): string {
+  return nombre
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/[^a-z0-9-]/g, "");
+}
+
+export async function crearMedioPago(nombre: string): Promise<ActionResult> {
+  const sb = await supabaseServerAuth();
+  const denied = await requireAdmin(sb);
+  if (denied) return { ok: false, error: denied };
+  const nom = (nombre ?? "").trim();
+  const slug = slugDeMedio(nom);
+  if (!nom || !slug) return { ok: false, error: "Escribí el nombre del medio de pago" };
+  // Va al final de la lista: orden = max + 1.
+  const { data: last } = await sb
+    .from("medios_pago")
+    .select("orden")
+    .order("orden", { ascending: false })
+    .limit(1);
+  const orden = ((last?.[0] as { orden?: number } | undefined)?.orden ?? 0) + 1;
+  const { error } = await sb.from("medios_pago").insert({ slug, nombre: nom, activo: true, orden });
+  if (error) {
+    if (error.code === "23505") return { ok: false, error: "Ya existe un medio de pago con ese nombre." };
+    return { ok: false, error: errorPublico("crearMedioPago", error) };
+  }
+  revalidatePath("/admin/cuadre");
+  revalidatePath("/barbero");
+  return { ok: true };
+}
+
+// Sin delete: el histórico de ventas referencia el slug por FK; solo se desactiva.
+export async function toggleMedioPago(slug: string, activo: boolean): Promise<ActionResult> {
+  const sb = await supabaseServerAuth();
+  const denied = await requireAdmin(sb);
+  if (denied) return { ok: false, error: denied };
+  const { data, error } = await sb.from("medios_pago").update({ activo }).eq("slug", slug).select("slug");
+  if (error) return { ok: false, error: errorPublico("toggleMedioPago", error) };
+  if (!data || data.length === 0) return { ok: false, error: "Medio de pago no encontrado" };
+  revalidatePath("/admin/cuadre");
+  revalidatePath("/barbero");
   return { ok: true };
 }
 
@@ -812,7 +998,14 @@ export async function proponerAdelanto(input: {
 
   if (updErr) return { ok: false, error: errorPublico("proponerAdelanto", updErr) };
 
-  // aviso real al cliente: Bloque 3 (push+email)
+  // Aviso real al cliente DESPUÉS del éxito (fire-and-forget: jamás lanza).
+  if (res.cliente_ref) {
+    await pushACliente(res.cliente_ref, {
+      title: "Te ofrecemos adelantar tu cita",
+      body: `Hay un cupo más temprano: ${fechaHoraBogota(new Date(input.inicioISO))}. Entrá para aceptar o rechazar.`,
+      url: "/cuenta",
+    });
+  }
 
   revalidatePath("/barbero");
   revalidatePath("/cuenta");

@@ -1,11 +1,2 @@
-
-[functions.notify_client]
-enabled = true
-verify_jwt = false
-import_map = "./functions/notify_client/deno.json"
-# Uncomment to specify a custom file path to the entrypoint.
-# Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
-entrypoint = "./functions/notify_client/index.ts"
-# Specifies static files to be bundled with the function. Supports glob patterns.
-# For example, if you want to serve static HTML pages in your function:
-# static_files = [ "./functions/notify_client/*.html" ]
+# Sin Edge Functions: la única que había (notify_client) estaba rota y jamás se
+# cableó; el emisor de push ahora vive en Next (src/lib/push.ts, web-push).

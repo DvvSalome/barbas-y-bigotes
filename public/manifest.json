@@ -1,12 +1,16 @@
 {
+  "id": "/",
   "name": "Barbas & Bigotes",
   "short_name": "B&B",
-  "description": "Tu barbería de confianza",
+  "description": "Tu barbería de confianza en Barranquilla: reservá tu cita, mirá tus turnos y recibí avisos.",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#111111",
   "theme_color": "#D4AF37",
   "orientation": "portrait-primary",
+  "lang": "es-CO",
+  "categories": ["lifestyle", "shopping"],
   "icons": [
     {
       "src": "/brand/icon-192x192.png",
@@ -17,6 +21,35 @@
       "src": "/brand/icon-512x512.png",
       "sizes": "512x512",
       "type": "image/png"
+    },
+    {
+      "src": "/brand/icon-512x512-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/screenshots/home-movil.png",
+      "sizes": "500x844",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Inicio — Barbas & Bigotes"
+    },
+    {
+      "src": "/screenshots/reservar-movil.png",
+      "sizes": "500x844",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Reservá tu cita en minutos"
+    },
+    {
+      "src": "/screenshots/home-desktop.png",
+      "sizes": "1280x800",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Barbas & Bigotes en escritorio"
     }
   ]
 }

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { getResumen } from "@/lib/data/queries";
+import { getResumen, getPostventaResumen } from "@/lib/data/queries";
 import { cop } from "@/lib/format";
 import { SectionHeader } from "@/components/admin/SectionHeader";
 import { Kpi } from "@/components/admin/Kpi";
@@ -15,10 +15,19 @@ const accesos = [
   { href: "/admin/comisiones", title: "Comisiones", desc: "Porcentaje o arriendo por barbero.", Icon: PercentIcon },
 ];
 
+function fechaCorta(iso: string) {
+  return new Date(iso).toLocaleDateString("es-CO", { day: "numeric", month: "short" });
+}
+
 export default async function AdminHome() {
-  const r = await getResumen();
+  const [r, postventa] = await Promise.all([getResumen(), getPostventaResumen()]);
   const kpis = [
-    { label: "Ingresos hoy", value: cop(r.ingresosHoy), hint: `${cop(r.efectivo)} efectivo · ${cop(r.datafono)} datáfono`, Icon: CashIcon },
+    {
+      label: "Ingresos hoy",
+      value: cop(r.ingresosHoy),
+      hint: `${cop(r.efectivo)} efectivo · ${cop(r.datafono)} datáfono${r.otros > 0 ? ` · ${cop(r.otros)} otros` : ""}`,
+      Icon: CashIcon,
+    },
     { label: "Atenciones hoy", value: String(r.citasHoy), hint: "cobradas, ambas sedes", Icon: UsersIcon },
     { label: "Productos bajo mínimo", value: String(r.bajoMinimo), hint: "alerta de stock", Icon: BoxIcon, accent: r.bajoMinimo > 0 },
     { label: "Adelantos del mes", value: cop(r.adelantosMes), hint: "por barbero", Icon: PercentIcon },
@@ -36,6 +45,40 @@ export default async function AdminHome() {
         {kpis.map((k) => (
           <Kpi key={k.label} label={k.label} value={k.value} hint={k.hint} Icon={k.Icon} accent={k.accent ?? true} />
         ))}
+      </div>
+
+      <h2 className="mt-12 text-xs uppercase tracking-[0.3em] text-accent">Postventa</h2>
+      <div className="mt-4 rounded-2xl border border-line bg-panel p-6">
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <div className="text-xs uppercase tracking-wide text-muted">Calificación promedio · últimos 30 días</div>
+            <div className="mt-1 font-display text-4xl font-semibold text-accent-soft">
+              {postventa.promedio !== null ? `★ ${postventa.promedio}` : "—"}
+            </div>
+          </div>
+          <div className="text-sm text-muted">
+            {postventa.total > 0
+              ? `${postventa.total} ${postventa.total === 1 ? "calificación" : "calificaciones"}`
+              : "Todavía no hay calificaciones de clientes."}
+          </div>
+        </div>
+
+        {postventa.ultimas.length > 0 && (
+          <div className="mt-5 space-y-2">
+            {postventa.ultimas.map((c) => (
+              <div key={c.id} className="rounded-xl border border-line bg-bg px-4 py-3 text-sm">
+                <div className="flex items-center justify-between">
+                  <span className="text-accent">
+                    {"★".repeat(c.score)}<span className="text-line">{"★".repeat(5 - c.score)}</span>
+                  </span>
+                  <span className="text-xs text-muted">{fechaCorta(c.fecha)}</span>
+                </div>
+                <div className="mt-1">{c.comentario}</div>
+                <div className="mt-1 text-xs text-muted">{c.barbero} · {c.sede}</div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <h2 className="mt-12 text-xs uppercase tracking-[0.3em] text-accent">Accesos rápidos</h2>

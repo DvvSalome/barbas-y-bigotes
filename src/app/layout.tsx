@@ -17,6 +17,9 @@ const inter = Inter({
 
 export const viewport: Viewport = {
   themeColor: "#D4AF37",
+  // PWA iOS con status bar translúcida: el contenido se dibuja hasta el notch
+  // y el header compensa con env(safe-area-inset-top).
+  viewportFit: "cover",
 };
 
 export const metadata: Metadata = {

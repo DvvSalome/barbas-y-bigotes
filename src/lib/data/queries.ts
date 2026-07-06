@@ -1,5 +1,6 @@
-import { supabaseServer, supabaseServerAuth } from "@/lib/supabase/server";
+import { supabaseServer, supabaseServerAuth, supabaseAdmin } from "@/lib/supabase/server";
 import { bogotaDayRange, bogotaYmd } from "@/lib/slots";
+import { totalesPorMedio, type TotalesPorMedio } from "@/lib/cobro";
 import type { Sede, SedeId, Servicio, Barbero, Producto, Categoria } from "./types";
 
 export async function getSedes(): Promise<Sede[]> {
@@ -81,6 +82,28 @@ export async function getProductos(): Promise<Producto[]> {
 }
 
 
+export type MedioPago = { slug: string; nombre: string; activo: boolean; orden: number };
+
+// Medios de pago activos (botones del cobro). Lectura pública como los catálogos;
+// la validación autoritativa del medio la hace completarReserva server-side.
+export async function getMedios(): Promise<MedioPago[]> {
+  const sb = supabaseServer();
+  const { data } = await sb
+    .from("medios_pago")
+    .select("slug,nombre,activo,orden")
+    .eq("activo", true)
+    .order("orden");
+  return (data ?? []) as MedioPago[];
+}
+
+// Todos los medios (activos e inactivos): los administra el admin en /admin/cuadre
+// y sirven para ponerle nombre a los slugs de cierres viejos.
+export async function getMediosTodos(): Promise<MedioPago[]> {
+  const sb = await supabaseServerAuth();
+  const { data } = await sb.from("medios_pago").select("slug,nombre,activo,orden").order("orden");
+  return (data ?? []) as MedioPago[];
+}
+
 export type AgendaItem = {
   id: string;
   inicio: string;
@@ -159,13 +182,16 @@ export async function getResumen() {
     sb.from("adelantos").select("monto").gte("fecha", mesInicio),
   ]);
   const vs = (ventasRes.data ?? []) as { total: number; medio: string }[];
+  // Ingresos = TODOS los medios; efectivo/datáfono se desglosan y el resto va en "otros".
+  const ingresosHoy = vs.reduce((a, v) => a + v.total, 0);
   const efectivo = vs.filter((v) => v.medio === "efectivo").reduce((a, v) => a + v.total, 0);
   const datafono = vs.filter((v) => v.medio === "datafono").reduce((a, v) => a + v.total, 0);
+  const otros = ingresosHoy - efectivo - datafono;
   const bajoMinimo = ((prodsRes.data ?? []) as { stock: number; stock_minimo: number }[]).filter(
     (p) => p.stock <= p.stock_minimo,
   ).length;
   const adelantosMes = ((adelRes.data ?? []) as { monto: number }[]).reduce((a, x) => a + x.monto, 0);
-  return { ingresosHoy: efectivo + datafono, efectivo, datafono, citasHoy: vs.length, bajoMinimo, adelantosMes };
+  return { ingresosHoy, efectivo, datafono, otros, citasHoy: vs.length, bajoMinimo, adelantosMes };
 }
 
 export type CuadreSede = {
@@ -173,6 +199,8 @@ export type CuadreSede = {
   nombre: string;
   efectivo: number;
   datafono: number;
+  /** Ventas en los demás medios (Nequi, transferencia, etc.). */
+  otros: number;
   ingresos: number;
   gastos: number;
   neto: number;
@@ -202,20 +230,23 @@ export async function getCuadre() {
     const efectivo = vs.filter((v) => v.medio === "efectivo").reduce((a, v) => a + v.total, 0);
     const datafono = vs.filter((v) => v.medio === "datafono").reduce((a, v) => a + v.total, 0);
     const g = gastos.filter((x) => x.sede_id === s.id).reduce((a, x) => a + x.monto, 0);
-    const ingresos = efectivo + datafono;
-    return { sede: s.id, nombre: s.nombre, efectivo, datafono, ingresos, gastos: g, neto: ingresos - g, citas: vs.length };
+    // Ingresos = TODOS los medios (Nequi, transferencia, etc. incluidos).
+    const ingresos = vs.reduce((a, v) => a + v.total, 0);
+    const otros = ingresos - efectivo - datafono;
+    return { sede: s.id, nombre: s.nombre, efectivo, datafono, otros, ingresos, gastos: g, neto: ingresos - g, citas: vs.length };
   });
 
   const total = porSede.reduce(
     (acc, s) => ({
       efectivo: acc.efectivo + s.efectivo,
       datafono: acc.datafono + s.datafono,
+      otros: acc.otros + s.otros,
       ingresos: acc.ingresos + s.ingresos,
       gastos: acc.gastos + s.gastos,
       neto: acc.neto + s.neto,
       citas: acc.citas + s.citas,
     }),
-    { efectivo: 0, datafono: 0, ingresos: 0, gastos: 0, neto: 0, citas: 0 },
+    { efectivo: 0, datafono: 0, otros: 0, ingresos: 0, gastos: 0, neto: 0, citas: 0 },
   );
 
   return { porSede, total, gastosHoy: gastos };
@@ -268,6 +299,10 @@ export type CajaSesionSede = {
   datafono: number;
   ingresos: number;
   citas: number;
+  /** Desglose por medio de pago (slug → total + propina) desde la apertura. */
+  totales: TotalesPorMedio;
+  /** Propinas cobradas en efectivo: entran al cajón para el cuadre. */
+  propinaEfectivo: number;
 };
 
 // Estado de caja por sede: si hay sesión abierta + lo recaudado desde la apertura
@@ -292,12 +327,13 @@ export async function getCajaSesiones(): Promise<CajaSesionSede[]> {
     const start = sess ? sess.abierta_en : bogotaDayRange().desde.toISOString();
     const { data: ventas } = await sb
       .from("ventas")
-      .select("medio,total")
+      .select("medio,total,propina")
       .eq("sede_id", s.id)
       .gte("creado_en", start);
-    const vs = (ventas ?? []) as { medio: string; total: number }[];
-    const efectivo = vs.filter((v) => v.medio === "efectivo").reduce((a, v) => a + v.total, 0);
-    const datafono = vs.filter((v) => v.medio === "datafono").reduce((a, v) => a + v.total, 0);
+    const vs = (ventas ?? []) as { medio: string; total: number; propina: number | null }[];
+    const totales = totalesPorMedio(vs);
+    // Ingresos = TODOS los medios (no solo efectivo + datáfono).
+    const ingresos = Object.values(totales).reduce((a, t) => a + t.total, 0);
     out.push({
       sede: s.id,
       nombre: s.nombre,
@@ -305,10 +341,12 @@ export async function getCajaSesiones(): Promise<CajaSesionSede[]> {
       abiertaEn: sess?.abierta_en ?? null,
       metaDia: sess?.meta_dia ?? 0,
       montoApertura: sess?.monto_apertura ?? 0,
-      efectivo,
-      datafono,
-      ingresos: efectivo + datafono,
+      efectivo: totales.efectivo?.total ?? 0,
+      datafono: totales.datafono?.total ?? 0,
+      ingresos,
       citas: vs.length,
+      totales,
+      propinaEfectivo: totales.efectivo?.propina ?? 0,
     });
   }
   return out;
@@ -364,19 +402,24 @@ export type CuadreCerrado = {
   gastos: number;
   diferencia: number | null;
   citas: number;
+  /** Desglose por medio del cierre (jsonb); null en cierres viejos (solo las 2 columnas legacy). */
+  totales: TotalesPorMedio | null;
 };
 
 export async function getCuadresAnteriores(limit = 12): Promise<CuadreCerrado[]> {
   const sb = await supabaseServerAuth();
   const { data } = await sb
     .from("caja_sesiones")
-    .select("id,sede_id,cerrada_en,meta_dia,total_efectivo,total_datafono,total_gastos,diferencia,citas,sedes(nombre)")
+    .select("id,sede_id,cerrada_en,meta_dia,total_efectivo,total_datafono,totales,total_gastos,diferencia,citas,sedes(nombre)")
     .eq("estado", "cerrada")
     .order("cerrada_en", { ascending: false })
     .limit(limit);
   return ((data ?? []) as Record<string, unknown>[]).map((c) => {
-    const ef = (c.total_efectivo as number) ?? 0;
-    const da = (c.total_datafono as number) ?? 0;
+    const totales = (c.totales as TotalesPorMedio | null) ?? null;
+    const ef = totales ? totales.efectivo?.total ?? 0 : ((c.total_efectivo as number) ?? 0);
+    const da = totales ? totales.datafono?.total ?? 0 : ((c.total_datafono as number) ?? 0);
+    // Cierres nuevos: ingresos = todos los medios; viejos: solo las 2 columnas legacy.
+    const ingresos = totales ? Object.values(totales).reduce((a, t) => a + t.total, 0) : ef + da;
     return {
       id: c.id as string,
       sede: (c.sedes as { nombre?: string } | null)?.nombre ?? (c.sede_id as string),
@@ -384,10 +427,11 @@ export async function getCuadresAnteriores(limit = 12): Promise<CuadreCerrado[]>
       metaDia: (c.meta_dia as number) ?? 0,
       efectivo: ef,
       datafono: da,
-      ingresos: ef + da,
+      ingresos,
       gastos: (c.total_gastos as number) ?? 0,
       diferencia: (c.diferencia as number) ?? null,
       citas: (c.citas as number) ?? 0,
+      totales,
     };
   });
 }
@@ -453,6 +497,8 @@ export type ClienteDetalle = {
   wallet: { id: string; tipo: string; monto: number; nota: string; fecha: string }[];
   resenas: { id: string; score: number; nota: string; barbero: string; fecha: string }[];
   puntos: { id: string; tipo: string; puntos: number; nota: string; fecha: string }[];
+  /** Postventa: lo que EL CLIENTE opinó del servicio (resenas_servicio), últimas 10. */
+  calificaciones: { id: string; score: number; comentario: string; barbero: string; sede: string; fecha: string }[];
 };
 
 export async function getClienteDetalle(id: string): Promise<ClienteDetalle | null> {
@@ -465,7 +511,7 @@ export async function getClienteDetalle(id: string): Promise<ClienteDetalle | nu
   if (!c) return null;
   const cli = c as Record<string, unknown>;
 
-  const [ventasRes, reservasRes, notasRes, walletRes, resenasRes, puntosRes] = await Promise.all([
+  const [ventasRes, reservasRes, notasRes, walletRes, resenasRes, puntosRes, califRes] = await Promise.all([
     sb
       .from("ventas")
       .select("id,total,medio,creado_en,barberos(nombre),venta_items(descripcion,cantidad)")
@@ -482,6 +528,12 @@ export async function getClienteDetalle(id: string): Promise<ClienteDetalle | nu
     sb.from("cliente_wallet_mov").select("id,tipo,monto,nota,creado_en").eq("cliente_ref", id).order("creado_en", { ascending: false }),
     sb.from("cliente_resenas").select("id,score,nota,creado_en,barberos(nombre)").eq("cliente_ref", id).order("creado_en", { ascending: false }),
     sb.from("puntos_mov").select("id,tipo,puntos,nota,creado_en").eq("cliente_ref", id).order("creado_en", { ascending: false }),
+    sb
+      .from("resenas_servicio")
+      .select("id,score,comentario,creado_en,barberos(nombre),sedes(nombre)")
+      .eq("cliente_ref", id)
+      .order("creado_en", { ascending: false })
+      .limit(10),
   ]);
 
   const ventas = (ventasRes.data ?? []) as Record<string, unknown>[];
@@ -541,7 +593,54 @@ export async function getClienteDetalle(id: string): Promise<ClienteDetalle | nu
       fecha: r.creado_en as string,
     })),
     puntos: puntos.map((p) => ({ id: p.id, tipo: p.tipo, puntos: p.puntos, nota: p.nota ?? "", fecha: p.creado_en })),
+    calificaciones: ((califRes.data ?? []) as Record<string, unknown>[]).map((r) => ({
+      id: r.id as string,
+      score: r.score as number,
+      comentario: (r.comentario as string) ?? "",
+      barbero: (r.barberos as { nombre?: string } | null)?.nombre ?? "—",
+      sede: (r.sedes as { nombre?: string } | null)?.nombre ?? "—",
+      fecha: r.creado_en as string,
+    })),
   };
+}
+
+export type PostventaResumen = {
+  /** Promedio de score de los últimos 30 días (1 decimal); null sin datos. */
+  promedio: number | null;
+  /** Cantidad de calificaciones de los últimos 30 días. */
+  total: number;
+  /** Últimas 3 calificaciones que traen comentario. */
+  ultimas: { id: string; score: number; comentario: string; barbero: string; sede: string; fecha: string }[];
+};
+
+// Postventa para el panel admin: cómo vienen calificando los clientes.
+// Sesión del staff: la RLS de resenas_servicio (0018) da todo al admin y
+// solo lo suyo al barbero. Si la tabla aún no existe, queda vacío.
+export async function getPostventaResumen(): Promise<PostventaResumen> {
+  const sb = await supabaseServerAuth();
+  const desde = new Date(Date.now() - 30 * 24 * 3600_000).toISOString();
+  const [scoresRes, ultimasRes] = await Promise.all([
+    sb.from("resenas_servicio").select("score").gte("creado_en", desde),
+    sb
+      .from("resenas_servicio")
+      .select("id,score,comentario,creado_en,barberos(nombre),sedes(nombre)")
+      .not("comentario", "is", null)
+      .order("creado_en", { ascending: false })
+      .limit(3),
+  ]);
+  const scores = ((scoresRes.data ?? []) as { score: number }[]).map((s) => s.score);
+  const promedio = scores.length
+    ? Math.round((scores.reduce((a, s) => a + s, 0) / scores.length) * 10) / 10
+    : null;
+  const ultimas = ((ultimasRes.data ?? []) as Record<string, unknown>[]).map((r) => ({
+    id: r.id as string,
+    score: r.score as number,
+    comentario: (r.comentario as string) ?? "",
+    barbero: (r.barberos as { nombre?: string } | null)?.nombre ?? "—",
+    sede: (r.sedes as { nombre?: string } | null)?.nombre ?? "—",
+    fecha: r.creado_en as string,
+  }));
+  return { promedio, total: scores.length, ultimas };
 }
 
 export type Cupon = {
@@ -602,6 +701,54 @@ export type CuentaData = {
   puntos: { tipo: string; puntos: number; nota: string; fecha: string }[];
   cola: { id: string; estado: string; servicio: string; barbero: string; creadoEn: string }[];
 };
+
+export type ReservaSinCalificar = {
+  id: string;
+  inicio: string;
+  servicio: string;
+  barbero: string;
+  sede: string;
+};
+
+// La reserva completada más reciente del cliente (últimos 30 días) que todavía no
+// tiene calificación. supabaseAdmin porque resenas_servicio no expone SELECT al
+// cliente por RLS (deny by default); el clienteId viene VERIFICADO por ensureCliente
+// en el caller (mismo patrón de ownership de las cliente-actions).
+export async function getReservaSinCalificar(clienteId: string): Promise<ReservaSinCalificar | null> {
+  if (!clienteId) return null;
+  const admin = supabaseAdmin();
+  const desde = new Date(Date.now() - 30 * 24 * 3600_000).toISOString();
+  const { data, error } = await admin
+    .from("reservas")
+    .select("id,inicio,sede_id,servicios(nombre),barberos(nombre),sedes(nombre)")
+    .eq("cliente_ref", clienteId)
+    .eq("estado", "completada")
+    .gte("inicio", desde)
+    .order("inicio", { ascending: false })
+    .limit(10);
+  if (error || !data || data.length === 0) return null;
+  const rows = data as Record<string, unknown>[];
+
+  const ids = rows.map((r) => r.id as string);
+  const { data: calif, error: califErr } = await admin
+    .from("resenas_servicio")
+    .select("reserva_id")
+    .in("reserva_id", ids);
+  // Fail-closed: si la tabla aún no existe (migración pendiente) o falla la
+  // lectura, no se muestra el card (mejor que invitar a calificar y que falle).
+  if (califErr) return null;
+  const yaCalificadas = new Set(((calif ?? []) as { reserva_id: string }[]).map((c) => c.reserva_id));
+
+  const pendiente = rows.find((r) => !yaCalificadas.has(r.id as string));
+  if (!pendiente) return null;
+  return {
+    id: pendiente.id as string,
+    inicio: pendiente.inicio as string,
+    servicio: (pendiente.servicios as { nombre?: string } | null)?.nombre ?? "Tu servicio",
+    barbero: (pendiente.barberos as { nombre?: string } | null)?.nombre ?? "—",
+    sede: (pendiente.sedes as { nombre?: string } | null)?.nombre ?? (pendiente.sede_id as string),
+  };
+}
 
 // Datos del cliente logueado. La RLS de cliente (0013) limita todo a lo propio.
 export async function getCuenta(): Promise<CuentaData> {

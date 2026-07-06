@@ -5,6 +5,8 @@ import { supabaseServerAuth, supabaseAdmin } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { CANCELACION_MIN_HORAS } from "@/lib/slots";
 import { errorPublico } from "@/lib/errors";
+import { pushACliente } from "@/lib/push";
+import { fechaHoraBogota } from "@/lib/format";
 
 export type CuentaContext = { estado: "anon" | "staff" | "cliente"; clienteId?: string };
 
@@ -202,9 +204,78 @@ export async function cancelarReservaCliente(
     .select("id");
   if (error) return { ok: false, error: errorPublico("cancelarReservaCliente", error) };
   if (!upd || upd.length === 0) return { ok: false, error: "Esta cita ya no se puede cancelar." };
+  // Confirmación DESPUÉS del éxito, nunca bloqueante: pushACliente jamás lanza.
+  await pushACliente(ctx.clienteId, {
+    title: "Cita cancelada",
+    body: `Tu cita fue cancelada (era el ${fechaHoraBogota(new Date(r.inicio))}).`,
+    url: "/cuenta",
+  });
   revalidatePath("/cuenta");
   revalidatePath("/barbero");
   return { ok: true };
+}
+
+// Calificar la atención de una visita ya completada (postventa). Mismo patrón de
+// ownership que cancelarReservaCliente: la action usa supabaseAdmin (bypassa RLS),
+// así que TODO se valida acá server-side (dueño, estado, score); no confiar en la UI.
+// Rating gate: score alto → devuelve la URL de reseña de Google de LA sede que
+// atendió; score bajo → null (feedback interno, no mandamos clientes molestos a Google).
+export async function calificarServicio(input: {
+  reservaId: string;
+  score: number;
+  comentario?: string;
+}): Promise<{ ok: boolean; error?: string; googleReviewUrl?: string | null }> {
+  const ctx = await ensureCliente();
+  if (ctx.estado !== "cliente" || !ctx.clienteId) return { ok: false, error: "No autorizado" };
+
+  const score = input.score;
+  if (!Number.isInteger(score) || score < 1 || score > 5)
+    return { ok: false, error: "La calificación va de 1 a 5 estrellas." };
+  const comentario = (input.comentario ?? "").trim().slice(0, 500) || null;
+
+  const admin = supabaseAdmin();
+  const { data: res, error: getErr } = await admin
+    .from("reservas")
+    .select("id, cliente_ref, barbero_id, sede_id, estado")
+    .eq("id", input.reservaId)
+    .maybeSingle();
+  if (getErr) return { ok: false, error: errorPublico("calificarServicio reserva", getErr) };
+  if (!res) return { ok: false, error: "Reserva no encontrada" };
+  const r = res as { cliente_ref: string | null; barbero_id: string | null; sede_id: string; estado: string };
+
+  if (r.cliente_ref !== ctx.clienteId) return { ok: false, error: "Reserva no encontrada" };
+  if (r.estado !== "completada")
+    return { ok: false, error: "Solo se pueden calificar visitas ya completadas." };
+
+  const { error: insErr } = await admin.from("resenas_servicio").insert({
+    reserva_id: input.reservaId,
+    cliente_ref: ctx.clienteId,
+    barbero_id: r.barbero_id,
+    sede_id: r.sede_id,
+    score,
+    comentario,
+  });
+  if (insErr) {
+    // 23505 = unique(reserva_id): esta visita ya tiene calificación.
+    if (insErr.code === "23505") return { ok: false, error: "Ya calificaste esta visita." };
+    return { ok: false, error: errorPublico("calificarServicio", insErr) };
+  }
+
+  // Rating gate: solo con 4-5 estrellas se empuja a Google. La URL es de ESA sede
+  // (cada sede tiene su ficha de Maps); nullable = botón apagado hasta configurarla.
+  let googleReviewUrl: string | null = null;
+  if (score >= 4) {
+    const { data: sede, error: sedeErr } = await admin
+      .from("sedes")
+      .select("google_review_url")
+      .eq("id", r.sede_id)
+      .maybeSingle();
+    if (sedeErr) errorPublico("calificarServicio sede", sedeErr);
+    googleReviewUrl = (sede as { google_review_url?: string | null } | null)?.google_review_url ?? null;
+  }
+
+  revalidatePath("/cuenta");
+  return { ok: true, googleReviewUrl };
 }
 
 // Reagendar la propia cita. Misma ventana de 2h que cancelar. Pre-chequea solape
@@ -272,6 +343,12 @@ export async function reagendarReservaCliente(
     return { ok: false, error: errorPublico("reagendarReservaCliente", error) };
   }
   if (!upd || upd.length === 0) return { ok: false, error: "Esta cita ya no se puede reagendar." };
+  // Confirmación DESPUÉS del éxito, nunca bloqueante: pushACliente jamás lanza.
+  await pushACliente(ctx.clienteId, {
+    title: "Cita reagendada",
+    body: `Tu cita cambió para ${fechaHoraBogota(nuevoInicio)}.`,
+    url: "/cuenta",
+  });
   revalidatePath("/cuenta");
   revalidatePath("/barbero");
   return { ok: true };

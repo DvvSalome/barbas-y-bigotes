@@ -6,10 +6,14 @@ import {
   getCajaSesiones,
   getReservasPendientesCobro,
   getCuadresAnteriores,
+  getMediosTodos,
+  type MedioPago,
 } from "@/lib/data/queries";
 import { CuadreForms } from "@/components/admin/CuadreForms";
 import { CajaSesiones } from "@/components/admin/CajaSesiones";
+import { MediosPago } from "@/components/admin/MediosPago";
 import { cop } from "@/lib/format";
+import type { TotalesPorMedio } from "@/lib/cobro";
 import { SectionHeader } from "@/components/admin/SectionHeader";
 import { Stat } from "@/components/admin/Stat";
 
@@ -30,14 +34,26 @@ function horaCorta(iso: string) {
   return `${((h + 11) % 12) + 1}:${m.toString().padStart(2, "0")} ${ap}`;
 }
 
+// Desglose por medio de un cierre nuevo (con snapshot `totales`), con propinas.
+function desgloseCierre(totales: TotalesPorMedio, medios: MedioPago[]) {
+  const ordenDe = new Map(medios.map((m) => [m.slug, m.orden]));
+  const nombreDe = (slug: string) =>
+    medios.find((m) => m.slug === slug)?.nombre ?? slug.charAt(0).toUpperCase() + slug.slice(1);
+  return Object.entries(totales)
+    .sort(([a], [b]) => (ordenDe.get(a) ?? 999) - (ordenDe.get(b) ?? 999))
+    .map(([slug, t]) => `${nombreDe(slug)} ${cop(t.total)}${t.propina > 0 ? ` (+${cop(t.propina)} propina)` : ""}`)
+    .join(" · ");
+}
+
 export default async function CuadrePage() {
-  const [cuadre, sedes, barberos, cajas, pendientes, anteriores] = await Promise.all([
+  const [cuadre, sedes, barberos, cajas, pendientes, anteriores, medios] = await Promise.all([
     getCuadre(),
     getSedes(),
     getBarberos(),
     getCajaSesiones(),
     getReservasPendientesCobro(),
     getCuadresAnteriores(),
+    getMediosTodos(),
   ]);
   const fecha = new Date().toLocaleDateString("es-CO", { timeZone: "America/Bogota", weekday: "long", day: "numeric", month: "long" });
   const totalPendiente = pendientes.reduce((a, p) => a + p.monto, 0);
@@ -47,7 +63,7 @@ export default async function CuadrePage() {
       <SectionHeader eyebrow="Hoy" title="Cuadre de caja" description={<span className="capitalize">{fecha}</span>} />
 
       <div className="mt-8">
-        <CajaSesiones cajas={cajas} />
+        <CajaSesiones cajas={cajas} medios={medios} />
       </div>
 
       {pendientes.length > 0 && (
@@ -88,6 +104,7 @@ export default async function CuadrePage() {
             <div className="mt-3 grid grid-cols-3 gap-3">
               <Stat label="Efectivo" value={cop(s.efectivo)} />
               <Stat label="Datáfono" value={cop(s.datafono)} />
+              <Stat label="Otros" value={cop(s.otros)} />
               <Stat label="Citas" value={s.citas} />
               <Stat label="Ingresos" value={cop(s.ingresos)} />
               <Stat label="Gastos" value={`−${cop(s.gastos)}`} className="text-muted" />
@@ -100,6 +117,7 @@ export default async function CuadrePage() {
           <div className="mt-3 grid grid-cols-3 gap-3">
             <Stat label="Efectivo" value={cop(cuadre.total.efectivo)} />
             <Stat label="Datáfono" value={cop(cuadre.total.datafono)} />
+            <Stat label="Otros" value={cop(cuadre.total.otros)} />
             <Stat label="Citas" value={cuadre.total.citas} />
             <Stat label="Ingresos" value={cop(cuadre.total.ingresos)} />
             <Stat label="Gastos" value={`−${cop(cuadre.total.gastos)}`} className="text-muted" />
@@ -116,6 +134,7 @@ export default async function CuadrePage() {
               <th className="px-4 py-3 text-left font-medium">Sede</th>
               <th className="px-4 py-3 text-right font-medium">Efectivo</th>
               <th className="px-4 py-3 text-right font-medium">Datáfono</th>
+              <th className="px-4 py-3 text-right font-medium">Otros</th>
               <th className="px-4 py-3 text-right font-medium">Ingresos</th>
               <th className="px-4 py-3 text-right font-medium">Gastos</th>
               <th className="px-4 py-3 text-right font-medium">Neto</th>
@@ -128,6 +147,7 @@ export default async function CuadrePage() {
                 <td className="px-4 py-3 font-display text-lg">{s.nombre}</td>
                 <td className="px-4 py-3 text-right">{cop(s.efectivo)}</td>
                 <td className="px-4 py-3 text-right">{cop(s.datafono)}</td>
+                <td className="px-4 py-3 text-right">{cop(s.otros)}</td>
                 <td className="px-4 py-3 text-right">{cop(s.ingresos)}</td>
                 <td className="px-4 py-3 text-right text-muted">−{cop(s.gastos)}</td>
                 <td className="px-4 py-3 text-right font-semibold text-accent-soft">{cop(s.neto)}</td>
@@ -138,6 +158,7 @@ export default async function CuadrePage() {
               <td className="px-4 py-3 font-display text-lg">Total</td>
               <td className="px-4 py-3 text-right">{cop(cuadre.total.efectivo)}</td>
               <td className="px-4 py-3 text-right">{cop(cuadre.total.datafono)}</td>
+              <td className="px-4 py-3 text-right">{cop(cuadre.total.otros)}</td>
               <td className="px-4 py-3 text-right">{cop(cuadre.total.ingresos)}</td>
               <td className="px-4 py-3 text-right text-muted">−{cop(cuadre.total.gastos)}</td>
               <td className="px-4 py-3 text-right font-semibold text-accent-soft">{cop(cuadre.total.neto)}</td>
@@ -149,6 +170,10 @@ export default async function CuadrePage() {
 
       <div className="mt-8">
         <CuadreForms sedes={sedes} barberos={barberos} />
+      </div>
+
+      <div className="mt-8">
+        <MediosPago medios={medios} />
       </div>
 
       {cuadre.gastosHoy.length > 0 && (
@@ -210,6 +235,13 @@ export default async function CuadrePage() {
                     className={c.diferencia && c.diferencia !== 0 ? "text-amber-400" : "text-muted"}
                   />
                 </div>
+                {c.totales ? (
+                  <div className="mt-3 border-t border-line pt-2 text-xs text-muted">{desgloseCierre(c.totales, medios)}</div>
+                ) : (
+                  <div className="mt-3 border-t border-line pt-2 text-xs text-muted">
+                    Efectivo {cop(c.efectivo)} · Datáfono {cop(c.datafono)}
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -236,7 +268,12 @@ export default async function CuadrePage() {
                     </td>
                     <td className="px-4 py-3">{c.sede}</td>
                     <td className="px-4 py-3 text-right text-muted">{c.metaDia ? cop(c.metaDia) : "—"}</td>
-                    <td className="px-4 py-3 text-right text-accent-soft">{cop(c.ingresos)}</td>
+                    <td className="px-4 py-3 text-right text-accent-soft">
+                      {cop(c.ingresos)}
+                      <div className="text-[10px] font-normal text-muted">
+                        {c.totales ? desgloseCierre(c.totales, medios) : `Efectivo ${cop(c.efectivo)} · Datáfono ${cop(c.datafono)}`}
+                      </div>
+                    </td>
                     <td className="px-4 py-3 text-right text-muted">−{cop(c.gastos)}</td>
                     <td className={`px-4 py-3 text-right ${c.diferencia && c.diferencia !== 0 ? "text-amber-400" : "text-muted"}`}>
                       {c.diferencia === null ? "—" : `${c.diferencia > 0 ? "+" : ""}${cop(c.diferencia)}`}
