@@ -7,7 +7,7 @@ export default function Offline() {
     <main className="flex min-h-screen flex-col items-center justify-center bg-bg px-6 text-center">
       <div className="font-display text-5xl text-accent">Sin conexión</div>
       <p className="mt-4 max-w-sm text-sm text-muted">
-        Parece que estás sin internet. Revisá tu conexión y volvé a intentar —
+        Parece que estás sin internet. Revisá tu conexión y volvé a intentar:
         tu cita te espera.
       </p>
       {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- offline:
