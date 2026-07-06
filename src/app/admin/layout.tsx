@@ -1,5 +1,7 @@
 import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
 import { supabaseServerAuth } from "@/lib/supabase/server";
+import { TEMA_COOKIE, temaDesdeCookie } from "@/lib/tema";
 import { getSedes, getCajaChip } from "@/lib/data/queries";
 import { AdminTopbar } from "@/components/admin/AdminTopbar";
 import { CommandK } from "@/components/staff/CommandK";
@@ -25,8 +27,12 @@ export default async function AdminLayout({
 
   const [sedes, caja] = await Promise.all([getSedes(), getCajaChip()]);
 
+  // Tema del staff desde la cookie (SSR sin flash). cookies() vuelve dinámico
+  // el layout, pero /admin ya lo es (sesión Supabase en cada request).
+  const tema = temaDesdeCookie((await cookies()).get(TEMA_COOKIE)?.value);
+
   return (
-    <div data-staff className="flex min-h-dvh flex-col">
+    <div data-staff data-theme={tema} className="flex min-h-dvh flex-col">
       <RealtimeRefresh
         subscriptions={[
           { table: "reservas" },
