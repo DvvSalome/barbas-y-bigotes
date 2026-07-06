@@ -62,11 +62,10 @@ export function CommandK() {
   }, []);
 
   // Cierre puro de estado: una búsqueda pendiente que llegue tarde no molesta
-  // (abrir() resetea todo y reqId descarta respuestas de rondas viejas).
-  const cerrar = useCallback(() => {
-    setOpen(false);
-    focoPrevio.current?.focus();
-  }, []);
+  // (abrir() resetea todo y reqId descarta respuestas de rondas viejas). El foco
+  // se restaura en un efecto (leer el ref acá lo tracea el compiler como
+  // lectura-en-render vía los onClick).
+  const cerrar = useCallback(() => setOpen(false), []);
 
   // Ctrl/Cmd-K global + Escape (a nivel window: cierra aunque el input haya
   // perdido el foco) + evento del botón del topbar.
@@ -97,6 +96,12 @@ export function CommandK() {
     return () => {
       document.body.style.overflow = prev;
     };
+  }, [open]);
+
+  // Al cerrarse, devolver el foco a quien abrió (leer el ref en efecto es válido).
+  useEffect(() => {
+    if (open) return;
+    focoPrevio.current?.focus();
   }, [open]);
 
   // Limpieza del debounce al desmontar.
