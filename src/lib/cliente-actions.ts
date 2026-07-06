@@ -116,7 +116,12 @@ export async function responderPropuestaAdelanto(
       })
       .eq("id", reservaId);
 
-    if (updErr) return { ok: false, error: errorPublico("responderPropuestaAdelanto", updErr) };
+    if (updErr) {
+      // Carrera: el slot se tomó entre el pre-chequeo y este update (el EXCLUDE
+      // reservas_no_overlap es la garantía real). Mensaje claro, no error genérico.
+      if (updErr.code === "23P01") return { ok: false, error: "Ese espacio ya fue tomado por otro cliente." };
+      return { ok: false, error: errorPublico("responderPropuestaAdelanto", updErr) };
+    }
 
   } else {
     // Rejected
@@ -142,7 +147,10 @@ export async function savePushSubscription(
 
   const admin = supabaseAdmin();
 
-  // Check if subscription already exists based on endpoint
+  // ¿Ya existe una fila para este endpoint? En un equipo compartido el mismo
+  // endpoint del navegador puede quedar atado a otro cliente: hay que RE-VINCULARLO
+  // al cliente logueado ahora (si no, el dueño anterior seguiría recibiendo sus
+  // avisos en este dispositivo → fuga de datos de citas).
   const { data: existing } = await admin
     .from("push_subscriptions")
     .select("id")
@@ -150,7 +158,19 @@ export async function savePushSubscription(
     .maybeSingle();
 
   if (existing) {
-    return { ok: true }; // Already saved
+    const { error: updErr } = await admin
+      .from("push_subscriptions")
+      .update({
+        cliente_ref: ctx.clienteId,
+        p256dh: subscription.keys.p256dh,
+        auth: subscription.keys.auth,
+      })
+      .eq("endpoint", subscription.endpoint);
+    if (updErr) {
+      console.error("Error updating push subscription", updErr);
+      return { ok: false, error: "Error al guardar suscripción" };
+    }
+    return { ok: true };
   }
 
   const { error } = await admin.from("push_subscriptions").insert({
