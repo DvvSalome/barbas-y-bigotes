@@ -113,8 +113,8 @@ Habla en español colombiano caribeño.`;
     }
 
     throw new Error("No hay API keys configuradas en el servidor (NVIDIA_API_KEY o GEMINI_API_KEY)");
-  } catch (err: any) {
-    console.error("Error en chatConAsistente:", err.message);
+  } catch (err) {
+    console.error("Error en chatConAsistente:", err instanceof Error ? err.message : err);
     return { text: "Todo bien bro, pero ando con problemas de conexión ahora mismo. ¿Podrías agendar usando el formulario clásico mientras me recupero?" };
   }
 }

@@ -975,7 +975,7 @@ export async function proponerAdelanto(input: {
   }
   const fin = new Date(new Date(input.inicioISO).getTime() + dur * 60000);
 
-  let notaObj: any = {};
+  let notaObj: Record<string, unknown> = {};
   try {
     notaObj = JSON.parse(res.nota || "{}");
   } catch {
@@ -1062,7 +1062,7 @@ export async function getLiveBarberStatuses(): Promise<BarberLiveStatus[]> {
       sedeId: b.sede_id,
       fotoUrl: b.foto_url,
       status: activeRes ? "ocupado" : "disponible",
-      servicioActual: activeRes ? (activeRes.servicios as any)?.nombre : undefined,
+      servicioActual: activeRes ? (activeRes.servicios as { nombre?: string } | null)?.nombre : undefined,
       terminaA: activeRes ? new Date(activeRes.fin).toLocaleTimeString("es-CO", { timeZone: "America/Bogota", hour: "numeric", minute: "2-digit" }) : undefined,
     };
   });

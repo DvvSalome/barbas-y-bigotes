@@ -33,7 +33,17 @@ export function LiveBarbersStatus() {
   }
 
   useEffect(() => {
-    fetchStatus();
+    // Carga inicial encadenada en .then: el setState queda en un callback
+    // asíncrono, no sincrónico en el cuerpo del effect.
+    let vivo = true;
+    getLiveBarberStatuses()
+      .then((data) => {
+        if (vivo) setBarbers(data);
+      })
+      .catch((err) => console.error("Error fetching live status:", err))
+      .finally(() => {
+        if (vivo) setLoading(false);
+      });
 
     const sb = supabaseBrowser();
     const sub = sb
@@ -50,6 +60,7 @@ export function LiveBarbersStatus() {
     const interval = setInterval(fetchStatus, 60000);
 
     return () => {
+      vivo = false;
       sb.removeChannel(sub);
       clearInterval(interval);
     };

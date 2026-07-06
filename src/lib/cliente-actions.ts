@@ -71,7 +71,7 @@ export async function responderPropuestaAdelanto(
   if (getErr || !res) return { ok: false, error: "Reserva no encontrada" };
   if (res.cliente_ref !== ctx.clienteId) return { ok: false, error: "No autorizado" };
 
-  let notaObj: any = {};
+  let notaObj: { propuesta_adelanto?: { inicio: string; fin: string; estado: string }; [k: string]: unknown } = {};
   try {
     notaObj = JSON.parse(res.nota || "{}");
   } catch {
@@ -99,13 +99,13 @@ export async function responderPropuestaAdelanto(
       .limit(1);
 
     if (clash && clash.length > 0) {
-      notaObj.propuesta_adelanto.estado = "vencido";
+      prop.estado = "vencido";
       await admin.from("reservas").update({ nota: JSON.stringify(notaObj) }).eq("id", reservaId);
       return { ok: false, error: "Lo sentimos, ese espacio ya fue tomado por otro cliente." };
     }
 
-    notaObj.propuesta_adelanto.estado = "aceptada";
-    const userNote = notaObj.text || "";
+    prop.estado = "aceptada";
+    const userNote = typeof notaObj.text === "string" ? notaObj.text : "";
     
     const { error: updErr } = await admin
       .from("reservas")
@@ -120,7 +120,7 @@ export async function responderPropuestaAdelanto(
 
   } else {
     // Rejected
-    notaObj.propuesta_adelanto.estado = "rechazada";
+    prop.estado = "rechazada";
     await admin
       .from("reservas")
       .update({
