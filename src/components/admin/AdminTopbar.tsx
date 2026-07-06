@@ -104,10 +104,10 @@ export function AdminTopbar({ email, sedes, caja }: { email: string; sedes: Sede
         <Link
           href="/admin/cuadre"
           className={`flex items-center gap-1.5 whitespace-nowrap rounded-full border px-3 py-1 text-xs font-semibold transition ${
-            caja.abierta ? "border-emerald-400/35 text-emerald-400" : "border-line text-muted hover:text-ink"
+            caja.abierta ? "border-ok/35 text-ok" : "border-line text-muted hover:text-ink"
           }`}
         >
-          <span className={`h-[7px] w-[7px] rounded-full ${caja.abierta ? "bg-emerald-400" : "bg-muted"}`} />
+          <span className={`h-[7px] w-[7px] rounded-full ${caja.abierta ? "bg-ok" : "bg-muted"}`} />
           {caja.abierta
             ? caja.sedesCount > 1 && caja.abiertasCount < caja.sedesCount
               ? `Caja: ${caja.abiertasCount} de ${caja.sedesCount} abiertas`

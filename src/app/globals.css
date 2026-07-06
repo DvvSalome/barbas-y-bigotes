@@ -37,6 +37,38 @@
   --accent: #d23f34;
   --accent-soft: #e8675c;
   --on-accent: #fbf7f0;
+  /* Estados sobrios (DESIGN.md: verde/ámbar solo para ok/alerta) y neutrales
+     de gráficos. Viven acá y no en las clases para que el claro los re-resuelva. */
+  --ok: #34d399;
+  --warn: #fbbf24;
+  --bar: #a3907c;
+  --shadow-pop: 0 24px 64px rgba(0, 0, 0, 0.55);
+}
+
+/* Staff en claro (cookie bb-tema=light): hueso cálido + carbón + rojo barbero
+   más profundo (AA sobre claro). Decisión explícita del Bloque 8; el sitio
+   público NO lee este tema. */
+[data-staff][data-theme="light"] {
+  --bg: #f6f3ec;
+  --panel: #fffdf9;
+  --elevated: #efeae0;
+  --ink: #26211c;
+  --muted: #6f6858;
+  --line: rgba(38, 33, 28, 0.12);
+  --accent: #b9352a;
+  --accent-soft: #d24438;
+  --on-accent: #fbf7f0;
+  --ok: #047857;
+  --warn: #b45309;
+  --bar: #8f7a60;
+  --shadow-pop: 0 24px 64px rgba(38, 33, 28, 0.18);
+  color-scheme: light;
+}
+
+/* El lockup del header barbero es línea blanca sobre transparente: en claro
+   se entinta a carbón (el asset es uno solo). */
+[data-staff][data-theme="light"] .logo-staff {
+  filter: invert(0.86) sepia(0.1);
 }
 
 @theme inline {
@@ -50,6 +82,10 @@
   --color-accent: var(--accent);
   --color-accent-soft: var(--accent-soft);
   --color-on-accent: var(--on-accent);
+
+  /* Estados staff (solo resuelven bajo [data-staff]). */
+  --color-ok: var(--ok);
+  --color-warn: var(--warn);
 
   --font-display: var(--font-barlow);
   --font-sans: var(--font-inter);

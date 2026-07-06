@@ -204,7 +204,7 @@ export function CommandK() {
         role="dialog"
         aria-modal="true"
         aria-label="Buscar o hacer algo"
-        className="w-full max-w-[560px] overflow-hidden rounded-2xl border border-line bg-elevated shadow-[0_24px_64px_rgba(0,0,0,0.55)]"
+        className="w-full max-w-[560px] overflow-hidden rounded-2xl border border-line bg-elevated shadow-[var(--shadow-pop)]"
       >
         <input
           ref={inputRef}

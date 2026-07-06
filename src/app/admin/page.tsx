@@ -25,8 +25,9 @@ const TAG_SEDE: Record<string, string> = {
   "plaza-de-la-paz": "PLAZA",
 };
 
-// Un solo tono neutro cálido para magnitudes (DESIGN.md: el rojo es acción, no decoración).
-const BAR = "#a3907c";
+// Un solo tono neutro cálido para magnitudes (DESIGN.md: el rojo es acción, no
+// decoración). Token en globals.css: cambia con el tema claro/oscuro del staff.
+const BAR = "var(--bar)";
 
 function horaBogota(iso: string) {
   const [h, m] = new Intl.DateTimeFormat("en-GB", {
@@ -170,7 +171,7 @@ export default async function AdminHoy({
                       .toUpperCase()}
                     <span
                       className={`absolute -bottom-px -right-px h-[9px] w-[9px] rounded-full border-2 border-panel ${
-                        b.enSilla ? "bg-accent-soft" : "bg-emerald-400"
+                        b.enSilla ? "bg-accent-soft" : "bg-ok"
                       }`}
                     />
                   </span>
@@ -183,7 +184,7 @@ export default async function AdminHoy({
                   <span className="flex items-center gap-2">
                     {b.pinBloqueado && (
                       <>
-                        <span className="whitespace-nowrap rounded-full border border-amber-400/40 px-2.5 py-1 text-[11.5px] font-semibold text-amber-400">
+                        <span className="whitespace-nowrap rounded-full border border-warn/40 px-2.5 py-1 text-[11.5px] font-semibold text-warn">
                           PIN bloqueado
                         </span>
                         <DesbloquearPinBtn barberoId={b.id} />
@@ -193,7 +194,7 @@ export default async function AdminHoy({
                       className={`whitespace-nowrap rounded-full border px-2.5 py-1 text-[11.5px] font-semibold ${
                         b.enSilla
                           ? "border-accent/40 text-accent-soft"
-                          : "border-emerald-400/35 text-emerald-400"
+                          : "border-ok/35 text-ok"
                       }`}
                     >
                       {b.enSilla ? `En silla · sale ${horaBogota(b.enSilla.fin)}` : "Libre"}
@@ -254,7 +255,7 @@ export default async function AdminHoy({
 
             {tareas.bajoMinimo.length > 0 && (
               <div className="grid grid-cols-[30px_1fr_auto] items-center gap-2.5 rounded-[11px] border border-line bg-panel px-3 py-2.5">
-                <span className="grid h-7 w-7 place-items-center rounded-lg bg-elevated text-amber-400">
+                <span className="grid h-7 w-7 place-items-center rounded-lg bg-elevated text-warn">
                   <AlertIcon className="h-3.5 w-3.5" />
                 </span>
                 <span className="min-w-0">
@@ -329,7 +330,7 @@ export default async function AdminHoy({
                 {postventa.promedio !== null ? postventa.promedio.toLocaleString("es-CO") : "—"}
               </span>
               {postventa.promedio !== null && (
-                <span className="text-[13px] tracking-[1.5px] text-amber-400">
+                <span className="text-[13px] tracking-[1.5px] text-warn">
                   {"★".repeat(Math.round(postventa.promedio))}
                   <span className="text-line">{"★".repeat(5 - Math.round(postventa.promedio))}</span>
                 </span>

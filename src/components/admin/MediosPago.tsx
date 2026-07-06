@@ -66,7 +66,7 @@ export function MediosPago({ medios }: { medios: MedioPago[] }) {
                 onClick={() => toggle(m.slug, !m.activo)}
                 disabled={busy}
                 className={`shrink-0 rounded-full px-3 py-1 text-[10px] font-semibold uppercase tracking-wide transition disabled:opacity-50 ${
-                  m.activo ? "bg-emerald-500/15 text-emerald-400" : "bg-white/10 text-muted"
+                  m.activo ? "bg-ok/15 text-ok" : "bg-ink/10 text-muted"
                 }`}
               >
                 {m.activo ? "Activo" : "Inactivo"}

@@ -168,7 +168,7 @@ export function AgendaList({
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="font-semibold">{r.cliente || "Walk-in"}</span>
                         <span
-                          className={`rounded-full px-2 py-0.5 text-[10px] uppercase tracking-wide ${r.canal === "walkin" ? "bg-white/10 text-muted" : "bg-accent/15 text-accent-soft"}`}
+                          className={`rounded-full px-2 py-0.5 text-[10px] uppercase tracking-wide ${r.canal === "walkin" ? "bg-ink/10 text-muted" : "bg-accent/15 text-accent-soft"}`}
                         >
                           {r.canal === "walkin" ? "Sin reserva" : "App"}
                         </span>
@@ -192,7 +192,7 @@ export function AgendaList({
                       </button>
                     )}
                     {hasPendingProposal && (
-                      <span className="rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-500 px-3 py-1.5 text-xs font-semibold uppercase tracking-wider">
+                      <span className="rounded-full bg-warn/10 border border-warn/30 text-warn px-3 py-1.5 text-xs font-semibold uppercase tracking-wider">
                         Propuesto {proposedTimeStr}
                       </span>
                     )}
@@ -520,7 +520,7 @@ function CheckoutForm({
               + {cop(resumen.propina)} de propina · en la mano: <b className="text-ink">{cop(resumen.total + resumen.propina)}</b>
             </div>
           )}
-          {resumen.puntos > 0 && <div className="text-emerald-400">+{resumen.puntos} puntos de fidelidad para el cliente</div>}
+          {resumen.puntos > 0 && <div className="text-ok">+{resumen.puntos} puntos de fidelidad para el cliente</div>}
         </div>
         <button onClick={onDone} className="mt-3 rounded-full bg-accent px-6 py-2 text-xs font-semibold uppercase tracking-wide text-on-accent transition hover:bg-accent-soft">
           Listo
@@ -629,7 +629,7 @@ function CheckoutForm({
                       <div className="truncate text-sm font-semibold text-ink">{p.nombre}</div>
                       <div
                         className={`text-xs tabular-nums ${
-                          agotado ? "text-muted line-through" : resta <= 3 ? "text-amber-400" : "text-muted"
+                          agotado ? "text-muted line-through" : resta <= 3 ? "text-warn" : "text-muted"
                         }`}
                       >
                         {cop(p.precio)} · {agotado ? "Agotado" : `quedan ${resta}${resta <= 3 ? " · poco stock" : ""}`}
@@ -773,7 +773,7 @@ function CheckoutForm({
             </button>
           </div>
           {cuponInfo && (
-            <div className={`mt-1.5 text-xs ${cuponInfo.ok ? "text-emerald-400" : "text-accent-soft"}`}>{cuponInfo.msg}</div>
+            <div className={`mt-1.5 text-xs ${cuponInfo.ok ? "text-ok" : "text-accent-soft"}`}>{cuponInfo.msg}</div>
           )}
         </div>
       </div>
@@ -791,7 +791,7 @@ function CheckoutForm({
             </div>
             <div className="font-display text-[26px] font-bold leading-tight text-ink tabular-nums">{cop(vivo.total)}</div>
             {vivo.propina > 0 && (
-              <div className="text-xs text-emerald-400 tabular-nums">
+              <div className="text-xs text-ok tabular-nums">
                 + {cop(vivo.propina)} de propina · en la mano {cop(vivo.aCobrar)}
               </div>
             )}

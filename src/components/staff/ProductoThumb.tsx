@@ -27,11 +27,13 @@ export function ProductoThumb({
   const box: React.CSSProperties = { width: size, height: size };
 
   if (!fotoUrl || broken) {
+    // La inicial va en hueso fijo (no text-ink): las tintas son oscuras
+    // en ambos temas del staff.
     return (
       <span
         aria-hidden
         style={{ ...box, background: tintaDe(nombre) }}
-        className="grid shrink-0 place-items-center rounded-[10px] border border-line font-display text-base font-semibold text-ink/80"
+        className="grid shrink-0 place-items-center rounded-[10px] border border-line font-display text-base font-semibold text-[#f2ede4]/85"
       >
         {(nombre || "?").charAt(0).toUpperCase()}
       </span>

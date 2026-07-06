@@ -88,7 +88,7 @@ function CajaCard({ caja, medios }: { caja: CajaSesionSede; medios: MedioPago[] 
   }
 
   return (
-    <div className={`relative overflow-hidden rounded-2xl border bg-panel p-5 transition ${abierta ? "border-emerald-500/30" : "border-line"}`}>
+    <div className={`relative overflow-hidden rounded-2xl border bg-panel p-5 transition ${abierta ? "border-ok/30" : "border-line"}`}>
       <div className="pointer-events-none absolute -right-8 -top-8 h-24 w-24 rounded-full bg-accent/10 blur-2xl" />
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2.5">
@@ -99,10 +99,10 @@ function CajaCard({ caja, medios }: { caja: CajaSesionSede; medios: MedioPago[] 
         </div>
         <span
           className={`flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide ${
-            abierta ? "bg-emerald-500/15 text-emerald-400" : "bg-white/10 text-muted"
+            abierta ? "bg-ok/15 text-ok" : "bg-ink/10 text-muted"
           }`}
         >
-          <span className={`h-1.5 w-1.5 rounded-full ${abierta ? "bg-emerald-400" : "bg-muted"}`} />
+          <span className={`h-1.5 w-1.5 rounded-full ${abierta ? "bg-ok" : "bg-muted"}`} />
           {abierta ? `Abierta · ${desdeHora(caja.abiertaEn!)}` : "Cerrada"}
         </span>
       </div>
