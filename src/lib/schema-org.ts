@@ -225,6 +225,62 @@ export function barberosItemList(
 }
 
 /**
+ * Preguntas frecuentes de la landing. Fuente unica: el componente Faq renderiza
+ * estos textos y el FAQPage JSON-LD se deriva de aca, asi el schema coincide
+ * EXACTAMENTE con el contenido visible (regla dura de Google).
+ */
+export const faqItems = [
+  {
+    pregunta: "¿Cuánto cuesta un corte de pelo en Barranquilla?",
+    respuesta:
+      "En Barbas & Bigotes un corte clásico o degradado cuesta desde $30.000 COP y tarda 30 minutos. El combo corte y barba cuesta desde $40.000 COP. El precio exacto por sede lo ves al reservar online.",
+  },
+  {
+    // TODO NAP: la direccion visible de Plaza de la Paz queda como en el resto
+    // del sitio (sin numero) hasta que el dueno confirme la real.
+    pregunta: "¿Dónde quedan las sedes de Barbas & Bigotes?",
+    respuesta:
+      "Tenemos dos sedes en Barranquilla: una en el Parque Venezuela (Calle 88 #44-10, Local 4) y otra en la Carrera 45, frente a la Plaza de la Paz. Las dos ofrecen los mismos servicios con reserva online.",
+  },
+  {
+    pregunta: "¿Atienden sin cita?",
+    respuesta:
+      "Sí, recibimos clientes sin cita según la disponibilidad de cada sede. Igual te recomendamos reservar online: elegís sede, barbero y hora, y tu turno queda asegurado sin filas.",
+  },
+  {
+    pregunta: "¿Qué horario tienen?",
+    respuesta:
+      "Atendemos de lunes a sábado de 9:00 am a 8:00 pm en las dos sedes. Los domingos estamos cerrados.",
+  },
+  {
+    pregunta: "¿Cómo cancelo o cambio mi cita?",
+    respuesta:
+      "Podés cancelar o reagendar online hasta 2 horas antes de tu cita desde Mi cuenta. Con menos de 2 horas de anticipación, escribinos por WhatsApp al +57 300 673 4799 y lo resolvemos.",
+  },
+  {
+    pregunta: "¿Qué formas de pago reciben?",
+    respuesta:
+      "Recibimos efectivo, Nequi, Daviplata, datáfono y transferencia bancaria. Pagás en la sede al terminar tu servicio.",
+  },
+  {
+    pregunta: "¿Hacen keratina y otros tratamientos?",
+    respuesta:
+      "Sí, hacemos keratina desde $90.000 COP, limpieza facial gold desde $35.000 COP y tratamientos capilares como hidratación y alisado. Se reservan online igual que un corte.",
+  },
+];
+
+/** FAQPage JSON-LD derivado de faqItems (mismos textos que el FAQ visible). */
+export const faqPage = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  mainEntity: faqItems.map((f) => ({
+    "@type": "Question",
+    name: f.pregunta,
+    acceptedAnswer: { "@type": "Answer", text: f.respuesta },
+  })),
+};
+
+/**
  * Serializa JSON-LD para dangerouslySetInnerHTML escapando "<" (previene
  * inyeccion de </script> en el HTML).
  */

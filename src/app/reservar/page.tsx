@@ -33,6 +33,14 @@ export default async function ReservarPage({
           initialSedeId={initialSedeId}
         />
       </Reveal>
+      {/* Politica de cancelacion server-rendered (visible para crawlers e IAs). */}
+      <p className="mx-auto max-w-3xl px-6 pb-10 text-center text-xs leading-relaxed text-muted">
+        Podés cancelar o reagendar tu cita online hasta 2 horas antes desde{" "}
+        <a href="/cuenta" className="text-accent-soft transition hover:text-accent">
+          Mi cuenta
+        </a>
+        . Con menos tiempo, escribinos por WhatsApp al +57 300 673 4799.
+      </p>
       <SiteFooter />
     </>
   );
