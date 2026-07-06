@@ -8,7 +8,8 @@ const EASE = [0.22, 1, 0.36, 1] as const;
 const stats: [number, string][] = [
   [2, "Sedes en Barranquilla"],
   [6, "Barberos expertos"],
-  [26, "Servicios y combos"],
+  // 46 servicios activos en la DB (auditoría 2026-07-06); actualizar si cambia el catálogo.
+  [46, "Servicios y combos"],
 ];
 
 // El valor REAL se renderiza en SSR (los crawlers de IA no ejecutan JS y antes

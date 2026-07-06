@@ -41,7 +41,7 @@ const RESERVAR_ACTION = {
       "https://schema.org/MobileWebPlatform",
     ],
   },
-  result: { "@type": "Reservation", name: "Reserva de cita de barberia" },
+  result: { "@type": "Reservation", name: "Reserva de cita de barbería" },
 };
 
 /**
@@ -62,13 +62,13 @@ export const siteGraph = {
         url: `${BASE}/brand/logo-lockup.png`,
       },
       description:
-        "Barberia en Barranquilla, Colombia, con dos sedes (Parque Venezuela y Plaza de la Paz): cortes clasicos y degradados, ritual de barba, faciales, keratina y color, con reserva de cita online.",
+        "Barbería en Barranquilla, Colombia, con dos sedes (Parque Venezuela y Plaza de la Paz): cortes clásicos y degradados, ritual de barba, faciales, keratina y color, con reserva de cita online.",
       disambiguatingDescription:
-        "Barberia fisica en Barranquilla, Colombia. No es la tienda de productos barbasybigotes.co ni la marca espanola barbasybigotes.es.",
+        "Barbería física en Barranquilla, Colombia. No es la tienda de productos barbasybigotes.co ni la marca española barbasybigotes.es.",
       telephone: "+573006734799",
       contactPoint: {
         "@type": "ContactPoint",
-        contactType: "reservas y atencion al cliente",
+        contactType: "reservas y atención al cliente",
         telephone: "+573006734799",
         url: "https://wa.me/573006734799",
         availableLanguage: "es",
@@ -103,7 +103,7 @@ export const siteGraph = {
       telephone: "+573004097624",
       priceRange: "$30.000 - $90.000 COP",
       currenciesAccepted: "COP",
-      paymentAccepted: "Efectivo, Nequi, Daviplata, datafono, transferencia",
+      paymentAccepted: "Efectivo, Nequi, Daviplata, datáfono, transferencia",
       address: {
         "@type": "PostalAddress",
         // Direccion literal de la ficha de Google (coincide con el sitio).
@@ -134,12 +134,12 @@ export const siteGraph = {
       telephone: "+573006734799",
       priceRange: "$30.000 - $90.000 COP",
       currenciesAccepted: "COP",
-      paymentAccepted: "Efectivo, Nequi, Daviplata, datafono, transferencia",
+      paymentAccepted: "Efectivo, Nequi, Daviplata, datáfono, transferencia",
       address: {
         "@type": "PostalAddress",
         // TODO NAP: direccion segun la ficha de Google (con resenas). El sitio
         // visible dice "Cra. 45 #50-168"; cuando el dueno confirme la real,
-        // unificar sitio + ficha + este schema caracter a caracter.
+        // unificar sitio + ficha + este schema + public/llms.txt caracter a caracter.
         streetAddress: "Cra. 45 #53-150",
         addressLocality: "Barranquilla",
         addressRegion: "Atlántico",

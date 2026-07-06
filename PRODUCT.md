@@ -28,6 +28,7 @@ Barbería clásica, masculina, cálida. **Carbón + hueso + rojo barbero.** Tipo
 - alert()/confirm() del browser, estados vacíos sin diseñar, números sin formato de moneda.
 
 ## Strategic principles
+- **El dueño no opera casi nada** (regla del dueño, 2026-07-06): los barberos registran TODO (llegadas, cobros, consumos, walk-ins) y el sistema automatiza el resto. El panel admin es para MIRAR y decidir; toda tarea diaria que recaiga en el dueño es un defecto de diseño. Feature nueva → primero preguntarse si la registra el barbero o se automatiza.
 - **Registro doble**: lo público (landing/reserva) es MARCA (dark inmersivo, vende). El staff (`/admin`,`/barbero`) es PRODUCTO (sirve al trabajo: legible, denso, accionable).
 - **Móvil primero para el barbero**: acciones grandes, una columna, toque cómodo.
 - **El dato manda**: dinero y agenda bien formateados, jerarquía clara, sin adornos que estorben.
