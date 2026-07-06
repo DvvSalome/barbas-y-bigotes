@@ -1,4 +1,4 @@
-import { supabaseServer, supabaseServerAuth } from "@/lib/supabase/server";
+import { supabaseServer, supabaseServerAuth, supabaseAdmin } from "@/lib/supabase/server";
 import { bogotaDayRange, bogotaYmd } from "@/lib/slots";
 import { totalesPorMedio, type TotalesPorMedio } from "@/lib/cobro";
 import type { Sede, SedeId, Servicio, Barbero, Producto, Categoria } from "./types";
@@ -646,6 +646,54 @@ export type CuentaData = {
   puntos: { tipo: string; puntos: number; nota: string; fecha: string }[];
   cola: { id: string; estado: string; servicio: string; barbero: string; creadoEn: string }[];
 };
+
+export type ReservaSinCalificar = {
+  id: string;
+  inicio: string;
+  servicio: string;
+  barbero: string;
+  sede: string;
+};
+
+// La reserva completada más reciente del cliente (últimos 30 días) que todavía no
+// tiene calificación. supabaseAdmin porque resenas_servicio no expone SELECT al
+// cliente por RLS (deny by default); el clienteId viene VERIFICADO por ensureCliente
+// en el caller (mismo patrón de ownership de las cliente-actions).
+export async function getReservaSinCalificar(clienteId: string): Promise<ReservaSinCalificar | null> {
+  if (!clienteId) return null;
+  const admin = supabaseAdmin();
+  const desde = new Date(Date.now() - 30 * 24 * 3600_000).toISOString();
+  const { data, error } = await admin
+    .from("reservas")
+    .select("id,inicio,sede_id,servicios(nombre),barberos(nombre),sedes(nombre)")
+    .eq("cliente_ref", clienteId)
+    .eq("estado", "completada")
+    .gte("inicio", desde)
+    .order("inicio", { ascending: false })
+    .limit(10);
+  if (error || !data || data.length === 0) return null;
+  const rows = data as Record<string, unknown>[];
+
+  const ids = rows.map((r) => r.id as string);
+  const { data: calif, error: califErr } = await admin
+    .from("resenas_servicio")
+    .select("reserva_id")
+    .in("reserva_id", ids);
+  // Fail-closed: si la tabla aún no existe (migración pendiente) o falla la
+  // lectura, no se muestra el card (mejor que invitar a calificar y que falle).
+  if (califErr) return null;
+  const yaCalificadas = new Set(((calif ?? []) as { reserva_id: string }[]).map((c) => c.reserva_id));
+
+  const pendiente = rows.find((r) => !yaCalificadas.has(r.id as string));
+  if (!pendiente) return null;
+  return {
+    id: pendiente.id as string,
+    inicio: pendiente.inicio as string,
+    servicio: (pendiente.servicios as { nombre?: string } | null)?.nombre ?? "Tu servicio",
+    barbero: (pendiente.barberos as { nombre?: string } | null)?.nombre ?? "—",
+    sede: (pendiente.sedes as { nombre?: string } | null)?.nombre ?? (pendiente.sede_id as string),
+  };
+}
 
 // Datos del cliente logueado. La RLS de cliente (0013) limita todo a lo propio.
 export async function getCuenta(): Promise<CuentaData> {

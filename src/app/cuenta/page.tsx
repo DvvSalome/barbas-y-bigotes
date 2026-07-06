@@ -6,8 +6,9 @@ import { ClienteLoginButton, ClienteLogout } from "@/components/cuenta/ClienteAu
 import { AdelantoBanner } from "@/components/cuenta/AdelantoBanner";
 import { PushManager } from "@/components/cuenta/PushManager";
 import { CitaAcciones } from "@/components/cuenta/CitaAcciones";
+import { CalificarServicio } from "@/components/cuenta/CalificarServicio";
 import { ensureCliente } from "@/lib/cliente-actions";
-import { getCuenta } from "@/lib/data/queries";
+import { getCuenta, getReservaSinCalificar } from "@/lib/data/queries";
 
 export const metadata: Metadata = { title: "Mi cuenta · Barbas & Bigotes" };
 
@@ -76,15 +77,18 @@ export default async function CuentaPage() {
           </div>
         )}
 
-        {ctx.estado === "cliente" && <Portal />}
+        {ctx.estado === "cliente" && <Portal clienteId={ctx.clienteId ?? ""} />}
       </main>
       <SiteFooter />
     </>
   );
 }
 
-async function Portal() {
-  const { proximas, pasadas, puntosBalance, cola } = await getCuenta();
+async function Portal({ clienteId }: { clienteId: string }) {
+  const [{ proximas, pasadas, puntosBalance, cola }, sinCalificar] = await Promise.all([
+    getCuenta(),
+    getReservaSinCalificar(clienteId),
+  ]);
 
   return (
     <div>
@@ -97,6 +101,21 @@ async function Portal() {
       </div>
 
       <PushManager />
+
+      {/* calificación post-servicio: SIEMPRE montado (pendiente puede ser null)
+          para que la pantalla de gracias sobreviva al revalidatePath de la action */}
+      <CalificarServicio
+        pendiente={
+          sinCalificar
+            ? {
+                reservaId: sinCalificar.id,
+                servicio: sinCalificar.servicio,
+                barbero: sinCalificar.barbero,
+                fecha: fechaLarga(sinCalificar.inicio),
+              }
+            : null
+        }
+      />
 
       {/* fila / turno */}
       {cola.length > 0 && (
