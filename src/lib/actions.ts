@@ -544,6 +544,18 @@ export async function completarReserva(input: {
     }
   }
 
+  // Push post-servicio: invita a calificar la visita en /cuenta. Solo para citas
+  // reales (con reserva y cliente vinculado); la venta rápida no tiene qué calificar.
+  // Fire-and-forget DESPUÉS del éxito del cobro: pushACliente jamás lanza.
+  if (input.reservaId && input.clienteRef) {
+    await pushACliente(input.clienteRef, {
+      title: "¿Cómo estuvo tu corte? ✂️",
+      body: "Contanos con una calificación. Te toma 10 segundos.",
+      url: "/cuenta",
+      tag: "califica",
+    });
+  }
+
   revalidatePath("/barbero");
   revalidatePath("/admin/inventario");
   return { ok: true, total: cobro.total, descuento: cobro.descuento, propina: cobro.propina, puntos };
