@@ -27,10 +27,12 @@ export function PerfilMenu({
   const btnRef = useRef<HTMLButtonElement>(null);
   const [open, setOpen] = useState(false);
   const [saliendo, setSaliendo] = useState(false);
-  // El server ya pintó data-theme en el wrapper: se lee de ahí al montar
-  // (evita duplicar la fuente de verdad; antes de hidratar el menú no se abre).
-  const [tema, setTema] = useState<TemaStaff>("dark");
-  useEffect(() => setTema(temaActual()), []);
+  // El server ya pintó data-theme en el wrapper: se lee de ahí como valor
+  // inicial (lazy, con guard para SSR; el menú solo se pinta tras hidratar,
+  // así que no hay riesgo de mismatch). Evita duplicar la fuente de verdad.
+  const [tema, setTema] = useState<TemaStaff>(() =>
+    typeof document === "undefined" ? "dark" : temaActual(),
+  );
 
   // Click afuera + Esc (Esc devuelve el foco al avatar).
   useEffect(() => {
