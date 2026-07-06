@@ -3,14 +3,15 @@
 import { Suspense } from "react";
 import Link from "next/link";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
-import { supabaseBrowser } from "@/lib/supabase/client";
 import { AdminTabs } from "@/components/admin/AdminNav";
-import { SearchIcon, LogoutIcon } from "@/components/icons";
+import { PerfilMenu } from "@/components/staff/PerfilMenu";
+import { SearchIcon } from "@/components/icons";
 import type { Sede } from "@/lib/data/types";
 import type { CajaChip } from "@/lib/data/queries";
 
 // Barra de comando del admin (mockup): logo, selector de sede segmentado,
-// buscador Ctrl-K, chip de caja (dato real) y avatar. Debajo, las tabs.
+// buscador Ctrl-K, chip de caja (dato real) y la rueda de perfil (tema +
+// cerrar sesión). Debajo, las tabs.
 
 function horaBogota(iso: string) {
   const [h, m] = new Intl.DateTimeFormat("en-GB", {
@@ -68,14 +69,7 @@ function SedeSelector({ sedes }: { sedes: Sede[] }) {
 }
 
 export function AdminTopbar({ email, sedes, caja }: { email: string; sedes: Sede[]; caja: CajaChip }) {
-  const router = useRouter();
   const name = email.split("@")[0] || "Staff";
-
-  async function logout() {
-    await supabaseBrowser().auth.signOut();
-    router.push("/login");
-    router.refresh();
-  }
 
   return (
     <header className="sticky top-0 z-40 border-b border-line bg-bg/90 backdrop-blur-md">
@@ -115,22 +109,7 @@ export function AdminTopbar({ email, sedes, caja }: { email: string; sedes: Sede
             : "Caja cerrada"}
         </Link>
 
-        <div className="flex items-center gap-2">
-          <div
-            title={email}
-            className="grid h-[30px] w-[30px] place-items-center rounded-full border border-line bg-elevated text-[11px] font-bold text-ink"
-          >
-            {name.charAt(0).toUpperCase()}
-          </div>
-          <button
-            onClick={logout}
-            aria-label="Cerrar sesión"
-            title="Cerrar sesión"
-            className="grid h-[30px] w-[30px] place-items-center rounded-full border border-line text-muted transition hover:border-accent/50 hover:text-ink"
-          >
-            <LogoutIcon className="h-3.5 w-3.5" />
-          </button>
-        </div>
+        <PerfilMenu nombre={name} detalle={email} salidaHref="/login" />
       </div>
 
       <Suspense fallback={null}>

@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import { getStaffContext } from "@/lib/data/queries";
 import { TEMA_COOKIE, temaDesdeCookie } from "@/lib/tema";
+import { PerfilMenu } from "@/components/staff/PerfilMenu";
 
 export default async function BarberoLayout({
   children,
@@ -27,7 +28,10 @@ export default async function BarberoLayout({
           <Link href="/" aria-label="Barbas & Bigotes">
             <Image src="/brand/logo-lockup.png" alt="Barbas & Bigotes" width={1024} height={348} className="h-10 w-auto" />
           </Link>
-          <span className="text-xs uppercase tracking-[0.3em] text-accent">App del barbero</span>
+          <div className="flex items-center gap-3.5">
+            <span className="text-xs uppercase tracking-[0.3em] text-accent">App del barbero</span>
+            <PerfilMenu nombre={staff.nombre || "Barbero"} salidaHref="/entrar" />
+          </div>
         </div>
       </header>
       {children}
