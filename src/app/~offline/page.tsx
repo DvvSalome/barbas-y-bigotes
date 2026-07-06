@@ -1,6 +1,6 @@
 // Fallback offline de la PWA (next-pwa fallbacks.document): se muestra al
 // navegar sin conexión a una ruta que no está en caché.
-export const metadata = { title: "Sin conexión · Barbas & Bigotes" };
+export const metadata = { title: "Sin conexión" };
 
 export default function Offline() {
   return (

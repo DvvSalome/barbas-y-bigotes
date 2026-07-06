@@ -7,7 +7,9 @@ import { getSedes, getBarberos } from "@/lib/data/queries";
 import { getLiveBarberStatuses } from "@/lib/actions";
 
 export const metadata: Metadata = {
-  title: "Barberos · Barbas & Bigotes",
+  title: "Nuestros barberos",
+  description:
+    "Conocé a los 6 barberos de Barbas & Bigotes en Barranquilla: especialistas en degradados, barba, color y diseño en las sedes Parque Venezuela y Plaza de la Paz.",
 };
 
 export default async function BarberosPage() {

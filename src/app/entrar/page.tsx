@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { getBarberos, getSedes } from "@/lib/data/queries";
 import { BarberoPinLogin } from "@/components/barbero/BarberoPinLogin";
 
-export const metadata: Metadata = { title: "Entrar · Barbas & Bigotes" };
+export const metadata: Metadata = { title: "Entrar" };
 
 // Gateway de login del staff: no cachear la lista de barberos (un barbero nuevo
 // debe poder entrar sin esperar un rebuild).

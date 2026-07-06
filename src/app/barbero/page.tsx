@@ -13,7 +13,7 @@ import { AgendaList } from "@/components/barbero/AgendaList";
 import { EsperaPanel } from "@/components/barbero/EsperaPanel";
 import { RealtimeRefresh } from "@/components/motion/RealtimeRefresh";
 
-export const metadata: Metadata = { title: "App del barbero · Barbas & Bigotes" };
+export const metadata: Metadata = { title: "App del barbero" };
 
 export default async function BarberoPage() {
   const staff = await getStaffContext();

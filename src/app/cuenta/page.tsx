@@ -10,7 +10,7 @@ import { CalificarServicio } from "@/components/cuenta/CalificarServicio";
 import { ensureCliente } from "@/lib/cliente-actions";
 import { getCuenta, getReservaSinCalificar } from "@/lib/data/queries";
 
-export const metadata: Metadata = { title: "Mi cuenta · Barbas & Bigotes" };
+export const metadata: Metadata = { title: "Mi cuenta" };
 
 const ESTADO: Record<string, string> = {
   pendiente: "Pendiente",

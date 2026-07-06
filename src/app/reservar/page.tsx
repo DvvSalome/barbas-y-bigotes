@@ -6,7 +6,7 @@ import { Reveal } from "@/components/motion/Reveal";
 import { getSedes, getBarberos, getServicios } from "@/lib/data/queries";
 
 export const metadata: Metadata = {
-  title: "Reservar · Barbas & Bigotes",
+  title: "Reservar",
 };
 
 export default async function ReservarPage({
