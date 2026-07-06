@@ -59,6 +59,15 @@ export default async function BarberosPage() {
                 {list.map((b, i) => (
                   <Reveal key={b.id} delay={(i % 3) * 0.08} y={36}>
                     <BarberCard barbero={b} liveStatus={liveStatuses[b.id]} />
+                    {/* Especialidad server-rendered (la card la revela solo con JS). */}
+                    {b.especialidades.length > 0 && (
+                      <p className="mt-2.5 px-1 text-xs leading-relaxed text-muted">
+                        <span className="uppercase tracking-[0.18em] text-accent-soft">
+                          Especialista en{" "}
+                        </span>
+                        {b.especialidades.slice(0, 4).join(", ")}
+                      </p>
+                    )}
                   </Reveal>
                 ))}
               </div>
