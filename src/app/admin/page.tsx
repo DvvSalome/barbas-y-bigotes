@@ -69,7 +69,7 @@ export default async function AdminHoy({
     citasSiguientes(sede),
     paraHacer(sede),
     serie7Dias(sede),
-    getPostventaResumen(),
+    getPostventaResumen(sede ?? undefined),
   ]);
 
   const fecha = new Date().toLocaleDateString("es-CO", {

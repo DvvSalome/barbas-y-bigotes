@@ -363,19 +363,23 @@ export async function getCajaSesiones(): Promise<CajaSesionSede[]> {
   return out;
 }
 
-export type CajaChip = { abierta: boolean; desde: string | null };
+export type CajaChip = { abierta: boolean; desde: string | null; abiertasCount: number; sedesCount: number };
 
 // Estado liviano de caja para el chip del topbar admin (sin sumar ventas).
+// Con 2 sedes el binario engaña: se reporta cuántas están abiertas del total.
 export async function getCajaChip(): Promise<CajaChip> {
   const sb = await supabaseServerAuth();
-  const { data } = await sb
-    .from("caja_sesiones")
-    .select("abierta_en")
-    .eq("estado", "abierta")
-    .order("abierta_en")
-    .limit(1);
-  const row = (data?.[0] as { abierta_en?: string } | undefined) ?? null;
-  return { abierta: !!row, desde: row?.abierta_en ?? null };
+  const [abiertasRes, sedesRes] = await Promise.all([
+    sb.from("caja_sesiones").select("abierta_en").eq("estado", "abierta").order("abierta_en"),
+    sb.from("sedes").select("id"),
+  ]);
+  const abiertas = (abiertasRes.data ?? []) as { abierta_en: string }[];
+  return {
+    abierta: abiertas.length > 0,
+    desde: abiertas[0]?.abierta_en ?? null,
+    abiertasCount: abiertas.length,
+    sedesCount: (sedesRes.data ?? []).length,
+  };
 }
 
 export type PendienteCobro = {
@@ -642,18 +646,19 @@ export type PostventaResumen = {
 // Postventa para el panel admin: cómo vienen calificando los clientes.
 // Sesión del staff: la RLS de resenas_servicio (0018) da todo al admin y
 // solo lo suyo al barbero. Si la tabla aún no existe, queda vacío.
-export async function getPostventaResumen(): Promise<PostventaResumen> {
+export async function getPostventaResumen(sede?: string): Promise<PostventaResumen> {
   const sb = await supabaseServerAuth();
   const desde = new Date(Date.now() - 30 * 24 * 3600_000).toISOString();
-  const [scoresRes, ultimasRes] = await Promise.all([
-    sb.from("resenas_servicio").select("score").gte("creado_en", desde),
-    sb
-      .from("resenas_servicio")
-      .select("id,score,comentario,creado_en,barberos(nombre),sedes(nombre)")
-      .not("comentario", "is", null)
-      .order("creado_en", { ascending: false })
-      .limit(3),
-  ]);
+  let scoresQ = sb.from("resenas_servicio").select("score").gte("creado_en", desde);
+  if (sede) scoresQ = scoresQ.eq("sede_id", sede);
+  let ultimasQ = sb
+    .from("resenas_servicio")
+    .select("id,score,comentario,creado_en,barberos(nombre),sedes(nombre)")
+    .not("comentario", "is", null)
+    .order("creado_en", { ascending: false })
+    .limit(3);
+  if (sede) ultimasQ = ultimasQ.eq("sede_id", sede);
+  const [scoresRes, ultimasRes] = await Promise.all([scoresQ, ultimasQ]);
   const scores = ((scoresRes.data ?? []) as { score: number }[]).map((s) => s.score);
   const promedio = scores.length
     ? Math.round((scores.reduce((a, s) => a + s, 0) / scores.length) * 10) / 10

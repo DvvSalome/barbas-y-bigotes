@@ -129,7 +129,9 @@ export async function subirFotoProducto(formData: FormData): Promise<ActionResul
   const file = formData.get("foto");
   if (!productoId || !(file instanceof File) || file.size === 0)
     return { ok: false, error: "Elegí una imagen." };
-  if (!file.type.startsWith("image/")) return { ok: false, error: "El archivo tiene que ser una imagen." };
+  // Allowlist (nada de SVG: un <script> embebido quedaría servido desde el bucket público).
+  if (!["image/jpeg", "image/png", "image/webp", "image/avif"].includes(file.type))
+    return { ok: false, error: "La imagen tiene que ser JPG, PNG, WebP o AVIF." };
   if (file.size > FOTO_MAX_BYTES) return { ok: false, error: "La imagen no puede pesar más de 2MB." };
 
   const admin = supabaseAdmin();

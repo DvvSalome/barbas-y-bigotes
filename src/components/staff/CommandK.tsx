@@ -44,10 +44,14 @@ export function CommandK() {
   const [buscando, setBuscando] = useState(false);
   const [resultados, setResultados] = useState<BusquedaGlobal>(SIN_RESULTADOS);
 
+  // Para devolverle el foco a quien abrió la paleta (botón del topbar, etc.).
+  const focoPrevio = useRef<HTMLElement | null>(null);
+
   const abrir = useCallback(() => {
     // Invalida búsquedas pendientes de una apertura anterior.
     reqId.current++;
     if (timer.current) clearTimeout(timer.current);
+    focoPrevio.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     setQ("");
     setSel(0);
     setResultados(SIN_RESULTADOS);
@@ -59,16 +63,22 @@ export function CommandK() {
 
   // Cierre puro de estado: una búsqueda pendiente que llegue tarde no molesta
   // (abrir() resetea todo y reqId descarta respuestas de rondas viejas).
-  const cerrar = useCallback(() => setOpen(false), []);
+  const cerrar = useCallback(() => {
+    setOpen(false);
+    focoPrevio.current?.focus();
+  }, []);
 
-  // Ctrl/Cmd-K global + evento del botón del topbar. Solo suscripciones:
-  // el estado cambia en los handlers, no en el cuerpo del efecto.
+  // Ctrl/Cmd-K global + Escape (a nivel window: cierra aunque el input haya
+  // perdido el foco) + evento del botón del topbar.
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
         e.preventDefault();
         if (open) cerrar();
         else abrir();
+      } else if (e.key === "Escape" && open) {
+        e.preventDefault();
+        cerrar();
       }
     }
     window.addEventListener("keydown", onKey);
@@ -78,6 +88,16 @@ export function CommandK() {
       window.removeEventListener("bb:cmdk", abrir);
     };
   }, [open, abrir, cerrar]);
+
+  // Scroll-lock del fondo mientras la paleta está abierta.
+  useEffect(() => {
+    if (!open) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [open]);
 
   // Limpieza del debounce al desmontar.
   useEffect(() => {

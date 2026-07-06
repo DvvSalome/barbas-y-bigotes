@@ -108,7 +108,11 @@ export function AdminTopbar({ email, sedes, caja }: { email: string; sedes: Sede
           }`}
         >
           <span className={`h-[7px] w-[7px] rounded-full ${caja.abierta ? "bg-emerald-400" : "bg-muted"}`} />
-          {caja.abierta ? `Caja abierta${caja.desde ? ` · ${horaBogota(caja.desde)}` : ""}` : "Caja cerrada"}
+          {caja.abierta
+            ? caja.sedesCount > 1 && caja.abiertasCount < caja.sedesCount
+              ? `Caja: ${caja.abiertasCount} de ${caja.sedesCount} abiertas`
+              : `Caja abierta${caja.desde ? ` · ${horaBogota(caja.desde)}` : ""}`
+            : "Caja cerrada"}
         </Link>
 
         <div className="flex items-center gap-2">
