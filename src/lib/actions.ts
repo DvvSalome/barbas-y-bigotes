@@ -879,6 +879,43 @@ export async function abrirCaja(input: {
   return { ok: true };
 }
 
+// Snapshot puro de lo recaudado desde la apertura, desglosado por medio. Lo
+// comparten el cierre admin (cerrarCaja) y el cierre del barbero (cerrarCajaSede),
+// para que la matemática de la plata sea UNA sola: esperado en el cajón =
+// efectivo + propina cobrada en efectivo. `admin` es un SupabaseClient (la RLS de
+// caja es admin-only, pero ventas/gastos las lee cualquiera de los dos clientes).
+async function snapshotCaja(
+  admin: SupabaseClient,
+  sedeId: string,
+  abiertaEnISO: string,
+): Promise<{
+  totales: ReturnType<typeof totalesPorMedio>;
+  efectivo: number;
+  datafono: number;
+  totalGastos: number;
+  esperadoEfectivo: number;
+  citas: number;
+}> {
+  const { data: ventas } = await admin
+    .from("ventas")
+    .select("medio,total,propina")
+    .eq("sede_id", sedeId)
+    .gte("creado_en", abiertaEnISO);
+  const vs = (ventas ?? []) as { medio: string; total: number; propina: number | null }[];
+  const totales = totalesPorMedio(vs);
+  const efectivo = totales.efectivo?.total ?? 0;
+  const datafono = totales.datafono?.total ?? 0;
+  const { data: gastos } = await admin
+    .from("gastos")
+    .select("monto")
+    .eq("sede_id", sedeId)
+    .gte("creado_en", abiertaEnISO);
+  const totalGastos = ((gastos ?? []) as { monto: number }[]).reduce((a, g) => a + g.monto, 0);
+  // Lo esperado en el cajón incluye las propinas cobradas en efectivo.
+  const esperadoEfectivo = efectivo + (totales.efectivo?.propina ?? 0);
+  return { totales, efectivo, datafono, totalGastos, esperadoEfectivo, citas: vs.length };
+}
+
 export async function cerrarCaja(input: {
   sesionId: string;
   sede: string;
@@ -889,25 +926,8 @@ export async function cerrarCaja(input: {
   const sb = await supabaseServerAuth();
   const denied = await requireAdmin(sb);
   if (denied) return { ok: false, error: denied };
-  // Snapshot de lo recaudado desde que se abrió la caja, desglosado por medio.
-  const { data: ventas } = await sb
-    .from("ventas")
-    .select("medio,total,propina")
-    .eq("sede_id", input.sede)
-    .gte("creado_en", input.abiertaEnISO);
-  const vs = (ventas ?? []) as { medio: string; total: number; propina: number | null }[];
-  const totales = totalesPorMedio(vs);
-  const efectivo = totales.efectivo?.total ?? 0;
-  const datafono = totales.datafono?.total ?? 0;
-  const { data: gastos } = await sb
-    .from("gastos")
-    .select("monto")
-    .eq("sede_id", input.sede)
-    .gte("creado_en", input.abiertaEnISO);
-  const totalGastos = ((gastos ?? []) as { monto: number }[]).reduce((a, g) => a + g.monto, 0);
-  // Lo esperado en el cajón incluye las propinas cobradas en efectivo.
-  const esperadoEfectivo = efectivo + (totales.efectivo?.propina ?? 0);
-  const diferencia = input.efectivoContado - esperadoEfectivo;
+  const snap = await snapshotCaja(sb, input.sede, input.abiertaEnISO);
+  const diferencia = input.efectivoContado - snap.esperadoEfectivo;
 
   const { error } = await sb
     .from("caja_sesiones")
@@ -915,11 +935,11 @@ export async function cerrarCaja(input: {
       estado: "cerrada",
       cerrada_en: new Date().toISOString(),
       // Columnas legacy pobladas por compat (histórico y UI vieja) + snapshot jsonb.
-      total_efectivo: efectivo,
-      total_datafono: datafono,
-      totales,
-      total_gastos: totalGastos,
-      citas: vs.length,
+      total_efectivo: snap.efectivo,
+      total_datafono: snap.datafono,
+      totales: snap.totales,
+      total_gastos: snap.totalGastos,
+      citas: snap.citas,
       efectivo_contado: input.efectivoContado,
       diferencia,
       nota: input.nota || null,
@@ -929,6 +949,101 @@ export async function cerrarCaja(input: {
   revalidatePath("/admin/cuadre");
   revalidatePath("/admin");
   return { ok: true };
+}
+
+export type CierreCajaResult = {
+  ok: boolean;
+  error?: string;
+  total?: number;
+  diferencia?: number;
+  esperado?: number;
+};
+
+// Cierre de caja por el BARBERO de la sede (o el admin como override). El barbero
+// cierra SÓLO su sede (se ignora input.sede). caja_sesiones es RLS admin-only
+// (0008): por eso el trabajo va con supabaseAdmin() detrás del gate requireStaff.
+export async function cerrarCajaSede(input: {
+  efectivoContado: number;
+  nota?: string;
+  sede?: string;
+}): Promise<CierreCajaResult> {
+  const sb = await supabaseServerAuth();
+  const denied = await requireStaff(sb);
+  if (denied) return { ok: false, error: denied };
+  const staff = await getStaffContext();
+  if (staff.rol !== "admin" && staff.rol !== "barbero") return { ok: false, error: "No autorizado" };
+
+  const admin = supabaseAdmin();
+
+  // La sede: el barbero cierra la SUYA (buscada por su barbero_id, ignora input);
+  // el admin elige explícitamente.
+  let sede: string | null = null;
+  if (staff.rol === "barbero") {
+    if (!staff.barberoId) return { ok: false, error: "No se pudo determinar tu sede." };
+    const { data: barb } = await admin.from("barberos").select("sede_id").eq("id", staff.barberoId).maybeSingle();
+    sede = (barb as { sede_id?: string } | null)?.sede_id ?? null;
+    if (!sede) return { ok: false, error: "No se pudo determinar tu sede." };
+  } else {
+    sede = (input.sede ?? "").trim() || null;
+    if (!sede) return { ok: false, error: "Elegí una sede." };
+  }
+
+  // Efectivo contado: entero COP ≥ 0.
+  const efectivoContado = Math.floor(Number(input.efectivoContado));
+  if (!Number.isFinite(efectivoContado) || efectivoContado < 0)
+    return { ok: false, error: "Ingresá el efectivo contado (un número igual o mayor a 0)." };
+
+  // Caja abierta de la sede.
+  const { data: sesion, error: selErr } = await admin
+    .from("caja_sesiones")
+    .select("id,abierta_en")
+    .eq("sede_id", sede)
+    .eq("estado", "abierta")
+    .maybeSingle();
+  if (selErr) return { ok: false, error: errorPublico("cerrarCajaSede select", selErr) };
+  if (!sesion) return { ok: false, error: "No hay una caja abierta en esta sede." };
+  const ses = sesion as { id: string; abierta_en: string };
+
+  const snap = await snapshotCaja(admin, sede, ses.abierta_en);
+  const diferencia = efectivoContado - snap.esperadoEfectivo;
+
+  // profile.id del que cierra → cerrada_por (para el email y la trazabilidad).
+  const {
+    data: { user },
+  } = await sb.auth.getUser();
+  let cerradaPor: string | null = null;
+  if (user) {
+    const { data: prof } = await admin.from("profiles").select("id").eq("auth_id", user.id).maybeSingle();
+    cerradaPor = (prof as { id?: string } | null)?.id ?? null;
+  }
+
+  // Update condicional a 'abierta': si otra llamada la cerró en la carrera, 0 filas.
+  const { data: cerrada, error } = await admin
+    .from("caja_sesiones")
+    .update({
+      estado: "cerrada",
+      cerrada_en: new Date().toISOString(),
+      cerrada_por: cerradaPor,
+      total_efectivo: snap.efectivo,
+      total_datafono: snap.datafono,
+      totales: snap.totales,
+      total_gastos: snap.totalGastos,
+      citas: snap.citas,
+      efectivo_contado: efectivoContado,
+      diferencia,
+      nota: (input.nota ?? "").trim() || null,
+    })
+    .eq("id", ses.id)
+    .eq("estado", "abierta")
+    .select("id");
+  if (error) return { ok: false, error: errorPublico("cerrarCajaSede", error) };
+  if (!cerrada || cerrada.length === 0) return { ok: false, error: "La caja ya fue cerrada." };
+
+  const total = Object.values(snap.totales).reduce((a, t) => a + t.total, 0);
+  revalidatePath("/barbero");
+  revalidatePath("/admin");
+  revalidatePath("/admin/cuadre");
+  return { ok: true, total, diferencia, esperado: snap.esperadoEfectivo };
 }
 
 // ---------- Medios de pago (admin) ----------
