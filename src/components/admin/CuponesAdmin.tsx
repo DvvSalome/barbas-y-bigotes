@@ -84,9 +84,9 @@ export function CuponesAdmin({ cupones }: { cupones: Cupon[] }) {
                   </span>
                   <button
                     onClick={() => toggle(c.codigo, !c.activo)}
-                    className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide transition ${c.activo ? "bg-emerald-500/15 text-emerald-400" : "bg-white/10 text-muted"}`}
+                    className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide transition ${c.activo ? "bg-ok/15 text-ok" : "bg-ink/10 text-muted"}`}
                   >
-                    <span className={`h-1.5 w-1.5 rounded-full ${c.activo ? "bg-emerald-400" : "bg-muted"}`} />
+                    <span className={`h-1.5 w-1.5 rounded-full ${c.activo ? "bg-ok" : "bg-muted"}`} />
                     {c.activo ? "Activo" : "Inactivo"}
                   </button>
                 </div>

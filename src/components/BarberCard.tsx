@@ -14,11 +14,11 @@ const EASE = [0.22, 1, 0.36, 1] as const;
 const sedeNombre = (id: Barbero["sede"]) =>
   sedes.find((s) => s.id === id)?.nombre ?? id;
 
-// Foto en blanco y negro por defecto — al tocar/clickear, pasa a color y
+// Foto en blanco y negro por defecto: al tocar/clickear, pasa a color y
 // revela rating, especialidades y CTA. El cliente sabe quién lo atiende solo
 // después de "conocerlo". Por ahora todos los barberos usan la misma foto
-// genérica (seed.ts → /barberos/generico.jpg) solo para probar la interacción
-// grises→color — reemplazar por la foto real de cada uno cuando lleguen.
+// genérica (seed.ts, /barberos/generico.jpg) solo para probar la interacción
+// de grises a color; reemplazar por la foto real de cada uno cuando lleguen.
 export function BarberCard({
   barbero: b,
   onSelect,
@@ -63,9 +63,14 @@ export function BarberCard({
             {liveStatus.status === "ocupado" ? "Atendiendo" : "Libre"}
           </span>
         )}
+        {/* Marcador de foto pendiente solo icono: sin texto placeholder que los
+            crawlers lean como contenido ("Libre Foto"). */}
         {!b.fotoUrl && (
-          <span className={`absolute right-3 ${liveStatus ? "top-10" : "top-3"} flex items-center gap-1.5 rounded-full border border-accent/45 bg-black/40 px-2.5 py-1 text-[9.5px] uppercase tracking-wide text-accent-soft backdrop-blur-sm`}>
-            <CamIcon className="h-3 w-3" /> Foto
+          <span
+            aria-hidden
+            className={`absolute right-3 ${liveStatus ? "top-10" : "top-3"} flex items-center rounded-full border border-accent/45 bg-black/40 p-1.5 text-accent-soft backdrop-blur-sm`}
+          >
+            <CamIcon className="h-3 w-3" />
           </span>
         )}
 

@@ -5,9 +5,12 @@ import { BarberCard } from "@/components/BarberCard";
 import { Reveal } from "@/components/motion/Reveal";
 import { getSedes, getBarberos } from "@/lib/data/queries";
 import { getLiveBarberStatuses } from "@/lib/actions";
+import { barberosItemList, jsonLd } from "@/lib/schema-org";
 
 export const metadata: Metadata = {
-  title: "Barberos · Barbas & Bigotes",
+  title: "Nuestros barberos",
+  description:
+    "Conocé a los 6 barberos de Barbas & Bigotes en Barranquilla: especialistas en degradados, barba, color y diseño en las sedes Parque Venezuela y Plaza de la Paz.",
 };
 
 export default async function BarberosPage() {
@@ -24,6 +27,11 @@ export default async function BarberosPage() {
 
   return (
     <>
+      {/* ItemList de Person (equipo real de la DB), server-rendered para IA. */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: jsonLd(barberosItemList(barberos)) }}
+      />
       <SiteHeader />
       <main className="mx-auto max-w-6xl px-6 py-16">
         <Reveal>
@@ -51,6 +59,15 @@ export default async function BarberosPage() {
                 {list.map((b, i) => (
                   <Reveal key={b.id} delay={(i % 3) * 0.08} y={36}>
                     <BarberCard barbero={b} liveStatus={liveStatuses[b.id]} />
+                    {/* Especialidad server-rendered (la card la revela solo con JS). */}
+                    {b.especialidades.length > 0 && (
+                      <p className="mt-2.5 px-1 text-xs leading-relaxed text-muted">
+                        <span className="uppercase tracking-[0.18em] text-accent-soft">
+                          Especialista en{" "}
+                        </span>
+                        {b.especialidades.slice(0, 4).join(", ")}
+                      </p>
+                    )}
                   </Reveal>
                 ))}
               </div>

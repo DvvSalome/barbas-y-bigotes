@@ -3,47 +3,127 @@
 /*
   Identidad Barbas & Bigotes — barbería clásica.
   Carbón + hueso + ROJO barbero. NADA del dorado champagne / Cormorant de FourG.
+
+  Registro doble (PRODUCT.md): el sitio público (marca) toma los tokens de :root;
+  el staff (/admin, /barbero) los re-resuelve bajo [data-staff] (registro producto).
+  Las utilities (bg-panel, text-accent, border-line, …) referencian estas vars vía
+  @theme inline, así que cambiar el bloque [data-staff] re-tematiza solo el staff.
 */
 
-@theme inline {
-  --color-bg: #0c0b0a;
-  --color-panel: #151311;
-  --color-elevated: #211d19;
-  --color-ink: #f2ede4;
-  --color-muted: #9c958a;
-  --color-line: rgba(242, 237, 228, 0.1);
+:root {
+  /* Marca pública (landing, reserva, /entrar): no tocar sin decisión explícita. */
+  --bg: #0c0b0a;
+  --panel: #151311;
+  --elevated: #211d19;
+  --ink: #f2ede4;
+  --muted: #9c958a;
+  --line: rgba(242, 237, 228, 0.1);
 
-  --color-accent: #d23f34; /* rojo barbero */
-  --color-accent-soft: #e8675c;
-  --color-on-accent: #fbf7f0; /* texto sobre el rojo */
+  --accent: #d23f34; /* rojo barbero */
+  --accent-soft: #e8675c;
+  --on-accent: #fbf7f0; /* texto sobre el rojo */
+
+  color-scheme: dark;
+}
+
+/* Registro producto (staff): carbón cálido + rojo barbero. El público no cambia. */
+[data-staff] {
+  --bg: #0c0b0a;
+  --panel: #151311;
+  --elevated: #211d19;
+  --ink: #f2ede4;
+  --muted: #9c958a;
+  --line: rgba(242, 237, 228, 0.1);
+  --accent: #d23f34;
+  --accent-soft: #e8675c;
+  --on-accent: #fbf7f0;
+  /* Estados sobrios (DESIGN.md: verde/ámbar solo para ok/alerta) y neutrales
+     de gráficos. Viven acá y no en las clases para que el claro los re-resuelva. */
+  --ok: #34d399;
+  --warn: #fbbf24;
+  --bar: #a3907c;
+  --shadow-pop: 0 24px 64px rgba(0, 0, 0, 0.55);
+}
+
+/* Staff en claro (cookie bb-tema=light): hueso cálido + carbón + rojo barbero
+   más profundo (AA sobre claro). Decisión explícita del Bloque 8; el sitio
+   público NO lee este tema. */
+[data-staff][data-theme="light"] {
+  --bg: #f6f3ec;
+  --panel: #fffdf9;
+  --elevated: #efeae0;
+  --ink: #26211c;
+  --muted: #6f6858;
+  --line: rgba(38, 33, 28, 0.12);
+  --accent: #b9352a;
+  /* En claro el "soft" va MÁS profundo que en dark: es color de TEXTO sobre
+     fondos tenues (chips accent/15) y necesita AA (review midió 3.56:1 con el tono anterior). */
+  --accent-soft: #a52f25;
+  --on-accent: #fbf7f0;
+  --ok: #065f46;
+  --warn: #92400e;
+  --bar: #8f7a60;
+  --shadow-pop: 0 24px 64px rgba(38, 33, 28, 0.18);
+  color-scheme: light;
+}
+
+/* El lockup del header barbero es línea blanca sobre transparente: en claro
+   se entinta a carbón (el asset es uno solo). */
+[data-staff][data-theme="light"] .logo-staff {
+  filter: invert(0.86) sepia(0.1);
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-panel: var(--panel);
+  --color-elevated: var(--elevated);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-on-accent: var(--on-accent);
+
+  /* Estados staff (solo resuelven bajo [data-staff]). */
+  --color-ok: var(--ok);
+  --color-warn: var(--warn);
 
   --font-display: var(--font-barlow);
   --font-sans: var(--font-inter);
 }
 
-:root {
-  color-scheme: dark;
-}
-
 body {
   background:
-    radial-gradient(130% 90% at 50% -10%, #1b1613 0%, var(--color-bg) 58%, #050403 100%) fixed;
-  color: var(--color-ink);
+    radial-gradient(130% 90% at 50% -10%, #1b1613 0%, var(--bg) 58%, #050403 100%) fixed;
+  color: var(--ink);
   font-family: var(--font-sans), system-ui, sans-serif;
   min-height: 100dvh;
 }
 
-::selection {
-  background: var(--color-accent);
-  color: var(--color-on-accent);
+/* El staff trabaja sobre fondo plano (registro producto), sin el gradiente de
+   marketing. El color va acá y no solo en body: la tinta heredada se re-resuelve
+   con el tema del wrapper (body computa --ink con :root, que es dark). */
+[data-staff] {
+  background: var(--bg);
+  color: var(--ink);
 }
 
-a {
-  color: inherit;
-  text-decoration: none;
+::selection {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+/* En @layer base para que las utilities (text-accent-soft, text-ok, …) le
+   ganen: sin capa, esta regla pisaba cualquier color puesto en un <Link>. */
+@layer base {
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
 }
 
 .rule-accent {
   height: 1px;
-  background: linear-gradient(90deg, transparent, var(--color-accent), transparent);
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
 }

@@ -54,4 +54,6 @@ export interface Producto {
   stock: number;
   stockMinimo: number;
   comisionPct: number;
+  /** Foto subida por el admin (Supabase Storage); null mientras no haya. */
+  fotoUrl?: string | null;
 }

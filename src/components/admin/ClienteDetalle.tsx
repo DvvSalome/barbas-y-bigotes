@@ -265,7 +265,7 @@ function WalletTab({ d }: { d: Detalle }) {
                 {w.nota ? <span className="text-muted"> · {w.nota}</span> : null}
                 <div className="text-xs text-muted">{fecha(w.fecha)}</div>
               </div>
-              <span className={`shrink-0 ${w.tipo === "recarga" ? "text-emerald-400" : "text-muted"}`}>
+              <span className={`shrink-0 ${w.tipo === "recarga" ? "text-ok" : "text-muted"}`}>
                 {w.tipo === "recarga" ? "+" : "−"}{cop(w.monto)}
               </span>
             </div>
@@ -322,7 +322,7 @@ function FidelidadTab({ d }: { d: Detalle }) {
                 {p.nota ? <span className="text-muted"> · {p.nota}</span> : null}
                 <div className="text-xs text-muted">{fecha(p.fecha)}</div>
               </div>
-              <span className={`shrink-0 ${p.tipo === "ganado" ? "text-emerald-400" : "text-muted"}`}>
+              <span className={`shrink-0 ${p.tipo === "ganado" ? "text-ok" : "text-muted"}`}>
                 {p.tipo === "ganado" ? "+" : "−"}{p.puntos} pts
               </span>
             </div>

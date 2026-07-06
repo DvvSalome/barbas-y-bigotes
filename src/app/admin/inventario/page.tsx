@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { getProductos, getSedes } from "@/lib/data/queries";
 import { AddProductForm } from "@/components/admin/AddProductForm";
+import { FotoProducto } from "@/components/staff/FotoProducto";
 import { cop } from "@/lib/format";
 import { SectionHeader } from "@/components/admin/SectionHeader";
 import { Stat } from "@/components/admin/Stat";
@@ -37,7 +38,10 @@ export default async function InventarioPage() {
                 return (
                   <div key={p.id} className={`rounded-xl border p-4 ${low ? "border-red-500/30 bg-red-500/[0.04]" : "border-line bg-panel"}`}>
                     <div className="flex items-center justify-between gap-2">
-                      <span className="min-w-0 truncate font-medium">{p.nombre}</span>
+                      <div className="flex min-w-0 items-center gap-3">
+                        <FotoProducto productoId={p.id} nombre={p.nombre} fotoUrl={p.fotoUrl} />
+                        <span className="min-w-0 truncate font-medium">{p.nombre}</span>
+                      </div>
                       {low ? (
                         <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-red-500/15 px-2.5 py-1 text-xs text-red-300">
                           <AlertIcon className="h-3 w-3" /> Bajo mínimo
@@ -73,7 +77,12 @@ export default async function InventarioPage() {
                     const low = p.stock <= p.stockMinimo;
                     return (
                       <tr key={p.id} className={`transition hover:bg-elevated/50 ${low ? "bg-red-500/[0.04]" : i % 2 ? "bg-panel" : "bg-panel/40"}`}>
-                        <td className="px-4 py-3">{p.nombre}</td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-3">
+                            <FotoProducto productoId={p.id} nombre={p.nombre} fotoUrl={p.fotoUrl} size={36} />
+                            <span>{p.nombre}</span>
+                          </div>
+                        </td>
                         <td className="px-4 py-3 text-right">{cop(p.precio)}</td>
                         <td className={`px-4 py-3 text-right font-semibold ${low ? "text-red-300" : ""}`}>{p.stock}</td>
                         <td className="px-4 py-3 text-right text-muted">{p.stockMinimo}</td>

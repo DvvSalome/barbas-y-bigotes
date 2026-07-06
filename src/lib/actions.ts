@@ -11,7 +11,7 @@ import { calcularCobro, totalesPorMedio } from "@/lib/cobro";
 import { pushACliente } from "@/lib/push";
 import { fechaHoraBogota } from "@/lib/format";
 
-export type ActionResult = { ok: boolean; error?: string; total?: number; descuento?: number; propina?: number; puntos?: number; encolado?: boolean; esperaHasta?: string | null };
+export type ActionResult = { ok: boolean; error?: string; id?: string; total?: number; descuento?: number; propina?: number; puntos?: number; encolado?: boolean; esperaHasta?: string | null };
 
 // --- Autorización (defensa en profundidad; la RLS es la barrera real) ---
 // Las server actions corren con la sesión del usuario, pero igual revalidamos el
@@ -97,16 +97,65 @@ export async function addProducto(input: {
   const sb = await supabaseServerAuth();
   const denied = await requireAdmin(sb);
   if (denied) return { ok: false, error: denied };
-  const { error } = await sb.from("productos").insert({
-    nombre: input.nombre,
-    sede_id: input.sede,
-    precio: input.precio,
-    stock: input.stock,
-    stock_minimo: input.stockMinimo,
-    comision_pct: input.comisionPct,
-  });
+  const { data, error } = await sb
+    .from("productos")
+    .insert({
+      nombre: input.nombre,
+      sede_id: input.sede,
+      precio: input.precio,
+      stock: input.stock,
+      stock_minimo: input.stockMinimo,
+      comision_pct: input.comisionPct,
+    })
+    .select("id")
+    .single();
   if (error) return { ok: false, error: errorPublico("addProducto", error) };
   revalidatePath("/admin/inventario");
+  // El id permite encadenar la foto opcional (subirFotoProducto) tras crear.
+  return { ok: true, id: (data as { id: string }).id };
+}
+
+const FOTO_MAX_BYTES = 2 * 1024 * 1024;
+
+// Foto del producto → Supabase Storage (bucket público "productos", migración 0019).
+// service role para el storage: la escritura del bucket no se expone por RLS,
+// el gate real es requireAdmin acá.
+export async function subirFotoProducto(formData: FormData): Promise<ActionResult> {
+  const sb = await supabaseServerAuth();
+  const denied = await requireAdmin(sb);
+  if (denied) return { ok: false, error: denied };
+
+  const productoId = String(formData.get("productoId") ?? "").trim();
+  const file = formData.get("foto");
+  if (!productoId || !(file instanceof File) || file.size === 0)
+    return { ok: false, error: "Elegí una imagen." };
+  // Allowlist (nada de SVG: un <script> embebido quedaría servido desde el bucket público).
+  if (!["image/jpeg", "image/png", "image/webp", "image/avif"].includes(file.type))
+    return { ok: false, error: "La imagen tiene que ser JPG, PNG, WebP o AVIF." };
+  if (file.size > FOTO_MAX_BYTES) return { ok: false, error: "La imagen no puede pesar más de 2MB." };
+
+  const admin = supabaseAdmin();
+  // Existencia + sanidad del id (el path del storage se arma con él).
+  const { data: prod } = await admin.from("productos").select("id").eq("id", productoId).maybeSingle();
+  if (!prod) return { ok: false, error: "Producto no encontrado." };
+
+  const ext =
+    (file.type.split("/")[1] ?? "jpg").toLowerCase().replace("jpeg", "jpg").replace(/[^a-z0-9]/g, "") || "jpg";
+  const path = `${productoId}.${ext}`;
+  const { error: upErr } = await admin.storage
+    .from("productos")
+    .upload(path, file, { upsert: true, contentType: file.type });
+  if (upErr)
+    return { ok: false, error: errorPublico("subirFotoProducto upload", upErr, "No se pudo subir la foto. Intentá de nuevo.") };
+
+  const { data: pub } = admin.storage.from("productos").getPublicUrl(path);
+  // Cache-buster: el path se repite en cada re-subida y el CDN no debe servir la vieja.
+  const url = `${pub.publicUrl}?v=${Date.now()}`;
+  const { error: updErr } = await admin.from("productos").update({ foto_url: url }).eq("id", productoId);
+  if (updErr) return { ok: false, error: errorPublico("subirFotoProducto update", updErr) };
+
+  revalidatePath("/admin/inventario");
+  revalidatePath("/barbero");
   return { ok: true };
 }
 
@@ -559,6 +608,47 @@ export async function completarReserva(input: {
   revalidatePath("/barbero");
   revalidatePath("/admin/inventario");
   return { ok: true, total: cobro.total, descuento: cobro.descuento, propina: cobro.propina, puntos };
+}
+
+// ---------- Búsqueda global (paleta Ctrl-K del admin) ----------
+export type BusquedaGlobal = {
+  clientes: { id: string; nombre: string; telefono: string }[];
+  productos: { id: string; nombre: string; stock: number; sede: string }[];
+};
+
+// Busca clientes (nombre/teléfono) y productos (nombre) para la paleta de
+// comandos. Solo admin: expone PII de clientes de ambas sedes.
+export async function buscarGlobal(q: string): Promise<BusquedaGlobal> {
+  const vacio: BusquedaGlobal = { clientes: [], productos: [] };
+  const s = (q ?? "").trim();
+  if (s.length < 2) return vacio;
+  const sb = await supabaseServerAuth();
+  const denied = await requireAdmin(sb);
+  if (denied) return vacio;
+  // Sin metacaracteres de ilike ni comas (separador del .or() de PostgREST).
+  const like = `%${s.replace(/[%_,()]/g, "")}%`;
+  const [cliRes, prodRes] = await Promise.all([
+    sb
+      .from("clientes")
+      .select("id,nombre,telefono")
+      .or(`nombre.ilike.${like},telefono.ilike.${like}`)
+      .order("nombre")
+      .limit(5),
+    sb.from("productos").select("id,nombre,stock,sede_id").ilike("nombre", like).order("nombre").limit(5),
+  ]);
+  return {
+    clientes: ((cliRes.data ?? []) as Record<string, unknown>[]).map((c) => ({
+      id: c.id as string,
+      nombre: (c.nombre as string) ?? "Cliente",
+      telefono: (c.telefono as string) ?? "",
+    })),
+    productos: ((prodRes.data ?? []) as Record<string, unknown>[]).map((p) => ({
+      id: p.id as string,
+      nombre: p.nombre as string,
+      stock: (p.stock as number) ?? 0,
+      sede: p.sede_id as string,
+    })),
+  };
 }
 
 // ---------- Cupones (admin) + canje de puntos ----------

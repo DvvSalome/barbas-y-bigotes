@@ -91,7 +91,7 @@ export function EquipoPinAdmin({ barberos, sedes, estado }: { barberos: Barbero[
                       </div>
                     )}
                     {msg?.id === b.id && (
-                      <div className={`mt-2 text-xs ${msg.ok ? "text-emerald-400" : "text-accent-soft"}`}>{msg.text}</div>
+                      <div className={`mt-2 text-xs ${msg.ok ? "text-ok" : "text-accent-soft"}`}>{msg.text}</div>
                     )}
                   </div>
                 );

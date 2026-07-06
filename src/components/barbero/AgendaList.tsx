@@ -12,6 +12,8 @@ import {
   proponerAdelanto,
 } from "@/lib/actions";
 import { calcularCobro } from "@/lib/cobro";
+import { ProductoThumb } from "@/components/staff/ProductoThumb";
+import { MedioLogo } from "@/components/staff/MedioLogo";
 import type { Sede, SedeId, Barbero, Servicio, Producto } from "@/lib/data/types";
 import type { AgendaItem, MedioPago } from "@/lib/data/queries";
 
@@ -166,7 +168,7 @@ export function AgendaList({
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="font-semibold">{r.cliente || "Walk-in"}</span>
                         <span
-                          className={`rounded-full px-2 py-0.5 text-[10px] uppercase tracking-wide ${r.canal === "walkin" ? "bg-white/10 text-muted" : "bg-accent/15 text-accent-soft"}`}
+                          className={`rounded-full px-2 py-0.5 text-[10px] uppercase tracking-wide ${r.canal === "walkin" ? "bg-ink/10 text-muted" : "bg-accent/15 text-accent-soft"}`}
                         >
                           {r.canal === "walkin" ? "Sin reserva" : "App"}
                         </span>
@@ -190,7 +192,7 @@ export function AgendaList({
                       </button>
                     )}
                     {hasPendingProposal && (
-                      <span className="rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-500 px-3 py-1.5 text-xs font-semibold uppercase tracking-wider">
+                      <span className="rounded-full bg-warn/10 border border-warn/30 text-warn px-3 py-1.5 text-xs font-semibold uppercase tracking-wider">
                         Propuesto {proposedTimeStr}
                       </span>
                     )}
@@ -400,9 +402,9 @@ function CheckoutForm({
   const [barberoId, setBarberoId] = useState(""); // venta rápida: el admin puede cobrar por otro
   const [nombre, setNombre] = useState(""); // venta rápida: nombre del cliente (opcional)
   const [extras, setExtras] = useState<string[]>([]);
-  const [extrasOpen, setExtrasOpen] = useState(false);
   const [prodQty, setProdQty] = useState<Record<string, number>>({});
   const [propina, setPropina] = useState(0);
+  const [propinaOtra, setPropinaOtra] = useState(false); // "Otra…" abre el input libre
   const [nota, setNota] = useState("");
   const [medio, setMedio] = useState(medios[0]?.slug ?? "");
   const [saving, setSaving] = useState(false);
@@ -518,7 +520,7 @@ function CheckoutForm({
               + {cop(resumen.propina)} de propina · en la mano: <b className="text-ink">{cop(resumen.total + resumen.propina)}</b>
             </div>
           )}
-          {resumen.puntos > 0 && <div className="text-emerald-400">+{resumen.puntos} puntos de fidelidad para el cliente</div>}
+          {resumen.puntos > 0 && <div className="text-ok">+{resumen.puntos} puntos de fidelidad para el cliente</div>}
         </div>
         <button onClick={onDone} className="mt-3 rounded-full bg-accent px-6 py-2 text-xs font-semibold uppercase tracking-wide text-on-accent transition hover:bg-accent-soft">
           Listo
@@ -527,214 +529,288 @@ function CheckoutForm({
     );
   }
 
+  const sLabel = "mb-2 text-[11px] font-bold uppercase tracking-[0.14em] text-muted";
+  const medioNombre = medios.find((m) => m.slug === medio)?.nombre ?? "—";
+
+  // v3 (mockup aprobado): hoja "Cerrar y cobrar" en una columna, targets táctiles
+  // grandes y barra de cobro sticky con el total vivo. La lógica de cobro
+  // (calcularCobro + completarReserva) es exactamente la misma de antes.
   return (
-    <div className={`${rapida ? "" : "mt-3 "}rounded-xl border border-line bg-bg p-4`}>
-      {rapida && (
-        <div className="mb-4 grid gap-3 sm:grid-cols-2">
-          <div className="sm:col-span-2 text-[10px] uppercase tracking-[0.18em] text-muted">Venta rápida (sin cita)</div>
-          <select value={sede} onChange={(e) => cambiarSede(e.target.value)} className={fld}>
-            {sedes.map((s) => (
-              <option key={s.id} value={s.id}>{s.nombre}</option>
-            ))}
-          </select>
-          {/* Solo el admin puede atribuir la venta a otro barbero; para el rol
-              barbero el server la registra a su nombre sí o sí. */}
-          {esAdmin && (
-            <select value={barberoId} onChange={(e) => setBarberoId(e.target.value)} className={fld}>
-              <option value="">Barbero (opcional)…</option>
-              {barberosSede.map((b) => (
-                <option key={b.id} value={b.id}>{b.nombre}</option>
+    <div className={`${rapida ? "" : "mt-3 "}rounded-2xl border border-line bg-bg`}>
+      <div className="border-b border-line/60 px-4 py-3.5 font-display text-lg font-semibold text-ink">
+        {rapida ? "Venta rápida (sin cita)" : "Cerrar y cobrar"}
+      </div>
+
+      <div className="flex flex-col gap-5 p-4">
+        {rapida && (
+          <div className="grid gap-3 sm:grid-cols-2">
+            <select value={sede} onChange={(e) => cambiarSede(e.target.value)} className={fld}>
+              {sedes.map((s) => (
+                <option key={s.id} value={s.id}>{s.nombre}</option>
               ))}
             </select>
-          )}
-          <input
-            value={nombre}
-            onChange={(e) => setNombre(e.target.value)}
-            placeholder="Nombre del cliente (opcional)"
-            className={`${fld} sm:col-span-2`}
-          />
-        </div>
-      )}
+            {/* Solo el admin puede atribuir la venta a otro barbero; para el rol
+                barbero el server la registra a su nombre sí o sí. */}
+            {esAdmin && (
+              <select value={barberoId} onChange={(e) => setBarberoId(e.target.value)} className={fld}>
+                <option value="">Barbero (opcional)…</option>
+                {barberosSede.map((b) => (
+                  <option key={b.id} value={b.id}>{b.nombre}</option>
+                ))}
+              </select>
+            )}
+            <input
+              value={nombre}
+              onChange={(e) => setNombre(e.target.value)}
+              placeholder="Nombre del cliente (opcional)"
+              className={`${fld} sm:col-span-2`}
+            />
+          </div>
+        )}
 
-      {servicioFijo && (
-        <div className="mb-4 flex items-center justify-between rounded-lg border border-accent/30 bg-accent/5 px-3 py-2 text-sm">
-          <span>
-            {servicioFijo.nombre} <span className="text-muted">· servicio de la cita</span>
-          </span>
-          <span className="text-accent-soft">{precioFijo != null ? cop(precioFijo) : "—"}</span>
-        </div>
-      )}
+        {servicioFijo && (
+          <div>
+            <div className={sLabel}>Servicio de la cita</div>
+            <div className="flex items-center justify-between gap-3 rounded-xl border border-line bg-elevated px-3.5 py-3 text-sm">
+              <span className="font-semibold text-ink">{servicioFijo.nombre}</span>
+              <span className="font-bold text-ink tabular-nums">{precioFijo != null ? cop(precioFijo) : "—"}</span>
+            </div>
+          </div>
+        )}
 
-      <div className="mb-4">
-        <button
-          type="button"
-          onClick={() => setExtrasOpen((v) => !v)}
-          className="flex w-full items-center justify-between text-left text-[10px] uppercase tracking-[0.18em] text-muted transition hover:text-ink"
-        >
-          <span>
-            Servicios adicionales (opcional)
-            {extras.length > 0 && <span className="ml-2 rounded-full bg-accent/15 px-2 py-0.5 text-accent-soft">{extras.length}</span>}
-          </span>
-          <span>{extrasOpen ? "−" : "+"}</span>
-        </button>
-        {extrasOpen && (
-          <div className="mt-2 space-y-1.5">
-            {serviciosSede.length === 0 ? (
-              <p className="text-sm text-muted">Sin servicios con precio en esta sede.</p>
-            ) : (
-              serviciosSede.map((s) => {
+        <div>
+          <div className={sLabel}>{rapida ? "Servicios" : "¿Se sumó algo en la silla?"}</div>
+          {serviciosSede.length === 0 ? (
+            <p className="text-sm text-muted">Sin servicios con precio en esta sede.</p>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {serviciosSede.map((s) => {
                 const activo = extras.includes(s.id);
                 return (
                   <button
                     key={s.id}
                     type="button"
+                    aria-pressed={activo}
                     onClick={() => toggleExtra(s.id)}
-                    className={`flex w-full items-center justify-between rounded-lg border px-3 py-2 text-sm transition ${
-                      activo ? "border-accent bg-accent/10 text-ink" : "border-line text-muted hover:text-ink"
+                    className={`min-h-10 rounded-full border px-3.5 py-2 text-[13px] font-semibold transition ${
+                      activo ? "border-accent bg-accent/15 text-ink" : "border-line text-ink/80 hover:border-ink/25"
                     }`}
                   >
-                    <span>{s.nombre}</span>
-                    <span className={activo ? "text-accent-soft" : ""}>{cop(s.precios[sedeId] ?? 0)}</span>
+                    {s.nombre}
+                    <span className={`ml-1.5 font-medium tabular-nums ${activo ? "text-accent-soft" : "text-muted"}`}>
+                      +{cop(s.precios[sedeId] ?? 0)}
+                    </span>
                   </button>
                 );
-              })
-            )}
-          </div>
-        )}
-      </div>
-
-      <div className="mb-2 text-[10px] uppercase tracking-[0.18em] text-muted">Consumos (opcional)</div>
-      {productosSede.length === 0 ? (
-        <p className="text-sm text-muted">Sin productos en esta sede.</p>
-      ) : (
-        <div className="space-y-2">
-          {productosSede.map((p) => {
-            const q = prodQty[p.id] ?? 0;
-            return (
-              <div key={p.id} className="flex items-center justify-between text-sm">
-                <span>
-                  {p.nombre} <span className="text-muted">· {cop(p.precio)}</span>
-                </span>
-                <div className="flex items-center gap-2">
-                  <button type="button" onClick={() => setQty(p.id, q - 1)} className="h-7 w-7 rounded-full border border-line">–</button>
-                  <span className="w-5 text-center">{q}</span>
-                  <button type="button" onClick={() => setQty(p.id, q + 1)} className="h-7 w-7 rounded-full border border-line">+</button>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      <div className="mt-4">
-        <div className="mb-1 text-[10px] uppercase tracking-[0.18em] text-muted">Propina (opcional)</div>
-        <div className="flex flex-wrap items-center gap-2">
-          {PROPINA_CHIPS.map((p) => (
-            <button
-              type="button"
-              key={p}
-              onClick={() => setPropina(propina === p ? 0 : p)}
-              className={`rounded-lg border px-3 py-1.5 text-xs transition ${
-                propina === p ? "border-accent bg-accent/10 text-ink" : "border-line text-muted"
-              }`}
-            >
-              {cop(p)}
-            </button>
-          ))}
-          <input
-            type="number"
-            min={0}
-            value={propina || ""}
-            onChange={(e) => setPropina(Math.max(0, Math.floor(Number(e.target.value) || 0)))}
-            placeholder="Otro monto"
-            className="w-32 rounded-lg border border-line bg-bg px-3 py-1.5 text-sm text-ink placeholder:text-muted focus:border-accent focus:outline-none"
-          />
-        </div>
-      </div>
-
-      <div className="mt-4">
-        <div className="mb-1 text-[10px] uppercase tracking-[0.18em] text-muted">Nota</div>
-        <textarea
-          value={nota}
-          onChange={(e) => setNota(e.target.value)}
-          rows={2}
-          placeholder="Observación (opcional)"
-          className="w-full rounded-lg border border-line bg-bg px-3 py-1.5 text-sm text-ink placeholder:text-muted focus:border-accent focus:outline-none"
-        />
-      </div>
-
-      <div className="mt-4">
-        <div className="mb-1 text-[10px] uppercase tracking-[0.18em] text-muted">Cupón (opcional)</div>
-        <div className="flex gap-2">
-          <input
-            value={cupon}
-            onChange={(e) => { setCupon(e.target.value.toUpperCase()); setCuponInfo(null); }}
-            placeholder="Código"
-            className="flex-1 rounded-lg border border-line bg-bg px-3 py-1.5 text-sm uppercase text-ink placeholder:text-muted focus:border-accent focus:outline-none"
-          />
-          <button type="button" onClick={chequearCupon} className="rounded-lg border border-line px-3 py-1.5 text-xs text-muted transition hover:text-ink">
-            Validar
-          </button>
-        </div>
-        {cuponInfo && (
-          <div className={`mt-1 text-xs ${cuponInfo.ok ? "text-emerald-400" : "text-accent-soft"}`}>{cuponInfo.msg}</div>
-        )}
-      </div>
-
-      <div className="mt-4 rounded-lg border border-line bg-panel px-3 py-2 text-sm">
-        {vivo.descuento > 0 && (
-          <div className="flex justify-between text-muted">
-            <span>Descuento</span>
-            <span>−{cop(vivo.descuento)}</span>
-          </div>
-        )}
-        <div className="flex justify-between">
-          <span className="text-muted">Total</span>
-          <span>{cop(vivo.total)}</span>
-        </div>
-        {vivo.propina > 0 && (
-          <div className="flex justify-between text-muted">
-            <span>+ Propina</span>
-            <span>{cop(vivo.propina)}</span>
-          </div>
-        )}
-        <div className="mt-1 flex justify-between border-t border-line pt-1 font-semibold">
-          <span>Total a cobrar</span>
-          <span className="text-accent-soft">{cop(vivo.aCobrar)}</span>
-        </div>
-      </div>
-
-      {err && <div className="mt-3 rounded-lg border border-accent/40 bg-accent/10 px-3 py-2 text-sm text-accent-soft">{err}</div>}
-
-      <div className="mt-4 flex flex-wrap items-center gap-2">
-        <div className="flex flex-wrap gap-2">
-          {medios.length === 0 ? (
-            <span className="text-xs text-muted">Sin medios de pago configurados (avisale al admin).</span>
-          ) : (
-            medios.map((m) => (
-              <button
-                type="button"
-                key={m.slug}
-                onClick={() => setMedio(m.slug)}
-                className={`rounded-lg border px-3 py-1.5 text-xs transition ${medio === m.slug ? "border-accent bg-accent/10 text-ink" : "border-line text-muted"}`}
-              >
-                {m.nombre}
-              </button>
-            ))
+              })}
+            </div>
           )}
         </div>
-        <div className="ml-auto flex items-center gap-2">
+
+        <div>
+          <div className={sLabel}>Consumos · stock real de la sede</div>
+          {productosSede.length === 0 ? (
+            <p className="text-sm text-muted">Sin productos en esta sede.</p>
+          ) : (
+            <div>
+              {productosSede.map((p) => {
+                const q = prodQty[p.id] ?? 0;
+                const resta = p.stock - q;
+                const agotado = p.stock <= 0;
+                return (
+                  <div
+                    key={p.id}
+                    className={`grid grid-cols-[auto_1fr_auto] items-center gap-3 border-b border-line/60 py-2.5 last:border-b-0 ${
+                      agotado ? "opacity-45" : ""
+                    }`}
+                  >
+                    <ProductoThumb nombre={p.nombre} fotoUrl={p.fotoUrl} size={42} />
+                    <div className="min-w-0">
+                      <div className="truncate text-sm font-semibold text-ink">{p.nombre}</div>
+                      <div
+                        className={`text-xs tabular-nums ${
+                          agotado ? "text-muted line-through" : resta <= 3 ? "text-warn" : "text-muted"
+                        }`}
+                      >
+                        {cop(p.precio)} · {agotado ? "Agotado" : `quedan ${resta}${resta <= 3 ? " · poco stock" : ""}`}
+                      </div>
+                    </div>
+                    <div className="flex items-center rounded-full border border-line bg-elevated">
+                      <button
+                        type="button"
+                        aria-label={`Quitar ${p.nombre}`}
+                        onClick={() => setQty(p.id, q - 1)}
+                        disabled={q === 0}
+                        className="h-[38px] w-[38px] rounded-full text-lg font-bold text-ink transition disabled:text-line"
+                      >
+                        −
+                      </button>
+                      <span className="min-w-6 text-center text-[15px] font-bold text-ink tabular-nums">{q}</span>
+                      <button
+                        type="button"
+                        aria-label={`Agregar ${p.nombre}`}
+                        onClick={() => setQty(p.id, Math.min(q + 1, p.stock))}
+                        disabled={agotado || resta <= 0}
+                        className="h-[38px] w-[38px] rounded-full text-lg font-bold text-ink transition disabled:text-line"
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        <div>
+          <div className={sLabel}>Propina</div>
+          <div className="flex flex-wrap items-center gap-2">
+            {PROPINA_CHIPS.map((p) => {
+              const activo = !propinaOtra && propina === p;
+              return (
+                <button
+                  type="button"
+                  key={p}
+                  aria-pressed={activo}
+                  onClick={() => {
+                    setPropinaOtra(false);
+                    setPropina(activo ? 0 : p);
+                  }}
+                  className={`min-h-10 rounded-full border px-3.5 py-2 text-[13px] font-semibold tabular-nums transition ${
+                    activo ? "border-accent bg-accent/15 text-ink" : "border-line text-ink/80 hover:border-ink/25"
+                  }`}
+                >
+                  {cop(p)}
+                </button>
+              );
+            })}
+            <button
+              type="button"
+              aria-pressed={propinaOtra}
+              onClick={() => {
+                if (propinaOtra) {
+                  setPropinaOtra(false);
+                  setPropina(0);
+                } else {
+                  setPropinaOtra(true);
+                  setPropina(0);
+                }
+              }}
+              className={`min-h-10 rounded-full border px-3.5 py-2 text-[13px] font-semibold transition ${
+                propinaOtra ? "border-accent bg-accent/15 text-ink" : "border-line text-ink/80 hover:border-ink/25"
+              }`}
+            >
+              Otra…
+            </button>
+            {propinaOtra && (
+              <input
+                type="number"
+                min={0}
+                autoFocus
+                value={propina || ""}
+                onChange={(e) => setPropina(Math.max(0, Math.floor(Number(e.target.value) || 0)))}
+                placeholder="Monto"
+                className="w-28 rounded-full border border-line bg-bg px-3.5 py-2 text-sm text-ink tabular-nums placeholder:text-muted focus:border-accent focus:outline-none"
+              />
+            )}
+          </div>
+        </div>
+
+        <div>
+          <div className={sLabel}>¿Cómo pagó?</div>
+          {medios.length === 0 ? (
+            <p className="text-sm text-muted">Sin medios de pago configurados (avisale al admin).</p>
+          ) : (
+            <div className="grid grid-cols-3 gap-2">
+              {medios.map((m) => {
+                const activo = medio === m.slug;
+                return (
+                  <button
+                    type="button"
+                    key={m.slug}
+                    aria-pressed={activo}
+                    onClick={() => setMedio(m.slug)}
+                    className={`flex min-h-[68px] flex-col items-center justify-center gap-1.5 rounded-xl border px-1.5 py-2.5 text-xs font-bold transition ${
+                      activo ? "border-accent bg-accent/15 text-ink" : "border-line text-ink/80 hover:border-ink/25"
+                    }`}
+                  >
+                    <MedioLogo slug={m.slug} nombre={m.nombre} />
+                    <span className="max-w-full truncate">{m.nombre}</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        <div>
+          <div className={sLabel}>Nota (opcional)</div>
+          <textarea
+            value={nota}
+            onChange={(e) => setNota(e.target.value)}
+            rows={2}
+            placeholder="Ej: pidió el degradado más alto la próxima"
+            className="w-full rounded-xl border border-line bg-elevated px-3.5 py-2.5 text-sm text-ink placeholder:text-muted focus:border-accent focus:outline-none"
+          />
+        </div>
+
+        <div>
+          <div className={sLabel}>Cupón (opcional)</div>
+          <div className="flex gap-2">
+            <input
+              value={cupon}
+              onChange={(e) => { setCupon(e.target.value.toUpperCase()); setCuponInfo(null); }}
+              placeholder="Código"
+              className="min-w-0 flex-1 rounded-xl border border-line bg-elevated px-3.5 py-2.5 text-sm uppercase text-ink placeholder:text-muted focus:border-accent focus:outline-none"
+            />
+            <button
+              type="button"
+              onClick={chequearCupon}
+              className="rounded-xl border border-line px-4 text-xs font-semibold text-muted transition hover:text-ink"
+            >
+              Validar
+            </button>
+          </div>
+          {cuponInfo && (
+            <div className={`mt-1.5 text-xs ${cuponInfo.ok ? "text-ok" : "text-accent-soft"}`}>{cuponInfo.msg}</div>
+          )}
+        </div>
+      </div>
+
+      {/* Barra de cobro: pegada abajo mientras el form está a la vista (mobile-first). */}
+      <div className="sticky bottom-0 rounded-b-2xl border-t border-line bg-bg/95 px-4 py-3 backdrop-blur-md">
+        {err && (
+          <div className="mb-2.5 rounded-lg border border-accent/40 bg-accent/10 px-3 py-2 text-sm text-accent-soft">{err}</div>
+        )}
+        <div className="flex items-center gap-3">
+          <div className="min-w-0 flex-1">
+            <div className="truncate text-[11px] text-muted">
+              Total a cobrar · {medioNombre}
+              {vivo.descuento > 0 && <span className="tabular-nums"> · −{cop(vivo.descuento)} de descuento</span>}
+            </div>
+            <div className="font-display text-[26px] font-bold leading-tight text-ink tabular-nums">{cop(vivo.total)}</div>
+            {vivo.propina > 0 && (
+              <div className="text-xs text-ok tabular-nums">
+                + {cop(vivo.propina)} de propina · en la mano {cop(vivo.aCobrar)}
+              </div>
+            )}
+          </div>
           {onCancel && (
-            <button type="button" onClick={onCancel} className="rounded-full border border-line px-5 py-2 text-xs text-muted transition hover:text-ink">
+            <button
+              type="button"
+              onClick={onCancel}
+              className="min-h-[44px] rounded-xl border border-line px-4 text-xs font-semibold text-muted transition hover:text-ink"
+            >
               Cancelar
             </button>
           )}
           <button
             onClick={submit}
             disabled={saving}
-            className="rounded-full bg-accent px-6 py-2 text-xs font-semibold uppercase tracking-wide text-on-accent transition hover:bg-accent-soft disabled:opacity-50"
+            className="min-h-[50px] rounded-xl bg-accent px-5 text-[15px] font-bold tracking-wide text-on-accent transition hover:bg-accent-soft disabled:opacity-50 sm:px-7"
           >
-            {saving ? "Guardando…" : "Cobrar y completar"}
+            {saving ? "Cobrando…" : `Cobrar ${cop(vivo.total)}`}
           </button>
         </div>
       </div>

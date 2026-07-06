@@ -70,7 +70,7 @@ export default async function CuadrePage() {
         <div className="mt-8 rounded-2xl border border-line bg-panel p-5">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 className="flex items-center gap-2 font-display text-2xl">
-              <span className="h-2 w-2 rounded-full bg-amber-400" /> Pendientes por cobrar
+              <span className="h-2 w-2 rounded-full bg-warn" /> Pendientes por cobrar
             </h2>
             <span className="text-sm text-muted">
               {pendientes.length} reservas · <b className="text-accent-soft">{cop(totalPendiente)}</b> proyectado
@@ -232,7 +232,7 @@ export default async function CuadrePage() {
                   <Stat
                     label="Dif. efectivo"
                     value={c.diferencia === null ? "—" : `${c.diferencia > 0 ? "+" : ""}${cop(c.diferencia)}`}
-                    className={c.diferencia && c.diferencia !== 0 ? "text-amber-400" : "text-muted"}
+                    className={c.diferencia && c.diferencia !== 0 ? "text-warn" : "text-muted"}
                   />
                 </div>
                 {c.totales ? (
@@ -275,7 +275,7 @@ export default async function CuadrePage() {
                       </div>
                     </td>
                     <td className="px-4 py-3 text-right text-muted">−{cop(c.gastos)}</td>
-                    <td className={`px-4 py-3 text-right ${c.diferencia && c.diferencia !== 0 ? "text-amber-400" : "text-muted"}`}>
+                    <td className={`px-4 py-3 text-right ${c.diferencia && c.diferencia !== 0 ? "text-warn" : "text-muted"}`}>
                       {c.diferencia === null ? "—" : `${c.diferencia > 0 ? "+" : ""}${cop(c.diferencia)}`}
                     </td>
                     <td className="px-4 py-3 text-right text-muted">{c.citas}</td>

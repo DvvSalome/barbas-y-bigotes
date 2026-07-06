@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Barlow_Condensed, Inter } from "next/font/google";
 import "./globals.css";
 import { WhatsAppFloatingButton } from "@/components/WhatsAppFloatingButton";
+import { siteGraph, jsonLd } from "@/lib/schema-org";
 
 const barlow = Barlow_Condensed({
   subsets: ["latin"],
@@ -22,11 +23,38 @@ export const viewport: Viewport = {
   viewportFit: "cover",
 };
 
+const DESCRIPTION =
+  "Barbería en Barranquilla con dos sedes: Parque Venezuela y Plaza de la Paz. Cortes, barba, faciales, keratina y combos. Reservá tu cita online.";
+
 export const metadata: Metadata = {
   metadataBase: new URL("https://barbasybigotes.com"),
-  title: "Barbas & Bigotes Barbershop",
-  description:
-    "Reserva tu cita en Barbas & Bigotes — sedes Parque Venezuela y Plaza de la Paz. Cortes, barba, faciales y más.",
+  title: {
+    default: "Barbas & Bigotes Barbershop | Barbería en Barranquilla",
+    template: "%s · Barbas & Bigotes",
+  },
+  description: DESCRIPTION,
+  // "./" se resuelve contra el pathname de cada página (canonical self-referencing).
+  alternates: { canonical: "./" },
+  openGraph: {
+    type: "website",
+    locale: "es_CO",
+    url: "./",
+    siteName: "Barbas & Bigotes Barbershop",
+    title: "Barbas & Bigotes Barbershop | Barbería en Barranquilla",
+    description: DESCRIPTION,
+    images: [
+      {
+        url: "/og.jpg",
+        width: 1200,
+        height: 630,
+        alt: "Barbas & Bigotes Barbershop, barbería en Barranquilla",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    images: ["/og.jpg"],
+  },
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
@@ -44,6 +72,12 @@ export default function RootLayout({
       className={`${barlow.variable} ${inter.variable} antialiased`}
     >
       <body>
+        {/* Grafo de entidad (Organization + WebSite + 2 sedes BarberShop):
+            server-rendered para que los crawlers de IA lo vean sin ejecutar JS. */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: jsonLd(siteGraph) }}
+        />
         {children}
         <WhatsAppFloatingButton />
       </body>

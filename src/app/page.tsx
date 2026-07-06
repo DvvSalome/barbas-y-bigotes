@@ -13,6 +13,7 @@ import { Testimonios } from "@/components/home/Testimonios";
 import { Ubicacion } from "@/components/home/Ubicacion";
 import { SedesShowcase } from "@/components/home/SedesShowcase";
 import { LiveBarbersStatus } from "@/components/home/LiveBarbersStatus";
+import { Faq } from "@/components/home/Faq";
 import { sedes } from "@/lib/data/seed";
 
 import { CardTilt } from "@/components/ui/CardTilt";
@@ -76,7 +77,7 @@ export default function Home() {
                 <CardTilt maxTilt={8} scale={1.04} className="group relative aspect-[3/4] h-full w-full overflow-hidden rounded-xl border border-line sm:aspect-auto">
                   <Image
                     src={`/cortes/corte-${n}.jpg`}
-                    alt={`Trabajo ${n} — Barbas & Bigotes`}
+                    alt={`Trabajo ${n} de Barbas & Bigotes`}
                     fill
                     sizes="(max-width:640px) 50vw, 33vw"
                     className="object-cover transition duration-700 ease-out group-hover:scale-105"
@@ -105,6 +106,8 @@ export default function Home() {
         <Testimonios />
 
         <Ubicacion />
+
+        <Faq />
       </main>
       <SiteFooter />
     </>

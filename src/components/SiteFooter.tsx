@@ -95,8 +95,11 @@ export function SiteFooter() {
                 <svg className="w-3.5 h-3.5 text-accent-soft shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                 <span className="font-semibold text-white">Horario de Atención</span>
               </div>
-              <div>Lunes a Sábado: 9:00 am – 8:00 pm</div>
+              <div>Lunes a Sábado: 9:00 am a 8:00 pm</div>
               <div className="text-accent-soft font-medium mt-0.5">Domingos Cerrado</div>
+              <div className="mt-1.5 border-t border-line/40 pt-1.5 text-muted">
+                Cancelaciones online hasta 2 horas antes
+              </div>
             </div>
           </div>
 

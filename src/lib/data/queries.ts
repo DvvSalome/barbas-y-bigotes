@@ -1,5 +1,5 @@
 import { supabaseServer, supabaseServerAuth, supabaseAdmin } from "@/lib/supabase/server";
-import { bogotaDayRange, bogotaYmd } from "@/lib/slots";
+import { bogotaDayRange, bogotaDayRangeDeFecha, bogotaYmd } from "@/lib/slots";
 import { totalesPorMedio, type TotalesPorMedio } from "@/lib/cobro";
 import type { Sede, SedeId, Servicio, Barbero, Producto, Categoria } from "./types";
 
@@ -66,11 +66,21 @@ export async function getBarberos(): Promise<Barbero[]> {
 
 export async function getProductos(): Promise<Producto[]> {
   const sb = supabaseServer();
-  const { data } = await sb
+  const res = await sb
     .from("productos")
-    .select("id,nombre,sede_id,precio,stock,stock_minimo,comision_pct")
+    .select("id,nombre,sede_id,precio,stock,stock_minimo,comision_pct,foto_url")
     .order("sede_id");
-  return (data ?? []).map((p: Record<string, unknown>) => ({
+  let rows: Record<string, unknown>[] | null = res.data;
+  if (res.error) {
+    // Compat pre-0019: si foto_url todavía no existe en la DB, el POS no se cae.
+    rows = (
+      await sb
+        .from("productos")
+        .select("id,nombre,sede_id,precio,stock,stock_minimo,comision_pct")
+        .order("sede_id")
+    ).data;
+  }
+  return (rows ?? []).map((p: Record<string, unknown>) => ({
     id: p.id as string,
     nombre: p.nombre as string,
     sede: p.sede_id as SedeId,
@@ -78,6 +88,7 @@ export async function getProductos(): Promise<Producto[]> {
     stock: p.stock as number,
     stockMinimo: p.stock_minimo as number,
     comisionPct: p.comision_pct as number,
+    fotoUrl: (p.foto_url as string) ?? null,
   }));
 }
 
@@ -352,6 +363,25 @@ export async function getCajaSesiones(): Promise<CajaSesionSede[]> {
   return out;
 }
 
+export type CajaChip = { abierta: boolean; desde: string | null; abiertasCount: number; sedesCount: number };
+
+// Estado liviano de caja para el chip del topbar admin (sin sumar ventas).
+// Con 2 sedes el binario engaña: se reporta cuántas están abiertas del total.
+export async function getCajaChip(): Promise<CajaChip> {
+  const sb = await supabaseServerAuth();
+  const [abiertasRes, sedesRes] = await Promise.all([
+    sb.from("caja_sesiones").select("abierta_en").eq("estado", "abierta").order("abierta_en"),
+    sb.from("sedes").select("id"),
+  ]);
+  const abiertas = (abiertasRes.data ?? []) as { abierta_en: string }[];
+  return {
+    abierta: abiertas.length > 0,
+    desde: abiertas[0]?.abierta_en ?? null,
+    abiertasCount: abiertas.length,
+    sedesCount: (sedesRes.data ?? []).length,
+  };
+}
+
 export type PendienteCobro = {
   id: string;
   sede: string;
@@ -616,18 +646,19 @@ export type PostventaResumen = {
 // Postventa para el panel admin: cómo vienen calificando los clientes.
 // Sesión del staff: la RLS de resenas_servicio (0018) da todo al admin y
 // solo lo suyo al barbero. Si la tabla aún no existe, queda vacío.
-export async function getPostventaResumen(): Promise<PostventaResumen> {
+export async function getPostventaResumen(sede?: string): Promise<PostventaResumen> {
   const sb = await supabaseServerAuth();
   const desde = new Date(Date.now() - 30 * 24 * 3600_000).toISOString();
-  const [scoresRes, ultimasRes] = await Promise.all([
-    sb.from("resenas_servicio").select("score").gte("creado_en", desde),
-    sb
-      .from("resenas_servicio")
-      .select("id,score,comentario,creado_en,barberos(nombre),sedes(nombre)")
-      .not("comentario", "is", null)
-      .order("creado_en", { ascending: false })
-      .limit(3),
-  ]);
+  let scoresQ = sb.from("resenas_servicio").select("score").gte("creado_en", desde);
+  if (sede) scoresQ = scoresQ.eq("sede_id", sede);
+  let ultimasQ = sb
+    .from("resenas_servicio")
+    .select("id,score,comentario,creado_en,barberos(nombre),sedes(nombre)")
+    .not("comentario", "is", null)
+    .order("creado_en", { ascending: false })
+    .limit(3);
+  if (sede) ultimasQ = ultimasQ.eq("sede_id", sede);
+  const [scoresRes, ultimasRes] = await Promise.all([scoresQ, ultimasQ]);
   const scores = ((scoresRes.data ?? []) as { score: number }[]).map((s) => s.score);
   const promedio = scores.length
     ? Math.round((scores.reduce((a, s) => a + s, 0) / scores.length) * 10) / 10
@@ -670,6 +701,230 @@ export async function getCupones(): Promise<Cupon[]> {
     usosMax: (c.usos_max as number) ?? null,
     venceEn: (c.vence_en as string) ?? null,
   }));
+}
+
+// ---------- Dashboard "Hoy" (admin) ----------
+// Todas las ventanas de día usan bogotaDayRange (el server corre en UTC).
+
+export type MedioHoy = { slug: string; nombre: string; total: number; propina: number };
+export type VentasHoy = { total: number; propinas: number; atenciones: number; medios: MedioHoy[] };
+
+// "La plata": cobrado hoy desglosado por medio de pago (total + propina).
+export async function ventasHoyPorMedio(sede?: SedeId | null): Promise<VentasHoy> {
+  const sb = await supabaseServerAuth();
+  const { desde, hasta } = bogotaDayRange();
+  let q = sb
+    .from("ventas")
+    .select("medio,total,propina")
+    .gte("creado_en", desde.toISOString())
+    .lt("creado_en", hasta.toISOString());
+  if (sede) q = q.eq("sede_id", sede);
+  const [ventasRes, mediosRes] = await Promise.all([
+    q,
+    sb.from("medios_pago").select("slug,nombre,orden"),
+  ]);
+  const vs = (ventasRes.data ?? []) as { medio: string; total: number; propina: number | null }[];
+  const nombres = new Map(
+    ((mediosRes.data ?? []) as { slug: string; nombre: string }[]).map((m) => [m.slug, m.nombre]),
+  );
+  const totales = totalesPorMedio(vs);
+  const medios: MedioHoy[] = Object.entries(totales)
+    .map(([slug, t]) => ({
+      slug,
+      nombre: nombres.get(slug) ?? slug.charAt(0).toUpperCase() + slug.slice(1),
+      total: t.total,
+      propina: t.propina,
+    }))
+    .sort((a, b) => b.total - a.total);
+  return {
+    total: vs.reduce((a, v) => a + v.total, 0),
+    propinas: vs.reduce((a, v) => a + (v.propina ?? 0), 0),
+    atenciones: vs.length,
+    medios,
+  };
+}
+
+export type EquipoAhoraItem = {
+  id: string;
+  nombre: string;
+  sede: SedeId;
+  /** Reserva en_curso de hoy (si hay): a quién atiende y cuándo sale. */
+  enSilla: { cliente: string; servicio: string; fin: string } | null;
+  pinBloqueado: boolean;
+};
+
+// "Equipo ahora": barberos activos con su estado en vivo + PIN bloqueado.
+// supabaseAdmin: barbero_pin no expone SELECT por RLS (solo service role) y la
+// página que llama esto vive detrás del guard admin del layout; no recibe
+// input del cliente más allá del filtro de sede validado por el caller.
+export async function equipoAhora(sede?: SedeId | null): Promise<EquipoAhoraItem[]> {
+  const admin = supabaseAdmin();
+  const { desde, hasta } = bogotaDayRange();
+  let bq = admin
+    .from("barberos")
+    .select("id,nombre,sede_id,orden")
+    .eq("activo", true)
+    .order("sede_id")
+    .order("orden");
+  if (sede) bq = bq.eq("sede_id", sede);
+  const [bRes, rRes, pinRes] = await Promise.all([
+    bq,
+    admin
+      .from("reservas")
+      .select("barbero_id,fin,servicios(nombre),clientes(nombre)")
+      .eq("estado", "en_curso")
+      .gte("inicio", desde.toISOString())
+      .lt("inicio", hasta.toISOString())
+      .order("fin", { ascending: false }),
+    admin.from("barbero_pin").select("barbero_id,bloqueado_hasta"),
+  ]);
+  const now = Date.now();
+  const bloqueados = new Set(
+    ((pinRes.data ?? []) as { barbero_id: string; bloqueado_hasta: string | null }[])
+      .filter((p) => p.bloqueado_hasta && new Date(p.bloqueado_hasta).getTime() > now)
+      .map((p) => p.barbero_id),
+  );
+  const enCurso = new Map<string, { cliente: string; servicio: string; fin: string }>();
+  for (const r of ((rRes.data ?? []) as Record<string, unknown>[]).reverse()) {
+    const bid = r.barbero_id as string | null;
+    if (!bid) continue;
+    enCurso.set(bid, {
+      cliente: (r.clientes as { nombre?: string } | null)?.nombre ?? "Walk-in",
+      servicio: (r.servicios as { nombre?: string } | null)?.nombre ?? "Servicio",
+      fin: r.fin as string,
+    });
+  }
+  return ((bRes.data ?? []) as Record<string, unknown>[]).map((b) => ({
+    id: b.id as string,
+    nombre: b.nombre as string,
+    sede: b.sede_id as SedeId,
+    enSilla: enCurso.get(b.id as string) ?? null,
+    pinBloqueado: bloqueados.has(b.id as string),
+  }));
+}
+
+export type CitaSiguiente = {
+  id: string;
+  inicio: string;
+  cliente: string;
+  servicio: string;
+  barbero: string;
+  sede: SedeId;
+};
+
+// "Siguientes citas": lo que viene hoy (aún no empezado ni cerrado).
+export async function citasSiguientes(sede?: SedeId | null, limit = 6): Promise<CitaSiguiente[]> {
+  const sb = await supabaseServerAuth();
+  const { hasta } = bogotaDayRange();
+  let q = sb
+    .from("reservas")
+    .select("id,inicio,sede_id,servicios(nombre),barberos(nombre),clientes(nombre)")
+    .in("estado", ["pendiente", "confirmada"])
+    .gte("inicio", new Date().toISOString())
+    .lt("inicio", hasta.toISOString())
+    .order("inicio")
+    .limit(limit);
+  if (sede) q = q.eq("sede_id", sede);
+  const { data } = await q;
+  return ((data ?? []) as Record<string, unknown>[]).map((r) => ({
+    id: r.id as string,
+    inicio: r.inicio as string,
+    cliente: (r.clientes as { nombre?: string } | null)?.nombre ?? "Walk-in",
+    servicio: (r.servicios as { nombre?: string } | null)?.nombre ?? "—",
+    barbero: (r.barberos as { nombre?: string } | null)?.nombre ?? "—",
+    sede: r.sede_id as SedeId,
+  }));
+}
+
+export type ParaHacer = {
+  bajoMinimo: { id: string; nombre: string; stock: number; sede: SedeId }[];
+  malasResenas: { id: string; score: number; comentario: string; barbero: string; sede: SedeId; fecha: string }[];
+  cuponesPorVencer: { codigo: string; venceEn: string; usos: number; usosMax: number | null }[];
+};
+
+// "Para hacer": stock bajo mínimo, calificaciones ≤3★ (últimos 7 días civiles)
+// y cupones activos que vencen en ≤2 días.
+export async function paraHacer(sede?: SedeId | null): Promise<ParaHacer> {
+  const sb = await supabaseServerAuth();
+  const desde7 = bogotaDayRangeDeFecha(bogotaYmd(new Date(Date.now() - 6 * 86_400_000))).desde;
+  const hoy = bogotaYmd();
+  const limite = bogotaYmd(new Date(Date.now() + 2 * 86_400_000));
+
+  let pq = sb.from("productos").select("id,nombre,stock,stock_minimo,sede_id");
+  if (sede) pq = pq.eq("sede_id", sede);
+  let rq = sb
+    .from("resenas_servicio")
+    .select("id,score,comentario,creado_en,sede_id,barberos(nombre)")
+    .lte("score", 3)
+    .gte("creado_en", desde7.toISOString())
+    .order("creado_en", { ascending: false })
+    .limit(5);
+  if (sede) rq = rq.eq("sede_id", sede);
+  const cq = sb
+    .from("cupones")
+    .select("codigo,vence_en,usos,usos_max")
+    .eq("activo", true)
+    .not("vence_en", "is", null)
+    .gte("vence_en", hoy)
+    .lte("vence_en", limite)
+    .order("vence_en");
+
+  const [pRes, rRes, cRes] = await Promise.all([pq, rq, cq]);
+  return {
+    bajoMinimo: ((pRes.data ?? []) as Record<string, unknown>[])
+      .filter((p) => (p.stock as number) <= (p.stock_minimo as number))
+      .map((p) => ({
+        id: p.id as string,
+        nombre: p.nombre as string,
+        stock: p.stock as number,
+        sede: p.sede_id as SedeId,
+      })),
+    malasResenas: ((rRes.data ?? []) as Record<string, unknown>[]).map((r) => ({
+      id: r.id as string,
+      score: r.score as number,
+      comentario: (r.comentario as string) ?? "",
+      barbero: (r.barberos as { nombre?: string } | null)?.nombre ?? "—",
+      sede: r.sede_id as SedeId,
+      fecha: r.creado_en as string,
+    })),
+    cuponesPorVencer: ((cRes.data ?? []) as Record<string, unknown>[]).map((c) => ({
+      codigo: c.codigo as string,
+      venceEn: c.vence_en as string,
+      usos: (c.usos as number) ?? 0,
+      usosMax: (c.usos_max as number) ?? null,
+    })),
+  };
+}
+
+export type Serie7Dias = {
+  /** Los últimos 7 días civiles en Bogotá (el último es hoy). */
+  dias: { ymd: string; total: number }[];
+  semana: number;
+  semanaAnterior: number;
+};
+
+// Sparkline de ingresos: últimos 7 días vs los 7 anteriores.
+export async function serie7Dias(sede?: SedeId | null): Promise<Serie7Dias> {
+  const sb = await supabaseServerAuth();
+  const { hasta } = bogotaDayRange();
+  const desde14 = bogotaDayRangeDeFecha(bogotaYmd(new Date(Date.now() - 13 * 86_400_000))).desde;
+  let q = sb
+    .from("ventas")
+    .select("creado_en,total")
+    .gte("creado_en", desde14.toISOString())
+    .lt("creado_en", hasta.toISOString());
+  if (sede) q = q.eq("sede_id", sede);
+  const { data } = await q;
+  const dias: { ymd: string; total: number }[] = [];
+  for (let i = 6; i >= 0; i--) dias.push({ ymd: bogotaYmd(new Date(Date.now() - i * 86_400_000)), total: 0 });
+  const idx = new Map(dias.map((d, i) => [d.ymd, i]));
+  let semanaAnterior = 0;
+  for (const v of (data ?? []) as { creado_en: string; total: number }[]) {
+    const i = idx.get(bogotaYmd(new Date(v.creado_en)));
+    if (i != null) dias[i].total += v.total;
+    else semanaAnterior += v.total;
+  }
+  return { dias, semana: dias.reduce((a, d) => a + d.total, 0), semanaAnterior };
 }
 
 export type StaffContext = { rol: string; barberoId: string | null; nombre: string };

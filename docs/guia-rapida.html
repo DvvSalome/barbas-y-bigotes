@@ -1,0 +1,263 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<title>Guía Rápida · Barbas &amp; Bigotes · FourG Solutions</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,600&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" />
+<style>
+:root {
+  --paper: #fcfaf6; --paper-2: #f6f1e7;
+  --ink: #2a2622; --ink-2: #4a4239; --muted: #8a8073;
+  --gold: #b8923f; --gold-soft: #c9a85a;
+  --hairline: rgba(184, 146, 63, 0.22);
+  --hairline-2: rgba(74, 66, 57, 0.10);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+html, body { background: #ede4d2; color: var(--ink); font-family: 'Inter', system-ui, sans-serif; font-size: 14.5px; line-height: 1.7; }
+.page { width: 210mm; min-height: 297mm; padding: 16mm 18mm 14mm; margin: 14px auto; position: relative; display: flex; flex-direction: column; background: var(--paper); box-shadow: 0 6px 24px rgba(0,0,0,0.08); page-break-after: always; }
+.page:last-of-type { page-break-after: auto; }
+.doc-header { display: grid; grid-template-columns: auto 1fr auto; gap: 16px; align-items: center; padding-bottom: 6mm; border-bottom: 1px solid var(--hairline); }
+.doc-header .brand-text { display: flex; flex-direction: column; line-height: 1.15; }
+.doc-header .brand-name { font-family: 'Cormorant Garamond', serif; font-size: 17px; font-weight: 600; color: var(--ink); }
+.doc-header .brand-tag { font-size: 8.5px; letter-spacing: 0.34em; text-transform: uppercase; color: var(--gold); font-weight: 500; margin-top: 3px; }
+.doc-header .meta { text-align: right; display: flex; flex-direction: column; gap: 3px; }
+.doc-header .meta .num { font-family: 'Cormorant Garamond', serif; font-size: 14px; font-weight: 600; font-style: italic; color: var(--gold); }
+.doc-header .meta .date { font-size: 8.5px; letter-spacing: 0.32em; text-transform: uppercase; color: var(--muted); font-weight: 500; }
+.hero { padding: 8mm 0 6mm; border-bottom: 1px solid var(--hairline); }
+.eyebrow { font-weight: 500; font-size: 10px; letter-spacing: 0.42em; text-transform: uppercase; color: var(--gold); margin-bottom: 10px; }
+h1.title { font-family: 'Cormorant Garamond', serif; font-weight: 500; font-size: 42px; line-height: 1.05; color: var(--ink); margin-bottom: 6px; }
+h1.title em { font-style: italic; color: var(--gold); }
+.lede { font-family: 'Cormorant Garamond', serif; font-style: italic; font-size: 17px; line-height: 1.55; color: var(--ink-2); padding: 5mm 0; border-bottom: 1px solid var(--hairline); }
+.rol-head { display: flex; align-items: baseline; gap: 12px; padding: 6mm 0 4mm; }
+.rol-head .quien { font-family: 'Cormorant Garamond', serif; font-weight: 600; font-size: 30px; color: var(--ink); }
+.rol-head .quien em { font-style: italic; color: var(--gold); }
+.rol-head .donde { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--gold); }
+.pasos { list-style: none; counter-reset: p; margin: 2mm 0 4mm; }
+.pasos li { counter-increment: p; display: grid; grid-template-columns: 34px 1fr; gap: 12px; padding: 9px 0; border-bottom: 1px solid var(--hairline-2); font-size: 13.5px; color: var(--ink-2); }
+.pasos li:last-child { border-bottom: none; }
+.pasos li::before { content: counter(p); width: 26px; height: 26px; border-radius: 999px; border: 1.5px solid var(--gold); color: var(--gold); font-family: 'Cormorant Garamond', serif; font-style: italic; font-weight: 600; font-size: 15px; display: flex; align-items: center; justify-content: center; margin-top: 1px; }
+.pasos strong { color: var(--ink); }
+.big-access { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 5mm 0; }
+.acc { border: 1px solid var(--hairline); border-top: 3px solid var(--gold); border-radius: 6px; padding: 14px 16px; background: rgba(184,146,63,0.03); }
+.acc .t { font-size: 10px; letter-spacing: 0.3em; text-transform: uppercase; color: var(--gold); font-weight: 600; margin-bottom: 6px; }
+.acc .u { font-family: 'JetBrains Mono', monospace; font-size: 11.5px; color: var(--ink); word-break: break-all; margin-bottom: 6px; }
+.acc p { font-size: 12px; color: var(--ink-2); line-height: 1.55; }
+.callout { margin: 4mm 0; padding: 4mm 6mm; background: var(--paper-2); border: 1px solid var(--hairline); border-left: 3px solid var(--gold); border-radius: 3px; }
+.callout .label { font-weight: 500; font-size: 8.5px; letter-spacing: 0.42em; text-transform: uppercase; color: var(--gold); margin-bottom: 5px; }
+.callout p { font-size: 12.5px; line-height: 1.65; color: var(--ink-2); }
+.callout strong { color: var(--ink); }
+.tabla { width: 100%; border-collapse: collapse; margin: 3mm 0; font-size: 12.5px; }
+.tabla th, .tabla td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--hairline-2); }
+.tabla th { font-size: 8.5px; letter-spacing: 0.24em; text-transform: uppercase; color: var(--muted); font-weight: 600; border-bottom: 1px solid var(--hairline); background: rgba(184,146,63,0.04); }
+.tabla td { color: var(--ink-2); }
+.tabla td strong { color: var(--ink); }
+.tabla tr:last-child td { border-bottom: none; }
+.doc-footer { margin-top: auto; padding-top: 5mm; border-top: 1px solid var(--hairline); display: flex; justify-content: space-between; font-size: 8.5px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--muted); }
+.doc-footer .left strong { color: var(--ink-2); font-weight: 600; }
+.doc-footer .right { color: var(--gold); font-weight: 500; }
+@media print {
+  html, body { background: #fff; }
+  .page { margin: 0; box-shadow: none; }
+  @page { size: A4; margin: 0; }
+}
+</style>
+</head>
+<body>
+
+<!-- PÁGINA 1 · Portada + accesos -->
+<section class="page">
+  <header class="doc-header">
+    <div class="brand-text">
+      <span class="brand-name">FourG Solutions</span>
+      <span class="brand-tag">Software · Sistemas · Forensia</span>
+    </div>
+    <div></div>
+    <div class="meta">
+      <span class="num">FGS-2026-048</span>
+      <span class="date">2026 · 07 · 06</span>
+    </div>
+  </header>
+
+  <section class="hero">
+    <div class="eyebrow">GUÍA RÁPIDA · SIN VUELTAS</div>
+    <h1 class="title">Tu barbería, <em>en 3 pasos</em></h1>
+  </section>
+
+  <p class="lede">Todo pasa en una sola dirección: <strong>barbasybigotes.com</strong>. El cliente reserva solo, el barbero cobra desde el celular, y vos ves toda la plata y el equipo desde el tuyo. Esta guía es lo mínimo que cada uno necesita saber.</p>
+
+  <div class="big-access">
+    <div class="acc">
+      <div class="t">El cliente</div>
+      <div class="u">barbasybigotes.com</div>
+      <p>Reserva sin registrarse. Si entra con su Google en "Mi cuenta", puede cancelar, mover su cita y recibir avisos.</p>
+    </div>
+    <div class="acc">
+      <div class="t">El barbero</div>
+      <div class="u">barbasybigotes.com/entrar</div>
+      <p>Toca su nombre, marca su PIN de 6 números. Listo: ve su agenda del día y cobra desde ahí.</p>
+    </div>
+    <div class="acc">
+      <div class="t">El dueño</div>
+      <div class="u">barbasybigotes.com/login</div>
+      <p>Correo y contraseña de administrador. Caja, inventario, precios, equipo y calificaciones: todo tuyo.</p>
+    </div>
+  </div>
+
+  <div class="callout">
+    <div class="label">LAS CLAVES</div>
+    <p>El PIN de cada barbero ya está asignado (se entregan en persona, no por escrito). Si un barbero olvida el suyo o se bloquea: <strong>Admin → Equipo → rotar o desbloquear</strong> en dos toques. La contraseña de admin se entregó por canal privado.</p>
+  </div>
+
+  <div class="callout">
+    <div class="label">LA REGLA DE ORO DEL NEGOCIO</div>
+    <p>Las citas se cancelan o mueven online <strong>hasta 2 horas antes</strong>. Con menos tiempo, la app manda al cliente a WhatsApp: la decisión es tuya, no del sistema. Y cada cupo cancelado se ofrece solo al primero de la lista de espera, sin que nadie llame a nadie.</p>
+  </div>
+
+  <footer class="doc-footer">
+    <div class="left"><strong>FourG Solutions</strong> · four4gsolutions@gmail.com</div>
+    <div class="right">01 / 04</div>
+  </footer>
+</section>
+
+<!-- PÁGINA 2 · El barbero -->
+<section class="page">
+  <header class="doc-header">
+    <div class="brand-text">
+      <span class="brand-name">FourG Solutions</span>
+      <span class="brand-tag">Software · Sistemas · Forensia</span>
+    </div>
+    <div></div>
+    <div class="meta">
+      <span class="num">FGS-2026-048</span>
+      <span class="date">2026 · 07 · 06</span>
+    </div>
+  </header>
+
+  <div class="rol-head">
+    <span class="quien">El día del <em>barbero</em></span>
+    <span class="donde">barbasybigotes.com/entrar</span>
+  </div>
+
+  <ol class="pasos">
+    <li><strong>Entrá con tu PIN.</strong> Tocá tu nombre y marcá tus 6 números. Si lo marcás mal 5 veces, se bloquea 5 minutos (tranquilo: el admin lo desbloquea al instante).</li>
+    <li><strong>Mirá tu agenda.</strong> Ahí están tus citas del día, en orden. Se actualiza sola cuando entra una reserva nueva.</li>
+    <li><strong>Cuando llega el cliente, tocá "Llegó".</strong> Así el sistema sabe que está en la silla.</li>
+    <li><strong>Al terminar, tocá "Completar".</strong> Se abre el cobro: ahí marcás todo lo que pasó.</li>
+    <li><strong>Sumá lo extra.</strong> ¿Le hiciste la barba además del corte? Tocá el servicio adicional. ¿Se tomó una bebida? Marcala con el + (el inventario se descuenta solo). ¿Propina? Botón de $2.000, $5.000, $10.000 o el valor que sea.</li>
+    <li><strong>Marcá cómo pagó.</strong> Efectivo, datáfono, Nequi, transferencia o Daviplata. Ojo: <strong>la app no cobra</strong>, el cliente paga como siempre (QR, datáfono, efectivo). Acá solo queda el registro.</li>
+    <li><strong>Tocá "Cobrar y completar".</strong> Sale la pantalla "¡Cobrado!" con el total. Ya está: eso alimenta tu comisión, el historial del cliente y la caja del día.</li>
+    <li><strong>¿Alguien sin cita?</strong> "+ Cliente sin reserva" lo mete a tu agenda (o a la cola si estás ocupado). ¿Solo compra una bebida o un producto? "Venta rápida" y listo.</li>
+  </ol>
+
+  <div class="callout">
+    <div class="label">EL TIP</div>
+    <p>Antes de atender, tocá <strong>"Ver historial"</strong> en la cita: te dice qué se hizo el cliente las veces anteriores y qué consumió. Atender sabiendo con quién hablás vale oro.</p>
+  </div>
+
+  <footer class="doc-footer">
+    <div class="left"><strong>FourG Solutions</strong> · four4gsolutions@gmail.com</div>
+    <div class="right">02 / 04</div>
+  </footer>
+</section>
+
+<!-- PÁGINA 3 · El dueño -->
+<section class="page">
+  <header class="doc-header">
+    <div class="brand-text">
+      <span class="brand-name">FourG Solutions</span>
+      <span class="brand-tag">Software · Sistemas · Forensia</span>
+    </div>
+    <div></div>
+    <div class="meta">
+      <span class="num">FGS-2026-048</span>
+      <span class="date">2026 · 07 · 06</span>
+    </div>
+  </header>
+
+  <div class="rol-head">
+    <span class="quien">El control del <em>dueño</em></span>
+    <span class="donde">barbasybigotes.com/login</span>
+  </div>
+
+  <table class="tabla">
+    <tr><th>Sección</th><th>Para qué la usás</th></tr>
+    <tr><td><strong>Panel</strong></td><td>El día de un vistazo: cuánta plata entró, cuántas citas, qué barbero está ocupado y las últimas calificaciones de clientes.</td></tr>
+    <tr><td><strong>Cuadre</strong></td><td>Abrís caja en la mañana, cerrás en la noche. Te muestra cuánto entró por efectivo, Nequi, datáfono, etc. (propinas incluidas) y la diferencia contra lo que contaste. Acá también agregás o apagás medios de pago.</td></tr>
+    <tr><td><strong>Equipo</strong></td><td>El PIN de cada barbero: asignar, cambiar, desbloquear. Dos toques.</td></tr>
+    <tr><td><strong>Inventario</strong></td><td>Productos y bebidas por sede, con stock. Baja solo con cada venta y te avisa cuando queda poco.</td></tr>
+    <tr><td><strong>Precios</strong></td><td>Cambiás un precio acá y cambia en el sitio y en el cobro. Sin llamar a nadie.</td></tr>
+    <tr><td><strong>Cupones</strong></td><td>Códigos de descuento con límite de usos y vencimiento.</td></tr>
+    <tr><td><strong>Clientes</strong></td><td>La ficha de cada cliente: cuántas veces vino, qué consume, sus puntos, sus calificaciones y tus notas privadas.</td></tr>
+    <tr><td><strong>Comisiones</strong></td><td>Cuánto le toca a cada barbero según su contrato. Sale solo de los cobros registrados.</td></tr>
+  </table>
+
+  <div class="callout">
+    <div class="label">LAS RESEÑAS DE GOOGLE (YA ACTIVO)</div>
+    <p>Cuando un cliente califica su visita con <strong>4 o 5 estrellas</strong>, la app le ofrece dejar la reseña en el Google Maps de la sede exacta donde lo atendieron. Si califica con 3 o menos, su comentario te llega <strong>a vos en privado</strong> (Panel → Postventa) y Google ni se entera. Los clientes contentos te suben la estrella pública; los molestos los resolvés vos primero.</p>
+  </div>
+
+  <div class="callout">
+    <div class="label">AVISOS AUTOMÁTICOS (NADIE LLAMA A NADIE)</div>
+    <p>Confirmación al reservar (al instante) · Recordatorio el día antes a las 9am · Aviso de cupo libre al primero de la lista de espera cuando alguien cancela · "¿Cómo estuvo tu corte?" después de cada servicio. Todo por notificación al celular y correo, solo.</p>
+  </div>
+
+  <footer class="doc-footer">
+    <div class="left"><strong>FourG Solutions</strong> · four4gsolutions@gmail.com</div>
+    <div class="right">03 / 04</div>
+  </footer>
+</section>
+
+<!-- PÁGINA 4 · El cliente + instalar -->
+<section class="page">
+  <header class="doc-header">
+    <div class="brand-text">
+      <span class="brand-name">FourG Solutions</span>
+      <span class="brand-tag">Software · Sistemas · Forensia</span>
+    </div>
+    <div></div>
+    <div class="meta">
+      <span class="num">FGS-2026-048</span>
+      <span class="date">2026 · 07 · 06</span>
+    </div>
+  </header>
+
+  <div class="rol-head">
+    <span class="quien">Lo que vive el <em>cliente</em></span>
+    <span class="donde">barbasybigotes.com</span>
+  </div>
+
+  <ol class="pasos">
+    <li><strong>Reserva en un minuto.</strong> Elige sede, barbero, servicio, día y hora. Solo ve horarios de verdad libres. No necesita registrarse.</li>
+    <li><strong>Le llega la confirmación.</strong> Notificación al celular al instante y correo a los pocos minutos, con día, hora y barbero.</li>
+    <li><strong>Recordatorio el día antes</strong> a las 9 de la mañana, para que no se le pase.</li>
+    <li><strong>¿Le surgió algo?</strong> En "Mi cuenta" (entrando con su Google) cancela o mueve la cita solo, hasta 2 horas antes. Con menos tiempo, botón de WhatsApp.</li>
+    <li><strong>Después del corte</strong> le llega "¿Cómo estuvo?": califica con estrellas en 10 segundos. Si quedó feliz, un botón lo lleva a dejar la reseña en Google.</li>
+    <li><strong>Suma puntos sin hacer nada:</strong> 1 punto por cada $1.000 que consume.</li>
+  </ol>
+
+  <div class="rol-head" style="padding-top:2mm">
+    <span class="quien">Instalar la <em>app</em></span>
+  </div>
+
+  <table class="tabla">
+    <tr><th>Teléfono</th><th>Cómo se instala</th></tr>
+    <tr><td><strong>Android</strong></td><td>Abrir barbasybigotes.com en Chrome → menú de los 3 puntos → <strong>"Instalar aplicación"</strong>. Queda el ícono en el inicio y llegan las notificaciones.</td></tr>
+    <tr><td><strong>iPhone</strong></td><td>Abrir barbasybigotes.com en Safari → botón <strong>Compartir</strong> → <strong>"Agregar a pantalla de inicio"</strong>. Importante: en iPhone los avisos solo llegan con la app instalada así.</td></tr>
+  </table>
+
+  <div class="callout">
+    <div class="label">PARA PROBARLO HOY</div>
+    <p>1) Entrá a <strong>barbasybigotes.com/cuenta</strong> con tu Gmail y activá las notificaciones. 2) Hacé una reserva de prueba: te llega el aviso al celular y el correo. 3) Entrá como barbero en <strong>/entrar</strong> con un PIN y cobrala con propina y Nequi. 4) Calificala con 5 estrellas y mirá el botón de Google. 5) Cerrá la caja en <strong>/admin</strong> y mirá el desglose. Ese es todo el ciclo.</p>
+  </div>
+
+  <footer class="doc-footer">
+    <div class="left"><strong>FourG Solutions</strong> · four4gsolutions@gmail.com</div>
+    <div class="right">04 / 04</div>
+  </footer>
+</section>
+
+</body>
+</html>
