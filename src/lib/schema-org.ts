@@ -148,12 +148,9 @@ export const siteGraph = {
       geo: { "@type": "GeoCoordinates", latitude: 10.9873701, longitude: -74.7892852 },
       hasMap: MAPS_PLAZA_DE_LA_PAZ,
       openingHoursSpecification: HORARIO,
-      aggregateRating: {
-        "@type": "AggregateRating",
-        ratingValue: "3.7",
-        reviewCount: "10",
-        bestRating: "5",
-      },
+      // aggregateRating omitido a proposito: la ficha de PPZ esta en 3.7/5 y el
+      // audit (docs/GEO-AUDIT-REPORT.md) recomienda no publicar esa senal
+      // negativa en el sitio propio hasta que supere ~4.5.
       hasOfferCatalog: { "@id": `${BASE}/#servicios` },
       potentialAction: RESERVAR_ACTION,
     },
