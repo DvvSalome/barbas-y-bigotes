@@ -7,6 +7,7 @@ import {
   paraHacer,
   serie7Dias,
   getPostventaResumen,
+  getCierresHoy,
 } from "@/lib/data/queries";
 import { cop } from "@/lib/format";
 import { fmtTime, CLOSE } from "@/lib/slots";
@@ -64,13 +65,14 @@ export default async function AdminHoy({
   const sedeParam = typeof sp.sede === "string" ? sp.sede : undefined;
   const sede = sedeParam && sedeParam in NOMBRE_SEDE ? (sedeParam as SedeId) : null;
 
-  const [plata, equipo, citas, tareas, serie, postventa] = await Promise.all([
+  const [plata, equipo, citas, tareas, serie, postventa, caja] = await Promise.all([
     ventasHoyPorMedio(sede),
     equipoAhora(sede),
     citasSiguientes(sede),
     paraHacer(sede),
     serie7Dias(sede),
     getPostventaResumen(sede ?? undefined),
+    getCierresHoy(sede),
   ]);
 
   const fecha = new Date().toLocaleDateString("es-CO", {
@@ -144,6 +146,53 @@ export default async function AdminHoy({
                 ))
               )}
             </div>
+          </section>
+
+          {/* Caja (read-only): la abre sola la 1ra venta, la cierra el barbero. */}
+          <h2 className={`${SEC} mt-7 mb-2.5`}>
+            <span>Caja</span>
+            <Link href="/admin/cuadre" className={SEC_ACTION}>
+              Cuadre manual
+            </Link>
+          </h2>
+          <section className="overflow-hidden rounded-[14px] border border-line bg-panel">
+            {caja.map((c) => (
+              <div
+                key={c.sede}
+                className={`grid grid-cols-[1fr_auto] items-center gap-3 border-b border-line/60 px-4 py-3 transition last:border-b-0 ${
+                  c.estado === "abierta" ? "bg-warn/[0.06]" : ""
+                }`}
+              >
+                <span className="min-w-0">
+                  <span className="block text-[13.5px] font-semibold text-ink">
+                    {NOMBRE_SEDE[c.sede] ?? c.nombre}
+                  </span>
+                  <span className="block truncate text-xs text-muted">
+                    {c.estado === "abierta" && `Abierta desde ${horaBogota(c.hora as string)}`}
+                    {c.estado === "cerrada" &&
+                      `Cerrada ${horaBogota(c.hora as string)}${c.cerradaPor ? ` · ${c.cerradaPor}` : ""}`}
+                    {c.estado === "sin_abrir" && "Sin abrir · se abre sola con la primera venta"}
+                  </span>
+                </span>
+                <span className="text-right tabular-nums">
+                  <span className="block font-display text-[15px] font-bold text-ink">{cop(c.total)}</span>
+                  {c.estado === "abierta" && (
+                    <span className="block text-[11.5px] font-semibold text-warn">abierta</span>
+                  )}
+                  {c.estado === "cerrada" && c.diferencia !== null && (
+                    <span
+                      className={`block text-[11.5px] font-semibold ${
+                        c.diferencia === 0 ? "text-ok" : "text-warn"
+                      }`}
+                    >
+                      {c.diferencia === 0
+                        ? "cuadra"
+                        : `dif ${c.diferencia > 0 ? "+" : ""}${cop(c.diferencia)}`}
+                    </span>
+                  )}
+                </span>
+              </div>
+            ))}
           </section>
 
           {/* Equipo ahora */}

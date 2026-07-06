@@ -399,6 +399,108 @@ export async function getCajaSede(sedeId: string): Promise<CajaSedeEstado> {
   return { sesionId: ses.id, abiertaEn: ses.abierta_en, esperadoEfectivo, ingresos };
 }
 
+export type CajaHoy = {
+  sede: string;
+  nombre: string;
+  estado: "abierta" | "cerrada" | "sin_abrir";
+  /** Ingresos del día (todos los medios). */
+  total: number;
+  /** Diferencia de efectivo del cierre; null si sigue abierta o sin abrir. */
+  diferencia: number | null;
+  /** Nombre/email de quién cerró; null pre-migración 0020 o si sigue abierta. */
+  cerradaPor: string | null;
+  /** ISO: abierta_en si está abierta, cerrada_en si cerró; null si sin abrir. */
+  hora: string | null;
+};
+
+// El cierre cerrado de HOY (día civil Bogotá) de una sede, tolerando pre-migración
+// 0020: intenta leer cerrada_por y, si aún no existe la columna, reintenta sin ella.
+async function cajaCerradaHoy(
+  admin: ReturnType<typeof supabaseAdmin>,
+  sedeId: string,
+  desde: Date,
+  hasta: Date,
+): Promise<{ total: number; diferencia: number | null; cerradaPor: string | null; hora: string } | null> {
+  const cols = "cerrada_en,totales,total_efectivo,total_datafono,diferencia";
+  const pedir = (select: string) =>
+    admin
+      .from("caja_sesiones")
+      .select(select)
+      .eq("sede_id", sedeId)
+      .eq("estado", "cerrada")
+      .gte("cerrada_en", desde.toISOString())
+      .lt("cerrada_en", hasta.toISOString())
+      .order("cerrada_en", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+  let row: Record<string, unknown> | null = null;
+  let cerradaPorId: string | null = null;
+  const r = await pedir(`${cols},cerrada_por`);
+  if (r.error) {
+    const r2 = await pedir(cols);
+    row = (r2.data as Record<string, unknown> | null) ?? null;
+  } else {
+    row = (r.data as Record<string, unknown> | null) ?? null;
+    cerradaPorId = (row?.cerrada_por as string | null) ?? null;
+  }
+  if (!row) return null;
+  const totales = (row.totales as TotalesPorMedio | null) ?? null;
+  const total = totales
+    ? Object.values(totales).reduce((a, t) => a + t.total, 0)
+    : ((row.total_efectivo as number) ?? 0) + ((row.total_datafono as number) ?? 0);
+  let cerradaPor: string | null = null;
+  if (cerradaPorId) {
+    const { data: prof } = await admin.from("profiles").select("nombre,email").eq("id", cerradaPorId).maybeSingle();
+    const p = prof as { nombre?: string; email?: string } | null;
+    cerradaPor = p?.nombre || p?.email || null;
+  }
+  return { total, diferencia: (row.diferencia as number | null) ?? null, cerradaPor, hora: row.cerrada_en as string };
+}
+
+// Estado de caja de HOY por sede para el dashboard admin (read-only, un vistazo).
+// Prioriza la caja ABIERTA (invariante: máx. una por sede; puede venir de ayer si
+// nadie la cerró → se muestra abierta como recordatorio ámbar). Si no hay abierta,
+// muestra el cierre de hoy. caja RLS admin-only → supabaseAdmin (dashboard es admin).
+export async function getCierresHoy(sede?: string | null): Promise<CajaHoy[]> {
+  const sb = await supabaseServerAuth();
+  const admin = supabaseAdmin();
+  const { desde, hasta } = bogotaDayRange();
+  const sedesRes = await sb.from("sedes").select("id,nombre").order("nombre");
+  let sedes = (sedesRes.data ?? []) as { id: string; nombre: string }[];
+  if (sede) sedes = sedes.filter((s) => s.id === sede);
+
+  const out: CajaHoy[] = [];
+  for (const s of sedes) {
+    // 1) Caja abierta (cualquier fecha): prioridad, es lo que el dueño debe ver.
+    const { data: abiertaRow } = await admin
+      .from("caja_sesiones")
+      .select("id,abierta_en")
+      .eq("sede_id", s.id)
+      .eq("estado", "abierta")
+      .maybeSingle();
+    if (abiertaRow) {
+      const ab = abiertaRow as { id: string; abierta_en: string };
+      const { data: ventas } = await admin
+        .from("ventas")
+        .select("total")
+        .eq("sede_id", s.id)
+        .gte("creado_en", ab.abierta_en);
+      const total = ((ventas ?? []) as { total: number }[]).reduce((a, v) => a + v.total, 0);
+      out.push({ sede: s.id, nombre: s.nombre, estado: "abierta", total, diferencia: null, cerradaPor: null, hora: ab.abierta_en });
+      continue;
+    }
+    // 2) Cierre de hoy.
+    const cerr = await cajaCerradaHoy(admin, s.id, desde, hasta);
+    if (cerr) {
+      out.push({ sede: s.id, nombre: s.nombre, estado: "cerrada", ...cerr });
+      continue;
+    }
+    // 3) Nada hoy: la caja se abre sola con la primera venta.
+    out.push({ sede: s.id, nombre: s.nombre, estado: "sin_abrir", total: 0, diferencia: null, cerradaPor: null, hora: null });
+  }
+  return out;
+}
+
 export type CajaChip = { abierta: boolean; desde: string | null; abiertasCount: number; sedesCount: number };
 
 // Estado liviano de caja para el chip del topbar admin (sin sumar ventas).
