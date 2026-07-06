@@ -497,6 +497,8 @@ export type ClienteDetalle = {
   wallet: { id: string; tipo: string; monto: number; nota: string; fecha: string }[];
   resenas: { id: string; score: number; nota: string; barbero: string; fecha: string }[];
   puntos: { id: string; tipo: string; puntos: number; nota: string; fecha: string }[];
+  /** Postventa: lo que EL CLIENTE opinó del servicio (resenas_servicio), últimas 10. */
+  calificaciones: { id: string; score: number; comentario: string; barbero: string; sede: string; fecha: string }[];
 };
 
 export async function getClienteDetalle(id: string): Promise<ClienteDetalle | null> {
@@ -509,7 +511,7 @@ export async function getClienteDetalle(id: string): Promise<ClienteDetalle | nu
   if (!c) return null;
   const cli = c as Record<string, unknown>;
 
-  const [ventasRes, reservasRes, notasRes, walletRes, resenasRes, puntosRes] = await Promise.all([
+  const [ventasRes, reservasRes, notasRes, walletRes, resenasRes, puntosRes, califRes] = await Promise.all([
     sb
       .from("ventas")
       .select("id,total,medio,creado_en,barberos(nombre),venta_items(descripcion,cantidad)")
@@ -526,6 +528,12 @@ export async function getClienteDetalle(id: string): Promise<ClienteDetalle | nu
     sb.from("cliente_wallet_mov").select("id,tipo,monto,nota,creado_en").eq("cliente_ref", id).order("creado_en", { ascending: false }),
     sb.from("cliente_resenas").select("id,score,nota,creado_en,barberos(nombre)").eq("cliente_ref", id).order("creado_en", { ascending: false }),
     sb.from("puntos_mov").select("id,tipo,puntos,nota,creado_en").eq("cliente_ref", id).order("creado_en", { ascending: false }),
+    sb
+      .from("resenas_servicio")
+      .select("id,score,comentario,creado_en,barberos(nombre),sedes(nombre)")
+      .eq("cliente_ref", id)
+      .order("creado_en", { ascending: false })
+      .limit(10),
   ]);
 
   const ventas = (ventasRes.data ?? []) as Record<string, unknown>[];
@@ -585,7 +593,54 @@ export async function getClienteDetalle(id: string): Promise<ClienteDetalle | nu
       fecha: r.creado_en as string,
     })),
     puntos: puntos.map((p) => ({ id: p.id, tipo: p.tipo, puntos: p.puntos, nota: p.nota ?? "", fecha: p.creado_en })),
+    calificaciones: ((califRes.data ?? []) as Record<string, unknown>[]).map((r) => ({
+      id: r.id as string,
+      score: r.score as number,
+      comentario: (r.comentario as string) ?? "",
+      barbero: (r.barberos as { nombre?: string } | null)?.nombre ?? "—",
+      sede: (r.sedes as { nombre?: string } | null)?.nombre ?? "—",
+      fecha: r.creado_en as string,
+    })),
   };
+}
+
+export type PostventaResumen = {
+  /** Promedio de score de los últimos 30 días (1 decimal); null sin datos. */
+  promedio: number | null;
+  /** Cantidad de calificaciones de los últimos 30 días. */
+  total: number;
+  /** Últimas 3 calificaciones que traen comentario. */
+  ultimas: { id: string; score: number; comentario: string; barbero: string; sede: string; fecha: string }[];
+};
+
+// Postventa para el panel admin: cómo vienen calificando los clientes.
+// Sesión del staff: la RLS de resenas_servicio (0018) da todo al admin y
+// solo lo suyo al barbero. Si la tabla aún no existe, queda vacío.
+export async function getPostventaResumen(): Promise<PostventaResumen> {
+  const sb = await supabaseServerAuth();
+  const desde = new Date(Date.now() - 30 * 24 * 3600_000).toISOString();
+  const [scoresRes, ultimasRes] = await Promise.all([
+    sb.from("resenas_servicio").select("score").gte("creado_en", desde),
+    sb
+      .from("resenas_servicio")
+      .select("id,score,comentario,creado_en,barberos(nombre),sedes(nombre)")
+      .not("comentario", "is", null)
+      .order("creado_en", { ascending: false })
+      .limit(3),
+  ]);
+  const scores = ((scoresRes.data ?? []) as { score: number }[]).map((s) => s.score);
+  const promedio = scores.length
+    ? Math.round((scores.reduce((a, s) => a + s, 0) / scores.length) * 10) / 10
+    : null;
+  const ultimas = ((ultimasRes.data ?? []) as Record<string, unknown>[]).map((r) => ({
+    id: r.id as string,
+    score: r.score as number,
+    comentario: (r.comentario as string) ?? "",
+    barbero: (r.barberos as { nombre?: string } | null)?.nombre ?? "—",
+    sede: (r.sedes as { nombre?: string } | null)?.nombre ?? "—",
+    fecha: r.creado_en as string,
+  }));
+  return { promedio, total: scores.length, ultimas };
 }
 
 export type Cupon = {

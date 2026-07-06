@@ -17,7 +17,7 @@ const ESTADO: Record<string, string> = {
   completada: "Completada", cancelada: "Cancelada", no_show: "No llegó",
 };
 
-type Tab = "info" | "historial" | "reservas" | "notas" | "wallet" | "fidelidad" | "resenas";
+type Tab = "info" | "historial" | "reservas" | "notas" | "wallet" | "fidelidad" | "resenas" | "calificaciones";
 const TABS: { id: Tab; label: string }[] = [
   { id: "info", label: "Información" },
   { id: "historial", label: "Historial" },
@@ -26,6 +26,7 @@ const TABS: { id: Tab; label: string }[] = [
   { id: "wallet", label: "Wallet" },
   { id: "fidelidad", label: "Fidelidad" },
   { id: "resenas", label: "Reseñas" },
+  { id: "calificaciones", label: "Calificaciones" },
 ];
 
 function fecha(iso: string) {
@@ -73,6 +74,7 @@ export function ClienteDetalle({ detalle, barberos }: { detalle: Detalle; barber
             {t.label}
             {t.id === "notas" && d.notas.length ? ` (${d.notas.length})` : ""}
             {t.id === "resenas" && d.resenas.length ? ` (${d.resenas.length})` : ""}
+            {t.id === "calificaciones" && d.calificaciones.length ? ` (${d.calificaciones.length})` : ""}
             {tab === t.id && (
               <motion.span
                 layoutId="cliente-tab-underline"
@@ -92,6 +94,7 @@ export function ClienteDetalle({ detalle, barberos }: { detalle: Detalle; barber
         {tab === "wallet" && <WalletTab d={d} />}
         {tab === "fidelidad" && <FidelidadTab d={d} />}
         {tab === "resenas" && <ResenasTab d={d} barberos={barberos} />}
+        {tab === "calificaciones" && <CalificacionesTab d={d} />}
       </div>
     </div>
   );
@@ -326,6 +329,27 @@ function FidelidadTab({ d }: { d: Detalle }) {
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+// Postventa: lo que EL CLIENTE opinó del servicio (al revés de "Reseñas",
+// donde el staff califica al cliente). Solo lectura — se crea desde /cuenta.
+function CalificacionesTab({ d }: { d: Detalle }) {
+  if (!d.calificaciones.length) return <Empty>Este cliente todavía no calificó ninguna visita.</Empty>;
+  return (
+    <div className="space-y-2">
+      <p className="text-xs text-muted">Cómo calificó el cliente sus visitas (postventa, últimas 10).</p>
+      {d.calificaciones.map((c) => (
+        <div key={c.id} className="rounded-xl border border-line bg-panel px-4 py-3 text-sm">
+          <div className="flex items-center justify-between">
+            <span className="text-accent">{"★".repeat(c.score)}<span className="text-line">{"★".repeat(5 - c.score)}</span></span>
+            <span className="text-xs text-muted">{fecha(c.fecha)}</span>
+          </div>
+          {c.comentario ? <div className="mt-1">{c.comentario}</div> : null}
+          <div className="mt-1 text-xs text-muted">{c.barbero} · {c.sede}</div>
+        </div>
+      ))}
     </div>
   );
 }
