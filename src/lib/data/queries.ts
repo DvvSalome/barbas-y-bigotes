@@ -1,6 +1,6 @@
 import { supabaseServer, supabaseServerAuth, supabaseAdmin } from "@/lib/supabase/server";
 import { bogotaDayRange, bogotaDayRangeDeFecha, bogotaYmd } from "@/lib/slots";
-import { totalesPorMedio, type TotalesPorMedio } from "@/lib/cobro";
+import { totalesPorMedio, snapshotDinero, type TotalesPorMedio } from "@/lib/cobro";
 import type { Sede, SedeId, Servicio, Barbero, Producto, Categoria } from "./types";
 
 export async function getSedes(): Promise<Sede[]> {
@@ -393,9 +393,7 @@ export async function getCajaSede(sedeId: string): Promise<CajaSedeEstado> {
     .eq("sede_id", sedeId)
     .gte("creado_en", ses.abierta_en);
   const vs = (ventas ?? []) as { medio: string; total: number; propina: number | null }[];
-  const totales = totalesPorMedio(vs);
-  const esperadoEfectivo = (totales.efectivo?.total ?? 0) + (totales.efectivo?.propina ?? 0);
-  const ingresos = Object.values(totales).reduce((a, t) => a + t.total, 0);
+  const { esperadoEfectivo, ingresos } = snapshotDinero(vs);
   return { sesionId: ses.id, abiertaEn: ses.abierta_en, esperadoEfectivo, ingresos };
 }
 

@@ -7,7 +7,7 @@ import { getStaffContext } from "@/lib/data/queries";
 import { clienteIdForUser } from "@/lib/cliente-actions";
 import { bogotaDayRange, bogotaYmd } from "@/lib/slots";
 import { errorPublico } from "@/lib/errors";
-import { calcularCobro, totalesPorMedio } from "@/lib/cobro";
+import { calcularCobro, snapshotDinero, diferenciaCaja } from "@/lib/cobro";
 import { pushACliente } from "@/lib/push";
 import { fechaHoraBogota } from "@/lib/format";
 
@@ -889,7 +889,7 @@ async function snapshotCaja(
   sedeId: string,
   abiertaEnISO: string,
 ): Promise<{
-  totales: ReturnType<typeof totalesPorMedio>;
+  totales: ReturnType<typeof snapshotDinero>["totales"];
   efectivo: number;
   datafono: number;
   totalGastos: number;
@@ -902,17 +902,14 @@ async function snapshotCaja(
     .eq("sede_id", sedeId)
     .gte("creado_en", abiertaEnISO);
   const vs = (ventas ?? []) as { medio: string; total: number; propina: number | null }[];
-  const totales = totalesPorMedio(vs);
-  const efectivo = totales.efectivo?.total ?? 0;
-  const datafono = totales.datafono?.total ?? 0;
+  // Matemática pura del snapshot (misma que testea scripts/check-caja.ts).
+  const { totales, efectivo, datafono, esperadoEfectivo } = snapshotDinero(vs);
   const { data: gastos } = await admin
     .from("gastos")
     .select("monto")
     .eq("sede_id", sedeId)
     .gte("creado_en", abiertaEnISO);
   const totalGastos = ((gastos ?? []) as { monto: number }[]).reduce((a, g) => a + g.monto, 0);
-  // Lo esperado en el cajón incluye las propinas cobradas en efectivo.
-  const esperadoEfectivo = efectivo + (totales.efectivo?.propina ?? 0);
   return { totales, efectivo, datafono, totalGastos, esperadoEfectivo, citas: vs.length };
 }
 
@@ -927,7 +924,7 @@ export async function cerrarCaja(input: {
   const denied = await requireAdmin(sb);
   if (denied) return { ok: false, error: denied };
   const snap = await snapshotCaja(sb, input.sede, input.abiertaEnISO);
-  const diferencia = input.efectivoContado - snap.esperadoEfectivo;
+  const diferencia = diferenciaCaja(input.efectivoContado, snap.esperadoEfectivo);
 
   const { error } = await sb
     .from("caja_sesiones")
@@ -1005,7 +1002,7 @@ export async function cerrarCajaSede(input: {
   const ses = sesion as { id: string; abierta_en: string };
 
   const snap = await snapshotCaja(admin, sede, ses.abierta_en);
-  const diferencia = efectivoContado - snap.esperadoEfectivo;
+  const diferencia = diferenciaCaja(efectivoContado, snap.esperadoEfectivo);
 
   // profile.id del que cierra → cerrada_por (para el email y la trazabilidad).
   const {

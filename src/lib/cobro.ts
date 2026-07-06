@@ -62,6 +62,41 @@ export function calcularCobro(input: {
 
 export type TotalesPorMedio = Record<string, { total: number; propina: number }>;
 
+export type SnapshotDinero = {
+  /** Desglose por medio (slug → total + propina). */
+  totales: TotalesPorMedio;
+  /** Total cobrado en efectivo (sin propina). */
+  efectivo: number;
+  /** Total cobrado por datáfono. */
+  datafono: number;
+  /** Ingresos de TODOS los medios (sin propina). */
+  ingresos: number;
+  /** Esperado en el cajón = efectivo + propina cobrada en efectivo. */
+  esperadoEfectivo: number;
+};
+
+// Snapshot de dinero de una caja (PURO, sin I/O): agrupa ventas por medio y
+// calcula el efectivo esperado en el cajón. Lo usan el cierre de caja (admin
+// cerrarCaja y barbero cerrarCajaSede) y los paneles de estado. Testeado en
+// scripts/check-caja.ts. La regla del cajón: el efectivo esperado incluye las
+// propinas cobradas EN EFECTIVO (esas sí van al cajón), no las de otros medios.
+export function snapshotDinero(
+  ventas: { medio: string; total: number; propina?: number | null }[],
+): SnapshotDinero {
+  const totales = totalesPorMedio(ventas);
+  const efectivo = totales.efectivo?.total ?? 0;
+  const datafono = totales.datafono?.total ?? 0;
+  const ingresos = Object.values(totales).reduce((a, t) => a + t.total, 0);
+  const esperadoEfectivo = efectivo + (totales.efectivo?.propina ?? 0);
+  return { totales, efectivo, datafono, ingresos, esperadoEfectivo };
+}
+
+// Diferencia de caja al cierre: contado − esperado. Positiva = sobra en el cajón;
+// negativa = falta. Es lo que el barbero/admin ve y lo que va al email del dueño.
+export function diferenciaCaja(efectivoContado: number, esperadoEfectivo: number): number {
+  return efectivoContado - esperadoEfectivo;
+}
+
 // Agrupa ventas por medio de pago: el snapshot que queda en caja_sesiones.totales
 // y el desglose que muestran las cards de caja. La propina va aparte del total
 // (la propina en efectivo sí entra al cajón para el cuadre).
