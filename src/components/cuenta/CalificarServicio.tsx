@@ -62,18 +62,24 @@ export function CalificarServicio({ pendiente }: { pendiente: VisitaPendiente | 
     if (!pendiente || score < 1) return;
     setBusy(true);
     setErr(null);
-    const res = await calificarServicio({
-      reservaId: pendiente.reservaId,
-      score,
-      comentario: comentario.trim() || undefined,
-    });
-    setBusy(false);
-    if (!res.ok) {
-      setErr(res.error ?? "No se pudo enviar. Intentá de nuevo.");
-      return;
+    try {
+      const res = await calificarServicio({
+        reservaId: pendiente.reservaId,
+        score,
+        comentario: comentario.trim() || undefined,
+      });
+      if (!res.ok) {
+        setErr(res.error ?? "No se pudo enviar. Intentá de nuevo.");
+        return;
+      }
+      setGoogleUrl(res.googleReviewUrl ?? null);
+      setEnviado(true);
+    } catch {
+      // Falla de red: no dejar el botón colgado en "Enviando…".
+      setErr("No se pudo enviar. Revisá tu conexión e intentá de nuevo.");
+    } finally {
+      setBusy(false);
     }
-    setGoogleUrl(res.googleReviewUrl ?? null);
-    setEnviado(true);
   }
 
   return (
@@ -85,7 +91,7 @@ export function CalificarServicio({ pendiente }: { pendiente: VisitaPendiente | 
       </p>
 
       <form onSubmit={enviar} className="mt-4 space-y-3">
-        <div className="flex gap-2" role="radiogroup" aria-label="Calificación de 1 a 5 estrellas">
+        <div className="flex gap-2" role="group" aria-label="Calificación de 1 a 5 estrellas">
           {[1, 2, 3, 4, 5].map((n) => (
             <button
               type="button"

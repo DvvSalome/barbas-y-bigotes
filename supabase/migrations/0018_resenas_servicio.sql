@@ -18,8 +18,8 @@ create table if not exists public.resenas_servicio (
   comentario  text,
   creado_en   timestamptz not null default now()
 );
-create index resenas_servicio_sede on public.resenas_servicio (sede_id, creado_en desc);
-create index resenas_servicio_barbero on public.resenas_servicio (barbero_id, creado_en desc);
+create index if not exists resenas_servicio_sede on public.resenas_servicio (sede_id, creado_en desc);
+create index if not exists resenas_servicio_barbero on public.resenas_servicio (barbero_id, creado_en desc);
 
 alter table public.resenas_servicio enable row level security;
 -- Lectura para staff: el admin ve todo (is_admin); el barbero, solo las suyas
