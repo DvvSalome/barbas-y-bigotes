@@ -3,6 +3,7 @@ import {
   getSedes,
   getBarberos,
   getServicios,
+  getPreciosServiciosStaff,
   getProductos,
   getAgendaHoy,
   getListaEspera,
@@ -20,15 +21,17 @@ export const metadata: Metadata = { title: "App del barbero" };
 export default async function BarberoPage() {
   const staff = await getStaffContext();
   const filtro = staff.rol === "barbero" ? staff.barberoId : null;
-  const [sedes, barberos, servicios, productos, medios, agenda, espera] = await Promise.all([
-    getSedes(),
-    getBarberos(),
-    getServicios(),
-    getProductos(),
-    getMedios(),
-    getAgendaHoy(filtro),
-    getListaEspera(filtro),
-  ]);
+  const [sedes, barberos, servicios, preciosServicios, productos, medios, agenda, espera] =
+    await Promise.all([
+      getSedes(),
+      getBarberos(),
+      getServicios(),
+      getPreciosServiciosStaff(),
+      getProductos(),
+      getMedios(),
+      getAgendaHoy(filtro),
+      getListaEspera(filtro),
+    ]);
 
   // Cierre de caja: sólo para el barbero, sobre SU sede (el admin cierra en
   // /admin/cuadre). La caja se abre sola con la primera venta del día.
@@ -55,6 +58,7 @@ export default async function BarberoPage() {
           sedes={sedes}
           barberos={barberos}
           servicios={servicios}
+          preciosServicios={preciosServicios}
           productos={productos}
           medios={medios}
           esAdmin={staff.rol === "admin"}

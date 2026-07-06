@@ -36,6 +36,29 @@ export async function getServicios(): Promise<Servicio[]> {
   });
 }
 
+// Precio por sede de TODOS los servicios (activos e inactivos) para el checkout
+// del staff. A diferencia de getServicios() (solo activos, para los chips de
+// adicionales), esto resuelve el precio del servicio FIJO de una reserva aunque
+// el admin lo haya desactivado después: si no, el total en vivo del CheckoutForm
+// cobraría de menos vs. lo que completarReserva cobra por servicio_sede.
+export type PrecioServicioStaff = {
+  id: string;
+  nombre: string;
+  preciosPorSede: Record<string, number>;
+};
+
+export async function getPreciosServiciosStaff(): Promise<PrecioServicioStaff[]> {
+  const sb = supabaseServer();
+  const { data } = await sb.from("servicios").select("id,nombre,servicio_sede(sede_id,precio)");
+  return (data ?? []).map((s: Record<string, unknown>) => {
+    const preciosPorSede: Record<string, number> = {};
+    for (const p of (s.servicio_sede as { sede_id: string; precio: number }[]) ?? []) {
+      preciosPorSede[p.sede_id] = p.precio;
+    }
+    return { id: s.id as string, nombre: s.nombre as string, preciosPorSede };
+  });
+}
+
 export async function getBarberos(): Promise<Barbero[]> {
   const sb = supabaseServer();
   const { data } = await sb
