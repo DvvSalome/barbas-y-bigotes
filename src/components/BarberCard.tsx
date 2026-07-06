@@ -7,7 +7,6 @@ import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import type { Barbero } from "@/lib/data/types";
 import { sedes } from "@/lib/data/seed";
 import { FaceIcon, PinIcon, CamIcon } from "@/components/icons";
-import type { BarberLiveStatus } from "@/lib/actions";
 
 const EASE = [0.22, 1, 0.36, 1] as const;
 
@@ -22,14 +21,12 @@ const sedeNombre = (id: Barbero["sede"]) =>
 export function BarberCard({
   barbero: b,
   onSelect,
-  liveStatus,
 }: {
   barbero: Barbero;
   /** Cuando se pasa, reemplaza el link "Reservar cita" por un botón que elige
    * este barbero dentro de un flujo en curso (ej. paso 2 del wizard de Reservar)
    * en vez de navegar a una reserva nueva. */
   onSelect?: (b: Barbero) => void;
-  liveStatus?: BarberLiveStatus;
 }) {
   const [revealed, setRevealed] = useState(false);
   const reduce = useReducedMotion();
@@ -57,18 +54,12 @@ export function BarberCard({
             ★ Top
           </span>
         )}
-        {liveStatus && (
-          <span className={`absolute right-3 top-3 z-10 flex items-center gap-1.5 rounded-full bg-black/75 px-2.5 py-1 text-[9.5px] font-semibold uppercase tracking-wider backdrop-blur-sm border ${liveStatus.status === "ocupado" ? "border-accent/40 text-accent-soft" : "border-emerald-500/40 text-emerald-400"}`}>
-            <span className={`h-1.5 w-1.5 rounded-full ${liveStatus.status === "ocupado" ? "bg-accent animate-pulse" : "bg-emerald-500"}`} />
-            {liveStatus.status === "ocupado" ? "Atendiendo" : "Libre"}
-          </span>
-        )}
         {/* Marcador de foto pendiente solo icono: sin texto placeholder que los
             crawlers lean como contenido ("Libre Foto"). */}
         {!b.fotoUrl && (
           <span
             aria-hidden
-            className={`absolute right-3 ${liveStatus ? "top-10" : "top-3"} flex items-center rounded-full border border-accent/45 bg-black/40 p-1.5 text-accent-soft backdrop-blur-sm`}
+            className="absolute right-3 top-3 flex items-center rounded-full border border-accent/45 bg-black/40 p-1.5 text-accent-soft backdrop-blur-sm"
           >
             <CamIcon className="h-3 w-3" />
           </span>
@@ -107,14 +98,6 @@ export function BarberCard({
                 <span className="text-muted">·</span>
                 <span className="text-muted">{b.resenas} reseñas</span>
               </div>
-
-              {liveStatus && liveStatus.status === "ocupado" && (
-                <div className="mb-3.5 p-3 rounded-xl border border-accent/25 bg-accent/5 text-[11px] sm:text-xs text-accent-soft leading-relaxed">
-                  <span className="font-bold text-white uppercase tracking-wider block text-[9.5px] mb-1">En servicio ahora:</span>
-                  <span className="text-ink font-semibold">{liveStatus.servicioActual}</span>
-                  <span className="block mt-1 text-muted text-[10px]">Libre estimado a las {liveStatus.terminaA}</span>
-                </div>
-              )}
 
               {b.bio && <p className="mb-4 text-xs sm:text-sm text-ink/85">{b.bio}</p>}
 

@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { categorias } from "@/lib/data/seed";
-import { createReserva, getDisponibilidad, getLiveBarberStatuses, type BarberLiveStatus } from "@/lib/actions";
+import { createReserva, getDisponibilidad } from "@/lib/actions";
 import { chatConAsistente } from "@/lib/ai-actions";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import type { Sede, SedeId, Servicio, Barbero, Categoria } from "@/lib/data/types";
@@ -84,7 +84,6 @@ export function BookingWizard({
   const [cargandoSlots, setCargandoSlots] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [selectedCat, setSelectedCat] = useState<Categoria | null>("cortes");
-  const [liveStatuses, setLiveStatuses] = useState<Record<string, BarberLiveStatus>>({});
 
   const [chatOpen, setChatOpen] = useState(false);
   const [chatMessages, setChatMessages] = useState<{ role: "user" | "assistant"; content: string }[]>([
@@ -166,43 +165,6 @@ export function BookingWizard({
   // con la memoización del React Compiler.
   const [days] = useState(() => nextDays(7));
   const slots = useMemo(() => (servicio ? buildSlots(servicio.duracionMin) : ([] as number[])), [servicio]);
-
-  // Cargar estados en vivo de los barberos
-  useEffect(() => {
-    const fetchLiveStatuses = async () => {
-      try {
-        const statuses = await getLiveBarberStatuses();
-        const record: Record<string, typeof statuses[0]> = {};
-        statuses.forEach((s) => {
-          record[s.id] = s;
-        });
-        setLiveStatuses(record);
-      } catch (err) {
-        console.error("Error fetching live statuses in wizard:", err);
-      }
-    };
-
-    fetchLiveStatuses();
-
-    const sb = supabaseBrowser();
-    const sub = sb
-      .channel("wizard-live-statuses")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "reservas" },
-        () => {
-          fetchLiveStatuses();
-        }
-      )
-      .subscribe();
-
-    const interval = setInterval(fetchLiveStatuses, 60000);
-
-    return () => {
-      sb.removeChannel(sub);
-      clearInterval(interval);
-    };
-  }, []);
 
   // Disponibilidad real: trae los rangos ocupados del barbero ese día y se suscribe en tiempo real.
   useEffect(() => {
@@ -421,7 +383,6 @@ export function BookingWizard({
                   <BarberCard
                     key={b.id}
                     barbero={b}
-                    liveStatus={liveStatuses[b.id]}
                     onSelect={(elegido) => {
                       setBarbero(elegido);
                       setStep("servicio");

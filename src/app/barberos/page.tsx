@@ -4,7 +4,6 @@ import { SiteFooter } from "@/components/SiteFooter";
 import { BarberCard } from "@/components/BarberCard";
 import { Reveal } from "@/components/motion/Reveal";
 import { getSedes, getBarberos } from "@/lib/data/queries";
-import { getLiveBarberStatuses } from "@/lib/actions";
 import { barberosItemList, jsonLd } from "@/lib/schema-org";
 
 export const metadata: Metadata = {
@@ -14,16 +13,7 @@ export const metadata: Metadata = {
 };
 
 export default async function BarberosPage() {
-  const [sedes, barberos, liveStatusesArray] = await Promise.all([
-    getSedes(),
-    getBarberos(),
-    getLiveBarberStatuses(),
-  ]);
-
-  const liveStatuses: Record<string, typeof liveStatusesArray[0]> = {};
-  liveStatusesArray.forEach((s) => {
-    liveStatuses[s.id] = s;
-  });
+  const [sedes, barberos] = await Promise.all([getSedes(), getBarberos()]);
 
   return (
     <>
@@ -58,7 +48,7 @@ export default async function BarberosPage() {
               <div className="grid gap-7 sm:grid-cols-2 lg:grid-cols-3">
                 {list.map((b, i) => (
                   <Reveal key={b.id} delay={(i % 3) * 0.08} y={36}>
-                    <BarberCard barbero={b} liveStatus={liveStatuses[b.id]} />
+                    <BarberCard barbero={b} />
                     {/* Especialidad server-rendered (la card la revela solo con JS). */}
                     {b.especialidades.length > 0 && (
                       <p className="mt-2.5 px-1 text-xs leading-relaxed text-muted">
