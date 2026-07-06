@@ -148,6 +148,13 @@ export async function subirFotoProducto(formData: FormData): Promise<ActionResul
   if (upErr)
     return { ok: false, error: errorPublico("subirFotoProducto upload", upErr, "No se pudo subir la foto. Intentá de nuevo.") };
 
+  // Limpieza best-effort: re-subir en otro formato (png→webp) dejaría el archivo
+  // viejo huérfano en el bucket público (el path lleva la extensión). Se borran
+  // las otras variantes del mismo producto; si el remove falla, no aborta la subida.
+  const otrasVariantes = ["jpg", "png", "webp", "avif"].filter((e) => e !== ext).map((e) => `${productoId}.${e}`);
+  const { error: rmErr } = await admin.storage.from("productos").remove(otrasVariantes);
+  if (rmErr) errorPublico("subirFotoProducto limpieza", rmErr);
+
   const { data: pub } = admin.storage.from("productos").getPublicUrl(path);
   // Cache-buster: el path se repite en cada re-subida y el CDN no debe servir la vieja.
   const url = `${pub.publicUrl}?v=${Date.now()}`;
@@ -336,10 +343,27 @@ export async function actualizarReserva(
   const denied = await requireStaff(sb);
   if (denied) return { ok: false, error: denied };
   // .select() para detectar 0 filas: bajo RLS, tocar una reserva ajena no es error pero
-  // no afecta filas → avisamos en vez de fingir éxito.
-  const { data, error } = await sb.from("reservas").update(patch).eq("id", reservaId).select("id");
+  // no afecta filas → avisamos en vez de fingir éxito. cliente_ref: para el push de turno.
+  const { data, error } = await sb
+    .from("reservas")
+    .update(patch)
+    .eq("id", reservaId)
+    .select("id,cliente_ref");
   if (error) return { ok: false, error: errorPublico("actualizarReserva", error) };
   if (!data || data.length === 0) return { ok: false, error: "Reserva no encontrada o sin permiso" };
+
+  // "¡Es tu turno!": al marcar en_curso (botón "Llegó"), avisar al cliente. Solo en
+  // ese estado, DESPUÉS del update exitoso, fire-and-forget (pushACliente jamás lanza).
+  const clienteRef = (data[0] as { cliente_ref?: string | null }).cliente_ref ?? null;
+  if (patch.estado === "en_curso" && clienteRef) {
+    await pushACliente(clienteRef, {
+      title: "¡Es tu turno! ✂️",
+      body: "El barbero te está esperando.",
+      url: "/cuenta",
+      tag: "turno",
+    });
+  }
+
   revalidatePath("/barbero");
   return { ok: true };
 }
