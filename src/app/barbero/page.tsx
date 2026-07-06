@@ -3,14 +3,17 @@ import {
   getSedes,
   getBarberos,
   getServicios,
+  getPreciosServiciosStaff,
   getProductos,
   getAgendaHoy,
   getListaEspera,
   getStaffContext,
   getMedios,
+  getCajaSede,
 } from "@/lib/data/queries";
 import { AgendaList } from "@/components/barbero/AgendaList";
 import { EsperaPanel } from "@/components/barbero/EsperaPanel";
+import { CierreCaja } from "@/components/barbero/CierreCaja";
 import { RealtimeRefresh } from "@/components/motion/RealtimeRefresh";
 
 export const metadata: Metadata = { title: "App del barbero" };
@@ -18,15 +21,23 @@ export const metadata: Metadata = { title: "App del barbero" };
 export default async function BarberoPage() {
   const staff = await getStaffContext();
   const filtro = staff.rol === "barbero" ? staff.barberoId : null;
-  const [sedes, barberos, servicios, productos, medios, agenda, espera] = await Promise.all([
-    getSedes(),
-    getBarberos(),
-    getServicios(),
-    getProductos(),
-    getMedios(),
-    getAgendaHoy(filtro),
-    getListaEspera(filtro),
-  ]);
+  const [sedes, barberos, servicios, preciosServicios, productos, medios, agenda, espera] =
+    await Promise.all([
+      getSedes(),
+      getBarberos(),
+      getServicios(),
+      getPreciosServiciosStaff(),
+      getProductos(),
+      getMedios(),
+      getAgendaHoy(filtro),
+      getListaEspera(filtro),
+    ]);
+
+  // Cierre de caja: sólo para el barbero, sobre SU sede (el admin cierra en
+  // /admin/cuadre). La caja se abre sola con la primera venta del día.
+  const sedeBarbero =
+    staff.rol === "barbero" ? barberos.find((b) => b.id === staff.barberoId)?.sede ?? null : null;
+  const caja = sedeBarbero ? await getCajaSede(sedeBarbero) : null;
 
   return (
     <main className="mx-auto max-w-5xl px-6 py-10">
@@ -47,6 +58,7 @@ export default async function BarberoPage() {
           sedes={sedes}
           barberos={barberos}
           servicios={servicios}
+          preciosServicios={preciosServicios}
           productos={productos}
           medios={medios}
           esAdmin={staff.rol === "admin"}
@@ -56,6 +68,12 @@ export default async function BarberoPage() {
       <div className="mt-14 border-t border-line pt-10">
         <EsperaPanel espera={espera} sedes={sedes} barberos={barberos} servicios={servicios} />
       </div>
+
+      {sedeBarbero && (
+        <div className="mt-14 border-t border-line pt-10">
+          <CierreCaja caja={caja} />
+        </div>
+      )}
     </main>
   );
 }

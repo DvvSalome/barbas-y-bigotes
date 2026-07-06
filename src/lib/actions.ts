@@ -7,7 +7,7 @@ import { getStaffContext } from "@/lib/data/queries";
 import { clienteIdForUser } from "@/lib/cliente-actions";
 import { bogotaDayRange, bogotaYmd } from "@/lib/slots";
 import { errorPublico } from "@/lib/errors";
-import { calcularCobro, totalesPorMedio } from "@/lib/cobro";
+import { calcularCobro, snapshotDinero, diferenciaCaja } from "@/lib/cobro";
 import { pushACliente } from "@/lib/push";
 import { fechaHoraBogota } from "@/lib/format";
 
@@ -147,6 +147,13 @@ export async function subirFotoProducto(formData: FormData): Promise<ActionResul
     .upload(path, file, { upsert: true, contentType: file.type });
   if (upErr)
     return { ok: false, error: errorPublico("subirFotoProducto upload", upErr, "No se pudo subir la foto. Intentá de nuevo.") };
+
+  // Limpieza best-effort: re-subir en otro formato (png→webp) dejaría el archivo
+  // viejo huérfano en el bucket público (el path lleva la extensión). Se borran
+  // las otras variantes del mismo producto; si el remove falla, no aborta la subida.
+  const otrasVariantes = ["jpg", "png", "webp", "avif"].filter((e) => e !== ext).map((e) => `${productoId}.${e}`);
+  const { error: rmErr } = await admin.storage.from("productos").remove(otrasVariantes);
+  if (rmErr) errorPublico("subirFotoProducto limpieza", rmErr);
 
   const { data: pub } = admin.storage.from("productos").getPublicUrl(path);
   // Cache-buster: el path se repite en cada re-subida y el CDN no debe servir la vieja.
@@ -336,12 +343,59 @@ export async function actualizarReserva(
   const denied = await requireStaff(sb);
   if (denied) return { ok: false, error: denied };
   // .select() para detectar 0 filas: bajo RLS, tocar una reserva ajena no es error pero
-  // no afecta filas → avisamos en vez de fingir éxito.
-  const { data, error } = await sb.from("reservas").update(patch).eq("id", reservaId).select("id");
+  // no afecta filas → avisamos en vez de fingir éxito. cliente_ref: para el push de turno.
+  const { data, error } = await sb
+    .from("reservas")
+    .update(patch)
+    .eq("id", reservaId)
+    .select("id,cliente_ref");
   if (error) return { ok: false, error: errorPublico("actualizarReserva", error) };
   if (!data || data.length === 0) return { ok: false, error: "Reserva no encontrada o sin permiso" };
+
+  // "¡Es tu turno!": al marcar en_curso (botón "Llegó"), avisar al cliente. Solo en
+  // ese estado, DESPUÉS del update exitoso, fire-and-forget (pushACliente jamás lanza).
+  const clienteRef = (data[0] as { cliente_ref?: string | null }).cliente_ref ?? null;
+  if (patch.estado === "en_curso" && clienteRef) {
+    await pushACliente(clienteRef, {
+      title: "¡Es tu turno! ✂️",
+      body: "El barbero te está esperando.",
+      url: "/cuenta",
+      tag: "turno",
+    });
+  }
+
   revalidatePath("/barbero");
   return { ok: true };
+}
+
+// Auto-open de caja: la primera venta del día abre sola la caja de la sede, sin
+// que nadie la abra a mano (el dueño no opera; los barberos registran todo).
+// caja_sesiones es RLS admin-only (0008), por eso va con supabaseAdmin(). Es
+// BEST-EFFORT: jamás puede tumbar un cobro — el caller la envuelve en try/catch
+// y acá se traga el 23505 de la carrera (dos ventas simultáneas → una gana el
+// unique index parcial `caja_una_abierta_por_sede`, la otra no reabre nada).
+async function asegurarCajaAbierta(admin: SupabaseClient, sedeId: string): Promise<void> {
+  const { data: abierta, error: selErr } = await admin
+    .from("caja_sesiones")
+    .select("id")
+    .eq("sede_id", sedeId)
+    .eq("estado", "abierta")
+    .limit(1);
+  if (selErr) {
+    errorPublico("asegurarCajaAbierta select", selErr);
+    return;
+  }
+  if (abierta && abierta.length > 0) return; // ya hay una caja abierta
+  const { error: insErr } = await admin.from("caja_sesiones").insert({
+    sede_id: sedeId,
+    estado: "abierta",
+    meta_dia: 0,
+    monto_apertura: 0,
+    auto_abierta: true,
+  });
+  // 23505 = otra venta simultánea ya la abrió (unique index parcial): ya quedó
+  // abierta, ignorar. Cualquier otro error se loguea pero no se propaga.
+  if (insErr && insErr.code !== "23505") errorPublico("asegurarCajaAbierta insert", insErr);
 }
 
 // Completar la atención: cobra el cierre completo (servicio de la reserva +
@@ -561,7 +615,16 @@ export async function completarReserva(input: {
     }
   }
 
-  // 4) Efectos secundarios: la venta ya quedó registrada; si algo de esto falla
+  // 4) Auto-open de caja: la venta ya quedó registrada (con sus ítems), así que
+  //    esta es la primera venta que abre la caja del día si estaba cerrada. Es
+  //    best-effort: envuelto para que una caja que no abrió JAMÁS tumbe el cobro.
+  try {
+    await asegurarCajaAbierta(supabaseAdmin(), input.sede);
+  } catch (e) {
+    errorPublico("completarReserva auto-open caja", e as { message?: string });
+  }
+
+  // 5) Efectos secundarios: la venta ya quedó registrada; si algo de esto falla
   //    NO se aborta el cobro, pero SIEMPRE queda log (nunca tragar en silencio).
   for (const it of items) {
     if (it.tipo !== "producto") continue;
@@ -840,6 +903,47 @@ export async function abrirCaja(input: {
   return { ok: true };
 }
 
+// Snapshot puro de lo recaudado desde la apertura, desglosado por medio. Lo
+// comparten el cierre admin (cerrarCaja) y el cierre del barbero (cerrarCajaSede),
+// para que la matemática de la plata sea UNA sola: esperado en el cajón =
+// fondo de apertura + efectivo + propina cobrada en efectivo − gastos. `admin`
+// es un SupabaseClient (la RLS de caja es admin-only, pero ventas/gastos las lee
+// cualquiera de los dos clientes). `montoApertura` es el fondo que ya estaba en
+// el cajón al abrir (0 en las cajas auto-abiertas por el barbero).
+async function snapshotCaja(
+  admin: SupabaseClient,
+  sedeId: string,
+  abiertaEnISO: string,
+  montoApertura: number,
+): Promise<{
+  totales: ReturnType<typeof snapshotDinero>["totales"];
+  efectivo: number;
+  datafono: number;
+  totalGastos: number;
+  esperadoEfectivo: number;
+  citas: number;
+}> {
+  const { data: ventas } = await admin
+    .from("ventas")
+    .select("medio,total,propina")
+    .eq("sede_id", sedeId)
+    .gte("creado_en", abiertaEnISO);
+  const vs = (ventas ?? []) as { medio: string; total: number; propina: number | null }[];
+  const { data: gastos } = await admin
+    .from("gastos")
+    .select("monto")
+    .eq("sede_id", sedeId)
+    .gte("creado_en", abiertaEnISO);
+  const totalGastos = ((gastos ?? []) as { monto: number }[]).reduce((a, g) => a + g.monto, 0);
+  // Matemática pura del snapshot (misma que testea scripts/check-caja.ts): el
+  // esperado incluye el fondo de apertura y descuenta los gastos del cajón.
+  const { totales, efectivo, datafono, esperadoEfectivo } = snapshotDinero(vs, {
+    montoApertura,
+    totalGastos,
+  });
+  return { totales, efectivo, datafono, totalGastos, esperadoEfectivo, citas: vs.length };
+}
+
 export async function cerrarCaja(input: {
   sesionId: string;
   sede: string;
@@ -850,25 +954,15 @@ export async function cerrarCaja(input: {
   const sb = await supabaseServerAuth();
   const denied = await requireAdmin(sb);
   if (denied) return { ok: false, error: denied };
-  // Snapshot de lo recaudado desde que se abrió la caja, desglosado por medio.
-  const { data: ventas } = await sb
-    .from("ventas")
-    .select("medio,total,propina")
-    .eq("sede_id", input.sede)
-    .gte("creado_en", input.abiertaEnISO);
-  const vs = (ventas ?? []) as { medio: string; total: number; propina: number | null }[];
-  const totales = totalesPorMedio(vs);
-  const efectivo = totales.efectivo?.total ?? 0;
-  const datafono = totales.datafono?.total ?? 0;
-  const { data: gastos } = await sb
-    .from("gastos")
-    .select("monto")
-    .eq("sede_id", input.sede)
-    .gte("creado_en", input.abiertaEnISO);
-  const totalGastos = ((gastos ?? []) as { monto: number }[]).reduce((a, g) => a + g.monto, 0);
-  // Lo esperado en el cajón incluye las propinas cobradas en efectivo.
-  const esperadoEfectivo = efectivo + (totales.efectivo?.propina ?? 0);
-  const diferencia = input.efectivoContado - esperadoEfectivo;
+  // El fondo de apertura sale de la sesión (el admin lo pudo setear al abrir).
+  const { data: ses } = await sb
+    .from("caja_sesiones")
+    .select("monto_apertura")
+    .eq("id", input.sesionId)
+    .maybeSingle();
+  const montoApertura = Number((ses as { monto_apertura?: number | null } | null)?.monto_apertura ?? 0);
+  const snap = await snapshotCaja(sb, input.sede, input.abiertaEnISO, montoApertura);
+  const diferencia = diferenciaCaja(input.efectivoContado, snap.esperadoEfectivo);
 
   const { error } = await sb
     .from("caja_sesiones")
@@ -876,11 +970,11 @@ export async function cerrarCaja(input: {
       estado: "cerrada",
       cerrada_en: new Date().toISOString(),
       // Columnas legacy pobladas por compat (histórico y UI vieja) + snapshot jsonb.
-      total_efectivo: efectivo,
-      total_datafono: datafono,
-      totales,
-      total_gastos: totalGastos,
-      citas: vs.length,
+      total_efectivo: snap.efectivo,
+      total_datafono: snap.datafono,
+      totales: snap.totales,
+      total_gastos: snap.totalGastos,
+      citas: snap.citas,
       efectivo_contado: input.efectivoContado,
       diferencia,
       nota: input.nota || null,
@@ -890,6 +984,102 @@ export async function cerrarCaja(input: {
   revalidatePath("/admin/cuadre");
   revalidatePath("/admin");
   return { ok: true };
+}
+
+export type CierreCajaResult = {
+  ok: boolean;
+  error?: string;
+  total?: number;
+  diferencia?: number;
+  esperado?: number;
+};
+
+// Cierre de caja por el BARBERO de la sede (o el admin como override). El barbero
+// cierra SÓLO su sede (se ignora input.sede). caja_sesiones es RLS admin-only
+// (0008): por eso el trabajo va con supabaseAdmin() detrás del gate requireStaff.
+export async function cerrarCajaSede(input: {
+  efectivoContado: number;
+  nota?: string;
+  sede?: string;
+}): Promise<CierreCajaResult> {
+  const sb = await supabaseServerAuth();
+  const denied = await requireStaff(sb);
+  if (denied) return { ok: false, error: denied };
+  const staff = await getStaffContext();
+  if (staff.rol !== "admin" && staff.rol !== "barbero") return { ok: false, error: "No autorizado" };
+
+  const admin = supabaseAdmin();
+
+  // La sede: el barbero cierra la SUYA (buscada por su barbero_id, ignora input);
+  // el admin elige explícitamente.
+  let sede: string | null = null;
+  if (staff.rol === "barbero") {
+    if (!staff.barberoId) return { ok: false, error: "No se pudo determinar tu sede." };
+    const { data: barb } = await admin.from("barberos").select("sede_id").eq("id", staff.barberoId).maybeSingle();
+    sede = (barb as { sede_id?: string } | null)?.sede_id ?? null;
+    if (!sede) return { ok: false, error: "No se pudo determinar tu sede." };
+  } else {
+    sede = (input.sede ?? "").trim() || null;
+    if (!sede) return { ok: false, error: "Elegí una sede." };
+  }
+
+  // Efectivo contado: entero COP ≥ 0.
+  const efectivoContado = Math.floor(Number(input.efectivoContado));
+  if (!Number.isFinite(efectivoContado) || efectivoContado < 0)
+    return { ok: false, error: "Ingresá el efectivo contado (un número igual o mayor a 0)." };
+
+  // Caja abierta de la sede.
+  const { data: sesion, error: selErr } = await admin
+    .from("caja_sesiones")
+    .select("id,abierta_en,monto_apertura")
+    .eq("sede_id", sede)
+    .eq("estado", "abierta")
+    .maybeSingle();
+  if (selErr) return { ok: false, error: errorPublico("cerrarCajaSede select", selErr) };
+  if (!sesion) return { ok: false, error: "No hay una caja abierta en esta sede." };
+  const ses = sesion as { id: string; abierta_en: string; monto_apertura: number | null };
+
+  // Las cajas auto-abiertas por el barbero tienen monto_apertura = 0 (sin fondo).
+  const snap = await snapshotCaja(admin, sede, ses.abierta_en, Number(ses.monto_apertura ?? 0));
+  const diferencia = diferenciaCaja(efectivoContado, snap.esperadoEfectivo);
+
+  // profile.id del que cierra → cerrada_por (para el email y la trazabilidad).
+  const {
+    data: { user },
+  } = await sb.auth.getUser();
+  let cerradaPor: string | null = null;
+  if (user) {
+    const { data: prof } = await admin.from("profiles").select("id").eq("auth_id", user.id).maybeSingle();
+    cerradaPor = (prof as { id?: string } | null)?.id ?? null;
+  }
+
+  // Update condicional a 'abierta': si otra llamada la cerró en la carrera, 0 filas.
+  const { data: cerrada, error } = await admin
+    .from("caja_sesiones")
+    .update({
+      estado: "cerrada",
+      cerrada_en: new Date().toISOString(),
+      cerrada_por: cerradaPor,
+      total_efectivo: snap.efectivo,
+      total_datafono: snap.datafono,
+      totales: snap.totales,
+      total_gastos: snap.totalGastos,
+      citas: snap.citas,
+      efectivo_contado: efectivoContado,
+      diferencia,
+      nota: (input.nota ?? "").trim() || null,
+    })
+    .eq("id", ses.id)
+    .eq("estado", "abierta")
+    .select("id");
+  if (error) return { ok: false, error: errorPublico("cerrarCajaSede", error) };
+  if (!cerrada || cerrada.length === 0) return { ok: false, error: "La caja ya fue cerrada." };
+
+  const total = Object.values(snap.totales).reduce((a, t) => a + t.total, 0);
+  revalidatePath("/barbero");
+  revalidatePath("/admin");
+  revalidatePath("/admin/cuadre");
+  return { ok: true, total, diferencia, esperado: snap.esperadoEfectivo };
 }
 
 // ---------- Medios de pago (admin) ----------

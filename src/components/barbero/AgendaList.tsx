@@ -15,7 +15,7 @@ import { calcularCobro } from "@/lib/cobro";
 import { ProductoThumb } from "@/components/staff/ProductoThumb";
 import { MedioLogo } from "@/components/staff/MedioLogo";
 import type { Sede, SedeId, Barbero, Servicio, Producto } from "@/lib/data/types";
-import type { AgendaItem, MedioPago } from "@/lib/data/queries";
+import type { AgendaItem, MedioPago, PrecioServicioStaff } from "@/lib/data/queries";
 
 const fld = "w-full rounded-lg border border-line bg-bg px-3 py-2 text-ink focus:border-accent focus:outline-none";
 
@@ -44,6 +44,7 @@ export function AgendaList({
   sedes,
   barberos,
   servicios,
+  preciosServicios,
   productos,
   medios,
   esAdmin = false,
@@ -52,6 +53,7 @@ export function AgendaList({
   sedes: Sede[];
   barberos: Barbero[];
   servicios: Servicio[];
+  preciosServicios: PrecioServicioStaff[];
   productos: Producto[];
   medios: MedioPago[];
   esAdmin?: boolean;
@@ -118,6 +120,7 @@ export function AgendaList({
             sedes={sedes}
             barberos={barberos}
             servicios={servicios}
+            preciosServicios={preciosServicios}
             productos={productos}
             medios={medios}
             esAdmin={esAdmin}
@@ -278,6 +281,7 @@ export function AgendaList({
                     sedes={sedes}
                     barberos={barberos}
                     servicios={servicios}
+                    preciosServicios={preciosServicios}
                     productos={productos}
                     medios={medios}
                     onDone={() => {
@@ -381,6 +385,7 @@ function CheckoutForm({
   sedes,
   barberos,
   servicios,
+  preciosServicios,
   productos,
   medios,
   esAdmin = false,
@@ -391,6 +396,7 @@ function CheckoutForm({
   sedes: Sede[];
   barberos: Barbero[];
   servicios: Servicio[];
+  preciosServicios: PrecioServicioStaff[];
   productos: Producto[];
   medios: MedioPago[];
   esAdmin?: boolean;
@@ -422,8 +428,14 @@ function CheckoutForm({
   const serviciosSede = servicios.filter((s) => s.precios[sedeId] != null);
   const productosSede = productos.filter((p) => p.sede === sedeId);
   const barberosSede = barberos.filter((b) => b.sede === sedeId);
-  const servicioFijo = reserva?.servicioId ? servicios.find((s) => s.id === reserva.servicioId) ?? null : null;
-  const precioFijo = servicioFijo?.precios[sedeId];
+  // Servicio FIJO de la reserva: se resuelve nombre+precio desde preciosServicios
+  // (TODOS los servicios, activos e inactivos) para que el total en vivo coincida
+  // con lo que cobra el server aunque el admin haya desactivado el servicio. Los
+  // chips de adicionales siguen usando `servicios` (solo activos, más abajo).
+  const servicioFijo = reserva?.servicioId
+    ? preciosServicios.find((s) => s.id === reserva.servicioId) ?? null
+    : null;
+  const precioFijo = servicioFijo?.preciosPorSede[sedeId];
 
   function cambiarSede(id: string) {
     // Cambiar de sede cambia precios y catálogo: se resetea lo elegido.

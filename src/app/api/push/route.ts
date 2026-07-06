@@ -47,7 +47,10 @@ export async function POST(request: Request) {
     !esTexto(p.title) ||
     !esTexto(p.body) ||
     // Solo rutas internas: el worker abre esta URL con la identidad de la barbería.
-    (p.url !== undefined && !(typeof p.url === "string" && p.url.startsWith("/") && !p.url.startsWith("//"))) ||
+    // El backslash también se rechaza: "/\evil.com" pasa el startsWith("/") pero
+    // WHATWG normaliza \ → / y clients.openWindow abriría //evil.com (externo).
+    (p.url !== undefined &&
+      !(typeof p.url === "string" && p.url.startsWith("/") && !p.url.startsWith("//") && !p.url.includes("\\"))) ||
     (p.tag !== undefined && typeof p.tag !== "string")
   ) {
     return Response.json(
