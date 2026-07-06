@@ -3,9 +3,15 @@
 import { motion, AnimatePresence } from "motion/react";
 import { useState, useEffect } from "react";
 import Image from "next/image";
+import { usePathname } from "next/navigation";
+
+// Rutas de trabajo del staff: el botón es para CLIENTES, no para el equipo.
+const RUTAS_STAFF = ["/admin", "/barbero"];
 
 export function WhatsAppFloatingButton() {
+  const pathname = usePathname();
   const [showTooltip, setShowTooltip] = useState(false);
+  const esStaff = RUTAS_STAFF.some((r) => pathname === r || pathname.startsWith(`${r}/`));
 
   useEffect(() => {
     // Show tooltip after 3 seconds, hide after 12 seconds
@@ -18,6 +24,8 @@ export function WhatsAppFloatingButton() {
   }, []);
 
   const whatsappUrl = "https://wa.me/573006734799?text=Hola%20Barbas%20%26%20Bigotes%2C%20quisiera%20saber%20m%C3%A1s%20informaci%C3%B3n%20sobre%20sus%20servicios%20y%20reservas.";
+
+  if (esStaff) return null;
 
   return (
     <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3">

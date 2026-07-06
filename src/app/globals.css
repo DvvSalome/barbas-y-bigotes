@@ -56,10 +56,12 @@
   --muted: #6f6858;
   --line: rgba(38, 33, 28, 0.12);
   --accent: #b9352a;
-  --accent-soft: #d24438;
+  /* En claro el "soft" va MÁS profundo que en dark: es color de TEXTO sobre
+     fondos tenues (chips accent/15) y necesita AA (review midió 3.56:1 con el tono anterior). */
+  --accent-soft: #a52f25;
   --on-accent: #fbf7f0;
-  --ok: #047857;
-  --warn: #b45309;
+  --ok: #065f46;
+  --warn: #92400e;
   --bar: #8f7a60;
   --shadow-pop: 0 24px 64px rgba(38, 33, 28, 0.18);
   color-scheme: light;
