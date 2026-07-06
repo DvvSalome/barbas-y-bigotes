@@ -389,7 +389,8 @@ export async function getCajaSesiones(): Promise<CajaSesionSede[]> {
 export type CajaSedeEstado = {
   sesionId: string;
   abiertaEn: string;
-  /** Esperado en el cajón = efectivo + propina cobrada en efectivo. */
+  /** Esperado en el cajón = fondo de apertura + efectivo + propina en efectivo − gastos.
+   *  Mismo cálculo que el cierre real (cerrarCajaSede), para que el preview no engañe. */
   esperadoEfectivo: number;
   /** Ingresos de TODOS los medios desde la apertura (solo para contexto). */
   ingresos: number;
@@ -404,19 +405,25 @@ export async function getCajaSede(sedeId: string): Promise<CajaSedeEstado> {
   const admin = supabaseAdmin();
   const { data: sesion } = await admin
     .from("caja_sesiones")
-    .select("id,abierta_en")
+    .select("id,abierta_en,monto_apertura")
     .eq("sede_id", sedeId)
     .eq("estado", "abierta")
     .maybeSingle();
   if (!sesion) return null;
-  const ses = sesion as { id: string; abierta_en: string };
-  const { data: ventas } = await admin
-    .from("ventas")
-    .select("medio,total,propina")
-    .eq("sede_id", sedeId)
-    .gte("creado_en", ses.abierta_en);
-  const vs = (ventas ?? []) as { medio: string; total: number; propina: number | null }[];
-  const { esperadoEfectivo, ingresos } = snapshotDinero(vs);
+  const ses = sesion as { id: string; abierta_en: string; monto_apertura: number | null };
+  // Ventas + gastos desde la apertura: el preview debe usar el MISMO cálculo que
+  // el cierre (fondo + efectivo + propina efectivo − gastos), o el barbero ve un
+  // "esperado" inflado y una diferencia falsa cuando hubo gastos.
+  const [ventasRes, gastosRes] = await Promise.all([
+    admin.from("ventas").select("medio,total,propina").eq("sede_id", sedeId).gte("creado_en", ses.abierta_en),
+    admin.from("gastos").select("monto").eq("sede_id", sedeId).gte("creado_en", ses.abierta_en),
+  ]);
+  const vs = (ventasRes.data ?? []) as { medio: string; total: number; propina: number | null }[];
+  const totalGastos = ((gastosRes.data ?? []) as { monto: number }[]).reduce((a, g) => a + g.monto, 0);
+  const { esperadoEfectivo, ingresos } = snapshotDinero(vs, {
+    montoApertura: ses.monto_apertura ?? 0,
+    totalGastos,
+  });
   return { sesionId: ses.id, abiertaEn: ses.abierta_en, esperadoEfectivo, ingresos };
 }
 
