@@ -5,6 +5,7 @@ import { BarberCard } from "@/components/BarberCard";
 import { Reveal } from "@/components/motion/Reveal";
 import { getSedes, getBarberos } from "@/lib/data/queries";
 import { getLiveBarberStatuses } from "@/lib/actions";
+import { barberosItemList, jsonLd } from "@/lib/schema-org";
 
 export const metadata: Metadata = {
   title: "Nuestros barberos",
@@ -26,6 +27,11 @@ export default async function BarberosPage() {
 
   return (
     <>
+      {/* ItemList de Person (equipo real de la DB), server-rendered para IA. */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: jsonLd(barberosItemList(barberos)) }}
+      />
       <SiteHeader />
       <main className="mx-auto max-w-6xl px-6 py-16">
         <Reveal>

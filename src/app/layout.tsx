@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Barlow_Condensed, Inter } from "next/font/google";
 import "./globals.css";
 import { WhatsAppFloatingButton } from "@/components/WhatsAppFloatingButton";
+import { siteGraph, jsonLd } from "@/lib/schema-org";
 
 const barlow = Barlow_Condensed({
   subsets: ["latin"],
@@ -71,6 +72,12 @@ export default function RootLayout({
       className={`${barlow.variable} ${inter.variable} antialiased`}
     >
       <body>
+        {/* Grafo de entidad (Organization + WebSite + 2 sedes BarberShop):
+            server-rendered para que los crawlers de IA lo vean sin ejecutar JS. */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: jsonLd(siteGraph) }}
+        />
         {children}
         <WhatsAppFloatingButton />
       </body>
