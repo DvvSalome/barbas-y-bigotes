@@ -2,7 +2,19 @@
 
 import { useState } from "react";
 
-const locales = [
+type Local = {
+  id: "parque-venezuela" | "plaza-de-la-paz";
+  nombre: string;
+  direccion: string;
+  telefono: string;
+  query: string;
+  foto: string;
+  lat: string;
+  lng: string;
+  streetViewEmbed?: string;
+};
+
+const locales: Local[] = [
   {
     id: "parque-venezuela",
     nombre: "Parque Venezuela",
@@ -39,7 +51,7 @@ export function Ubicacion() {
   const satelliteSrc = `https://www.google.com/maps?q=${encodeURIComponent(currentSede.query)}&t=h&z=17&ie=UTF8&output=embed`;
 
   // Embedded Street View
-  const streetViewSrc = (currentSede as any).streetViewEmbed || `https://www.google.com/maps?q=${encodeURIComponent(currentSede.query)}&layer=c&cbll=${currentSede.lat},${currentSede.lng}&cbp=11,0,0,0,0&output=svembed`;
+  const streetViewSrc = currentSede.streetViewEmbed || `https://www.google.com/maps?q=${encodeURIComponent(currentSede.query)}&layer=c&cbll=${currentSede.lat},${currentSede.lng}&cbp=11,0,0,0,0&output=svembed`;
 
   const currentSrc =
     viewType === "map"
@@ -59,7 +71,7 @@ export function Ubicacion() {
           <div
             key={l.id}
             onClick={() => {
-              setActiveLoc(l.id as any);
+              setActiveLoc(l.id);
               setViewType("map"); // Reset to standard map when switching location
             }}
             className={`cursor-pointer rounded-2xl border p-7 transition duration-300 ${

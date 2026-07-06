@@ -29,8 +29,8 @@ export function AdelantoBanner({ reservaId, inicioPropuesto, finPropuesto }: Ade
       } else {
         setStatus({ error: res.error || "Ocurrió un error." });
       }
-    } catch (err: any) {
-      setStatus({ error: err.message || "Error al procesar la respuesta." });
+    } catch (err) {
+      setStatus({ error: err instanceof Error ? err.message : "Error al procesar la respuesta." });
     } finally {
       setLoading(false);
     }

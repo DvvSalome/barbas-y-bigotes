@@ -156,7 +156,7 @@ async function Portal({ clienteId }: { clienteId: string }) {
         ) : (
           <div className="space-y-3">
             {proximas.map((r) => {
-              let prop: any = null;
+              let prop: { inicio: string; fin: string; estado?: string } | null = null;
               if (r.nota) {
                 try {
                   const obj = JSON.parse(r.nota);

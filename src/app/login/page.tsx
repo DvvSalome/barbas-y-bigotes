@@ -32,7 +32,7 @@ export default function LoginPage() {
       .eq("auth_id", authData.user.id)
       .maybeSingle();
       
-    const rol = (profile as any)?.rol;
+    const rol = (profile as { rol?: string } | null)?.rol;
     
     if (rol === "admin") {
       router.push("/admin");

@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { categorias } from "@/lib/data/seed";
-import { createReserva, getDisponibilidad, getLiveBarberStatuses } from "@/lib/actions";
+import { createReserva, getDisponibilidad, getLiveBarberStatuses, type BarberLiveStatus } from "@/lib/actions";
 import { chatConAsistente } from "@/lib/ai-actions";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import type { Sede, SedeId, Servicio, Barbero, Categoria } from "@/lib/data/types";
@@ -84,7 +84,7 @@ export function BookingWizard({
   const [cargandoSlots, setCargandoSlots] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [selectedCat, setSelectedCat] = useState<Categoria | null>("cortes");
-  const [liveStatuses, setLiveStatuses] = useState<Record<string, any>>({});
+  const [liveStatuses, setLiveStatuses] = useState<Record<string, BarberLiveStatus>>({});
 
   const [chatOpen, setChatOpen] = useState(false);
   const [chatMessages, setChatMessages] = useState<{ role: "user" | "assistant"; content: string }[]>([
@@ -107,7 +107,7 @@ export function BookingWizard({
       }));
       chatHistory.push({ role: "user", content: userMsg });
 
-      const res = await chatConAsistente(chatHistory as any);
+      const res = await chatConAsistente(chatHistory);
 
       let cleanedText = res.text;
       const match = cleanedText.match(/ACTION_CONFIRM:\s*(\{.*\})/);
@@ -162,7 +162,9 @@ export function BookingWizard({
     () => barberos.filter((b) => b.sede === sedeId),
     [barberos, sedeId],
   );
-  const days = useMemo(() => nextDays(7), []);
+  // useState con initializer (no useMemo): estable entre renders y sin chocar
+  // con la memoización del React Compiler.
+  const [days] = useState(() => nextDays(7));
   const slots = useMemo(() => (servicio ? buildSlots(servicio.duracionMin) : ([] as number[])), [servicio]);
 
   // Cargar estados en vivo de los barberos
@@ -204,19 +206,24 @@ export function BookingWizard({
 
   // Disponibilidad real: trae los rangos ocupados del barbero ese día y se suscribe en tiempo real.
   useEffect(() => {
-    if (!day || !barbero) {
-      setOcupados([]);
-      return;
-    }
+    // Sin selección no hay slots visibles; el reset se hace al cargar los nuevos
+    // (evitamos setState sincrónico en el cuerpo del effect).
+    if (!day || !barbero) return;
     let cancel = false;
     const fetchSlots = () =>
       getDisponibilidad({ barberoId: barbero.id, fechaISO: day.toISOString() }).then((r) => {
         if (!cancel) setOcupados(r);
       });
-    setCargandoSlots(true);
-    fetchSlots().finally(() => {
-      if (!cancel) setCargandoSlots(false);
-    });
+    // Spinner + primer fetch encadenados en microtask: sin setState
+    // sincrónico en el cuerpo del effect (regla del React Compiler).
+    Promise.resolve()
+      .then(() => {
+        if (!cancel) setCargandoSlots(true);
+        return fetchSlots();
+      })
+      .finally(() => {
+        if (!cancel) setCargandoSlots(false);
+      });
 
     // Suscripción en tiempo real a las reservas de este barbero
     const sb = supabaseBrowser();

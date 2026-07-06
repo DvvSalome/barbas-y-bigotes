@@ -10,6 +10,8 @@ export default function Offline() {
         Parece que estás sin internet. Revisá tu conexión y volvé a intentar —
         tu cita te espera.
       </p>
+      {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- offline:
+          el <a> fuerza recarga completa, que es justo lo que queremos al volver la red. */}
       <a
         href="/"
         className="mt-8 rounded-full bg-accent px-8 py-3 text-xs font-semibold uppercase tracking-wide text-on-accent transition hover:bg-accent-soft"

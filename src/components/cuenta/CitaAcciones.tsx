@@ -25,7 +25,10 @@ export function CitaAcciones({
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
-  const dentroVentana = new Date(inicio).getTime() <= Date.now() + CANCELACION_MIN_HORAS * 3600_000;
+  // Date.now() en state initializer: estable durante el render (regla de pureza
+  // del compiler); se re-evalúa en cada mount, suficiente para la ventana de 2h.
+  const [ahora] = useState(() => Date.now());
+  const dentroVentana = new Date(inicio).getTime() <= ahora + CANCELACION_MIN_HORAS * 3600_000;
 
   if (dentroVentana) {
     const msg = encodeURIComponent(
