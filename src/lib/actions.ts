@@ -344,6 +344,36 @@ export async function actualizarReserva(
   return { ok: true };
 }
 
+// Auto-open de caja: la primera venta del día abre sola la caja de la sede, sin
+// que nadie la abra a mano (el dueño no opera; los barberos registran todo).
+// caja_sesiones es RLS admin-only (0008), por eso va con supabaseAdmin(). Es
+// BEST-EFFORT: jamás puede tumbar un cobro — el caller la envuelve en try/catch
+// y acá se traga el 23505 de la carrera (dos ventas simultáneas → una gana el
+// unique index parcial `caja_una_abierta_por_sede`, la otra no reabre nada).
+async function asegurarCajaAbierta(admin: SupabaseClient, sedeId: string): Promise<void> {
+  const { data: abierta, error: selErr } = await admin
+    .from("caja_sesiones")
+    .select("id")
+    .eq("sede_id", sedeId)
+    .eq("estado", "abierta")
+    .limit(1);
+  if (selErr) {
+    errorPublico("asegurarCajaAbierta select", selErr);
+    return;
+  }
+  if (abierta && abierta.length > 0) return; // ya hay una caja abierta
+  const { error: insErr } = await admin.from("caja_sesiones").insert({
+    sede_id: sedeId,
+    estado: "abierta",
+    meta_dia: 0,
+    monto_apertura: 0,
+    auto_abierta: true,
+  });
+  // 23505 = otra venta simultánea ya la abrió (unique index parcial): ya quedó
+  // abierta, ignorar. Cualquier otro error se loguea pero no se propaga.
+  if (insErr && insErr.code !== "23505") errorPublico("asegurarCajaAbierta insert", insErr);
+}
+
 // Completar la atención: cobra el cierre completo (servicio de la reserva +
 // servicios adicionales + consumos + propina + nota) y marca la reserva
 // completada. reservaId null = venta rápida (sin cita: solo productos y/o
@@ -561,7 +591,16 @@ export async function completarReserva(input: {
     }
   }
 
-  // 4) Efectos secundarios: la venta ya quedó registrada; si algo de esto falla
+  // 4) Auto-open de caja: la venta ya quedó registrada (con sus ítems), así que
+  //    esta es la primera venta que abre la caja del día si estaba cerrada. Es
+  //    best-effort: envuelto para que una caja que no abrió JAMÁS tumbe el cobro.
+  try {
+    await asegurarCajaAbierta(supabaseAdmin(), input.sede);
+  } catch (e) {
+    errorPublico("completarReserva auto-open caja", e as { message?: string });
+  }
+
+  // 5) Efectos secundarios: la venta ya quedó registrada; si algo de esto falla
   //    NO se aborta el cobro, pero SIEMPRE queda log (nunca tragar en silencio).
   for (const it of items) {
     if (it.tipo !== "producto") continue;
