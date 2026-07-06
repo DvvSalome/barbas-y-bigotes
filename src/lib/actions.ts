@@ -882,12 +882,15 @@ export async function abrirCaja(input: {
 // Snapshot puro de lo recaudado desde la apertura, desglosado por medio. Lo
 // comparten el cierre admin (cerrarCaja) y el cierre del barbero (cerrarCajaSede),
 // para que la matemática de la plata sea UNA sola: esperado en el cajón =
-// efectivo + propina cobrada en efectivo. `admin` es un SupabaseClient (la RLS de
-// caja es admin-only, pero ventas/gastos las lee cualquiera de los dos clientes).
+// fondo de apertura + efectivo + propina cobrada en efectivo − gastos. `admin`
+// es un SupabaseClient (la RLS de caja es admin-only, pero ventas/gastos las lee
+// cualquiera de los dos clientes). `montoApertura` es el fondo que ya estaba en
+// el cajón al abrir (0 en las cajas auto-abiertas por el barbero).
 async function snapshotCaja(
   admin: SupabaseClient,
   sedeId: string,
   abiertaEnISO: string,
+  montoApertura: number,
 ): Promise<{
   totales: ReturnType<typeof snapshotDinero>["totales"];
   efectivo: number;
@@ -902,14 +905,18 @@ async function snapshotCaja(
     .eq("sede_id", sedeId)
     .gte("creado_en", abiertaEnISO);
   const vs = (ventas ?? []) as { medio: string; total: number; propina: number | null }[];
-  // Matemática pura del snapshot (misma que testea scripts/check-caja.ts).
-  const { totales, efectivo, datafono, esperadoEfectivo } = snapshotDinero(vs);
   const { data: gastos } = await admin
     .from("gastos")
     .select("monto")
     .eq("sede_id", sedeId)
     .gte("creado_en", abiertaEnISO);
   const totalGastos = ((gastos ?? []) as { monto: number }[]).reduce((a, g) => a + g.monto, 0);
+  // Matemática pura del snapshot (misma que testea scripts/check-caja.ts): el
+  // esperado incluye el fondo de apertura y descuenta los gastos del cajón.
+  const { totales, efectivo, datafono, esperadoEfectivo } = snapshotDinero(vs, {
+    montoApertura,
+    totalGastos,
+  });
   return { totales, efectivo, datafono, totalGastos, esperadoEfectivo, citas: vs.length };
 }
 
@@ -923,7 +930,14 @@ export async function cerrarCaja(input: {
   const sb = await supabaseServerAuth();
   const denied = await requireAdmin(sb);
   if (denied) return { ok: false, error: denied };
-  const snap = await snapshotCaja(sb, input.sede, input.abiertaEnISO);
+  // El fondo de apertura sale de la sesión (el admin lo pudo setear al abrir).
+  const { data: ses } = await sb
+    .from("caja_sesiones")
+    .select("monto_apertura")
+    .eq("id", input.sesionId)
+    .maybeSingle();
+  const montoApertura = Number((ses as { monto_apertura?: number | null } | null)?.monto_apertura ?? 0);
+  const snap = await snapshotCaja(sb, input.sede, input.abiertaEnISO, montoApertura);
   const diferencia = diferenciaCaja(input.efectivoContado, snap.esperadoEfectivo);
 
   const { error } = await sb
@@ -993,15 +1007,16 @@ export async function cerrarCajaSede(input: {
   // Caja abierta de la sede.
   const { data: sesion, error: selErr } = await admin
     .from("caja_sesiones")
-    .select("id,abierta_en")
+    .select("id,abierta_en,monto_apertura")
     .eq("sede_id", sede)
     .eq("estado", "abierta")
     .maybeSingle();
   if (selErr) return { ok: false, error: errorPublico("cerrarCajaSede select", selErr) };
   if (!sesion) return { ok: false, error: "No hay una caja abierta en esta sede." };
-  const ses = sesion as { id: string; abierta_en: string };
+  const ses = sesion as { id: string; abierta_en: string; monto_apertura: number | null };
 
-  const snap = await snapshotCaja(admin, sede, ses.abierta_en);
+  // Las cajas auto-abiertas por el barbero tienen monto_apertura = 0 (sin fondo).
+  const snap = await snapshotCaja(admin, sede, ses.abierta_en, Number(ses.monto_apertura ?? 0));
   const diferencia = diferenciaCaja(efectivoContado, snap.esperadoEfectivo);
 
   // profile.id del que cierra → cerrada_por (para el email y la trazabilidad).

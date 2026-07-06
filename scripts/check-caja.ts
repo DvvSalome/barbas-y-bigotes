@@ -1,7 +1,7 @@
 // Chequeo ejecutable de la matemática de la CAJA (cierre manos-libres).
 // Verifica las funciones puras snapshotDinero / diferenciaCaja (las mismas que
 // usan snapshotCaja → cerrarCaja/cerrarCajaSede y los paneles de estado):
-//   esperadoEfectivo = efectivo + propina cobrada EN EFECTIVO
+//   esperadoEfectivo = monto_apertura + efectivo + propina EN EFECTIVO − gastos
 //   diferencia       = efectivo contado − esperado   (+ sobra / − falta)
 //
 //   node scripts/check-caja.ts
@@ -73,4 +73,45 @@ import { snapshotDinero, diferenciaCaja } from "../src/lib/cobro.ts";
   assert.equal(s.esperadoEfectivo, 25_000, "propina null → 0, esperado = solo el efectivo");
 }
 
-console.log("check-caja OK — esperado = efectivo + propina efectivo; diferencia = contado − esperado");
+// (h) Fondo de apertura no-cero: el cajón arranca con plata (cierre admin manual).
+{
+  const s = snapshotDinero(
+    [{ medio: "efectivo", total: 40_000, propina: 2_000 }],
+    { montoApertura: 100_000 },
+  );
+  // 100.000 fondo + 40.000 efectivo + 2.000 propina en efectivo.
+  assert.equal(s.esperadoEfectivo, 142_000, "esperado incluye el fondo de apertura");
+  assert.equal(diferenciaCaja(142_000, s.esperadoEfectivo), 0, "contado = fondo+ventas → cuadra");
+  assert.equal(s.ingresos, 40_000, "el fondo NO cuenta como ingreso del día");
+}
+
+// (i) Gastos en efectivo: salen del cajón y bajan el esperado (sin fondo).
+{
+  const s = snapshotDinero(
+    [{ medio: "efectivo", total: 50_000, propina: 3_000 }],
+    { totalGastos: 20_000 },
+  );
+  // 50.000 efectivo + 3.000 propina − 20.000 gastos.
+  assert.equal(s.esperadoEfectivo, 33_000, "esperado descuenta los gastos del cajón");
+  assert.equal(diferenciaCaja(33_000, s.esperadoEfectivo), 0, "contado tras gastos → cuadra");
+}
+
+// (j) Fondo de apertura Y gastos juntos: el caso completo del cierre admin.
+{
+  const s = snapshotDinero(
+    [
+      { medio: "efectivo", total: 60_000, propina: 4_000 },
+      { medio: "nequi", total: 30_000, propina: 5_000 },
+    ],
+    { montoApertura: 50_000, totalGastos: 15_000 },
+  );
+  // 50.000 fondo + 60.000 efectivo + 4.000 propina efectivo − 15.000 gastos.
+  // La propina de Nequi ($5.000) NO va al cajón.
+  assert.equal(s.esperadoEfectivo, 99_000, "esperado = fondo + efectivo + propina efectivo − gastos");
+  assert.equal(s.ingresos, 90_000, "ingresos = todos los medios (sin fondo, sin descontar gastos)");
+  assert.equal(diferenciaCaja(95_000, s.esperadoEfectivo), -4_000, "faltan $4.000 en el cajón");
+}
+
+console.log(
+  "check-caja OK — esperado = fondo + efectivo + propina efectivo − gastos; diferencia = contado − esperado",
+);

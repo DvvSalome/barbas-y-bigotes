@@ -71,23 +71,29 @@ export type SnapshotDinero = {
   datafono: number;
   /** Ingresos de TODOS los medios (sin propina). */
   ingresos: number;
-  /** Esperado en el cajón = efectivo + propina cobrada en efectivo. */
+  /** Esperado en el cajón = fondo de apertura + efectivo + propina en efectivo − gastos. */
   esperadoEfectivo: number;
 };
 
 // Snapshot de dinero de una caja (PURO, sin I/O): agrupa ventas por medio y
 // calcula el efectivo esperado en el cajón. Lo usan el cierre de caja (admin
 // cerrarCaja y barbero cerrarCajaSede) y los paneles de estado. Testeado en
-// scripts/check-caja.ts. La regla del cajón: el efectivo esperado incluye las
-// propinas cobradas EN EFECTIVO (esas sí van al cajón), no las de otros medios.
+// scripts/check-caja.ts. La regla del cajón: el efectivo esperado parte del
+// FONDO DE APERTURA (lo que ya estaba en el cajón), le suma el efectivo cobrado
+// y las propinas cobradas EN EFECTIVO (esas sí van al cajón, no las de otros
+// medios) y le RESTA los gastos pagados en efectivo desde la apertura.
 export function snapshotDinero(
   ventas: { medio: string; total: number; propina?: number | null }[],
+  opts?: { montoApertura?: number; totalGastos?: number },
 ): SnapshotDinero {
   const totales = totalesPorMedio(ventas);
   const efectivo = totales.efectivo?.total ?? 0;
   const datafono = totales.datafono?.total ?? 0;
   const ingresos = Object.values(totales).reduce((a, t) => a + t.total, 0);
-  const esperadoEfectivo = efectivo + (totales.efectivo?.propina ?? 0);
+  const montoApertura = opts?.montoApertura ?? 0;
+  const totalGastos = opts?.totalGastos ?? 0;
+  const esperadoEfectivo =
+    montoApertura + efectivo + (totales.efectivo?.propina ?? 0) - totalGastos;
   return { totales, efectivo, datafono, ingresos, esperadoEfectivo };
 }
 
