@@ -608,6 +608,47 @@ export async function completarReserva(input: {
   return { ok: true, total: cobro.total, descuento: cobro.descuento, propina: cobro.propina, puntos };
 }
 
+// ---------- Búsqueda global (paleta Ctrl-K del admin) ----------
+export type BusquedaGlobal = {
+  clientes: { id: string; nombre: string; telefono: string }[];
+  productos: { id: string; nombre: string; stock: number; sede: string }[];
+};
+
+// Busca clientes (nombre/teléfono) y productos (nombre) para la paleta de
+// comandos. Solo admin: expone PII de clientes de ambas sedes.
+export async function buscarGlobal(q: string): Promise<BusquedaGlobal> {
+  const vacio: BusquedaGlobal = { clientes: [], productos: [] };
+  const s = (q ?? "").trim();
+  if (s.length < 2) return vacio;
+  const sb = await supabaseServerAuth();
+  const denied = await requireAdmin(sb);
+  if (denied) return vacio;
+  // Sin metacaracteres de ilike ni comas (separador del .or() de PostgREST).
+  const like = `%${s.replace(/[%_,()]/g, "")}%`;
+  const [cliRes, prodRes] = await Promise.all([
+    sb
+      .from("clientes")
+      .select("id,nombre,telefono")
+      .or(`nombre.ilike.${like},telefono.ilike.${like}`)
+      .order("nombre")
+      .limit(5),
+    sb.from("productos").select("id,nombre,stock,sede_id").ilike("nombre", like).order("nombre").limit(5),
+  ]);
+  return {
+    clientes: ((cliRes.data ?? []) as Record<string, unknown>[]).map((c) => ({
+      id: c.id as string,
+      nombre: (c.nombre as string) ?? "Cliente",
+      telefono: (c.telefono as string) ?? "",
+    })),
+    productos: ((prodRes.data ?? []) as Record<string, unknown>[]).map((p) => ({
+      id: p.id as string,
+      nombre: p.nombre as string,
+      stock: (p.stock as number) ?? 0,
+      sede: p.sede_id as string,
+    })),
+  };
+}
+
 // ---------- Cupones (admin) + canje de puntos ----------
 export async function crearCupon(input: {
   codigo: string;

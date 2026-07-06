@@ -363,6 +363,21 @@ export async function getCajaSesiones(): Promise<CajaSesionSede[]> {
   return out;
 }
 
+export type CajaChip = { abierta: boolean; desde: string | null };
+
+// Estado liviano de caja para el chip del topbar admin (sin sumar ventas).
+export async function getCajaChip(): Promise<CajaChip> {
+  const sb = await supabaseServerAuth();
+  const { data } = await sb
+    .from("caja_sesiones")
+    .select("abierta_en")
+    .eq("estado", "abierta")
+    .order("abierta_en")
+    .limit(1);
+  const row = (data?.[0] as { abierta_en?: string } | undefined) ?? null;
+  return { abierta: !!row, desde: row?.abierta_en ?? null };
+}
+
 export type PendienteCobro = {
   id: string;
   sede: string;
