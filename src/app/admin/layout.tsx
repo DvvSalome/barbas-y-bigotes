@@ -25,7 +25,7 @@ export default async function AdminLayout({
   if ((profile as { rol?: string } | null)?.rol !== "admin") redirect("/barbero");
 
   return (
-    <div className="flex min-h-dvh">
+    <div data-staff className="flex min-h-dvh">
       <RealtimeRefresh
         subscriptions={[
           { table: "reservas" },

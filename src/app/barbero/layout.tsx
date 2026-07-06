@@ -15,7 +15,7 @@ export default async function BarberoLayout({
   if (staff.rol !== "admin" && staff.rol !== "barbero") redirect("/cuenta");
 
   return (
-    <>
+    <div data-staff className="min-h-dvh">
       <header className="sticky top-0 z-30 border-b border-line bg-bg/70 backdrop-blur-md">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-3.5">
           <Link href="/" aria-label="Barbas & Bigotes">
@@ -25,6 +25,6 @@ export default async function BarberoLayout({
         </div>
       </header>
       {children}
-    </>
+    </div>
   );
 }
