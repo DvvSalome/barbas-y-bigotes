@@ -8,9 +8,11 @@ import {
   getListaEspera,
   getStaffContext,
   getMedios,
+  getCajaSede,
 } from "@/lib/data/queries";
 import { AgendaList } from "@/components/barbero/AgendaList";
 import { EsperaPanel } from "@/components/barbero/EsperaPanel";
+import { CierreCaja } from "@/components/barbero/CierreCaja";
 import { RealtimeRefresh } from "@/components/motion/RealtimeRefresh";
 
 export const metadata: Metadata = { title: "App del barbero" };
@@ -27,6 +29,12 @@ export default async function BarberoPage() {
     getAgendaHoy(filtro),
     getListaEspera(filtro),
   ]);
+
+  // Cierre de caja: sólo para el barbero, sobre SU sede (el admin cierra en
+  // /admin/cuadre). La caja se abre sola con la primera venta del día.
+  const sedeBarbero =
+    staff.rol === "barbero" ? barberos.find((b) => b.id === staff.barberoId)?.sede ?? null : null;
+  const caja = sedeBarbero ? await getCajaSede(sedeBarbero) : null;
 
   return (
     <main className="mx-auto max-w-5xl px-6 py-10">
@@ -56,6 +64,12 @@ export default async function BarberoPage() {
       <div className="mt-14 border-t border-line pt-10">
         <EsperaPanel espera={espera} sedes={sedes} barberos={barberos} servicios={servicios} />
       </div>
+
+      {sedeBarbero && (
+        <div className="mt-14 border-t border-line pt-10">
+          <CierreCaja caja={caja} />
+        </div>
+      )}
     </main>
   );
 }

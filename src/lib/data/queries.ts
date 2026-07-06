@@ -363,6 +363,42 @@ export async function getCajaSesiones(): Promise<CajaSesionSede[]> {
   return out;
 }
 
+export type CajaSedeEstado = {
+  sesionId: string;
+  abiertaEn: string;
+  /** Esperado en el cajón = efectivo + propina cobrada en efectivo. */
+  esperadoEfectivo: number;
+  /** Ingresos de TODOS los medios desde la apertura (solo para contexto). */
+  ingresos: number;
+} | null;
+
+// Estado de la caja de UNA sede para el panel de cierre del barbero: la sesión
+// abierta + el esperado en efectivo, o null si no hay caja abierta. caja_sesiones
+// es RLS admin-only (0008) → supabaseAdmin() (el gate real es que /barbero es
+// staff-only). No selecciona columnas de 0020 (aún sin ejecutar): tolera pre-migración.
+export async function getCajaSede(sedeId: string): Promise<CajaSedeEstado> {
+  if (!sedeId) return null;
+  const admin = supabaseAdmin();
+  const { data: sesion } = await admin
+    .from("caja_sesiones")
+    .select("id,abierta_en")
+    .eq("sede_id", sedeId)
+    .eq("estado", "abierta")
+    .maybeSingle();
+  if (!sesion) return null;
+  const ses = sesion as { id: string; abierta_en: string };
+  const { data: ventas } = await admin
+    .from("ventas")
+    .select("medio,total,propina")
+    .eq("sede_id", sedeId)
+    .gte("creado_en", ses.abierta_en);
+  const vs = (ventas ?? []) as { medio: string; total: number; propina: number | null }[];
+  const totales = totalesPorMedio(vs);
+  const esperadoEfectivo = (totales.efectivo?.total ?? 0) + (totales.efectivo?.propina ?? 0);
+  const ingresos = Object.values(totales).reduce((a, t) => a + t.total, 0);
+  return { sesionId: ses.id, abiertaEn: ses.abierta_en, esperadoEfectivo, ingresos };
+}
+
 export type CajaChip = { abierta: boolean; desde: string | null; abiertasCount: number; sedesCount: number };
 
 // Estado liviano de caja para el chip del topbar admin (sin sumar ventas).
