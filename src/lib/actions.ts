@@ -11,7 +11,7 @@ import { calcularCobro, totalesPorMedio } from "@/lib/cobro";
 import { pushACliente } from "@/lib/push";
 import { fechaHoraBogota } from "@/lib/format";
 
-export type ActionResult = { ok: boolean; error?: string; total?: number; descuento?: number; propina?: number; puntos?: number; encolado?: boolean; esperaHasta?: string | null };
+export type ActionResult = { ok: boolean; error?: string; id?: string; total?: number; descuento?: number; propina?: number; puntos?: number; encolado?: boolean; esperaHasta?: string | null };
 
 // --- Autorización (defensa en profundidad; la RLS es la barrera real) ---
 // Las server actions corren con la sesión del usuario, pero igual revalidamos el
@@ -97,16 +97,63 @@ export async function addProducto(input: {
   const sb = await supabaseServerAuth();
   const denied = await requireAdmin(sb);
   if (denied) return { ok: false, error: denied };
-  const { error } = await sb.from("productos").insert({
-    nombre: input.nombre,
-    sede_id: input.sede,
-    precio: input.precio,
-    stock: input.stock,
-    stock_minimo: input.stockMinimo,
-    comision_pct: input.comisionPct,
-  });
+  const { data, error } = await sb
+    .from("productos")
+    .insert({
+      nombre: input.nombre,
+      sede_id: input.sede,
+      precio: input.precio,
+      stock: input.stock,
+      stock_minimo: input.stockMinimo,
+      comision_pct: input.comisionPct,
+    })
+    .select("id")
+    .single();
   if (error) return { ok: false, error: errorPublico("addProducto", error) };
   revalidatePath("/admin/inventario");
+  // El id permite encadenar la foto opcional (subirFotoProducto) tras crear.
+  return { ok: true, id: (data as { id: string }).id };
+}
+
+const FOTO_MAX_BYTES = 2 * 1024 * 1024;
+
+// Foto del producto → Supabase Storage (bucket público "productos", migración 0019).
+// service role para el storage: la escritura del bucket no se expone por RLS,
+// el gate real es requireAdmin acá.
+export async function subirFotoProducto(formData: FormData): Promise<ActionResult> {
+  const sb = await supabaseServerAuth();
+  const denied = await requireAdmin(sb);
+  if (denied) return { ok: false, error: denied };
+
+  const productoId = String(formData.get("productoId") ?? "").trim();
+  const file = formData.get("foto");
+  if (!productoId || !(file instanceof File) || file.size === 0)
+    return { ok: false, error: "Elegí una imagen." };
+  if (!file.type.startsWith("image/")) return { ok: false, error: "El archivo tiene que ser una imagen." };
+  if (file.size > FOTO_MAX_BYTES) return { ok: false, error: "La imagen no puede pesar más de 2MB." };
+
+  const admin = supabaseAdmin();
+  // Existencia + sanidad del id (el path del storage se arma con él).
+  const { data: prod } = await admin.from("productos").select("id").eq("id", productoId).maybeSingle();
+  if (!prod) return { ok: false, error: "Producto no encontrado." };
+
+  const ext =
+    (file.type.split("/")[1] ?? "jpg").toLowerCase().replace("jpeg", "jpg").replace(/[^a-z0-9]/g, "") || "jpg";
+  const path = `${productoId}.${ext}`;
+  const { error: upErr } = await admin.storage
+    .from("productos")
+    .upload(path, file, { upsert: true, contentType: file.type });
+  if (upErr)
+    return { ok: false, error: errorPublico("subirFotoProducto upload", upErr, "No se pudo subir la foto. Intentá de nuevo.") };
+
+  const { data: pub } = admin.storage.from("productos").getPublicUrl(path);
+  // Cache-buster: el path se repite en cada re-subida y el CDN no debe servir la vieja.
+  const url = `${pub.publicUrl}?v=${Date.now()}`;
+  const { error: updErr } = await admin.from("productos").update({ foto_url: url }).eq("id", productoId);
+  if (updErr) return { ok: false, error: errorPublico("subirFotoProducto update", updErr) };
+
+  revalidatePath("/admin/inventario");
+  revalidatePath("/barbero");
   return { ok: true };
 }
 

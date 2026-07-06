@@ -66,11 +66,21 @@ export async function getBarberos(): Promise<Barbero[]> {
 
 export async function getProductos(): Promise<Producto[]> {
   const sb = supabaseServer();
-  const { data } = await sb
+  const res = await sb
     .from("productos")
-    .select("id,nombre,sede_id,precio,stock,stock_minimo,comision_pct")
+    .select("id,nombre,sede_id,precio,stock,stock_minimo,comision_pct,foto_url")
     .order("sede_id");
-  return (data ?? []).map((p: Record<string, unknown>) => ({
+  let rows: Record<string, unknown>[] | null = res.data;
+  if (res.error) {
+    // Compat pre-0019: si foto_url todavía no existe en la DB, el POS no se cae.
+    rows = (
+      await sb
+        .from("productos")
+        .select("id,nombre,sede_id,precio,stock,stock_minimo,comision_pct")
+        .order("sede_id")
+    ).data;
+  }
+  return (rows ?? []).map((p: Record<string, unknown>) => ({
     id: p.id as string,
     nombre: p.nombre as string,
     sede: p.sede_id as SedeId,
@@ -78,6 +88,7 @@ export async function getProductos(): Promise<Producto[]> {
     stock: p.stock as number,
     stockMinimo: p.stock_minimo as number,
     comisionPct: p.comision_pct as number,
+    fotoUrl: (p.foto_url as string) ?? null,
   }));
 }
 
