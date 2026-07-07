@@ -112,6 +112,9 @@ export async function responderPropuestaAdelanto(
       .update({
         inicio: start.toISOString(),
         fin: end.toISOString(),
+        // La cita se mueve a un horario más temprano → resetear el recordatorio
+        // para que la NUEVA fecha vuelva a la vista de recordatorios pendientes.
+        reminder_sent: false,
         nota: userNote.trim() ? userNote.trim() : JSON.stringify(notaObj),
       })
       .eq("id", reservaId);
@@ -147,38 +150,21 @@ export async function savePushSubscription(
 
   const admin = supabaseAdmin();
 
-  // ¿Ya existe una fila para este endpoint? En un equipo compartido el mismo
-  // endpoint del navegador puede quedar atado a otro cliente: hay que RE-VINCULARLO
-  // al cliente logueado ahora (si no, el dueño anterior seguiría recibiendo sus
-  // avisos en este dispositivo → fuga de datos de citas).
-  const { data: existing } = await admin
-    .from("push_subscriptions")
-    .select("id")
-    .eq("endpoint", subscription.endpoint)
-    .maybeSingle();
-
-  if (existing) {
-    const { error: updErr } = await admin
-      .from("push_subscriptions")
-      .update({
-        cliente_ref: ctx.clienteId,
-        p256dh: subscription.keys.p256dh,
-        auth: subscription.keys.auth,
-      })
-      .eq("endpoint", subscription.endpoint);
-    if (updErr) {
-      console.error("Error updating push subscription", updErr);
-      return { ok: false, error: "Error al guardar suscripción" };
-    }
-    return { ok: true };
-  }
-
-  const { error } = await admin.from("push_subscriptions").insert({
-    cliente_ref: ctx.clienteId,
-    endpoint: subscription.endpoint,
-    p256dh: subscription.keys.p256dh,
-    auth: subscription.keys.auth,
-  });
+  // Upsert por endpoint (unique push_sub_endpoint_unica, 0022): en un equipo
+  // compartido el mismo endpoint del navegador puede quedar atado a otro cliente,
+  // así que hay que RE-VINCULARLO al cliente logueado ahora (si no, el dueño
+  // anterior seguiría recibiendo sus avisos en este dispositivo → fuga de datos).
+  // El upsert reemplaza el select+branch y cierra la fuga incluso si hubiera
+  // filas duplicadas del pasado (el dedup + unique de 0022 las colapsa a una).
+  const { error } = await admin.from("push_subscriptions").upsert(
+    {
+      cliente_ref: ctx.clienteId,
+      endpoint: subscription.endpoint,
+      p256dh: subscription.keys.p256dh,
+      auth: subscription.keys.auth,
+    },
+    { onConflict: "endpoint" },
+  );
 
   if (error) {
     console.error("Error saving push subscription", error);
@@ -354,7 +340,9 @@ export async function reagendarReservaCliente(
 
   const { data: upd, error } = await admin
     .from("reservas")
-    .update({ inicio: nuevoInicio.toISOString(), fin: nuevoFin.toISOString() })
+    // reminder_sent: false → la NUEVA fecha vuelve a entrar a la vista de
+    // recordatorios (si ya se había mandado el de la fecha vieja, no se perdería).
+    .update({ inicio: nuevoInicio.toISOString(), fin: nuevoFin.toISOString(), reminder_sent: false })
     .eq("id", reservaId)
     .in("estado", ["pendiente", "confirmada"])
     .select("id");
