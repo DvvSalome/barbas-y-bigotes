@@ -137,10 +137,9 @@ export const siteGraph = {
       paymentAccepted: "Efectivo, Nequi, Daviplata, datáfono, transferencia",
       address: {
         "@type": "PostalAddress",
-        // TODO NAP: direccion segun la ficha de Google (con resenas). El sitio
-        // visible dice "Cra. 45 #50-168"; cuando el dueno confirme la real,
-        // unificar sitio + ficha + este schema + public/llms.txt caracter a caracter.
-        streetAddress: "Cra. 45 #53-150",
+        // NAP confirmado por el dueno (jul 2026): la direccion real es la que
+        // muestra el sitio. Mantener identica en sitio + ficha Google + llms.txt.
+        streetAddress: "Cra. 45 #50-168",
         addressLocality: "Barranquilla",
         addressRegion: "Atlántico",
         addressCountry: "CO",
