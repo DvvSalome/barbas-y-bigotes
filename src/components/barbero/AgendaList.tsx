@@ -404,6 +404,12 @@ function CheckoutForm({
   onCancel?: () => void;
 }) {
   const rapida = !reserva;
+  // Token de idempotencia: se genera UNA vez por apertura del form (el initializer
+  // de useState corre solo en el primer render). En la venta rápida es el backstop
+  // anti doble-cobro (no hay reserva que reclamar); en el cobro de reserva no
+  // molesta (el claim ya protege). Al cerrar y reabrir el form, el componente se
+  // remonta y nace un token nuevo → cada cobro real usa su propio token.
+  const [idemToken] = useState(() => crypto.randomUUID());
   const [sede, setSede] = useState(reserva?.sede ?? sedes[0]?.id ?? "");
   const [barberoId, setBarberoId] = useState(""); // venta rápida: el admin puede cobrar por otro
   const [nombre, setNombre] = useState(""); // venta rápida: nombre del cliente (opcional)
@@ -508,6 +514,7 @@ function CheckoutForm({
       propina,
       nota,
       cuponCodigo: cupon.trim() || undefined,
+      idemToken,
     });
     setSaving(false);
     if (res.ok)

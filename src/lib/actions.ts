@@ -415,6 +415,7 @@ export async function completarReserva(input: {
   propina?: number; // entero COP ≥ 0; NO entra al total
   nota?: string;
   cuponCodigo?: string;
+  idemToken?: string; // token de idempotencia (obligatorio en venta rápida)
 }): Promise<ActionResult> {
   const sb = await supabaseServerAuth();
   const staff = await getStaffContext();
@@ -523,6 +524,16 @@ export async function completarReserva(input: {
     return { ok: false, error: "Agregá al menos un servicio o producto para la venta rápida." };
   }
 
+  // Anti doble-cobro de la venta rápida: sin reserva NO hay claim ni el unique
+  // parcial ventas_reserva_unica (es where reserva_id is not null), así que un
+  // doble-clic o 2 dispositivos crearían 2 ventas idénticas. El idemToken (único
+  // por apertura del form) + el unique parcial ventas_idem_unica (0021) cierran
+  // la carrera: la 2da inserción choca 23505 y se rechaza sin doble cobro.
+  const idemToken = (input.idemToken ?? "").trim() || null;
+  if (!input.reservaId && !idemToken) {
+    return { ok: false, error: "No se pudo asegurar la venta. Actualizá la página e intentá de nuevo." };
+  }
+
   // Cupón (opcional): valida y descuenta (sobre servicios + productos, tope el bruto).
   let cupon: { tipo: "porcentaje" | "monto"; valor: number } | null = null;
   let cuponCodigo: string | null = null;
@@ -575,7 +586,30 @@ export async function completarReserva(input: {
     if (revErr) errorPublico("completarReserva revertir", revErr);
   }
 
-  // 2) La venta. El unique index ventas_reserva_unica es el backstop del claim.
+  // 2) Reservar el uso del cupón ANTES de armar/insertar la venta. bump_cupon_uso
+  //    es atómico (0008: incrementa solo si usos < usos_max, devuelve found), así
+  //    que reservar el uso primero cierra la carrera de dos cobros casi simultáneos
+  //    con un cupón de 1 uso: solo uno consigue el uso, el otro se rechaza acá SIN
+  //    haber cobrado el descuento. Antes el bump iba al final y su `false` (tope
+  //    alcanzado) se ignoraba → ambos cobros aplicaban el mismo cupón.
+  //    TRADEOFF documentado: si la venta/ítems fallan DESPUÉS de este bump, el uso
+  //    queda consumido (no hay decremento: cupones es escritura solo-admin por RLS
+  //    y agregar una RPC de reverso excede este fix). Es un caso raro y el peor
+  //    resultado es que un cupón quede "gastado" sin cobro — nunca un doble cobro.
+  if (cuponCodigo) {
+    const { data: bumped, error: cupErr } = await sb.rpc("bump_cupon_uso", { p_codigo: cuponCodigo });
+    if (cupErr) {
+      await revertirClaim();
+      return { ok: false, error: errorPublico("completarReserva bump_cupon_uso", cupErr, "No se pudo aplicar el cupón. Intentá de nuevo.") };
+    }
+    if (bumped === false) {
+      await revertirClaim();
+      return { ok: false, error: "Cupón agotado." };
+    }
+  }
+
+  // 3) La venta. Los unique index ventas_reserva_unica (reserva) y ventas_idem_unica
+  //    (venta rápida, 0021) son el backstop anti doble-cobro.
   const { data: venta, error } = await sb
     .from("ventas")
     .insert({
@@ -584,6 +618,7 @@ export async function completarReserva(input: {
       cliente_ref: input.clienteRef,
       cliente_nombre: !input.clienteRef ? (input.clienteNombre ?? "").trim() || null : null,
       reserva_id: input.reservaId,
+      idem_token: idemToken,
       medio,
       total: cobro.total,
       descuento: cobro.descuento,
@@ -594,16 +629,18 @@ export async function completarReserva(input: {
     .select("id")
     .single();
   if (error || !venta) {
-    // 23505 = ya existe una venta para esta reserva: quedó cobrada, no revertir.
+    // 23505 = ya existe una venta para esta reserva/token: quedó cobrada, no revertir
+    // (la venta ganadora ya consumió el uso del cupón; revertirlo lo desharía mal).
     if (error?.code === "23505") {
-      return { ok: false, error: errorPublico("completarReserva", error, "Esta cita ya fue cobrada.") };
+      const yaMsg = input.reservaId ? "Esta cita ya fue cobrada." : "Esta venta ya fue cobrada.";
+      return { ok: false, error: errorPublico("completarReserva", error, yaMsg) };
     }
     await revertirClaim();
     return { ok: false, error: errorPublico("completarReserva", error, "No se pudo completar el cobro. Intentá de nuevo.") };
   }
   const ventaId = (venta as { id: string }).id;
 
-  // 3) Los ítems. Si fallan, NO puede quedar la venta huérfana: se borra la
+  // 4) Los ítems. Si fallan, NO puede quedar la venta huérfana: se borra la
   //    venta y se revierte la reserva para reintentar el cobro completo.
   if (items.length) {
     const { error: itemsErr } = await sb.from("venta_items").insert(items.map((it) => ({ ...it, venta_id: ventaId })));
@@ -615,7 +652,7 @@ export async function completarReserva(input: {
     }
   }
 
-  // 4) Auto-open de caja: la venta ya quedó registrada (con sus ítems), así que
+  // 5) Auto-open de caja: la venta ya quedó registrada (con sus ítems), así que
   //    esta es la primera venta que abre la caja del día si estaba cerrada. Es
   //    best-effort: envuelto para que una caja que no abrió JAMÁS tumbe el cobro.
   try {
@@ -624,17 +661,13 @@ export async function completarReserva(input: {
     errorPublico("completarReserva auto-open caja", e as { message?: string });
   }
 
-  // 5) Efectos secundarios: la venta ya quedó registrada; si algo de esto falla
+  // 6) Efectos secundarios: la venta ya quedó registrada; si algo de esto falla
   //    NO se aborta el cobro, pero SIEMPRE queda log (nunca tragar en silencio).
+  //    (El uso del cupón ya se reservó en el paso 2, antes de la venta.)
   for (const it of items) {
     if (it.tipo !== "producto") continue;
     const { error: stockErr } = await sb.rpc("decrement_stock", { p_id: it.ref_id, p_qty: it.cantidad });
     if (stockErr) errorPublico("completarReserva decrement_stock", stockErr);
-  }
-  // Registrar uso del cupón (atómico: incrementa solo si no superó el tope; sin carrera).
-  if (cuponCodigo) {
-    const { error: cupErr } = await sb.rpc("bump_cupon_uso", { p_codigo: cuponCodigo });
-    if (cupErr) errorPublico("completarReserva bump_cupon_uso", cupErr);
   }
   // Fidelidad: puntos por el neto cobrado (sin propina), solo si el cliente está inscrito.
   let puntos = input.clienteRef ? cobro.puntos : 0;
@@ -944,6 +977,56 @@ async function snapshotCaja(
   return { totales, efectivo, datafono, totalGastos, esperadoEfectivo, citas: vs.length };
 }
 
+// Cierre de caja UNIFICADO: la MISMA función que ejecutan el cierre admin
+// (cerrarCaja) y el del barbero (cerrarCajaSede), para que la matemática y el
+// guard de idempotencia no vuelvan a divergir. El update es CONDICIONAL a
+// 'abierta' + .select("id"): si otra llamada ya la cerró en la carrera (o el
+// admin cierra sobre una UI vieja tras el cierre del barbero), 0 filas → no
+// pisa el conteo del que la cerró primero, avisa "La caja ya fue cerrada.".
+async function ejecutarCierreCaja(
+  client: SupabaseClient,
+  params: {
+    sesionId: string;
+    sede: string;
+    abiertaEnISO: string;
+    montoApertura: number;
+    efectivoContado: number;
+    nota: string | null;
+    cerradaPor?: string | null;
+  },
+): Promise<
+  | { ok: true; snap: Awaited<ReturnType<typeof snapshotCaja>>; diferencia: number }
+  | { ok: false; error: string }
+> {
+  const snap = await snapshotCaja(client, params.sede, params.abiertaEnISO, params.montoApertura);
+  const diferencia = diferenciaCaja(params.efectivoContado, snap.esperadoEfectivo);
+  // Columnas legacy pobladas por compat (histórico y UI vieja) + snapshot jsonb.
+  const update: Record<string, unknown> = {
+    estado: "cerrada",
+    cerrada_en: new Date().toISOString(),
+    total_efectivo: snap.efectivo,
+    total_datafono: snap.datafono,
+    totales: snap.totales,
+    total_gastos: snap.totalGastos,
+    citas: snap.citas,
+    efectivo_contado: params.efectivoContado,
+    diferencia,
+    nota: params.nota,
+  };
+  // cerrada_por solo lo setea el cierre del barbero (trazabilidad del email).
+  if (params.cerradaPor !== undefined) update.cerrada_por = params.cerradaPor;
+
+  const { data: cerrada, error } = await client
+    .from("caja_sesiones")
+    .update(update)
+    .eq("id", params.sesionId)
+    .eq("estado", "abierta")
+    .select("id");
+  if (error) return { ok: false, error: errorPublico("ejecutarCierreCaja", error) };
+  if (!cerrada || cerrada.length === 0) return { ok: false, error: "La caja ya fue cerrada." };
+  return { ok: true, snap, diferencia };
+}
+
 export async function cerrarCaja(input: {
   sesionId: string;
   sede: string;
@@ -961,26 +1044,16 @@ export async function cerrarCaja(input: {
     .eq("id", input.sesionId)
     .maybeSingle();
   const montoApertura = Number((ses as { monto_apertura?: number | null } | null)?.monto_apertura ?? 0);
-  const snap = await snapshotCaja(sb, input.sede, input.abiertaEnISO, montoApertura);
-  const diferencia = diferenciaCaja(input.efectivoContado, snap.esperadoEfectivo);
 
-  const { error } = await sb
-    .from("caja_sesiones")
-    .update({
-      estado: "cerrada",
-      cerrada_en: new Date().toISOString(),
-      // Columnas legacy pobladas por compat (histórico y UI vieja) + snapshot jsonb.
-      total_efectivo: snap.efectivo,
-      total_datafono: snap.datafono,
-      totales: snap.totales,
-      total_gastos: snap.totalGastos,
-      citas: snap.citas,
-      efectivo_contado: input.efectivoContado,
-      diferencia,
-      nota: input.nota || null,
-    })
-    .eq("id", input.sesionId);
-  if (error) return { ok: false, error: errorPublico("cerrarCaja", error) };
+  const res = await ejecutarCierreCaja(sb, {
+    sesionId: input.sesionId,
+    sede: input.sede,
+    abiertaEnISO: input.abiertaEnISO,
+    montoApertura,
+    efectivoContado: input.efectivoContado,
+    nota: input.nota || null,
+  });
+  if (!res.ok) return { ok: false, error: res.error };
   revalidatePath("/admin/cuadre");
   revalidatePath("/admin");
   return { ok: true };
@@ -1039,10 +1112,6 @@ export async function cerrarCajaSede(input: {
   if (!sesion) return { ok: false, error: "No hay una caja abierta en esta sede." };
   const ses = sesion as { id: string; abierta_en: string; monto_apertura: number | null };
 
-  // Las cajas auto-abiertas por el barbero tienen monto_apertura = 0 (sin fondo).
-  const snap = await snapshotCaja(admin, sede, ses.abierta_en, Number(ses.monto_apertura ?? 0));
-  const diferencia = diferenciaCaja(efectivoContado, snap.esperadoEfectivo);
-
   // profile.id del que cierra → cerrada_por (para el email y la trazabilidad).
   const {
     data: { user },
@@ -1053,27 +1122,20 @@ export async function cerrarCajaSede(input: {
     cerradaPor = (prof as { id?: string } | null)?.id ?? null;
   }
 
-  // Update condicional a 'abierta': si otra llamada la cerró en la carrera, 0 filas.
-  const { data: cerrada, error } = await admin
-    .from("caja_sesiones")
-    .update({
-      estado: "cerrada",
-      cerrada_en: new Date().toISOString(),
-      cerrada_por: cerradaPor,
-      total_efectivo: snap.efectivo,
-      total_datafono: snap.datafono,
-      totales: snap.totales,
-      total_gastos: snap.totalGastos,
-      citas: snap.citas,
-      efectivo_contado: efectivoContado,
-      diferencia,
-      nota: (input.nota ?? "").trim() || null,
-    })
-    .eq("id", ses.id)
-    .eq("estado", "abierta")
-    .select("id");
-  if (error) return { ok: false, error: errorPublico("cerrarCajaSede", error) };
-  if (!cerrada || cerrada.length === 0) return { ok: false, error: "La caja ya fue cerrada." };
+  // Cierre unificado (mismo guard de idempotencia que el cierre admin). Las cajas
+  // auto-abiertas por el barbero tienen monto_apertura = 0 (sin fondo).
+  const res = await ejecutarCierreCaja(admin, {
+    sesionId: ses.id,
+    sede,
+    abiertaEnISO: ses.abierta_en,
+    montoApertura: Number(ses.monto_apertura ?? 0),
+    efectivoContado,
+    nota: (input.nota ?? "").trim() || null,
+    cerradaPor,
+  });
+  if (!res.ok) return { ok: false, error: res.error };
+  const snap = res.snap;
+  const diferencia = res.diferencia;
 
   const total = Object.values(snap.totales).reduce((a, t) => a + t.total, 0);
   revalidatePath("/barbero");
