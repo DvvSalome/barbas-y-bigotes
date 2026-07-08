@@ -23,7 +23,7 @@ function horaBogota(iso: string) {
 const fld =
   "w-full rounded-lg border border-line bg-bg px-3 py-2 text-ink placeholder:text-muted focus:border-accent focus:outline-none";
 const btn =
-  "rounded-full bg-accent px-5 py-2 text-xs font-semibold uppercase tracking-wide text-on-accent transition hover:bg-accent-soft disabled:opacity-50";
+  "rounded-full bg-gradient-to-b from-accent-soft to-accent px-5 py-2 text-xs font-semibold uppercase tracking-wide text-on-accent shadow-[0_10px_24px_-10px_rgba(210,63,52,0.7)] transition hover:brightness-105 disabled:opacity-50 disabled:shadow-none";
 
 export function CierreCaja({ caja }: { caja: CajaSedeEstado }) {
   const router = useRouter();
@@ -83,13 +83,19 @@ export function CierreCaja({ caja }: { caja: CajaSedeEstado }) {
   return (
     <section className="rounded-2xl border border-line bg-panel p-5">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h3 className="font-display text-xl text-ink">Caja de la sede</h3>
-        <span className="text-xs text-muted">Abierta desde {horaBogota(caja.abiertaEn)}</span>
+        <h3 className="font-display text-xl font-bold uppercase text-ink">Caja de la sede</h3>
+        <span className="rounded-full bg-ok/10 px-2.5 py-0.5 font-display text-[10px] font-bold uppercase tracking-wide text-ok">
+          Abierta desde {horaBogota(caja.abiertaEn)}
+        </span>
       </div>
-      <p className="mt-2 text-sm text-muted">
-        Esperado en efectivo{" "}
-        <span className="font-semibold text-ink tabular-nums">{cop(esperado)}</span>
-      </p>
+      <div className="mt-4 rounded-xl border border-line bg-elevated p-4 text-center">
+        <div className="font-display text-[11px] font-bold uppercase tracking-[0.18em] text-muted">
+          Esperado en efectivo
+        </div>
+        <div className="mt-1 font-display text-4xl font-extrabold tabular-nums text-ink">
+          {cop(esperado)}
+        </div>
+      </div>
 
       {!abierto ? (
         <button className={`${btn} mt-4`} onClick={() => setAbierto(true)}>

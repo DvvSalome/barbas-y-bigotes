@@ -90,13 +90,13 @@ export function AgendaList({
           <div className="flex flex-wrap gap-2">
             <button
               onClick={() => setWalkinOpen(true)}
-              className="rounded-full bg-accent px-6 py-2.5 text-sm font-semibold uppercase tracking-wide text-on-accent transition hover:bg-accent-soft"
+              className="rounded-full bg-gradient-to-b from-accent-soft to-accent px-6 py-2.5 text-sm font-semibold uppercase tracking-wide text-on-accent shadow-[0_10px_24px_-10px_rgba(210,63,52,0.7)] transition hover:brightness-105"
             >
               + Cliente sin reserva (walk-in)
             </button>
             <button
               onClick={() => setVentaOpen(true)}
-              className="rounded-full border border-accent/50 px-6 py-2.5 text-sm font-semibold uppercase tracking-wide text-accent-soft transition hover:bg-accent/10"
+              className="rounded-full border border-accent/50 bg-accent/[0.06] px-6 py-2.5 text-sm font-semibold uppercase tracking-wide text-accent-soft transition hover:bg-accent/15"
             >
               Venta rápida
             </button>
@@ -162,8 +162,18 @@ export function AgendaList({
               } catch {}
             }
 
+            const enCurso = r.estado === "en_curso";
             return (
-              <div key={r.id} className="rounded-2xl border border-line bg-panel p-4">
+              <div
+                key={r.id}
+                className={`relative overflow-hidden rounded-2xl border bg-panel p-4 ${enCurso ? "border-accent/40 pl-5" : "border-line"}`}
+              >
+                {enCurso && (
+                  <span
+                    aria-hidden
+                    className="absolute inset-y-0 left-0 w-1 bg-gradient-to-b from-accent-soft to-accent"
+                  />
+                )}
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div className="flex items-center gap-3">
                     <div className="w-20 font-display text-2xl text-accent-soft">{hora(r.inicio)}</div>

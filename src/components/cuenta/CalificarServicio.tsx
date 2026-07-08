@@ -40,7 +40,7 @@ export function CalificarServicio({ pendiente }: { pendiente: VisitaPendiente | 
               href={googleUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="mt-4 inline-block rounded-full bg-accent px-6 py-3 text-sm font-semibold uppercase tracking-wide text-on-accent transition hover:bg-accent-soft"
+              className="mt-4 inline-block rounded-full bg-gradient-to-b from-accent-soft to-accent px-6 py-3 text-sm font-semibold uppercase tracking-wide text-on-accent shadow-[0_12px_26px_-10px_rgba(210,63,52,0.7)] transition hover:brightness-105"
             >
               ⭐ Dejanos tu reseña en Google
             </a>
@@ -84,8 +84,8 @@ export function CalificarServicio({ pendiente }: { pendiente: VisitaPendiente | 
 
   return (
     <section className="mb-8 rounded-2xl border border-line bg-panel p-5">
-      <div className="text-xs uppercase tracking-[0.18em] text-accent-soft">Tu última visita</div>
-      <h3 className="mt-1 font-display text-2xl uppercase">¿Cómo estuvo tu última visita?</h3>
+      <div className="font-display text-[11px] font-bold uppercase tracking-[0.3em] text-accent-soft">Tu opinión</div>
+      <h3 className="mt-1 font-display text-2xl font-bold uppercase">¿Cómo estuvo tu última visita?</h3>
       <p className="mt-1 text-sm text-muted">
         {pendiente.servicio} · {pendiente.barbero} · {pendiente.fecha}
       </p>
@@ -99,7 +99,7 @@ export function CalificarServicio({ pendiente }: { pendiente: VisitaPendiente | 
               onClick={() => setScore(n)}
               aria-label={`${n} ${n === 1 ? "estrella" : "estrellas"}`}
               aria-pressed={score === n}
-              className={`text-4xl leading-none transition ${n <= score ? "text-accent" : "text-line hover:text-accent/50"}`}
+              className={`text-5xl leading-none transition hover:scale-110 ${n <= score ? "text-accent" : "text-line hover:text-accent/50"}`}
             >
               ★
             </button>
@@ -123,7 +123,7 @@ export function CalificarServicio({ pendiente }: { pendiente: VisitaPendiente | 
 
         <button
           disabled={busy || score < 1}
-          className="rounded-full bg-accent px-6 py-2.5 text-sm font-semibold uppercase tracking-wide text-on-accent transition hover:bg-accent-soft disabled:opacity-50"
+          className="rounded-full bg-gradient-to-b from-accent-soft to-accent px-6 py-2.5 text-sm font-semibold uppercase tracking-wide text-on-accent shadow-[0_12px_26px_-10px_rgba(210,63,52,0.7)] transition hover:brightness-105 disabled:opacity-50 disabled:shadow-none"
         >
           {busy ? "Enviando…" : "Enviar calificación"}
         </button>

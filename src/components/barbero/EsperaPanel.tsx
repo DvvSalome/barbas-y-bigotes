@@ -118,7 +118,7 @@ export function EsperaPanel({
                 <button
                   onClick={() => atender(e.id)}
                   disabled={busy}
-                  className="rounded-full bg-accent px-3 py-1.5 text-xs font-semibold uppercase text-on-accent transition hover:bg-accent-soft disabled:opacity-50"
+                  className="rounded-full bg-gradient-to-b from-accent-soft to-accent px-3 py-1.5 text-xs font-semibold uppercase text-on-accent shadow-[0_8px_20px_-10px_rgba(210,63,52,0.7)] transition hover:brightness-105 disabled:opacity-50"
                 >
                   Atender ahora
                 </button>
@@ -237,7 +237,7 @@ function EsperaForm({
       <div className="flex gap-2 sm:col-span-2">
         <button
           disabled={saving}
-          className="rounded-full bg-accent px-6 py-2.5 text-sm font-semibold uppercase tracking-wide text-on-accent transition hover:bg-accent-soft disabled:opacity-50"
+          className="rounded-full bg-gradient-to-b from-accent-soft to-accent px-6 py-2.5 text-sm font-semibold uppercase tracking-wide text-on-accent shadow-[0_10px_24px_-10px_rgba(210,63,52,0.7)] transition hover:brightness-105 disabled:opacity-50"
         >
           {saving ? "Agregando…" : "Agregar a la espera"}
         </button>
