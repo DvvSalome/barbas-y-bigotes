@@ -54,6 +54,10 @@ const COMBO_ON = true;
 
 const GRAD_CTA = "linear-gradient(180deg,#e8675c,#d23f34)";
 
+// Correo obligatorio: el copy del paso datos promete "Te llega la confirmación al
+// correo", así que es el canal real de contacto. Regex simple (no RFC completo).
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 type Bebida = (typeof BEBIDAS)[number];
 
 function mismoDia(a: Date, b: Date) {
@@ -272,8 +276,14 @@ export function BookingWizard({
   }
 
   const precioServicio = servicio && sedeId ? servicio.precios[sedeId] : null;
-  const total = precioServicio !== null ? precioServicio + (bebida && !bebidaIncluida ? bebida.precio : 0) : null;
+  // `!= null` (no `!== null`): precios[sedeId] es `undefined` (no null) cuando el
+  // servicio no tiene precio en esa sede → antes daba `undefined + 0 = NaN`.
+  const total = precioServicio != null ? precioServicio + (bebida && !bebidaIncluida ? bebida.precio : 0) : null;
   const bebidaTxt = bebida ? ` + ${bebida.nombre.toLowerCase()}${bebidaIncluida ? " (incluida)" : ""}` : "";
+
+  // Nombre y correo obligatorios para habilitar "Confirmar" en el paso datos.
+  const emailValido = EMAIL_RE.test(email.trim());
+  const datosValidos = nombre.trim().length > 0 && emailValido;
 
   const paso = (ORDEN.indexOf(step as Exclude<Step, "ok">) + 1) as number;
 
@@ -284,7 +294,13 @@ export function BookingWizard({
   }
 
   const puedeContinuar =
-    step === "servicio" ? !!servicio : step === "horario" ? slot !== null : true;
+    step === "servicio"
+      ? !!servicio
+      : step === "horario"
+        ? slot !== null
+        : step === "datos"
+          ? datosValidos
+          : true;
 
   function avanzar() {
     if (!puedeContinuar) return;
@@ -323,6 +339,11 @@ export function BookingWizard({
 
   async function confirmar() {
     if (!servicio || !day || slot === null || !sedeId) return;
+    // Defensa: el botón ya exige datos válidos, pero confirmar() es la puerta real.
+    if (!nombre.trim() || !EMAIL_RE.test(email.trim())) {
+      setErrorMsg("Completá tu nombre y un correo válido para confirmar.");
+      return;
+    }
     // Resolver barbero: si el cliente no eligió, asignamos el primero libre en ese cupo.
     let elegido = barbero;
     if (!elegido) {
@@ -338,6 +359,10 @@ export function BookingWizard({
     setErrorMsg(null);
     const inicio = new Date(day);
     inicio.setHours(Math.floor(slot / 60), slot % 60, 0, 0);
+    // Upsell: la bebida extra (con cargo) se pierde si no viaja al barbero. La
+    // mandamos como nota para que la vea en su agenda. La incluida en combo no
+    // lleva nota (se sirve por el propio combo; no se cobra aparte).
+    const nota = bebida && !bebidaIncluida ? `Bebida: ${bebida.nombre}` : undefined;
     const res = await createReserva({
       sede: sedeId,
       barberoId: elegido.id,
@@ -346,6 +371,7 @@ export function BookingWizard({
       telefono: "",
       email: email.trim(),
       inicioISO: inicio.toISOString(),
+      nota,
     });
     setSaving(false);
     if (res.ok) {
@@ -364,7 +390,7 @@ export function BookingWizard({
   if (step === "ok" && servicio && day && slot !== null) {
     return (
       <div
-        className="flex min-h-[100dvh] flex-col items-center justify-center px-6 py-12 text-center"
+        className="flex min-h-dvh flex-col items-center justify-start overflow-y-auto px-6 py-12 text-center"
         style={{ background: "radial-gradient(90% 50% at 50% 0%, rgba(210,63,52,.12), transparent 60%)" }}
       >
         {/* Firma: logo "afeitado" por la máquina de cortar */}
@@ -577,6 +603,12 @@ export function BookingWizard({
                         setServicio(s);
                         setServicioFoto(foto);
                         setSlot(null);
+                        // Reset del upsell: si venías de un combo con bebida incluida y
+                        // cambiás a otro servicio, no arrastres la bebida (se regalaba
+                        // gratis) y re-evaluá el upsell con el servicio nuevo.
+                        setBebida(null);
+                        setBebidaIncluida(false);
+                        setUpsellSeen(false);
                       }}
                       className="flex flex-col overflow-hidden rounded-xl text-left"
                       style={{ border: `2px solid ${sel ? "#d23f34" : "rgba(242,237,228,.1)"}` }}
@@ -599,7 +631,7 @@ export function BookingWizard({
                       </div>
                       <div className="mt-auto flex items-center justify-between border-t border-[rgba(242,237,228,0.07)] px-2.5 py-2">
                         <span className="text-[9.5px] font-bold uppercase tracking-[0.12em] text-muted">Precio</span>
-                        <span className="font-display text-[17px] font-extrabold tabular-nums text-accent-soft">{cop(precio)}</span>
+                        <span className="font-display text-[17px] font-extrabold tabular-nums text-accent-soft">{precio != null ? cop(precio) : "—"}</span>
                       </div>
                     </button>
                   );
@@ -819,9 +851,13 @@ export function BookingWizard({
                 type="email"
                 inputMode="email"
                 placeholder="Correo (te llega la confirmación)"
+                aria-invalid={email.trim().length > 0 && !emailValido}
                 className="w-full rounded-xl border border-line px-3.5 py-3 text-sm text-ink placeholder:text-muted focus:border-accent focus:outline-none"
                 style={{ background: "#151311" }}
               />
+              {email.trim().length > 0 && !emailValido && (
+                <p className="px-1 text-[11.5px] text-accent-soft">Ingresá un correo válido (ej. nombre@correo.com).</p>
+              )}
             </div>
 
             <div className="mt-4 rounded-2xl border border-line bg-panel px-4 py-3.5">

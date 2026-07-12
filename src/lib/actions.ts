@@ -175,6 +175,7 @@ export async function createReserva(input: {
   telefono: string;
   email?: string;
   inicioISO: string;
+  nota?: string;
 }): Promise<ActionResult> {
   const sb = supabaseAdmin();
   const inicio = new Date(input.inicioISO);
@@ -219,6 +220,10 @@ export async function createReserva(input: {
   if (!clienteRef) {
     clienteRef = await upsertClienteId(sb, input.clienteNombre, input.telefono, input.email ?? "", "app");
   }
+  // La nota (ej. "Bebida: Gaseosa" del upsell) viaja al barbero en su agenda.
+  // ponytail: si el barbero propone adelanto después, sobrescribe esta nota (raro;
+  // igual el barbero cobra la bebida en consumos).
+  const nota = (input.nota ?? "").trim() || null;
   const { error } = await sb.from("reservas").insert({
     sede_id: input.sede,
     barbero_id: barberoId,
@@ -228,6 +233,7 @@ export async function createReserva(input: {
     fin: fin.toISOString(),
     estado: "confirmada",
     canal: "app",
+    nota,
   });
   if (error) {
     if (error.code === "23P01") return { ok: false, error: "Ese horario ya fue tomado. Elegí otro, por favor." };
