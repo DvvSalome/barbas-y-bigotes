@@ -227,41 +227,24 @@ export function barberosItemList(
  */
 export const faqItems = [
   {
-    pregunta: "¿Cuánto cuesta un corte de pelo en Barranquilla?",
+    pregunta: "¿Cómo reservo una cita?",
     respuesta:
-      "En Barbas & Bigotes un corte clásico o degradado cuesta desde $30.000 COP y tarda 30 minutos. El combo corte y barba cuesta desde $40.000 COP. El precio exacto por sede lo ves al reservar online.",
+      "Online en menos de un minuto: elegís sede, servicio, barbero y hora. Te llega la confirmación al correo y el recordatorio antes de la cita.",
   },
   {
-    // TODO NAP: la direccion visible de Plaza de la Paz queda como en el resto
-    // del sitio (sin numero) hasta que el dueno confirme la real.
-    pregunta: "¿Dónde quedan las sedes de Barbas & Bigotes?",
+    pregunta: "¿Puedo cancelar o reagendar?",
     respuesta:
-      "Tenemos dos sedes en Barranquilla: una en el Parque Venezuela (Calle 88 #44-10, Local 4) y otra en la Carrera 45, frente a la Plaza de la Paz. Las dos ofrecen los mismos servicios con reserva online.",
+      "Sí, desde Mi cuenta hasta 2 horas antes de la cita. Si se libera un turno, le avisamos automáticamente a la lista de espera.",
   },
   {
-    pregunta: "¿Atienden sin cita?",
+    pregunta: "¿Atienden sin reserva?",
     respuesta:
-      "Sí, recibimos clientes sin cita según la disponibilidad de cada sede. Igual te recomendamos reservar online: elegís sede, barbero y hora, y tu turno queda asegurado sin filas.",
+      "Sí, los walk-ins son bienvenidos. Si el barbero está ocupado, entrás a la lista de espera y te avisamos cuando sea tu turno.",
   },
   {
-    pregunta: "¿Qué horario tienen?",
+    pregunta: "¿Los precios cambian por sede?",
     respuesta:
-      "Atendemos de lunes a sábado de 9:00 am a 8:00 pm en las dos sedes. Los domingos estamos cerrados.",
-  },
-  {
-    pregunta: "¿Cómo cancelo o cambio mi cita?",
-    respuesta:
-      "Podés cancelar o reagendar online hasta 2 horas antes de tu cita desde Mi cuenta. Con menos de 2 horas de anticipación, escribinos por WhatsApp al +57 300 673 4799 y lo resolvemos.",
-  },
-  {
-    pregunta: "¿Qué formas de pago reciben?",
-    respuesta:
-      "Recibimos efectivo, Nequi, Daviplata, datáfono y transferencia bancaria. Pagás en la sede al terminar tu servicio.",
-  },
-  {
-    pregunta: "¿Hacen keratina y otros tratamientos?",
-    respuesta:
-      "Sí, hacemos keratina desde $90.000 COP, limpieza facial gold desde $35.000 COP y tratamientos capilares como hidratación y alisado. Se reservan online igual que un corte.",
+      "Algunos servicios tienen precio distinto entre Parque Venezuela y Plaza de la Paz. El precio exacto lo ves al reservar, sin sorpresas.",
   },
 ];
 

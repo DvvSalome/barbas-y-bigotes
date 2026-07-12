@@ -1,115 +1,66 @@
-import Image from "next/image";
-import Link from "next/link";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 import { MobileStickyCta } from "@/components/MobileStickyCta";
-import { AmbientSmoke } from "@/components/motion/AmbientSmoke";
-import { HeroVideo } from "@/components/home/HeroVideo";
-import { StatsBand } from "@/components/home/StatsBand";
-import { Reveal } from "@/components/motion/Reveal";
-import { WhyUs } from "@/components/home/WhyUs";
-import { Servicios } from "@/components/home/Servicios";
+import { ContactoWidget } from "@/components/ContactoWidget";
+import { HomeHero } from "@/components/home/HomeHero";
+import { HomeStats } from "@/components/home/HomeStats";
+import { HomeDiferencia } from "@/components/home/HomeDiferencia";
+import { HomeServicios } from "@/components/home/HomeServicios";
+import { HomeGaleria } from "@/components/home/HomeGaleria";
+import { HomeSedes } from "@/components/home/HomeSedes";
 import { Testimonios } from "@/components/home/Testimonios";
 import { Ubicacion } from "@/components/home/Ubicacion";
-import { SedesShowcase } from "@/components/home/SedesShowcase";
-import { LiveBarbersStatus } from "@/components/home/LiveBarbersStatus";
 import { Faq } from "@/components/home/Faq";
-import { sedes } from "@/lib/data/seed";
+import { getSedes, getBarberos, getServicios } from "@/lib/data/queries";
+import type { Servicio } from "@/lib/data/types";
 
-import { CardTilt } from "@/components/ui/CardTilt";
-
-// La sección Servicios lee precios de la DB: sin revalidate la página quedaría
-// estática con los precios del build. ISR cada 10 min mantiene la homepage honesta.
+// Los stats y los precios de "Lo que más piden" salen de la DB: sin revalidate
+// la home quedaría con los datos del build. ISR cada 10 min la mantiene honesta.
 export const revalidate = 600;
 
-// Composición con tamaños mixtos: corte-1 (panorámica) y corte-5 (feature vertical)
-// rompen la grilla uniforme. Spans pensados para una grilla de 6 columnas en sm+.
-const cortes = [
-  { n: 1, span: "sm:col-span-4 sm:row-span-2" },
-  { n: 2, span: "sm:col-span-2" },
-  { n: 3, span: "sm:col-span-2" },
-  { n: 4, span: "sm:col-span-2" },
-  { n: 5, span: "sm:col-span-2 sm:row-span-2" },
-  { n: 6, span: "sm:col-span-2" },
-  { n: 7, span: "sm:col-span-2" },
-];
+// "Lo que más piden" (spec §1.4/§2.5): los 5 servicios del prototipo, con su
+// precio real de Parque Venezuela (pv) desde la DB.
+const DESTACADOS_IDS = ["corte", "corte-barba", "corte-cejas", "corte-barba-cejas", "cerquillos"];
 
-export default function Home() {
+export default async function Home() {
+  const [sedes, barberos, servicios] = await Promise.all([
+    getSedes(),
+    getBarberos(),
+    getServicios(),
+  ]);
+
+  const destacados = DESTACADOS_IDS.map((id) => servicios.find((s) => s.id === id)).filter(
+    (s): s is Servicio => Boolean(s),
+  );
+
   return (
     <>
-      <AmbientSmoke />
+      <ContactoWidget sobreCtaMovil />
       <SiteHeader />
       <MobileStickyCta />
       <main>
-        <HeroVideo />
-        <Reveal>
-          <StatsBand />
-        </Reveal>
+        <HomeHero />
+        <HomeStats
+          sedesCount={sedes.length}
+          barberosCount={barberos.length}
+          serviciosCount={servicios.length}
+        />
+        <HomeDiferencia />
+        <HomeServicios servicios={destacados} />
+        <HomeGaleria />
+        <HomeSedes />
 
-        <SedesShowcase sedes={sedes} />
-        <LiveBarbersStatus />
-
-        <Reveal>
-          <WhyUs />
-        </Reveal>
-
-        <Servicios />
-
-        {/* nuestros trabajos */}
-        <section className="mx-auto max-w-6xl px-6 pt-14 sm:pt-24">
-          <Reveal>
-            <div className="mb-7 flex items-end justify-between gap-4">
-              <div>
-                <p className="text-xs uppercase tracking-[0.3em] text-accent">Galería</p>
-                <h2 className="font-display text-4xl font-semibold uppercase">Nuestros trabajos</h2>
-              </div>
-              <Link
-                href="/reservar"
-                className="hidden text-sm text-accent-soft transition hover:text-accent sm:block"
-              >
-                Reservá el tuyo →
-              </Link>
-            </div>
-          </Reveal>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-6 sm:[grid-auto-rows:11rem] lg:[grid-auto-rows:13rem]">
-            {cortes.map(({ n, span }, i) => (
-              <Reveal key={n} delay={(i % 3) * 0.07} y={36} className={span}>
-                <CardTilt maxTilt={8} scale={1.04} className="group relative aspect-[3/4] h-full w-full overflow-hidden rounded-xl border border-line sm:aspect-auto">
-                  <Image
-                    src={`/cortes/corte-${n}.jpg`}
-                    alt={`Trabajo ${n} de Barbas & Bigotes`}
-                    fill
-                    sizes="(max-width:640px) 50vw, 33vw"
-                    className="object-cover transition duration-700 ease-out group-hover:scale-105"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-transparent to-transparent opacity-0 transition duration-300 group-hover:opacity-100" />
-                  <div className="absolute bottom-3 left-4 right-4 translate-y-2 text-sm font-semibold uppercase tracking-wide text-on-accent opacity-0 transition duration-300 group-hover:translate-y-0 group-hover:opacity-100">
-                    Barbas &amp; Bigotes
-                  </div>
-                </CardTilt>
-              </Reveal>
-            ))}
-            <Reveal delay={0.07} y={36} className="sm:col-span-2">
-              <CardTilt maxTilt={8} scale={1.04} className="h-full w-full">
-                <Link
-                  href="/reservar"
-                  className="flex aspect-[3/4] h-full flex-col items-center justify-center gap-2 rounded-xl border border-accent/40 bg-accent/5 text-center transition hover:bg-accent/10 sm:aspect-auto"
-                >
-                  <span className="font-display text-3xl uppercase text-accent-soft">Tu turno</span>
-                  <span className="text-xs text-muted">Reservar cita →</span>
-                </Link>
-              </CardTilt>
-            </Reveal>
+        {/* Secciones solo-desktop del prototipo (spec §2.8-2.10). El contenido
+            queda en el HTML para los crawlers de IA aunque se oculte en móvil. */}
+        <div className="hidden md:block">
+          <Testimonios />
+          <Ubicacion />
+          <div className="pt-[52px]">
+            <Faq />
           </div>
-        </section>
-
-        <Testimonios />
-
-        <Ubicacion />
-
-        <Faq />
+        </div>
       </main>
-      <SiteFooter />
+      <SiteFooter conCtaMovil />
     </>
   );
 }
