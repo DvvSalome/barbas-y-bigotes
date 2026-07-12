@@ -105,6 +105,28 @@ import { calcularCobro, totalesPorMedio, PUNTOS_POR_COP } from "../src/lib/cobro
   );
 }
 
+// (i) Beneficio de tarjeta (descuentoExtra) se suma al descuento y topa al bruto.
+{
+  const c = calcularCobro({ items: [{ precio: 40000, cantidad: 1 }], descuentoExtra: 15000 });
+  assert.equal(c.descuento, 15000, "descuentoExtra baja el total");
+  assert.equal(c.total, 25000, "total = bruto − descuentoExtra");
+}
+{
+  // Cupón + tarjeta combinados, topados al bruto (nunca total negativo).
+  const c = calcularCobro({
+    items: [{ precio: 30000, cantidad: 1 }],
+    cupon: { tipo: "monto", valor: 20000 },
+    descuentoExtra: 30000,
+  });
+  assert.equal(c.descuento, 30000, "cupón + tarjeta se topan al bruto");
+  assert.equal(c.total, 0, "el total nunca queda negativo");
+}
+{
+  // descuentoExtra negativo/NaN no infla el total (piso 0).
+  assert.equal(calcularCobro({ items: [{ precio: 20000, cantidad: 1 }], descuentoExtra: -5000 }).descuento, 0, "descuentoExtra negativo → 0");
+  assert.equal(calcularCobro({ items: [{ precio: 20000, cantidad: 1 }], descuentoExtra: Number.NaN }).descuento, 0, "descuentoExtra NaN → 0");
+}
+
 assert.equal(PUNTOS_POR_COP, 1000, "regla de fidelidad: 1 punto por $1.000");
 
 console.log("check-cobro OK — total/descuento/propina/puntos correctos (calcularCobro)");

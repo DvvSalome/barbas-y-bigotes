@@ -36,16 +36,22 @@ export function calcularCobro(input: {
   items: ItemCobro[];
   cupon?: CuponCobro | null;
   propina?: number;
+  /** Beneficio de la tarjeta de cortes (monto): se suma al descuento del cupón. */
+  descuentoExtra?: number;
 }): Cobro {
   const bruto = input.items.reduce((a, it) => a + it.precio * it.cantidad, 0);
-  let descuento = 0;
+  let descuentoCupon = 0;
   if (input.cupon) {
-    descuento =
+    descuentoCupon =
       input.cupon.tipo === "porcentaje"
         ? Math.round((bruto * input.cupon.valor) / 100)
         : input.cupon.valor;
-    descuento = Math.max(0, Math.min(descuento, bruto)); // nunca más que el bruto
   }
+  const descuentoExtra = Number.isFinite(input.descuentoExtra)
+    ? Math.max(0, input.descuentoExtra as number)
+    : 0;
+  // Cupón + beneficio de tarjeta; nunca más que el bruto (total jamás negativo).
+  const descuento = Math.max(0, Math.min(descuentoCupon + descuentoExtra, bruto));
   const total = Math.max(0, bruto - descuento);
   const propina = Number.isFinite(input.propina)
     ? Math.max(0, Math.floor(input.propina as number))
