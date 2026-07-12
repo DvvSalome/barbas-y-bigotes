@@ -446,6 +446,120 @@ export async function getCajaSede(sedeId: string): Promise<CajaSedeEstado> {
   return { sesionId: ses.id, abiertaEn: ses.abierta_en, esperadoEfectivo, ingresos };
 }
 
+export type CajaDesgloseBarbero = {
+  barberoId: string;
+  nombre: string;
+  fotoUrl: string | null;
+  /** Suma de ventas.total del barbero desde la apertura de la caja. */
+  ventas: number;
+  /** Comisión del barbero = Σ(precio_unitario·cantidad·comision_pct/100) de sus venta_items. */
+  comision: number;
+};
+
+export type CajaDesglose = {
+  /** Barberos activos de la sede (ordenados), cada uno con sus ventas y comisión. */
+  barberos: CajaDesgloseBarbero[];
+  /** Efectivo esperado en el cajón (mismo cálculo que el cierre). */
+  efectivo: number;
+  /** Ingresos por medios digitales (todo lo que no es efectivo) desde la apertura. */
+  digital: number;
+} | null;
+
+// Desglose de la caja ABIERTA de una sede para el panel del barbero: ventas y
+// comisión por barbero + totales de sede (efectivo esperado / digital). Devuelve
+// null si no hay caja abierta. Igual que getCajaSede, usa supabaseAdmin() porque
+// caja_sesiones/ventas son RLS admin/scoped (0008/0010) y acá se necesita el
+// consolidado de la sede; el gate real es que /barbero es staff-only.
+export async function getCajaDesglose(sedeId: string): Promise<CajaDesglose> {
+  if (!sedeId) return null;
+  const admin = supabaseAdmin();
+  const { data: sesion } = await admin
+    .from("caja_sesiones")
+    .select("id,abierta_en,monto_apertura")
+    .eq("sede_id", sedeId)
+    .eq("estado", "abierta")
+    .maybeSingle();
+  if (!sesion) return null;
+  const ses = sesion as { id: string; abierta_en: string; monto_apertura: number | null };
+
+  const [barbsRes, ventasRes, gastosRes, itemsRes] = await Promise.all([
+    admin
+      .from("barberos")
+      .select("id,nombre,foto_url,orden")
+      .eq("sede_id", sedeId)
+      .eq("activo", true)
+      .order("orden"),
+    admin
+      .from("ventas")
+      .select("barbero_id,medio,total,propina")
+      .eq("sede_id", sedeId)
+      .gte("creado_en", ses.abierta_en),
+    admin.from("gastos").select("monto").eq("sede_id", sedeId).gte("creado_en", ses.abierta_en),
+    // Comisión por barbero: se calcula sobre los venta_items (los servicios llevan
+    // el comision_pct del barbero —50—, los productos el suyo). No hay un cálculo
+    // reusable en /admin/comisiones (esa página solo edita el % del contrato), así
+    // que se calcula acá con el join venta_items→ventas (misma sede + desde apertura).
+    admin
+      .from("venta_items")
+      .select("cantidad,precio_unitario,comision_pct,ventas!inner(barbero_id,sede_id,creado_en)")
+      .eq("ventas.sede_id", sedeId)
+      .gte("ventas.creado_en", ses.abierta_en),
+  ]);
+
+  const barbs = (barbsRes.data ?? []) as {
+    id: string;
+    nombre: string;
+    foto_url: string | null;
+    orden: number | null;
+  }[];
+  const vs = (ventasRes.data ?? []) as {
+    barbero_id: string | null;
+    medio: string;
+    total: number;
+    propina: number | null;
+  }[];
+  const totalGastos = ((gastosRes.data ?? []) as { monto: number }[]).reduce((a, g) => a + g.monto, 0);
+  // El embed a la venta padre (to-one) llega como objeto en runtime, pero el tipo
+  // inferido de PostgREST lo trata como array → cast vía unknown.
+  const items = (itemsRes.data ?? []) as unknown as {
+    cantidad: number;
+    precio_unitario: number;
+    comision_pct: number | null;
+    ventas: { barbero_id: string | null } | null;
+  }[];
+
+  // Ventas por barbero (suma de ventas.total desde la apertura).
+  const ventasPorBarbero = new Map<string, number>();
+  for (const v of vs) {
+    if (!v.barbero_id) continue;
+    ventasPorBarbero.set(v.barbero_id, (ventasPorBarbero.get(v.barbero_id) ?? 0) + v.total);
+  }
+  // Comisión por barbero: precio_unitario·cantidad·comision_pct/100 por ítem.
+  const comisionPorBarbero = new Map<string, number>();
+  for (const it of items) {
+    const bid = it.ventas?.barbero_id;
+    if (!bid) continue;
+    const c = (it.precio_unitario * it.cantidad * (Number(it.comision_pct) || 0)) / 100;
+    comisionPorBarbero.set(bid, (comisionPorBarbero.get(bid) ?? 0) + c);
+  }
+
+  const barberos: CajaDesgloseBarbero[] = barbs.map((b) => ({
+    barberoId: b.id,
+    nombre: b.nombre,
+    fotoUrl: b.foto_url ?? null,
+    ventas: ventasPorBarbero.get(b.id) ?? 0,
+    comision: Math.round(comisionPorBarbero.get(b.id) ?? 0),
+  }));
+
+  // Totales de sede: efectivo esperado (fondo + efectivo + propina efectivo − gastos)
+  // y digital (todo lo cobrado por medios distintos de efectivo).
+  const snap = snapshotDinero(vs, { montoApertura: ses.monto_apertura ?? 0, totalGastos });
+  const efectivo = snap.esperadoEfectivo;
+  const digital = snap.ingresos - snap.efectivo;
+
+  return { barberos, efectivo, digital };
+}
+
 export type CajaHoy = {
   sede: string;
   nombre: string;
