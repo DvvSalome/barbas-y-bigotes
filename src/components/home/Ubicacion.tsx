@@ -98,8 +98,10 @@ export function Ubicacion() {
             </p>
 
             <div className="mt-5 flex items-center justify-between">
-              <span className="text-xs font-semibold uppercase tracking-wider text-accent-soft">
-                {activeLoc === l.id ? "📍 Seleccionada" : "Seleccionar para ver mapa"}
+              <span className="text-[11.5px] font-bold uppercase tracking-[0.1em] text-accent-soft">
+                {activeLoc === l.id
+                  ? "Seleccionada · mirá el mapa abajo"
+                  : "Seleccionar para ver el mapa"}
               </span>
             </div>
           </div>
@@ -119,33 +121,33 @@ export function Ubicacion() {
           <div className="flex flex-wrap items-center gap-2">
             <button
               onClick={() => setViewType("map")}
-              className={`rounded-lg px-4 py-1.5 text-xs font-semibold uppercase tracking-wider transition ${
+              className={`rounded-[9px] px-3.5 py-[7px] text-[11px] font-bold uppercase tracking-[0.08em] transition ${
                 viewType === "map"
                   ? "bg-accent text-on-accent"
                   : "bg-elevated text-muted hover:text-white"
               }`}
             >
-              🗺️ Mapa
+              Mapa
             </button>
             <button
               onClick={() => setViewType("satellite")}
-              className={`rounded-lg px-4 py-1.5 text-xs font-semibold uppercase tracking-wider transition ${
+              className={`rounded-[9px] px-3.5 py-[7px] text-[11px] font-bold uppercase tracking-[0.08em] transition ${
                 viewType === "satellite"
                   ? "bg-accent text-on-accent"
                   : "bg-elevated text-muted hover:text-white"
               }`}
             >
-              🛰️ Satélite
+              Satélite
             </button>
             <button
               onClick={() => setViewType("streetview")}
-              className={`rounded-lg px-4 py-1.5 text-xs font-semibold uppercase tracking-wider transition ${
+              className={`rounded-[9px] px-3.5 py-[7px] text-[11px] font-bold uppercase tracking-[0.08em] transition ${
                 viewType === "streetview"
                   ? "bg-accent text-on-accent"
                   : "bg-elevated text-muted hover:text-white"
               }`}
             >
-              🌐 Tour 360°
+              Tour 360°
             </button>
             <a
               href={`https://www.google.com/maps/dir/?api=1&destination=${currentSede.lat},${currentSede.lng}`}

@@ -1,40 +1,18 @@
-"use client";
-
 import Link from "next/link";
-import { AnimatePresence, motion, useMotionValueEvent, useReducedMotion, useScroll } from "motion/react";
-import { useState } from "react";
 
-const EASE = [0.22, 1, 0.36, 1] as const;
-const SHOW_AFTER_PX = 480; // aparece después de salir del hero
-
-// Barra fija inferior solo en mobile — acción principal siempre a un toque.
+/*
+  CTA sticky inferior de la home móvil (spec §1.8): botón "Reservar ahora"
+  siempre visible sobre un degradado que funde con el fondo. Solo mobile.
+*/
 export function MobileStickyCta() {
-  const [visible, setVisible] = useState(false);
-  const reduce = useReducedMotion();
-  const { scrollY } = useScroll();
-
-  useMotionValueEvent(scrollY, "change", (y) => setVisible(y > SHOW_AFTER_PX));
-
   return (
-    <div className="pointer-events-none fixed inset-x-0 bottom-0 z-40 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:hidden">
-      <AnimatePresence>
-        {visible && (
-          <motion.div
-            initial={reduce ? false : { opacity: 0, y: 24 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={reduce ? { opacity: 0 } : { opacity: 0, y: 24 }}
-            transition={{ duration: 0.28, ease: EASE }}
-            className="pointer-events-auto rounded-2xl border border-line bg-bg/95 p-2 shadow-[0_-12px_30px_-10px_rgba(0,0,0,0.6)] backdrop-blur-md"
-          >
-            <Link
-              href="/reservar"
-              className="block rounded-xl bg-accent py-3.5 text-center text-sm font-semibold uppercase tracking-[0.12em] text-on-accent transition hover:bg-accent-soft"
-            >
-              Reservar cita
-            </Link>
-          </motion.div>
-        )}
-      </AnimatePresence>
+    <div className="pointer-events-none fixed inset-x-0 bottom-0 z-30 bg-[linear-gradient(180deg,rgba(12,11,10,0),rgba(12,11,10,0.92)_40%)] px-4 pb-[max(26px,env(safe-area-inset-bottom))] pt-3 md:hidden">
+      <Link
+        href="/reservar"
+        className="pointer-events-auto block rounded-full bg-[linear-gradient(180deg,var(--accent-soft),var(--accent))] py-[15px] text-center font-display text-[17px] font-bold uppercase tracking-[0.08em] text-on-accent shadow-[0_12px_26px_-10px_rgba(210,63,52,0.7)]"
+      >
+        Reservar ahora
+      </Link>
     </div>
   );
 }

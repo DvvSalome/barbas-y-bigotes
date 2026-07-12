@@ -1,270 +1,184 @@
-"use client";
-
+import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
-import { AmbientSmoke } from "@/components/motion/AmbientSmoke";
-import { Reveal } from "@/components/motion/Reveal";
-import { CardTilt } from "@/components/ui/CardTilt";
-import { FaceIcon, ScissorsIcon, UsersIcon, PinIcon } from "@/components/icons";
+
+export const metadata: Metadata = {
+  title: "Quiénes somos",
+  description:
+    "Barbas & Bigotes: tradición, estilo y cuidado para el caballero moderno en Barranquilla. El ritual clásico de la barbería con técnicas tradicionales y tendencias actuales.",
+};
+
+// Pilares (spec §4, L4243-4248) — copy y glyphs LITERALES.
+const PILARES = [
+  {
+    glyph: "✂",
+    titulo: "Tradición",
+    texto:
+      "Técnicas de barbería clásica, afeitado a navaja tradicional y toallas calientes para tu comodidad.",
+  },
+  {
+    glyph: "◆",
+    titulo: "Estilo",
+    texto:
+      "Asesoramiento personalizado de imagen para adaptar cortes clásicos y modernos a tus facciones.",
+  },
+  {
+    glyph: "✦",
+    titulo: "Comunidad",
+    texto:
+      "Un espacio ideal para conversar, relajarte y pasar un rato agradable en la mejor compañía.",
+  },
+  {
+    glyph: "★",
+    titulo: "Ambiente",
+    texto:
+      "Instalaciones premium, excelente iluminación, buena música y café selecto para ti.",
+  },
+];
+
+const SEDES = [
+  {
+    id: "parque-venezuela",
+    nombre: "Parque Venezuela",
+    direccion: "Calle 88 #44 - 10, Local 4, Barranquilla",
+    foto: "/sedes/parque-venezuela-interior.jpg",
+  },
+  {
+    id: "plaza-de-la-paz",
+    nombre: "Plaza de la Paz",
+    direccion: "Carrera 45 frente a la Plaza de la Paz, Barranquilla",
+    foto: "/sedes/plaza-de-la-paz-interior.jpg",
+  },
+];
 
 export default function NosotrosPage() {
   return (
     <>
-      <AmbientSmoke />
       <SiteHeader />
-      <main className="min-h-screen bg-bg text-white">
-        
-        {/* Header Hero */}
-        <section className="relative overflow-hidden py-20 text-center sm:py-32">
-          <div className="mx-auto max-w-3xl px-6">
-            <Reveal>
-              <p className="text-xs uppercase tracking-[0.4em] text-accent font-semibold">
-                Nuestra Esencia
+      <main>
+        {/* Hero */}
+        <section className="mx-auto max-w-[1180px] px-6 pt-14 text-center md:px-16 md:pt-[60px]">
+          <p className="text-xs uppercase tracking-[0.4em] text-accent">Nuestra esencia</p>
+          <h1 className="mt-3 font-display text-[44px] font-extrabold uppercase leading-[0.95] md:text-[58px]">
+            Quiénes somos
+          </h1>
+          <p className="mx-auto mt-4 max-w-[56ch] text-base leading-[1.65] text-muted">
+            Tradición, estilo y cuidado para el caballero moderno. Un espacio diseñado
+            para revivir el ritual clásico de la barbería en Barranquilla.
+          </p>
+        </section>
+
+        {/* Historia */}
+        <section className="mx-auto grid max-w-[1180px] items-center gap-8 px-6 pb-[50px] pt-8 md:grid-cols-2 md:gap-12 md:px-16 md:pt-[30px]">
+          <div>
+            <p className="text-xs uppercase tracking-[0.3em] text-accent">Nuestra historia</p>
+            <h2 className="mt-2 font-display text-[32px] font-bold uppercase md:text-[36px]">
+              El arte de la barbería
+            </h2>
+            <div className="mt-6 space-y-5 text-[14.5px] leading-[1.7] text-[rgba(242,237,228,0.85)]">
+              <p>
+                Nacimos en el corazón de Barranquilla con un propósito claro: rescatar el
+                ritual clásico de la barbería y devolverle al hombre su espacio.
               </p>
-              <h1 className="mt-4 font-display text-5xl font-bold uppercase tracking-tight sm:text-6xl text-white">
-                Quiénes Somos
-              </h1>
-              <p className="mt-6 text-lg text-muted/90 leading-relaxed max-w-xl mx-auto">
-                Tradición, estilo y cuidado para el caballero moderno. Un espacio diseñado para revivir el ritual clásico de la barbería en Barranquilla.
+              <p>
+                En Barbas &amp; Bigotes combinamos técnicas tradicionales de afeitado con
+                toalla caliente y navaja libre con las últimas tendencias de corte de
+                cabello y cuidado facial.
               </p>
-            </Reveal>
+              <p>
+                Más que un simple corte, ofrecemos una experiencia completa de relajación,
+                buena música, café y atención al detalle en un ambiente clásico y
+                profesional.
+              </p>
+            </div>
+            <a
+              href="https://instagram.com/barbasybigotes.baq"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-8 inline-block rounded-full border border-accent/40 bg-accent/5 px-5 py-2.5 text-[11.5px] font-bold uppercase tracking-[0.1em] text-accent-soft transition hover:bg-accent/10"
+            >
+              Síguenos en Instagram · @barbasybigotes.baq
+            </a>
+          </div>
+
+          <div className="relative aspect-[4/5] overflow-hidden rounded-[18px] border border-[rgba(242,237,228,0.12)] shadow-[0_40px_90px_-50px_rgba(0,0,0,0.9)]">
+            <Image
+              src="/quienes-somos/logo-vapor-v2.jpg"
+              alt="Emblema Barbas y Bigotes entre vapor cálido"
+              fill
+              priority
+              sizes="(max-width:768px) 100vw, 560px"
+              className="object-cover"
+            />
           </div>
         </section>
 
-        {/* Historia & Manifiesto */}
-        <section className="mx-auto max-w-6xl px-6 pb-20">
-          <div className="grid gap-12 lg:grid-cols-2 lg:gap-20 items-center">
-            
-            <Reveal>
-              <p className="text-xs uppercase tracking-[0.3em] text-accent font-semibold">
-                Nuestra Historia
-              </p>
-              <h2 className="mt-2 mb-6 font-display text-3xl font-semibold uppercase text-white sm:text-4xl">
-                El Arte de la Barbería
+        {/* Pilares */}
+        <section className="border-t border-[rgba(242,237,228,0.08)] bg-[rgba(21,19,17,0.35)] py-14 md:py-[56px]">
+          <div className="mx-auto max-w-[1180px] px-6 md:px-16">
+            <div className="text-center">
+              <p className="text-xs uppercase tracking-[0.3em] text-accent">Nuestra filosofía</p>
+              <h2 className="mt-2 font-display text-[32px] font-bold uppercase md:text-[36px]">
+                Los pilares de Barbas &amp; Bigotes
               </h2>
-              
-              <div className="space-y-5 text-ink/85 leading-relaxed">
-                <p>
-                  Nacimos en el corazón de Barranquilla con un propósito claro: rescatar el ritual clásico de la barbería y devolverle al hombre su espacio.
-                </p>
-                <p>
-                  En Barbas & Bigotes combinamos técnicas tradicionales de afeitado con toalla caliente y navaja libre con las últimas tendencias de corte de cabello y cuidado facial.
-                </p>
-                <p>
-                  Más que un simple corte, ofrecemos una experiencia completa de relajación, buena música, café y atención al detalle en un ambiente clásico y profesional.
-                </p>
-              </div>
-
-              <div className="mt-8 flex flex-wrap gap-4">
-                <a
-                  href="https://instagram.com/barbasybigotes.baq"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 rounded-full border border-accent/40 bg-accent/5 px-5 py-2.5 text-xs font-semibold uppercase tracking-wider text-accent-soft hover:bg-accent/15 transition duration-300"
+            </div>
+            <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              {PILARES.map((p) => (
+                <div
+                  key={p.titulo}
+                  className="rounded-2xl border border-[rgba(242,237,228,0.1)] bg-[rgba(21,19,17,0.6)] p-[22px] transition hover:border-accent/40"
                 >
-                  Síguenos en Instagram · @barbasybigotes.baq
-                </a>
-              </div>
-            </Reveal>
-
-            <Reveal delay={0.15}>
-              <CardTilt maxTilt={5} className="group relative aspect-[4/5] w-full overflow-hidden rounded-2xl border border-line shadow-2xl">
-                <Image
-                  src="/quienes-somos/logo-vapor-v2.jpg"
-                  alt="Emblema Barbas & Bigotes entre vapor cálido"
-                  fill
-                  sizes="(max-width:1024px) 100vw, 50vw"
-                  className="object-cover transition duration-700 ease-out group-hover:scale-102"
-                  priority
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
-              </CardTilt>
-            </Reveal>
-
-          </div>
-        </section>
-
-        {/* Filosofía & Valores */}
-        <section className="border-t border-line bg-panel/30 py-20">
-          <div className="mx-auto max-w-6xl px-6">
-            <Reveal className="text-center max-w-2xl mx-auto mb-16">
-              <p className="text-xs uppercase tracking-[0.3em] text-accent font-semibold">
-                Nuestra Filosofía
-              </p>
-              <h2 className="mt-2 font-display text-3xl font-semibold uppercase text-white sm:text-4xl">
-                Los Pilares de Barbas & Bigotes
-              </h2>
-            </Reveal>
-
-            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-              
-              {/* Valor 1 */}
-              <Reveal delay={0.05}>
-                <div className="h-full rounded-2xl border border-line bg-panel/60 p-6 hover:border-accent/40 transition duration-300">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-accent/10 text-accent">
-                    <ScissorsIcon className="h-6 w-6" />
+                  <div className="grid h-[46px] w-[46px] place-items-center rounded-xl bg-accent/10 text-xl text-accent">
+                    {p.glyph}
                   </div>
-                  <h3 className="mt-4 font-display text-lg font-semibold uppercase text-white">
-                    Tradición
-                  </h3>
-                  <p className="mt-2 text-sm text-muted leading-relaxed">
-                    Técnicas de barbería clásica, afeitado a navaja tradicional y toallas calientes para tu comodidad.
-                  </p>
+                  <h3 className="mt-4 font-display text-lg font-bold uppercase">{p.titulo}</h3>
+                  <p className="mt-2 text-sm leading-relaxed text-muted">{p.texto}</p>
                 </div>
-              </Reveal>
-
-              {/* Valor 2 */}
-              <Reveal delay={0.1}>
-                <div className="h-full rounded-2xl border border-line bg-panel/60 p-6 hover:border-accent/40 transition duration-300">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-accent/10 text-accent">
-                    <FaceIcon className="h-6 w-6" />
-                  </div>
-                  <h3 className="mt-4 font-display text-lg font-semibold uppercase text-white">
-                    Estilo
-                  </h3>
-                  <p className="mt-2 text-sm text-muted leading-relaxed">
-                    Asesoramiento personalizado de imagen para adaptar cortes clásicos y modernos a tus facciones.
-                  </p>
-                </div>
-              </Reveal>
-
-              {/* Valor 3 */}
-              <Reveal delay={0.15}>
-                <div className="h-full rounded-2xl border border-line bg-panel/60 p-6 hover:border-accent/40 transition duration-300">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-accent/10 text-accent">
-                    <UsersIcon className="h-6 w-6" />
-                  </div>
-                  <h3 className="mt-4 font-display text-lg font-semibold uppercase text-white">
-                    Comunidad
-                  </h3>
-                  <p className="mt-2 text-sm text-muted leading-relaxed">
-                    Un espacio ideal para conversar, relajarte y pasar un rato agradable en la mejor compañía.
-                  </p>
-                </div>
-              </Reveal>
-
-              {/* Valor 4 */}
-              <Reveal delay={0.2}>
-                <div className="h-full rounded-2xl border border-line bg-panel/60 p-6 hover:border-accent/40 transition duration-300">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-accent/10 text-accent">
-                    <PinIcon className="h-6 w-6" />
-                  </div>
-                  <h3 className="mt-4 font-display text-lg font-semibold uppercase text-white">
-                    Ambiente
-                  </h3>
-                  <p className="mt-2 text-sm text-muted leading-relaxed">
-                    Instalaciones premium, excelente iluminación, buena música y café selecto para ti.
-                  </p>
-                </div>
-              </Reveal>
-
+              ))}
             </div>
           </div>
         </section>
 
-        {/* Nuestras Instalaciones (Muestra los locales directamente sin modal) */}
-        <section className="mx-auto max-w-6xl px-6 py-20">
-          <Reveal className="text-center max-w-2xl mx-auto mb-16">
-            <p className="text-xs uppercase tracking-[0.3em] text-accent font-semibold">
-              Espacios Premium
-            </p>
-            <h2 className="mt-2 font-display text-3xl font-semibold uppercase text-white sm:text-4xl">
-              Nuestras Sedes
+        {/* Sedes */}
+        <section className="mx-auto max-w-[1180px] px-6 py-14 md:px-16 md:py-[56px]">
+          <div className="text-center">
+            <p className="text-xs uppercase tracking-[0.3em] text-accent">Espacios premium</p>
+            <h2 className="mt-2 font-display text-[32px] font-bold uppercase md:text-[36px]">
+              Nuestras sedes
             </h2>
-            <p className="mt-4 text-sm text-muted">
-              Diseño de primera clase pensado para tu confort y relajación. Visítanos en cualquiera de nuestras sedes.
-            </p>
-          </Reveal>
-
-          <div className="grid gap-8 sm:grid-cols-2">
-            
-            {/* Sede 1 */}
-            <Reveal>
-              <div className="group rounded-2xl border border-line bg-panel overflow-hidden">
-                <div className="relative aspect-[16/10] w-full overflow-hidden">
+          </div>
+          <div className="mt-10 grid gap-6 sm:grid-cols-2">
+            {SEDES.map((s) => (
+              <div
+                key={s.id}
+                className="group overflow-hidden rounded-2xl border border-[rgba(242,237,228,0.1)] bg-panel"
+              >
+                <div className="relative aspect-[16/10] overflow-hidden">
                   <Image
-                    src="/sedes/parque-venezuela-interior.jpg"
-                    alt="Interior Parque Venezuela"
+                    src={s.foto}
+                    alt={`Interior ${s.nombre}`}
                     fill
-                    sizes="(max-width:768px) 100vw, 500px"
-                    className="object-cover transition duration-700 ease-out group-hover:scale-102"
+                    sizes="(max-width:768px) 100vw, 560px"
+                    className="object-cover transition duration-700 ease-out group-hover:scale-105"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
                 </div>
                 <div className="p-6">
-                  <h3 className="font-display text-2xl font-semibold uppercase text-white">
-                    Parque Venezuela
-                  </h3>
-                  <p className="mt-2 text-sm text-muted leading-relaxed">
-                    Calle 88 #44 - 10, Local 4, Barranquilla
-                  </p>
+                  <h3 className="font-display text-2xl font-bold uppercase">{s.nombre}</h3>
+                  <p className="mt-2 text-sm leading-relaxed text-muted">{s.direccion}</p>
                   <Link
-                    href="/reservar?sede=parque-venezuela"
-                    className="mt-5 inline-block rounded-full bg-accent px-5 py-2 text-xs font-semibold uppercase tracking-wide text-on-accent transition hover:bg-accent-soft"
+                    href={`/reservar?sede=${s.id}`}
+                    className="mt-5 inline-block rounded-full bg-accent px-5 py-2.5 text-[11px] font-bold uppercase tracking-[0.1em] text-on-accent transition hover:bg-accent-soft"
                   >
                     Reservar en esta sede →
                   </Link>
                 </div>
               </div>
-            </Reveal>
-
-            {/* Sede 2 */}
-            <Reveal delay={0.1}>
-              <div className="group rounded-2xl border border-line bg-panel overflow-hidden">
-                <div className="relative aspect-[16/10] w-full overflow-hidden">
-                  <Image
-                    src="/sedes/plaza-de-la-paz-interior.jpg"
-                    alt="Interior Plaza de la Paz"
-                    fill
-                    sizes="(max-width:768px) 100vw, 500px"
-                    className="object-cover transition duration-700 ease-out group-hover:scale-102"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-                </div>
-                <div className="p-6">
-                  <h3 className="font-display text-2xl font-semibold uppercase text-white">
-                    Plaza de la Paz
-                  </h3>
-                  <p className="mt-2 text-sm text-muted leading-relaxed">
-                    Carrera 45 frente a la Plaza de la Paz, Barranquilla
-                  </p>
-                  <Link
-                    href="/reservar?sede=plaza-de-la-paz"
-                    className="mt-5 inline-block rounded-full bg-accent px-5 py-2 text-xs font-semibold uppercase tracking-wide text-on-accent transition hover:bg-accent-soft"
-                  >
-                    Reservar en esta sede →
-                  </Link>
-                </div>
-              </div>
-            </Reveal>
-
+            ))}
           </div>
         </section>
-
-        {/* CTA General */}
-        <section className="border-t border-line py-20 text-center">
-          <div className="mx-auto max-w-xl px-6">
-            <Reveal>
-              <h2 className="font-display text-3xl font-bold uppercase text-white sm:text-4xl">
-                ¿Listo para tu corte?
-              </h2>
-              <p className="mt-4 text-sm text-muted leading-relaxed">
-                Agenda tu cita con tu barbero favorito y vive la auténtica experiencia de Barbas & Bigotes.
-              </p>
-              <div className="mt-8 flex justify-center gap-4">
-                <Link
-                  href="/reservar"
-                  className="rounded-full bg-accent px-8 py-3.5 text-sm font-semibold uppercase tracking-wider text-on-accent transition hover:bg-accent-soft"
-                >
-                  Reservar Turno Ahora
-                </Link>
-              </div>
-            </Reveal>
-          </div>
-        </section>
-
       </main>
       <SiteFooter />
     </>
