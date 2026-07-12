@@ -1,14 +1,15 @@
 import type { Metadata } from "next";
-import { SiteHeader } from "@/components/SiteHeader";
-import { SiteFooter } from "@/components/SiteFooter";
 import { BookingWizard } from "@/components/BookingWizard";
-import { Reveal } from "@/components/motion/Reveal";
 import { getSedes, getBarberos, getServicios } from "@/lib/data/queries";
 
 export const metadata: Metadata = {
   title: "Reservar",
 };
 
+// El wizard es una sola pantalla (app-shell propio: header + progreso + footer
+// sticky), tal cual el prototipo §6 — sin el header/footer de marketing. El
+// widget de contacto NO se monta acá (regla del proto). searchParams (Next 16)
+// llega como Promise: preselecciona sede (?sede=) o barbero (?barbero=).
 export default async function ReservarPage({
   searchParams,
 }: {
@@ -23,25 +24,20 @@ export default async function ReservarPage({
   const initialSedeId = sedes.find((s) => s.id === sede)?.id;
   return (
     <>
-      <SiteHeader />
-      <Reveal y={20}>
-        <BookingWizard
-          sedes={sedes}
-          barberos={barberos}
-          servicios={servicios}
-          initialBarberoId={barbero}
-          initialSedeId={initialSedeId}
-        />
-      </Reveal>
-      {/* Politica de cancelacion server-rendered (visible para crawlers e IAs). */}
-      <p className="mx-auto max-w-3xl px-6 pb-10 text-center text-xs leading-relaxed text-muted">
-        Podés cancelar o reagendar tu cita online hasta 2 horas antes desde{" "}
-        <a href="/cuenta" className="text-accent-soft transition hover:text-accent">
-          Mi cuenta
-        </a>
-        . Con menos tiempo, escribinos por WhatsApp al +57 300 673 4799.
+      <BookingWizard
+        sedes={sedes}
+        barberos={barberos}
+        servicios={servicios}
+        initialBarberoId={barbero}
+        initialSedeId={initialSedeId}
+      />
+      {/* Política de cancelación server-rendered (crawlable para IAs/buscadores),
+          fuera del app-shell del wizard para no romper el layout mobile. */}
+      <p className="sr-only">
+        Podés cancelar o reagendar tu cita online hasta 2 horas antes desde Mi
+        cuenta (/cuenta). Con menos tiempo, escribinos por WhatsApp al +57 300
+        673 4799.
       </p>
-      <SiteFooter />
     </>
   );
 }

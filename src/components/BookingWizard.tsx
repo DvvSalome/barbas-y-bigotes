@@ -1,57 +1,101 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { categorias } from "@/lib/data/seed";
 import { createReserva, getDisponibilidad } from "@/lib/actions";
-import { chatConAsistente } from "@/lib/ai-actions";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import type { Sede, SedeId, Servicio, Barbero, Categoria } from "@/lib/data/types";
 import { cop } from "@/lib/format";
-import { BarberCard } from "@/components/BarberCard";
-import { PhotoLightbox } from "@/components/ui/PhotoLightbox";
-import { AnimatePresence, motion } from "motion/react";
-import { OPEN, CLOSE, STEP, DOW, MON, fmtTime, fmtDur, buildSlots, computeTaken, nextDays } from "@/lib/slots";
+import { DOW, MON, STEP, fmtTime, buildSlots } from "@/lib/slots";
 
-const sedeFotoFrente: Record<string, string> = {
-  "parque-venezuela": "/sedes/parque-venezuela-frente.jpg",
-  "plaza-de-la-paz": "/sedes/plaza-de-la-paz-frente.jpg",
+// ------------------------------------------------------------------
+//  WIZARD DE RESERVA — recreación 1:1 del prototipo (Claude Design).
+//  Fuente: .superpowers/design/publico-reservar.md §6.
+//  Una sola pantalla, 5 pasos internos, header fijo + footer sticky.
+//  Mobile-first: se ve perfecto a 390px sin desbordes horizontales.
+// ------------------------------------------------------------------
+
+type Step = "sede" | "servicio" | "barbero" | "horario" | "datos" | "ok";
+
+const ORDEN: Step[] = ["sede", "servicio", "barbero", "horario", "datos"];
+const TITULOS: Record<Exclude<Step, "ok">, string> = {
+  sede: "Sede",
+  servicio: "Servicio",
+  barbero: "Barbero",
+  horario: "Día y hora",
+  datos: "Tus datos",
 };
 
-const sedeFotoInterior: Record<string, string> = {
-  "parque-venezuela": "/sedes/parque-venezuela-interior.jpg",
-  "plaza-de-la-paz": "/sedes/plaza-de-la-paz-interior.jpg",
+// Detalle corto + foto de frente por sede (contenido estático del proto §6.3 / §7).
+const SEDE_INFO: Record<string, { detalle: string; frente: string }> = {
+  "parque-venezuela": { detalle: "Cra 65 · Barranquilla", frente: "/sedes/parque-venezuela-frente.jpg" },
+  "plaza-de-la-paz": { detalle: "Centro · Barranquilla", frente: "/sedes/plaza-de-la-paz-frente.jpg" },
 };
 
-const categoriaFotos: Record<Categoria, string> = {
-  cortes: "/cortes/corte-3.jpg",
-  barba: "/cortes/corte-2.jpg",
-  "cejas-disenos": "/cortes/corte-4.jpg",
-  faciales: "/cortes/corte-1.jpg",
-  capilar: "/cortes/corte-5.jpg",
-  depilacion: "/cortes/corte-6.jpg",
-  combos: "/cortes/corte-7.jpg",
-};
+// Fotos de servicio que cicla el proto (§6.4): corte-2, corte-3, corte-5, corte-1 por índice.
+const SERV_FOTOS = ["/cortes/corte-2.jpg", "/cortes/corte-3.jpg", "/cortes/corte-5.jpg", "/cortes/corte-1.jpg"];
 
+// Bebidas del upsell (§6.9 / §7 — inventario cat "bebidas").
+const BEBIDAS = [
+  { id: "gaseosa", nombre: "Gaseosa", precio: 5000 },
+  { id: "agua", nombre: "Agua", precio: 3000 },
+  { id: "energizante", nombre: "Energizante", precio: 8000 },
+  { id: "cerveza", nombre: "Cerveza", precio: 7000 },
+];
 
-type Step = "sede" | "barbero" | "servicio" | "horario" | "datos" | "ok";
+// Copy default del upsell (proto §6.9; sin fuente admin, usamos el del prototipo).
+const UPSELL_EXTRA = { titulo: "¿Le sumás una bebida a tu corte?", sub: "Te la sirven apenas te sentás en la silla.", rechazo: "No, gracias" };
+const UPSELL_COMBO = { titulo: "Tu combo incluye bebida. ¿Cuál querés?", sub: "Va incluida en el precio del combo.", rechazo: "Sin bebida" };
+// Reglas admin (upsellOn/comboOn) — no hay tabla de config; ambos activos por defecto.
+const UPSELL_ON = true;
+const COMBO_ON = true;
 
-// Foto por servicio (rota las fotos reales de cortes del cliente, estable por id).
-// Provisional hasta tener foto propia por servicio (ver WeiBook cuando reactiven).
-function fotoServicio(id: string): string {
-  let h = 0;
-  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
-  return `/cortes/corte-${(h % 7) + 1}.jpg`;
+const GRAD_CTA = "linear-gradient(180deg,#e8675c,#d23f34)";
+
+type Bebida = (typeof BEBIDAS)[number];
+
+function mismoDia(a: Date, b: Date) {
+  return a.toDateString() === b.toDateString();
 }
 
-const STEPS: { id: Step; label: string }[] = [
-  { id: "sede", label: "Sede" },
-  { id: "barbero", label: "Barbero" },
-  { id: "servicio", label: "Servicio" },
-  { id: "horario", label: "Horario" },
-  { id: "datos", label: "Datos" },
-];
+// "Hoy" / "Mañana" / "Vie 10 jul" para resúmenes.
+function diaLabel(d: Date) {
+  const hoy = new Date();
+  const man = new Date();
+  man.setDate(hoy.getDate() + 1);
+  if (mismoDia(d, hoy)) return "Hoy";
+  if (mismoDia(d, man)) return "Mañana";
+  return `${DOW[d.getDay()]} ${d.getDate()} ${MON[d.getMonth()]}`;
+}
+
+// Badge de duración del proto (§6.4): "30M" / "1H" / "1H 15M".
+function durBadge(min: number) {
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  if (h && m) return `${h}H ${m}M`;
+  if (h) return `${h}H`;
+  return `${m}M`;
+}
+
+// ¿El rango [inicio,fin) ocupa el slot t (de duración dur)?
+function ocupaSlot(t: number, dur: number, rango: { inicio: string; fin: string }) {
+  const oi = new Date(rango.inicio);
+  const of = new Date(rango.fin);
+  const sM = oi.getHours() * 60 + oi.getMinutes();
+  const eM = of.getHours() * 60 + of.getMinutes();
+  return t < eM && t + dur > sM;
+}
+
+function RelojIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="#e8675c" strokeWidth={2.4} strokeLinecap="round" aria-hidden>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 7v5l3 2" />
+    </svg>
+  );
+}
 
 export function BookingWizard({
   sedes,
@@ -66,190 +110,229 @@ export function BookingWizard({
   initialBarberoId?: string;
   initialSedeId?: SedeId;
 }) {
-  const initialBarbero = barberos.find((b) => b.id === initialBarberoId) ?? null;
-  // La sede de un barbero preseleccionado manda sobre ?sede= si llegan ambos.
-  const initialSede = initialBarbero?.sede ?? initialSedeId ?? null;
+  const router = useRouter();
 
-  const [step, setStep] = useState<Step>(initialBarbero ? "servicio" : initialSede ? "barbero" : "sede");
-  const [sedeId, setSedeId] = useState<SedeId | null>(initialSede);
-  const [barbero, setBarbero] = useState<Barbero | null>(initialBarbero);
+  const initialBarbero = barberos.find((b) => b.id === initialBarberoId) ?? null;
+  // La sede del barbero preseleccionado manda sobre ?sede= si llegan ambos.
+  const sedeDefault =
+    initialBarbero?.sede ??
+    initialSedeId ??
+    (sedes.find((s) => s.id === "parque-venezuela")?.id ?? sedes[0]?.id ?? null);
+
+  // Deep-link de sede o barbero → arranca en paso 2 (Servicio) con la sede fija (proto §12).
+  const [step, setStep] = useState<Step>(initialBarbero || initialSedeId ? "servicio" : "sede");
+  const [sedeId, setSedeId] = useState<SedeId | null>(sedeDefault);
   const [servicio, setServicio] = useState<Servicio | null>(null);
+  const [servicioFoto, setServicioFoto] = useState<string>(SERV_FOTOS[0]);
+  const [selectedCat, setSelectedCat] = useState<Categoria>("cortes");
+  const [barbero, setBarbero] = useState<Barbero | null>(initialBarbero);
   const [day, setDay] = useState<Date | null>(null);
   const [slot, setSlot] = useState<number | null>(null);
   const [nombre, setNombre] = useState("");
-  const [telefono, setTelefono] = useState("");
   const [email, setEmail] = useState("");
+  const [bebida, setBebida] = useState<Bebida | null>(null);
+  const [bebidaIncluida, setBebidaIncluida] = useState(false); // combo → sin cargo
+  const [upsellMode, setUpsellMode] = useState<"extra" | "combo" | null>(null);
+  const [upsellSeen, setUpsellSeen] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [ocupados, setOcupados] = useState<{ inicio: string; fin: string }[]>([]);
-  const [cargandoSlots, setCargandoSlots] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [selectedCat, setSelectedCat] = useState<Categoria | null>("cortes");
+  // Ocupación del día elegido, por barbero (para los slots del paso 4).
+  const [ocupadosDia, setOcupadosDia] = useState<Record<string, { inicio: string; fin: string }[]>>({});
+  const [cargandoSlots, setCargandoSlots] = useState(false);
+  // Ocupación de HOY, por barbero (estado en vivo del paso 3).
+  const [statusHoy, setStatusHoy] = useState<Record<string, { inicio: string; fin: string }[]>>({});
 
-  const [chatOpen, setChatOpen] = useState(false);
-  const [chatMessages, setChatMessages] = useState<{ role: "user" | "assistant"; content: string }[]>([
-    { role: "assistant", content: "¡Ajá, bro! Todo bien. Soy el asistente virtual de Barbas & Bigotes. ¿Con qué sede, barbero o servicio te gustaría empezar hoy?" }
-  ]);
-  const [userInput, setUserInput] = useState("");
-  const [chatLoading, setChatLoading] = useState(false);
-
-  async function sendChatMessage() {
-    if (!userInput.trim() || chatLoading) return;
-    const userMsg = userInput.trim();
-    setUserInput("");
-    setChatMessages((prev) => [...prev, { role: "user", content: userMsg }]);
-    setChatLoading(true);
-
-    try {
-      const chatHistory = chatMessages.map((m) => ({
-        role: m.role,
-        content: m.content
-      }));
-      chatHistory.push({ role: "user", content: userMsg });
-
-      const res = await chatConAsistente(chatHistory);
-
-      let cleanedText = res.text;
-      const match = cleanedText.match(/ACTION_CONFIRM:\s*(\{.*\})/);
-      if (match) {
-        try {
-          const actionObj = JSON.parse(match[1]);
-          if (actionObj.sedeId) setSedeId(actionObj.sedeId);
-          if (actionObj.barberoId) {
-            const b = barberos.find((x) => x.id === actionObj.barberoId || x.nombre.toLowerCase().includes(actionObj.barberoId.toLowerCase()));
-            if (b) setBarbero(b);
-          }
-          if (actionObj.servicioId) {
-            const s = servicios.find((x) => x.id === actionObj.servicioId);
-            if (s) setServicio(s);
-          }
-          if (actionObj.fecha) {
-            // "YYYY-MM-DD" a secas se parsea como medianoche UTC (día -1 en
-            // Bogotá); con T00:00:00 se parsea en la zona local del navegador.
-            const d = new Date(`${actionObj.fecha}T00:00:00`);
-            const foundDay = days.find((x) => x.toDateString() === d.toDateString());
-            if (foundDay) setDay(foundDay);
-          }
-          if (actionObj.hora !== undefined) {
-            // El asistente puede mandar cualquier cosa: solo aceptamos minutos
-            // válidos (dentro del horario y alineados al paso); si no, se ignora
-            // en vez de terminar en setHours(NaN) al confirmar.
-            const h = Number(actionObj.hora);
-            if (Number.isFinite(h) && h >= OPEN && h < CLOSE && h % STEP === 0) {
-              setSlot(h);
-            }
-          }
-
-          setStep("datos");
-          setChatOpen(false);
-          setErrorMsg("✨ ¡El asistente de IA pre-llenó tus opciones! Verifica tus datos para confirmar.");
-        } catch (err) {
-          console.error("Error parsing AI action JSON:", err);
-        }
-        cleanedText = cleanedText.replace(/ACTION_CONFIRM:\s*\{.*\}/g, "").trim();
-      }
-
-      setChatMessages((prev) => [...prev, { role: "assistant", content: cleanedText }]);
-    } catch (err) {
-      console.error(err);
-      setChatMessages((prev) => [...prev, { role: "assistant", content: "Uy bro, se me cayó la red. Inténtalo de nuevo en un momento." }]);
-    } finally {
-      setChatLoading(false);
-    }
-  }
-
-  const sedeBarberos = useMemo(
-    () => barberos.filter((b) => b.sede === sedeId),
-    [barberos, sedeId],
+  const sedeBarberos = useMemo(() => barberos.filter((b) => b.sede === sedeId), [barberos, sedeId]);
+  const sedeNombre = sedes.find((s) => s.id === sedeId)?.nombre ?? "—";
+  const cats = useMemo(
+    () => (Object.keys(categorias) as Categoria[]).filter((c) => servicios.some((s) => s.categoria === c)),
+    [servicios],
   );
-  // useState con initializer (no useMemo): estable entre renders y sin chocar
-  // con la memoización del React Compiler.
-  const [days] = useState(() => nextDays(7));
-  const slots = useMemo(() => (servicio ? buildSlots(servicio.duracionMin) : ([] as number[])), [servicio]);
 
-  // Disponibilidad real: trae los rangos ocupados del barbero ese día y se suscribe en tiempo real.
+  // Días disponibles: próximos días hábiles (domingos cerrado). Estable entre renders.
+  const [dias] = useState<Date[]>(() => {
+    const out: Date[] = [];
+    const base = new Date();
+    for (let i = 0; out.length < 6 && i < 14; i++) {
+      const d = new Date(base);
+      d.setDate(base.getDate() + i);
+      if (d.getDay() !== 0) out.push(d); // salta domingo
+    }
+    return out;
+  });
+
+  const slots = useMemo(() => (servicio ? buildSlots(servicio.duracionMin) : ([] as number[])), [servicio]);
+  const dur = servicio?.duracionMin ?? STEP;
+
+  // Al entrar al paso horario sin día elegido, preselecciona el primero (proto muestra "Hoy").
   useEffect(() => {
-    // Sin selección no hay slots visibles; el reset se hace al cargar los nuevos
-    // (evitamos setState sincrónico en el cuerpo del effect).
-    if (!day || !barbero) return;
+    if (step === "horario" && !day && dias.length) setDay(dias[0]);
+  }, [step, day, dias]);
+
+  // Disponibilidad del día elegido: barbero fijo o todos los de la sede (para "cualquier barbero").
+  useEffect(() => {
+    if (!day || !sedeId) return;
+    const consulta = barbero ? [barbero] : sedeBarberos;
+    if (!consulta.length) {
+      setOcupadosDia({});
+      return;
+    }
     let cancel = false;
-    const fetchSlots = () =>
-      getDisponibilidad({ barberoId: barbero.id, fechaISO: day.toISOString() }).then((r) => {
-        if (!cancel) setOcupados(r);
+    const fetchAll = () =>
+      Promise.all(
+        consulta.map((b) =>
+          getDisponibilidad({ barberoId: b.id, fechaISO: day.toISOString() }).then((r) => [b.id, r] as const),
+        ),
+      ).then((entries) => {
+        if (!cancel) setOcupadosDia(Object.fromEntries(entries));
       });
-    // Spinner + primer fetch encadenados en microtask: sin setState
-    // sincrónico en el cuerpo del effect (regla del React Compiler).
+    // Sin setState síncrono en el cuerpo del effect (regla del React Compiler).
     Promise.resolve()
       .then(() => {
         if (!cancel) setCargandoSlots(true);
-        return fetchSlots();
+        return fetchAll();
       })
       .finally(() => {
         if (!cancel) setCargandoSlots(false);
       });
-
-    // Suscripción en tiempo real a las reservas de este barbero
+    // Realtime: cualquier reserva de esta sede re-consulta la disponibilidad.
     const sb = supabaseBrowser();
     const sub = sb
-      .channel(`wizard-reservas-${barbero.id}`)
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "reservas", filter: `barbero_id=eq.${barbero.id}` },
-        () => {
-          fetchSlots();
-        }
-      )
+      .channel(`wizard-${sedeId}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "reservas", filter: `sede_id=eq.${sedeId}` }, () => {
+        fetchAll();
+      })
       .subscribe();
-
-    // Fallback de re-consulta periódica cada 30 segundos
-    const poll = setInterval(fetchSlots, 30000);
+    const poll = setInterval(fetchAll, 30000);
     return () => {
       cancel = true;
       sb.removeChannel(sub);
       clearInterval(poll);
     };
-  }, [day, barbero]);
+  }, [day, sedeId, barbero, sedeBarberos]);
 
-  const taken = useMemo(() => {
-    if (!day) return new Set<number>();
-    return computeTaken({ slots, ocupados, day, duracionMin: servicio?.duracionMin ?? STEP });
-  }, [day, ocupados, slots, servicio]);
+  // Estado en vivo del paso 3: ocupación de HOY de los barberos de la sede.
+  useEffect(() => {
+    if (step !== "barbero" || !sedeBarberos.length) return;
+    let cancel = false;
+    const hoy = new Date();
+    Promise.all(
+      sedeBarberos.map((b) =>
+        getDisponibilidad({ barberoId: b.id, fechaISO: hoy.toISOString() }).then((r) => [b.id, r] as const),
+      ),
+    )
+      .then((entries) => {
+        if (!cancel) setStatusHoy(Object.fromEntries(entries));
+      })
+      .catch(() => {});
+    return () => {
+      cancel = true;
+    };
+  }, [step, sedeBarberos]);
 
-  const currentActiveBooking = useMemo(() => {
+  // Slots ocupados por reserva (tachados) y pasados (apagados sin tachar) — proto §6.6.
+  const ocupadoSet = useMemo(() => {
+    const s = new Set<number>();
+    if (!day) return s;
+    for (const t of slots) {
+      if (barbero) {
+        if ((ocupadosDia[barbero.id] ?? []).some((o) => ocupaSlot(t, dur, o))) s.add(t);
+      } else {
+        // "Cualquier barbero": ocupado sólo si NINGÚN barbero de la sede está libre.
+        const alguienLibre = sedeBarberos.some((b) => !(ocupadosDia[b.id] ?? []).some((o) => ocupaSlot(t, dur, o)));
+        if (!alguienLibre) s.add(t);
+      }
+    }
+    return s;
+  }, [day, slots, dur, barbero, sedeBarberos, ocupadosDia]);
+
+  const pasadoSet = useMemo(() => {
+    const s = new Set<number>();
+    if (!day) return s;
     const now = new Date();
-    if (!day || day.toDateString() !== now.toDateString() || !ocupados.length) return null;
-    return ocupados.find((o) => {
-      const start = new Date(o.inicio).getTime();
-      const end = new Date(o.fin).getTime();
-      const cur = now.getTime();
-      return cur >= start && cur <= end;
-    });
-  }, [day, ocupados]);
+    if (mismoDia(day, now)) {
+      const nowMin = now.getHours() * 60 + now.getMinutes();
+      for (const t of slots) if (t <= nowMin) s.add(t);
+    }
+    return s;
+  }, [day, slots]);
 
-  const sinCupos = slots.length > 0 && taken.size >= slots.length;
+  const sinCupos = slots.length > 0 && slots.every((t) => ocupadoSet.has(t) || pasadoSet.has(t));
 
-  const stepIndex = STEPS.findIndex((s) => s.id === step);
-  const sedeNombre = sedes.find((s) => s.id === sedeId)?.nombre ?? "—";
+  // Estado en vivo de un barbero para el chip del paso 3.
+  function estadoBarbero(bId: string): { tipo: "libre" | "silla"; label: string } {
+    const rangos = statusHoy[bId] ?? [];
+    const now = Date.now();
+    const activa = rangos.find((o) => new Date(o.inicio).getTime() <= now && now <= new Date(o.fin).getTime());
+    if (activa) {
+      const f = new Date(activa.fin);
+      return { tipo: "silla", label: `En silla · sale ${fmtTime(f.getHours() * 60 + f.getMinutes())}` };
+    }
+    return { tipo: "libre", label: "Libre ahora" };
+  }
 
-  function reset() {
-    setStep(initialBarbero ? "servicio" : initialSede ? "barbero" : "sede");
-    setServicio(null);
-    setSelectedCat("cortes");
-    setDay(null);
-    setSlot(null);
-    setNombre("");
-    setTelefono("");
-    setEmail("");
-    setErrorMsg(null);
+  const precioServicio = servicio && sedeId ? servicio.precios[sedeId] : null;
+  const total = precioServicio !== null ? precioServicio + (bebida && !bebidaIncluida ? bebida.precio : 0) : null;
+  const bebidaTxt = bebida ? ` + ${bebida.nombre.toLowerCase()}${bebidaIncluida ? " (incluida)" : ""}` : "";
+
+  const paso = (ORDEN.indexOf(step as Exclude<Step, "ok">) + 1) as number;
+
+  function irAtras() {
+    const idx = ORDEN.indexOf(step as Exclude<Step, "ok">);
+    if (idx > 0) setStep(ORDEN[idx - 1]);
+    else router.push("/");
+  }
+
+  const puedeContinuar =
+    step === "servicio" ? !!servicio : step === "horario" ? slot !== null : true;
+
+  function avanzar() {
+    if (!puedeContinuar) return;
+    if (step === "servicio") {
+      // Upsell de bebida entre paso 2 y 3, una sola vez por flujo (proto §6.9).
+      if (!upsellSeen && servicio) {
+        const esComboBebida = servicio.nombre.toLowerCase().includes("bebida");
+        if (esComboBebida && COMBO_ON) {
+          setUpsellMode("combo");
+          setUpsellSeen(true);
+          return;
+        }
+        if (!esComboBebida && UPSELL_ON) {
+          setUpsellMode("extra");
+          setUpsellSeen(true);
+          return;
+        }
+      }
+      setStep("barbero");
+      return;
+    }
+    if (step === "datos") {
+      confirmar();
+      return;
+    }
+    const idx = ORDEN.indexOf(step as Exclude<Step, "ok">);
+    setStep(ORDEN[idx + 1]);
+  }
+
+  function elegirBebida(b: Bebida | null) {
+    setBebida(b);
+    setBebidaIncluida(upsellMode === "combo" && !!b);
+    setUpsellMode(null);
+    setStep("barbero");
   }
 
   async function confirmar() {
     if (!servicio || !day || slot === null || !sedeId) return;
-    // El path del asistente IA puede llegar acá sin barbero; el server lo
-    // rechaza, pero acá lo cortamos antes y mandamos al paso correcto.
-    if (!barbero) {
-      setErrorMsg("Elegí un barbero para confirmar tu reserva.");
-      setStep("barbero");
-      return;
+    // Resolver barbero: si el cliente no eligió, asignamos el primero libre en ese cupo.
+    let elegido = barbero;
+    if (!elegido) {
+      elegido = sedeBarberos.find((b) => !(ocupadosDia[b.id] ?? []).some((o) => ocupaSlot(slot, dur, o))) ?? null;
+      if (!elegido) {
+        setErrorMsg("Ese horario ya fue tomado. Elegí otro, por favor.");
+        setSlot(null);
+        setStep("horario");
+        return;
+      }
     }
     setSaving(true);
     setErrorMsg(null);
@@ -257,572 +340,572 @@ export function BookingWizard({
     inicio.setHours(Math.floor(slot / 60), slot % 60, 0, 0);
     const res = await createReserva({
       sede: sedeId,
-      barberoId: barbero?.id ?? "",
+      barberoId: elegido.id,
       servicioId: servicio.id,
-      clienteNombre: nombre,
-      telefono,
-      email,
+      clienteNombre: nombre.trim() || "Cliente",
+      telefono: "",
+      email: email.trim(),
       inicioISO: inicio.toISOString(),
     });
     setSaving(false);
     if (res.ok) {
+      setBarbero(elegido);
       setStep("ok");
       return;
     }
-    // Si el cupo se tomó mientras llenaba los datos, vuelve a elegir horario.
     setErrorMsg(res.error ?? "No se pudo reservar");
     setSlot(null);
     setStep("horario");
   }
 
-  const cats = Object.keys(categorias) as Categoria[];
-
-  return (
-    <div className={`mx-auto px-6 py-6 sm:py-8 transition-all duration-500 ${
-      step === "servicio" ? "max-w-5xl" : "max-w-3xl"
-    }`}>
-      <style>{`
-        .no-scrollbar::-webkit-scrollbar {
-          display: none;
-        }
-        .no-scrollbar {
-          -ms-overflow-style: none;
-          scrollbar-width: none;
-        }
-      `}</style>
-      
-      {/* Encabezado Principal / Sede Seleccionada Banner (En la parte superior) */}
-      {sedeId && step !== "sede" && step !== "ok" ? (
-        <div className="mx-auto mb-5 max-w-xl overflow-hidden rounded-2xl border border-line bg-panel shadow-lg">
-          <div className="relative h-20 w-full sm:h-24">
-            <Image
-              src={sedeFotoFrente[sedeId] || "/sedes/parque-venezuela-frente.jpg"}
-              alt={sedeNombre}
-              fill
-              className="object-cover opacity-55"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-panel via-panel/30 to-transparent" />
-            <div className="absolute inset-x-5 bottom-3 flex items-end justify-between z-10">
-              <div>
-                <span className="text-[9px] uppercase tracking-[0.2em] text-accent-soft">Sede seleccionada</span>
-                <h3 className="font-display text-xl font-semibold uppercase leading-tight text-white">{sedeNombre}</h3>
-              </div>
-              <PhotoLightbox
-                src={sedeFotoInterior[sedeId] || "/sedes/parque-venezuela-interior.jpg"}
-                alt={`Interior sede ${sedeNombre}`}
-                title={sedeNombre}
-                id={`modal-${sedeId}`}
+  // ---------------------------------------------------------------
+  //  Pantalla de confirmación animada (proto §6.10)
+  // ---------------------------------------------------------------
+  if (step === "ok" && servicio && day && slot !== null) {
+    return (
+      <div
+        className="flex min-h-[100dvh] flex-col items-center justify-center px-6 py-12 text-center"
+        style={{ background: "radial-gradient(90% 50% at 50% 0%, rgba(210,63,52,.12), transparent 60%)" }}
+      >
+        {/* Firma: logo "afeitado" por la máquina de cortar */}
+        <div className="relative mx-auto mb-6 h-[145px] w-[160px]" style={{ animation: "bbglow 2.6s ease-in-out 1.5s infinite" }}>
+          <Image
+            src="/brand/logo-face-transparent.png"
+            alt="Barbas & Bigotes"
+            width={140}
+            height={140}
+            className="absolute left-1/2 top-1 h-[140px] w-[140px] -translate-x-1/2 object-contain"
+            style={{ animation: "bbcut 1.4s ease-in-out .2s both, bbbuzz .07s linear .2s 20 alternate" }}
+          />
+          <div className="absolute z-[2]" style={{ left: "50%", marginLeft: "-14px", top: "-48px", animation: "bbclipper 1.4s ease-in-out .2s both" }}>
+            <div style={{ transformOrigin: "center top", animation: "bbwob .09s linear .2s 16 alternate" }}>
+              <div style={{ width: 28, height: 8, borderRadius: "2px 2px 0 0", background: "repeating-linear-gradient(90deg,#d8d2c7 0 2.5px, transparent 2.5px 6px)" }} />
+              <div
+                className="relative mx-auto"
+                style={{ width: 23, height: 38, borderRadius: "5px 5px 11px 11px", background: "linear-gradient(180deg,#4a433b,#211d19)", border: "1px solid rgba(242,237,228,.3)", boxShadow: "0 6px 16px rgba(0,0,0,.5)" }}
               >
-                {(open) => (
-                  <button
-                    onClick={open}
-                    className="rounded-full bg-white/10 hover:bg-white/20 transition border border-white/20 px-3 py-1 text-[10px] font-semibold text-white backdrop-blur-sm"
-                  >
-                    Ver local 📷
-                  </button>
-                )}
-              </PhotoLightbox>
+                <div className="absolute left-1/2 top-2" style={{ width: 5, height: 11, marginLeft: "-2.5px", borderRadius: 2, background: "#d23f34", boxShadow: "0 0 8px #d23f34" }} />
+              </div>
             </div>
           </div>
         </div>
-      ) : (
-        <h1 className="text-center font-display text-4xl sm:text-5xl font-semibold uppercase mb-5">Reservar cita</h1>
-      )}
 
-      {/* Barra de progreso de los pasos */}
-      {step !== "ok" && (
-        <div className="mx-auto mt-0 mb-6 flex max-w-xl items-center justify-between">
-          {STEPS.map((s, i) => (
-            <div key={s.id} className="flex flex-1 items-center">
-              <div className="flex flex-col items-center">
-                <div
-                  className={`flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-full border text-xs ${
-                    i <= stepIndex ? "border-accent bg-accent text-on-accent" : "border-line text-muted"
-                  }`}
-                >
-                  {i + 1}
-                </div>
-                <span className={`mt-1.5 text-[9px] sm:text-[10px] uppercase tracking-wide ${i <= stepIndex ? "text-ink" : "text-muted"}`}>
-                  {s.label}
-                </span>
-              </div>
-              {i < STEPS.length - 1 && (
-                <div className={`mx-1 h-px flex-1 ${i < stepIndex ? "bg-accent" : "bg-line"}`} />
-              )}
-            </div>
-          ))}
-        </div>
-      )}
-
-      <div className="mt-6 sm:mt-8">
-        {step === "sede" && (
-          <Section title="¿En qué sede?">
-            <div className="grid gap-4 sm:grid-cols-2">
-              {sedes.map((s) => (
-                <button
-                  key={s.id}
-                  onClick={() => {
-                    setSedeId(s.id);
-                    setStep("barbero");
-                  }}
-                  className="rounded-2xl border border-line bg-panel p-7 text-left transition hover:border-accent/50"
-                >
-                  <div className="text-xs uppercase tracking-[0.3em] text-accent">Sede</div>
-                  <div className="mt-2 font-display text-2xl">{s.nombre}</div>
-                </button>
-              ))}
-            </div>
-          </Section>
-        )}
-
-        {step === "barbero" && (
-          <Section title={`Elegí tu barbero · ${sedeNombre}`} onBack={() => setStep("sede")}>
-            {sedeBarberos.length ? (
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-5 items-start">
-                {sedeBarberos.map((b) => (
-                  <BarberCard
-                    key={b.id}
-                    barbero={b}
-                    onSelect={(elegido) => {
-                      setBarbero(elegido);
-                      setStep("servicio");
-                    }}
-                  />
-                ))}
-              </div>
-            ) : (
-              <p className="rounded-xl border border-line bg-panel px-4 py-3 text-sm text-muted">
-                Esta sede no tiene barberos cargados todavía.
-              </p>
-            )}
-          </Section>
-        )}
-
-        {step === "servicio" && (
-          <Section
-            title="¿Qué servicio?"
-            hideBack={true}
+        <div className="w-full max-w-md">
+          <span
+            className="inline-block rounded-full border px-4 py-1.5 font-display text-xs font-extrabold uppercase tracking-[0.1em]"
+            style={{ animation: "bbrise .5s ease-out .15s both", borderColor: "rgba(52,211,153,.4)", background: "rgba(52,211,153,.08)", color: "#34d399" }}
           >
-            {/* Custom Back Nav Bar */}
-            <div className="mb-5 flex items-center gap-3">
-              {/* Back to barbero (Desktop) */}
-              {!initialBarbero && (
-                <button
-                  type="button"
-                  onClick={() => setStep("barbero")}
-                  className="hidden md:flex items-center gap-1 text-xs text-accent-soft hover:text-accent transition uppercase tracking-wider"
-                >
-                  ← Volver a Barberos
-                </button>
-              )}
-              
-              {/* Back to barbero (Mobile, when selectedCat is null) */}
-              {!initialBarbero && !selectedCat && (
-                <button
-                  type="button"
-                  onClick={() => setStep("barbero")}
-                  className="flex md:hidden items-center gap-1 text-xs text-accent-soft hover:text-accent transition uppercase tracking-wider"
-                >
-                  ← Volver a Barberos
-                </button>
-              )}
+            ✓ Reserva confirmada
+          </span>
 
-              {/* Back to categories (Mobile, when selectedCat is set) */}
-              {selectedCat && (
-                <button
-                  type="button"
-                  onClick={() => setSelectedCat(null)}
-                  className="flex md:hidden items-center gap-1 text-xs text-accent-soft hover:text-accent transition uppercase tracking-wider"
-                >
-                  ← Volver a Categorías
-                </button>
-              )}
-            </div>
+          <h2 className="mt-5 font-display text-[40px] font-extrabold uppercase leading-[0.95]" style={{ animation: "bbrise .5s ease-out .25s both" }}>
+            ¡Listo,
+            <br />
+            te esperamos!
+          </h2>
 
-            {/* Split layout container */}
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-12 md:gap-6 items-start h-[430px] md:h-[480px] overflow-hidden">
-              
-              {/* Category selector column */}
-              <div className={`md:col-span-4 space-y-2 h-full overflow-y-auto no-scrollbar pb-6 ${selectedCat ? "hidden md:block" : "block"}`}>
-                <div className="mb-1 text-[10px] uppercase tracking-[0.2em] text-accent-soft">Categorías</div>
-                <div className="grid grid-cols-2 gap-2 md:flex md:flex-col md:space-y-2">
-                  {cats.map((cat) => {
-                    const list = servicios.filter((s) => s.categoria === cat);
-                    if (!list.length) return null;
-                    const isActive = selectedCat === cat;
-                    return (
-                      <button
-                        key={cat}
-                        type="button"
-                        onClick={() => setSelectedCat(cat)}
-                        className={`group relative flex h-11 md:h-12 w-full items-center justify-between overflow-hidden rounded-xl border transition-all duration-300 text-left ${
-                          isActive 
-                            ? "border-accent bg-accent/10 shadow-[0_0_15px_rgba(210,63,52,0.2)]" 
-                            : "border-line bg-panel hover:border-accent/40"
-                        }`}
-                      >
-                        <Image
-                          src={categoriaFotos[cat] || "/cortes/corte-3.jpg"}
-                          alt=""
-                          fill
-                          sizes="(max-width: 768px) 50vw, 33vw"
-                          className={`object-cover transition-transform duration-500 group-hover:scale-105 ${
-                            isActive ? "opacity-60" : "opacity-35 group-hover:opacity-50"
-                          }`}
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/60 to-transparent" />
-                        
-                        <div className="relative z-10 flex w-full items-center justify-between px-3.5">
-                          <span className="font-display text-xs md:text-[13px] font-semibold uppercase tracking-wider text-white">
-                            {categorias[cat]}
-                          </span>
-                          <span className="text-[10px] text-accent-soft hidden md:inline">
-                            {list.length} {list.length === 1 ? "serv" : "servs"}
-                          </span>
-                        </div>
-                      </button>
-                    );
-                  })}
+          <p className="mx-auto mt-3 max-w-[30ch] text-[13.5px] text-muted" style={{ animation: "bbrise .5s ease-out .35s both" }}>
+            Ya quedó agendada, {nombre.trim() || "crack"}. Te enviamos el comprobante y el recordatorio al correo
+            {email.trim() ? ` ${email.trim()}` : ""}. Sede {sedeNombre}.
+          </p>
+
+          <div className="mt-6 rounded-2xl border border-line bg-panel text-left" style={{ animation: "bbrise .5s ease-out .45s both" }}>
+            <div className="flex items-center gap-3 border-b border-[rgba(242,237,228,0.07)] p-3.5">
+              <div className="relative h-[46px] w-[46px] shrink-0 overflow-hidden rounded-[10px]">
+                <Image src={servicioFoto} alt="" fill sizes="46px" className="object-cover" />
+              </div>
+              <div className="min-w-0">
+                <div className="text-[10.5px] font-bold uppercase tracking-[0.12em] text-muted">Servicio</div>
+                <div className="truncate text-sm font-semibold text-ink">
+                  {servicio.nombre}
+                  {bebidaTxt}
                 </div>
               </div>
-
-              {/* Services list column */}
-              <div className={`md:col-span-8 space-y-3 h-full flex flex-col ${selectedCat ? "block" : "hidden md:block"}`}>
-                {selectedCat ? (
-                  <>
-                    <div className="flex items-center justify-between border-b border-line/40 pb-2">
-                      <div>
-                        <span className="text-[9px] uppercase tracking-[0.2em] text-accent-soft md:inline hidden">Servicios disponibles</span>
-                        <h3 className="font-display text-lg md:text-xl font-bold uppercase text-white leading-none">
-                          {categorias[selectedCat]}
-                        </h3>
-                      </div>
-                      <span className="text-xs text-muted">
-                        {servicios.filter((s) => s.categoria === selectedCat).length} opciones
-                      </span>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 overflow-y-auto no-scrollbar flex-1 content-start pb-8">
-                      {servicios
-                        .filter((s) => s.categoria === selectedCat)
-                        .map((s) => {
-                          const nameParts = s.nombre.split(": ");
-                          const title = nameParts[0];
-                          const desc = nameParts.slice(1).join(": ");
-                          return (
-                            <button
-                              key={s.id}
-                              type="button"
-                              onClick={() => {
-                                setServicio(s);
-                                setStep("horario");
-                              }}
-                              className="group flex flex-col overflow-hidden rounded-xl border border-line bg-panel text-left transition hover:border-accent/50 hover:bg-accent/[0.01] hover:-translate-y-1 duration-300 shadow-md"
-                            >
-                              {/* Imagen del Servicio */}
-                              <div className="relative aspect-[16/10] w-full overflow-hidden bg-ink/10">
-                                <Image
-                                  src={fotoServicio(s.id)}
-                                  alt={title}
-                                  fill
-                                  sizes="(max-width: 768px) 50vw, 33vw"
-                                  className="object-cover transition duration-700 ease-out group-hover:scale-105"
-                                />
-                                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 transition duration-300 group-hover:opacity-100" />
-                                
-                                {/* Badge de Duración flotante */}
-                                <span className="absolute bottom-2 left-2 rounded-md bg-black/70 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-white backdrop-blur-sm">
-                                  {fmtDur(s.duracionMin)}
-                                </span>
-                              </div>
-
-                              {/* Contenido */}
-                              <div className="flex flex-1 flex-col justify-between p-3.5">
-                                <div>
-                                  <h4 className="font-display text-[12.5px] sm:text-[13.5px] font-semibold text-white leading-snug group-hover:text-accent-soft transition duration-300">
-                                    {title}
-                                  </h4>
-                                  {desc && (
-                                    <p className="mt-1.5 text-[9.5px] sm:text-[10px] text-muted/70 leading-relaxed line-clamp-2">
-                                      {desc}
-                                    </p>
-                                  )}
-                                </div>
-                                
-                                <div className="mt-4 flex items-center justify-between border-t border-line/45 pt-2.5">
-                                  <span className="text-[9.5px] uppercase tracking-wider text-muted">Precio</span>
-                                  <span className="text-[11.5px] sm:text-[12.5px] font-bold text-accent-soft">
-                                    {s.desde ? "Desde " : ""}
-                                    {cop(sedeId ? s.precios[sedeId] : s.precios["parque-venezuela"])}
-                                  </span>
-                                </div>
-                              </div>
-                            </button>
-                          );
-                        })}
-                    </div>
-                  </>
-                ) : (
-                  <div className="flex h-48 flex-col items-center justify-center rounded-xl border border-dashed border-line p-6 text-center text-muted hidden md:flex">
-                    <svg className="h-8 w-8 opacity-40 mb-2" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 21m0 0l-.813-5.096L9 21zm0 0h4.991m-4.99m3.853-5.61a3.5 3.5 0 11-4.823-4.824 3.5 3.5 0 014.823 4.824z" />
-                    </svg>
-                    Selecciona una categoría de la izquierda para ver sus servicios.
-                  </div>
-                )}
+            </div>
+            <div className="flex items-center gap-3 border-b border-[rgba(242,237,228,0.07)] p-3.5">
+              <div className="relative h-[34px] w-[34px] shrink-0 overflow-hidden rounded-full">
+                <Image src={barbero?.fotoUrl || "/barberos/generico.jpg"} alt="" fill sizes="34px" className="object-cover object-top" />
+              </div>
+              <div className="min-w-0">
+                <div className="text-[10.5px] font-bold uppercase tracking-[0.12em] text-muted">Barbero</div>
+                <div className="truncate text-sm font-semibold text-ink">{barbero?.nombre ?? "Cualquier barbero"}</div>
               </div>
             </div>
-          </Section>
-        )}
-
-        {step === "horario" && servicio && (
-          <Section title="Fecha y hora" onBack={() => setStep("servicio")}>
-            <p className="mb-5 text-sm text-muted">
-              {servicio.nombre} · dura <b className="text-ink">{fmtDur(servicio.duracionMin)}</b> · horario 9:00 am – 8:00 pm
-            </p>
-
-            {errorMsg && (
-              <div className="mb-5 rounded-xl border border-accent/40 bg-accent/10 px-4 py-3 text-sm text-accent-soft">
-                {errorMsg}
+            <div className="border-b border-[rgba(242,237,228,0.07)] p-3.5">
+              <div className="text-[10.5px] font-bold uppercase tracking-[0.12em] text-muted">Cuándo</div>
+              <div className="text-sm font-semibold text-ink">
+                {diaLabel(day)}, {fmtTime(slot)}
               </div>
-            )}
+            </div>
+            <div className="flex items-end justify-between p-3.5">
+              <div>
+                <div className="text-[10.5px] font-bold uppercase tracking-[0.12em] text-muted">Total</div>
+                <div className="text-[11px] text-muted">Lo pagás en la barbería.</div>
+              </div>
+              {total !== null && <div className="font-display text-[22px] font-extrabold tabular-nums text-accent-soft">{cop(total)}</div>}
+            </div>
+          </div>
 
-            <div className="mb-6 flex gap-2 overflow-x-auto pb-1">
-              {days.map((d) => {
-                const active = day?.toDateString() === d.toDateString();
+          <div className="mt-6 flex gap-2.5" style={{ animation: "bbrise .5s ease-out .55s both" }}>
+            <button
+              onClick={() => router.push("/cuenta")}
+              className="flex min-h-[50px] flex-[1.3] items-center justify-center rounded-2xl font-display text-[15px] font-extrabold uppercase tracking-wide text-on-accent"
+              style={{ background: GRAD_CTA }}
+            >
+              Ver mi cuenta
+            </button>
+            <button
+              onClick={() => router.push("/")}
+              className="flex flex-1 items-center justify-center rounded-2xl border border-[rgba(242,237,228,0.16)] px-3 text-[13px] text-muted"
+            >
+              Volver al inicio
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ---------------------------------------------------------------
+  //  App-shell del wizard: header + progreso + cuerpo scroll + footer sticky
+  // ---------------------------------------------------------------
+  return (
+    <div className="mx-auto flex h-[100dvh] w-full max-w-[1152px] flex-col overflow-hidden bg-bg md:border-x md:border-[rgba(242,237,228,0.08)] md:shadow-[0_0_80px_rgba(0,0,0,0.55)]">
+      {/* Header */}
+      <header className="flex shrink-0 items-center gap-3 border-b border-line px-4 pb-3 pt-[calc(env(safe-area-inset-top)+12px)] md:px-14">
+        <button onClick={irAtras} aria-label="Atrás" className="text-[20px] leading-none text-muted transition hover:text-ink">
+          ←
+        </button>
+        <div className="min-w-0 flex-1">
+          <div className="font-display text-[22px] font-extrabold uppercase leading-none">Reservá tu turno</div>
+          <div className="mt-0.5 text-[11.5px] text-muted">
+            Paso {paso} de 5 · {TITULOS[step as Exclude<Step, "ok">]}
+          </div>
+        </div>
+        <div className="font-display text-[18px] font-extrabold tabular-nums text-accent-soft">{paso}/5</div>
+      </header>
+
+      {/* Barra de progreso */}
+      <div className="shrink-0 px-4 pt-2 md:px-14">
+        <div className="h-[3px] w-full overflow-hidden rounded-full bg-[rgba(242,237,228,0.08)]">
+          <div className="h-full rounded-full transition-all duration-300" style={{ width: `${paso * 20}%`, background: "linear-gradient(90deg,#e8675c,#d23f34)" }} />
+        </div>
+      </div>
+
+      {/* Cuerpo scrolleable */}
+      <main className="min-h-0 flex-1 overflow-y-auto px-4 pb-6 pt-5 md:px-14 md:pt-7">
+        {/* ---------- Paso 1 · Sede ---------- */}
+        {step === "sede" && (
+          <div>
+            <h2 className="font-display text-[26px] font-extrabold uppercase leading-none">¿En qué sede?</h2>
+            <p className="mt-1.5 text-xs text-muted">Las dos abren de lunes a sábado, 9 am – 8 pm.</p>
+            <div className="mt-5 flex flex-col gap-3 md:grid md:grid-cols-[repeat(auto-fit,minmax(340px,1fr))] md:gap-4">
+              {sedes.map((s) => {
+                const sel = sedeId === s.id;
+                const info = SEDE_INFO[s.id] ?? { detalle: s.direccion ?? "Barranquilla", frente: "/sedes/parque-venezuela-frente.jpg" };
                 return (
                   <button
-                    key={d.toISOString()}
+                    key={s.id}
                     onClick={() => {
-                      setDay(d);
-                      setSlot(null);
-                      setErrorMsg(null);
+                      setSedeId(s.id);
+                      setBarbero(null);
                     }}
-                    className={`flex shrink-0 flex-col items-center rounded-xl border px-4 py-2.5 ${
-                      active ? "border-accent bg-accent/10" : "border-line hover:border-accent/40"
-                    }`}
+                    className="relative h-[130px] w-full overflow-hidden rounded-2xl text-left md:h-[300px]"
+                    style={{ border: `2px solid ${sel ? "#d23f34" : "rgba(242,237,228,.12)"}` }}
                   >
-                    <span className="text-[11px] uppercase text-muted">{DOW[d.getDay()]}</span>
-                    <span className="font-display text-xl">{d.getDate()}</span>
-                    <span className="text-[10px] text-muted">{MON[d.getMonth()]}</span>
+                    <Image src={info.frente} alt={s.nombre} fill sizes="(max-width:768px) 100vw, 50vw" className="object-cover" />
+                    <div className="absolute inset-0" style={{ background: "linear-gradient(180deg, transparent 25%, rgba(12,11,10,.88) 100%)" }} />
+                    {sel && (
+                      <span className="absolute right-3 top-3 flex h-6 w-6 items-center justify-center rounded-full bg-accent text-[12px] font-extrabold text-on-accent">✓</span>
+                    )}
+                    <div className="absolute inset-x-4 bottom-3.5">
+                      <div className="font-display text-[23px] font-extrabold uppercase leading-none text-white">{s.nombre}</div>
+                      <div className="mt-1 text-[11.5px] text-[#c9c2b6]">{info.detalle}</div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* ---------- Paso 2 · Servicio ---------- */}
+        {step === "servicio" && (
+          <div>
+            <h2 className="font-display text-[26px] font-extrabold uppercase leading-none">¿Qué servicio?</h2>
+            <div className="mb-2 mt-5 text-[10px] font-bold uppercase tracking-[0.24em] text-accent-soft">Categorías</div>
+            <div className="grid grid-cols-2 gap-2 md:grid-cols-[repeat(auto-fit,minmax(230px,1fr))]">
+              {cats.map((cat) => {
+                const activa = selectedCat === cat;
+                const n = servicios.filter((s) => s.categoria === cat).length;
+                return (
+                  <button
+                    key={cat}
+                    onClick={() => setSelectedCat(cat)}
+                    className="flex min-h-[44px] items-center justify-between gap-2 rounded-[10px] px-3 py-2.5"
+                    style={{
+                      background: "linear-gradient(90deg,#211d19,#151311)",
+                      border: `1px solid ${activa ? "rgba(210,63,52,.75)" : "rgba(242,237,228,.14)"}`,
+                    }}
+                  >
+                    <span className={`font-display text-[14px] font-bold uppercase leading-none ${activa ? "text-ink" : "text-muted"}`}>{categorias[cat]}</span>
+                    <span className="shrink-0 text-[10px] text-accent-soft">{n}</span>
                   </button>
                 );
               })}
             </div>
 
-            {!day ? (
-              <p className="text-sm text-muted">Elegí un día para ver los horarios disponibles.</p>
-            ) : (
-              <>
-                {/* Live barber status indicator for today */}
-                {day.toDateString() === new Date().toDateString() && barbero && (
-                  <div className="mb-4 flex items-center gap-2 rounded-xl border border-line bg-panel p-3">
-                    <span className={`h-2 w-2 rounded-full ${currentActiveBooking ? "bg-accent animate-pulse" : "bg-emerald-500"}`} />
-                    <span className="text-[11px] font-semibold text-ink/90">
-                      {currentActiveBooking
-                        ? `En vivo: ${barbero.nombre} está actualmente atendiendo una cita (libre aprox. ${new Date(currentActiveBooking.fin).toLocaleTimeString("es-CO", { hour: "numeric", minute: "2-digit" })})`
-                        : `En vivo: ${barbero.nombre} se encuentra libre y listo para atender en este momento.`}
-                    </span>
-                  </div>
-                )}
+            <div className="mb-3 mt-6 flex items-center justify-between">
+              <span className="text-[10px] font-bold uppercase tracking-[0.24em] text-accent-soft">Servicios disponibles</span>
+              <span className="text-[11px] text-muted">{servicios.filter((s) => s.categoria === selectedCat).length} opciones</span>
+            </div>
 
-                {cargandoSlots ? (
-                  <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
-                    {Array.from({ length: 8 }).map((_, i) => (
-                      <div key={i} className="h-10 animate-pulse rounded-lg border border-line/50 bg-panel" />
+            <div className="grid grid-cols-2 gap-[9px] md:grid-cols-[repeat(auto-fill,minmax(230px,260px))] md:justify-center md:gap-4">
+              {servicios
+                .filter((s) => s.categoria === selectedCat)
+                .map((s, i) => {
+                  const sel = servicio?.id === s.id;
+                  const foto = SERV_FOTOS[i % SERV_FOTOS.length];
+                  const precio = sedeId ? s.precios[sedeId] : s.precios["parque-venezuela"];
+                  return (
+                    <button
+                      key={s.id}
+                      onClick={() => {
+                        setServicio(s);
+                        setServicioFoto(foto);
+                        setSlot(null);
+                      }}
+                      className="flex flex-col overflow-hidden rounded-xl text-left"
+                      style={{ border: `2px solid ${sel ? "#d23f34" : "rgba(242,237,228,.1)"}` }}
+                    >
+                      <div className="relative aspect-[4/3] w-full overflow-hidden bg-elevated">
+                        <Image src={foto} alt="" fill sizes="(max-width:768px) 50vw, 240px" className="object-cover" />
+                        <span
+                          className="absolute bottom-1.5 left-1.5 flex items-center gap-1 rounded-[5px] px-2 py-0.5 font-display text-[11px] font-extrabold text-white"
+                          style={{ background: "rgba(5,4,3,.85)" }}
+                        >
+                          <RelojIcon />
+                          {durBadge(s.duracionMin)}
+                        </span>
+                        {sel && (
+                          <span className="absolute right-1.5 top-1.5 flex h-[21px] w-[21px] items-center justify-center rounded-full bg-accent text-[11px] font-extrabold text-on-accent">✓</span>
+                        )}
+                      </div>
+                      <div className="px-2.5 pb-1 pt-2.5">
+                        <div className="min-h-[34px] text-[12.5px] font-bold leading-tight text-ink">{s.nombre}</div>
+                      </div>
+                      <div className="mt-auto flex items-center justify-between border-t border-[rgba(242,237,228,0.07)] px-2.5 py-2">
+                        <span className="text-[9.5px] font-bold uppercase tracking-[0.12em] text-muted">Precio</span>
+                        <span className="font-display text-[17px] font-extrabold tabular-nums text-accent-soft">{cop(precio)}</span>
+                      </div>
+                    </button>
+                  );
+                })}
+            </div>
+          </div>
+        )}
+
+        {/* ---------- Paso 3 · Barbero ---------- */}
+        {step === "barbero" && (
+          <div>
+            <h2 className="font-display text-[26px] font-extrabold uppercase leading-none">Elegí tu barbero</h2>
+            <p className="mt-1.5 text-xs text-muted">{sedeNombre} · o seguí sin elegir y te asignamos uno.</p>
+            {sedeBarberos.length ? (
+              <div className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-[repeat(auto-fit,minmax(230px,1fr))]">
+                {sedeBarberos.map((b) => {
+                  const sel = barbero?.id === b.id;
+                  const est = estadoBarbero(b.id);
+                  const chipColor = est.tipo === "silla" ? "#e8675c" : "#34d399";
+                  const chipBorder = est.tipo === "silla" ? "rgba(210,63,52,.45)" : "rgba(52,211,153,.4)";
+                  return (
+                    <button
+                      key={b.id}
+                      onClick={() => setBarbero(sel ? null : b)}
+                      className="relative aspect-[3/3.6] w-full overflow-hidden rounded-[14px] text-left"
+                      style={{
+                        border: `2px solid ${sel ? "#d23f34" : "rgba(242,237,228,.12)"}`,
+                        background: sel
+                          ? "radial-gradient(circle at 50% 30%, rgba(210,63,52,.22), #151311 72%)"
+                          : "radial-gradient(circle at 50% 30%, #272119, #0e0d0b 76%)",
+                      }}
+                    >
+                      <div
+                        className="absolute inset-0"
+                        style={{
+                          maskImage: "radial-gradient(ellipse 82% 92% at 50% 40%, black 48%, transparent 74%)",
+                          WebkitMaskImage: "radial-gradient(ellipse 82% 92% at 50% 40%, black 48%, transparent 74%)",
+                        }}
+                      >
+                        <Image
+                          src={b.fotoUrl || "/barberos/generico.jpg"}
+                          alt={b.nombre}
+                          fill
+                          sizes="(max-width:768px) 50vw, 240px"
+                          className="object-cover object-top transition-[filter] duration-300"
+                          style={{ filter: sel ? "none" : "grayscale(1) contrast(1.05) brightness(.88)" }}
+                        />
+                      </div>
+                      <div className="absolute inset-0" style={{ background: "linear-gradient(180deg, rgba(12,11,10,0) 45%, rgba(12,11,10,.82) 100%)" }} />
+                      {b.destacado && (
+                        <span className="absolute left-2 top-2 rounded-full bg-accent px-2 py-0.5 text-[9.5px] font-extrabold uppercase tracking-[0.08em] text-on-accent">★ TOP</span>
+                      )}
+                      {sel && (
+                        <span className="absolute right-2 top-2 flex h-[22px] w-[22px] items-center justify-center rounded-full bg-accent text-[11px] font-extrabold text-on-accent">✓</span>
+                      )}
+                      <div className="absolute inset-x-3 bottom-3">
+                        <div className="font-display text-[21px] font-extrabold uppercase leading-none text-white">{b.nombre}</div>
+                        <div className="mt-1 text-[10px] text-[#c9c2b6]">
+                          ★ {b.rating?.toFixed(1) ?? "—"}
+                          {b.resenas ? ` · ${b.resenas} reseñas` : ""}
+                        </div>
+                        <span
+                          className="mt-1.5 inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[10px] font-semibold"
+                          style={{ borderColor: chipBorder, background: "rgba(5,4,3,.55)", color: chipColor }}
+                        >
+                          <span className="h-1.5 w-1.5 rounded-full" style={{ background: chipColor }} />
+                          {est.label}
+                        </span>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="mt-5 rounded-xl border border-line bg-panel px-4 py-3 text-sm text-muted">Esta sede no tiene barberos cargados todavía.</p>
+            )}
+          </div>
+        )}
+
+        {/* ---------- Paso 4 · Día y hora ---------- */}
+        {step === "horario" && servicio && (
+          <div>
+            <h2 className="font-display text-[26px] font-extrabold uppercase leading-none">¿Cuándo pasás?</h2>
+
+            {errorMsg && (
+              <div className="mt-4 rounded-xl border border-accent/40 bg-accent/10 px-4 py-3 text-sm text-accent-soft">{errorMsg}</div>
+            )}
+
+            <div className="mt-5 md:grid md:grid-cols-[320px_1fr] md:gap-6">
+              {/* Selector de día */}
+              <div className="md:rounded-2xl md:border md:border-line md:bg-panel md:p-4">
+                <div className="mb-2 hidden text-[10px] font-bold uppercase tracking-[0.24em] text-accent-soft md:block">Elegí el día</div>
+                <div className="grid grid-cols-3 gap-2 md:grid-cols-1">
+                  {dias.map((d) => {
+                    const activa = day ? mismoDia(day, d) : false;
+                    const hoy = new Date();
+                    const man = new Date();
+                    man.setDate(hoy.getDate() + 1);
+                    const main = mismoDia(d, hoy) ? "Hoy" : mismoDia(d, man) ? "Mañana" : `${DOW[d.getDay()]} ${d.getDate()}`;
+                    const sub = `${DOW[d.getDay()].toLowerCase()} ${d.getDate()} ${MON[d.getMonth()]}`;
+                    return (
+                      <button
+                        key={d.toISOString()}
+                        onClick={() => {
+                          setDay(d);
+                          setSlot(null);
+                          setErrorMsg(null);
+                        }}
+                        className="flex items-center justify-center rounded-xl px-2 py-2.5 md:justify-between md:px-3.5"
+                        style={
+                          activa
+                            ? { background: GRAD_CTA, border: "1px solid rgba(232,103,92,.9)", color: "#fbf7f0", boxShadow: "0 10px 22px -8px rgba(210,63,52,.65)" }
+                            : { background: "linear-gradient(180deg,#211d19,#151311)", border: "1px solid rgba(242,237,228,.1)", color: "#f2ede4" }
+                        }
+                      >
+                        <div className="flex flex-col items-center md:items-start">
+                          <span className="font-display text-[15px] font-extrabold uppercase leading-none">{main}</span>
+                          <span className="mt-0.5 text-[10px]" style={{ color: activa ? "rgba(251,247,240,.85)" : "#9c958a" }}>
+                            {sub}
+                          </span>
+                        </div>
+                        <span className="hidden text-lg leading-none md:block" style={{ color: activa ? "rgba(251,247,240,.85)" : "#9c958a" }}>
+                          ›
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="mt-3 hidden text-[11px] leading-relaxed text-muted md:block">
+                  Horario de la sede: 9:00 am – 8:00 pm.
+                  <br />
+                  Domingos cerrado.
+                </p>
+              </div>
+
+              {/* Slots */}
+              <div className="mt-6 md:mt-0">
+                {!day ? (
+                  <p className="text-sm text-muted">Elegí un día para ver los horarios.</p>
+                ) : cargandoSlots ? (
+                  <div className="grid grid-cols-3 gap-2 md:grid-cols-[repeat(auto-fill,minmax(110px,1fr))]">
+                    {Array.from({ length: 9 }).map((_, i) => (
+                      <div key={i} className="h-[54px] animate-pulse rounded-[13px] border border-line/50 bg-panel md:h-[50px]" />
                     ))}
                   </div>
                 ) : sinCupos ? (
                   <p className="rounded-xl border border-line bg-panel px-4 py-3 text-sm text-muted">
-                    No quedan horarios disponibles este día. Probá con otra fecha
-                    {barbero ? " u otro barbero" : ""}.
+                    No quedan horarios disponibles este día. Probá con otra fecha.
                   </p>
                 ) : (
-                  <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
-                    {slots.map((t) => {
-                      const isTaken = taken.has(t);
-                      const active = slot === t;
-                      return (
-                        <button
-                          key={t}
-                          disabled={isTaken}
-                          onClick={() => {
-                            setSlot(t);
-                            setErrorMsg(null);
-                          }}
-                          className={`rounded-lg border py-2.5 text-sm transition ${
-                            isTaken
-                              ? "cursor-not-allowed border-line/50 text-muted/40 line-through"
-                              : active
-                                ? "border-accent bg-accent text-on-accent"
-                                : "border-line hover:border-accent/50"
-                          }`}
-                        >
-                          {fmtTime(t)}
-                        </button>
-                      );
-                    })}
+                  <div className="space-y-5">
+                    {(
+                      [
+                        ["Mañana", slots.filter((t) => t < 720)],
+                        ["Tarde", slots.filter((t) => t >= 720)],
+                      ] as const
+                    ).map(([label, lista]) =>
+                      lista.length ? (
+                        <div key={label}>
+                          <div className="mb-2 text-[11px] font-bold uppercase tracking-[0.14em] text-muted">{label}</div>
+                          <div className="grid grid-cols-3 gap-2 md:grid-cols-[repeat(auto-fill,minmax(110px,1fr))]">
+                            {lista.map((t) => {
+                              const ocupado = ocupadoSet.has(t);
+                              const pasado = pasadoSet.has(t);
+                              const deshab = ocupado || pasado;
+                              const activo = slot === t;
+                              const tachado = ocupado && !pasado;
+                              return (
+                                <button
+                                  key={t}
+                                  disabled={deshab}
+                                  onClick={() => {
+                                    setSlot(t);
+                                    setErrorMsg(null);
+                                  }}
+                                  className="flex min-h-[54px] items-center justify-center rounded-[13px] font-display text-[18px] font-extrabold tabular-nums md:min-h-[50px] md:rounded-xl md:text-[17px]"
+                                  style={
+                                    activo
+                                      ? { background: GRAD_CTA, border: "1px solid rgba(232,103,92,.9)", color: "#fbf7f0", boxShadow: "0 10px 22px -8px rgba(210,63,52,.65)" }
+                                      : deshab
+                                        ? { background: "transparent", border: "1px solid rgba(242,237,228,.05)", color: "rgba(156,149,138,.4)", textDecoration: tachado ? "line-through" : "none" }
+                                        : { background: "linear-gradient(180deg,#211d19,#151311)", border: "1px solid rgba(242,237,228,.1)", color: "#f2ede4" }
+                                  }
+                                >
+                                  {fmtTime(t)}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ) : null,
+                    )}
                   </div>
                 )}
-              </>
-            )}
-
-            {slot !== null && (
-              <div className="mt-7 text-right">
-                <button
-                  onClick={() => setStep("datos")}
-                  className="rounded-full bg-accent px-7 py-3 text-sm font-semibold uppercase tracking-wide text-on-accent transition hover:bg-accent-soft"
-                >
-                  Continuar
-                </button>
               </div>
-            )}
-          </Section>
+            </div>
+          </div>
         )}
 
+        {/* ---------- Paso 5 · Datos ---------- */}
         {step === "datos" && servicio && day && slot !== null && (
-          <Section title="Tus datos" onBack={() => setStep("horario")}>
-            <Resumen
-              barberoNombre={barbero?.nombre ?? "Cualquiera disponible"}
-              servicio={servicio}
-              sedeId={sedeId}
-              sedeNombre={sedeNombre}
-              day={day}
-              slot={slot}
-            />
-            <div className="mt-6 space-y-3">
+          <div>
+            <h2 className="font-display text-[26px] font-extrabold uppercase leading-none">Tus datos</h2>
+            <p className="mt-1.5 text-xs text-muted">Te llega la confirmación al correo.</p>
+
+            <div className="mt-5 flex flex-col gap-2">
               <input
                 value={nombre}
                 onChange={(e) => setNombre(e.target.value)}
                 placeholder="Tu nombre"
-                className="w-full rounded-xl border border-line bg-bg px-4 py-3 text-ink placeholder:text-muted focus:border-accent focus:outline-none"
-              />
-              <input
-                value={telefono}
-                onChange={(e) => setTelefono(e.target.value)}
-                placeholder="Tu celular (WhatsApp)"
-                inputMode="tel"
-                className="w-full rounded-xl border border-line bg-bg px-4 py-3 text-ink placeholder:text-muted focus:border-accent focus:outline-none"
+                className="w-full rounded-xl border border-line px-3.5 py-3 text-sm text-ink placeholder:text-muted focus:border-accent focus:outline-none"
+                style={{ background: "#151311" }}
               />
               <input
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 type="email"
-                placeholder="Tu correo (para recordatorios)"
-                className="w-full rounded-xl border border-line bg-bg px-4 py-3 text-ink placeholder:text-muted focus:border-accent focus:outline-none"
+                inputMode="email"
+                placeholder="Correo (te llega la confirmación)"
+                className="w-full rounded-xl border border-line px-3.5 py-3 text-sm text-ink placeholder:text-muted focus:border-accent focus:outline-none"
+                style={{ background: "#151311" }}
               />
             </div>
-            <button
-              disabled={!nombre.trim() || !telefono.trim() || saving}
-              onClick={confirmar}
-              className="mt-6 w-full rounded-full bg-accent py-3.5 text-sm font-semibold uppercase tracking-wide text-on-accent transition hover:bg-accent-soft disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {saving ? "Confirmando…" : "Confirmar reserva"}
-            </button>
-          </Section>
-        )}
 
-        {step === "ok" && servicio && day && slot !== null && (
-          <div className="mx-auto max-w-md text-center">
-            <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full border-2 border-accent text-3xl text-accent">
-              ✓
+            <div className="mt-4 rounded-2xl border border-line bg-panel px-4 py-3.5">
+              <div className="mb-2 text-[10px] font-bold uppercase tracking-[0.2em] text-accent-soft">Tu reserva</div>
+              <ResumenRow k="Sede" v={sedeNombre} />
+              <ResumenRow k="Servicio" v={`${servicio.nombre}${bebidaTxt}`} />
+              <ResumenRow k="Barbero" v={barbero?.nombre ?? "Cualquier barbero"} />
+              <ResumenRow k="Cuándo" v={`${diaLabel(day)}, ${fmtTime(slot)}`} />
             </div>
-            <h2 className="font-display text-4xl font-semibold">¡Cita confirmada!</h2>
-            <p className="mt-2 text-muted">Gracias, {nombre.split(" ")[0]}. Te esperamos.</p>
-            <div className="mt-7 text-left">
-              <Resumen
-                barberoNombre={barbero?.nombre ?? "Cualquiera disponible"}
-                servicio={servicio}
-                sedeId={sedeId}
-                sedeNombre={sedeNombre}
-                day={day}
-                slot={slot}
-              />
-            </div>
-            <p className="mt-5 text-xs text-muted">
-              Te esperamos. Si no podés asistir, avisanos: liberamos el cupo para el siguiente.
-            </p>
-            <div className="mt-7 flex justify-center gap-3">
-              <button onClick={reset} className="rounded-full border border-line px-6 py-3 text-sm transition hover:border-accent/50">
-                Reservar otra
-              </button>
-              <Link href="/" className="rounded-full border border-accent/50 px-6 py-3 text-sm text-accent-soft transition hover:bg-accent/10">
-                Volver al inicio
-              </Link>
-            </div>
+
+            {errorMsg && <div className="mt-4 rounded-xl border border-accent/40 bg-accent/10 px-4 py-3 text-sm text-accent-soft">{errorMsg}</div>}
           </div>
         )}
-      </div>
+      </main>
 
+      {/* Footer sticky de resumen/total */}
+      <footer
+        className="flex shrink-0 items-center justify-between gap-3 border-t border-line px-4 pb-[calc(env(safe-area-inset-bottom)+18px)] pt-3 md:px-14"
+        style={{ background: "rgba(12,11,10,.95)", backdropFilter: "blur(10px)" }}
+      >
+        <div className="min-w-0 flex-1">
+          <div className="truncate text-[11px] text-muted">
+            {servicio ? `${servicio.nombre}${bebidaTxt} · ${barbero ? barbero.nombre : "Cualquier barbero"}${day && slot !== null ? ` · ${diaLabel(day)} ${fmtTime(slot)}` : ""}` : "Elegí un servicio y una hora"}
+          </div>
+          <div className="font-display text-[24px] font-extrabold tabular-nums leading-none text-ink">{total !== null ? cop(total) : "—"}</div>
+        </div>
+        <button
+          onClick={avanzar}
+          disabled={!puedeContinuar || saving}
+          className="shrink-0 rounded-2xl px-6 py-3.5 font-display text-[16px] font-bold uppercase tracking-[0.05em] text-on-accent transition disabled:cursor-not-allowed"
+          style={{ background: GRAD_CTA, boxShadow: "0 12px 26px -10px rgba(210,63,52,.7)", opacity: !puedeContinuar || saving ? 0.4 : 1 }}
+        >
+          {step === "datos" ? (saving ? "Confirmando…" : "Confirmar") : "Continuar"}
+        </button>
+      </footer>
 
-    </div>
-  );
-}
+      {/* Upsell de bebida (bottom sheet) */}
+      {upsellMode && (
+        <div className="fixed inset-0 z-[9] flex flex-col justify-end" style={{ background: "rgba(5,4,3,.65)", backdropFilter: "blur(2px)" }} onClick={() => elegirBebida(null)}>
+          <div
+            className="mx-auto w-full max-w-[1152px] px-0"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="rounded-t-[22px] border-t border-line px-4 pb-[calc(env(safe-area-inset-bottom)+30px)] pt-5 md:px-14" style={{ background: "#0c0b0a" }}>
+              <div className="mx-auto mb-4 h-1 w-[38px] rounded-full" style={{ background: "rgba(242,237,228,.18)" }} />
+              <h3 className="text-center font-display text-[24px] font-extrabold uppercase leading-tight">
+                {upsellMode === "combo" ? UPSELL_COMBO.titulo : UPSELL_EXTRA.titulo}
+              </h3>
+              <p className="mt-1 text-center text-xs text-muted">{upsellMode === "combo" ? UPSELL_COMBO.sub : UPSELL_EXTRA.sub}</p>
 
-function Section({
-  title,
-  children,
-  onBack,
-  hideBack,
-}: {
-  title: string;
-  children: React.ReactNode;
-  onBack?: () => void;
-  hideBack?: boolean;
-}) {
-  return (
-    <div>
-      <div className="mb-6 flex items-center gap-3">
-        {onBack && !hideBack && (
-          <button onClick={onBack} className="text-sm text-muted transition hover:text-ink">
-            ←
-          </button>
-        )}
-        <h2 className="font-display text-2xl italic">{title}</h2>
-      </div>
-      {children}
-    </div>
-  );
-}
+              <div className="mt-5 grid grid-cols-2 gap-2 md:grid-cols-[repeat(auto-fit,minmax(230px,1fr))]">
+                {BEBIDAS.map((b) => (
+                  <button
+                    key={b.id}
+                    onClick={() => elegirBebida(b)}
+                    className="flex min-h-[54px] items-center justify-between rounded-[13px] border border-line px-3.5"
+                    style={{ background: "linear-gradient(180deg,#211d19,#151311)" }}
+                  >
+                    <span className="text-[13.5px] font-bold text-ink">{b.nombre}</span>
+                    {upsellMode === "combo" ? (
+                      <span className="font-display text-[16px] font-extrabold" style={{ color: "#34d399" }}>Incluida</span>
+                    ) : (
+                      <span className="font-display text-[16px] font-extrabold tabular-nums text-accent-soft">{cop(b.precio).replace(/\s/g, "")}</span>
+                    )}
+                  </button>
+                ))}
+              </div>
 
-function Resumen({
-  barberoNombre,
-  servicio,
-  sedeId,
-  sedeNombre,
-  day,
-  slot,
-}: {
-  barberoNombre: string;
-  servicio: Servicio;
-  sedeId: SedeId | null;
-  sedeNombre: string;
-  day: Date;
-  slot: number;
-}) {
-  const precio = sedeId ? servicio.precios[sedeId] : null;
-  return (
-    <div className="rounded-2xl border border-line bg-panel p-5 text-sm">
-      <Row k="Servicio" v={servicio.nombre} />
-      <Row k="Barbero" v={barberoNombre} />
-      <Row k="Sede" v={sedeNombre} />
-      <Row k="Fecha" v={`${DOW[day.getDay()]} ${day.getDate()} ${MON[day.getMonth()]}`} />
-      <Row k="Hora" v={`${fmtTime(slot)} – ${fmtTime(slot + servicio.duracionMin)} (${fmtDur(servicio.duracionMin)})`} />
-      {precio !== null && (
-        <div className="mt-3 flex items-center justify-between border-t border-line pt-3">
-          <span className="text-muted">Total</span>
-          <span className="font-display text-2xl text-accent-soft">{cop(precio)}</span>
+              <button
+                onClick={() => elegirBebida(null)}
+                className="mt-3 min-h-[46px] w-full rounded-xl border border-line text-[13px] font-semibold text-muted"
+              >
+                {upsellMode === "combo" ? UPSELL_COMBO.rechazo : UPSELL_EXTRA.rechazo}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
   );
 }
 
-function Row({ k, v }: { k: string; v: string }) {
+function ResumenRow({ k, v }: { k: string; v: string }) {
   return (
-    <div className="flex items-start justify-between gap-4 py-1.5">
-      <span className="text-muted">{k}</span>
-      <span className="text-right text-ink">{v}</span>
+    <div className="flex items-start justify-between gap-4 py-1">
+      <span className="shrink-0 text-[12.5px] text-muted">{k}</span>
+      <span className="text-right text-[12.5px] font-semibold text-ink">{v}</span>
     </div>
   );
 }
