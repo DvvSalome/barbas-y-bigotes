@@ -121,8 +121,10 @@ async function Portal({ clienteId }: { clienteId: string }) {
     getReservaSinCalificar(clienteId),
   ]);
 
-  // El turno llamado (notificado) es el momento estrella; la espera va aparte.
-  const turno = cola.find((c) => c.estado === "notificado");
+  // Los turnos llamados (notificado) son el momento estrella; la espera va aparte.
+  // TODOS los notificado se renderizan como hero (puede haber más de uno); antes
+  // .find() tomaba solo el primero y el resto se perdía sin mostrarse en ningún lado.
+  const turnos = cola.filter((c) => c.estado === "notificado");
   const enEspera = cola.filter((c) => c.estado !== "notificado");
 
   return (
@@ -158,9 +160,9 @@ async function Portal({ clienteId }: { clienteId: string }) {
         }
       />
 
-      {/* Turno llamado: hero */}
-      {turno && (
-        <section className="mb-8 overflow-hidden rounded-2xl border border-accent/40 bg-accent/[0.07] p-6 text-center">
+      {/* Turnos llamados: hero (uno por cada entrada notificada) */}
+      {turnos.map((turno) => (
+        <section key={turno.id} className="mb-8 overflow-hidden rounded-2xl border border-accent/40 bg-accent/[0.07] p-6 text-center">
           <span
             aria-hidden
             className="mx-auto block h-20 w-3 rounded-full shadow-[0_0_34px_-4px_rgba(210,63,52,0.7)]"
@@ -180,7 +182,7 @@ async function Portal({ clienteId }: { clienteId: string }) {
             {turno.servicio}
           </div>
         </section>
-      )}
+      ))}
 
       {/* En espera (sin estimado ficticio) */}
       {enEspera.length > 0 && (
