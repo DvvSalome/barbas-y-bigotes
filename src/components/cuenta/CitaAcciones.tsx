@@ -1,12 +1,22 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getDisponibilidad } from "@/lib/actions";
 import { cancelarReservaCliente, reagendarReservaCliente } from "@/lib/cliente-actions";
-import { DOW, MON, fmtTime, buildSlots, computeTaken, nextDays, CANCELACION_MIN_HORAS } from "@/lib/slots";
+import { DOW, fmtTime, buildSlots, computeTaken, nextDays, CANCELACION_MIN_HORAS } from "@/lib/slots";
 
 const WA_NUM = "573006734799";
+
+// Etiqueta del chip de día: "Hoy" / "Mañana" / "{DOW} {n}" (proto §2.7).
+function dayLabel(d: Date): string {
+  const hoy = new Date();
+  const manana = new Date(hoy);
+  manana.setDate(hoy.getDate() + 1);
+  if (d.toDateString() === hoy.toDateString()) return "Hoy";
+  if (d.toDateString() === manana.toDateString()) return "Mañana";
+  return `${DOW[d.getDay()]} ${d.getDate()}`;
+}
 
 export function CitaAcciones({
   reservaId,
@@ -64,49 +74,57 @@ export function CitaAcciones({
   }
 
   return (
-    <div className="mt-3 flex flex-wrap items-center gap-2">
-      {!confirmCancel ? (
-        <>
-          <button
-            onClick={() => setRescheduleOpen(true)}
-            className="rounded-full border border-line px-3 py-1.5 text-xs text-muted transition hover:text-ink"
-          >
-            Reagendar
-          </button>
-          <button
-            onClick={() => setConfirmCancel(true)}
-            className="rounded-full border border-line px-3 py-1.5 text-xs text-muted transition hover:text-ink"
-          >
-            Cancelar
-          </button>
-        </>
-      ) : (
-        <div className="flex items-center gap-2 text-xs">
-          <span className="text-muted">¿Cancelar esta cita?</span>
-          <button
-            onClick={doCancel}
-            disabled={busy}
-            className="rounded-full bg-accent px-3 py-1.5 font-semibold text-on-accent transition hover:bg-accent-soft disabled:opacity-50"
-          >
-            {busy ? "…" : "Sí, cancelar"}
-          </button>
-          <button
-            onClick={() => setConfirmCancel(false)}
-            disabled={busy}
-            className="rounded-full border border-line px-3 py-1.5 text-muted transition hover:text-ink"
-          >
-            No
-          </button>
-        </div>
-      )}
-      {err && <span className="text-xs text-accent-soft">{err}</span>}
+    <div className="mt-3">
+      <div className="flex flex-wrap items-center gap-2">
+        {!confirmCancel ? (
+          <>
+            <button
+              onClick={() => setRescheduleOpen((v) => !v)}
+              className={`rounded-full border px-3 py-1.5 text-xs transition ${
+                rescheduleOpen
+                  ? "border-accent/60 bg-accent/10 text-ink"
+                  : "border-line text-muted hover:text-ink"
+              }`}
+            >
+              Reagendar
+            </button>
+            <button
+              onClick={() => {
+                setConfirmCancel(true);
+                setRescheduleOpen(false);
+              }}
+              className="rounded-full border border-line px-3 py-1.5 text-xs text-muted transition hover:text-ink"
+            >
+              Cancelar
+            </button>
+          </>
+        ) : (
+          <div className="flex items-center gap-2 text-xs">
+            <span className="text-muted">¿Cancelar esta cita?</span>
+            <button
+              onClick={doCancel}
+              disabled={busy}
+              className="rounded-full bg-accent px-3 py-1.5 font-semibold text-on-accent transition hover:bg-accent-soft disabled:opacity-50"
+            >
+              {busy ? "…" : "Sí, cancelar"}
+            </button>
+            <button
+              onClick={() => setConfirmCancel(false)}
+              disabled={busy}
+              className="rounded-full border border-line px-3 py-1.5 text-muted transition hover:text-ink"
+            >
+              No
+            </button>
+          </div>
+        )}
+        {err && <span className="text-xs text-accent-soft">{err}</span>}
+      </div>
 
-      {rescheduleOpen && (
-        <ReagendarModal
+      {rescheduleOpen && !confirmCancel && (
+        <ReagendarPanel
           reservaId={reservaId}
           barberoId={barberoId}
           duracionMin={duracionMin}
-          onClose={() => setRescheduleOpen(false)}
           onDone={() => {
             setRescheduleOpen(false);
             router.refresh();
@@ -117,25 +135,25 @@ export function CitaAcciones({
   );
 }
 
-function ReagendarModal({
+// Panel inline dentro de la card (proto §2.7): reemplaza al viejo modal overlay.
+// Toda la lógica de datos se conserva (getDisponibilidad + guard de carrera reqId,
+// buildSlots/computeTaken, reagendarReservaCliente + manejo de error).
+function ReagendarPanel({
   reservaId,
   barberoId,
   duracionMin,
-  onClose,
   onDone,
 }: {
   reservaId: string;
   barberoId: string | null;
   duracionMin: number;
-  onClose: () => void;
   onDone: () => void;
 }) {
   const days = nextDays(7);
   const [day, setDay] = useState<Date | null>(null);
-  const [slot, setSlot] = useState<number | null>(null);
   const [ocupados, setOcupados] = useState<{ inicio: string; fin: string }[]>([]);
   const [cargando, setCargando] = useState(false);
-  const [saving, setSaving] = useState(false);
+  const [savingSlot, setSavingSlot] = useState<number | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const reqId = useRef(0);
 
@@ -144,7 +162,6 @@ function ReagendarModal({
 
   async function pickDay(d: Date) {
     setDay(d);
-    setSlot(null);
     setErr(null);
     if (!barberoId) return;
     const myReq = ++reqId.current;
@@ -155,108 +172,119 @@ function ReagendarModal({
     setCargando(false);
   }
 
-  async function confirmar() {
-    if (!day || slot === null) return;
+  // Al abrir, preselecciona "Mañana" para mostrar el grid de una (proto §2.7).
+  // Diferido a microtask: sin setState síncrono en el cuerpo del effect (regla
+  // del React Compiler). pickDay conserva su guard de carrera reqId.
+  useEffect(() => {
+    let cancel = false;
+    Promise.resolve().then(() => {
+      if (!cancel) pickDay(days[1] ?? days[0]);
+    });
+    return () => {
+      cancel = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Tocar una hora confirma de una (proto §2.7): "Tocá una hora y queda confirmada".
+  async function confirmar(t: number) {
+    if (!day) return;
     const nuevo = new Date(day);
-    nuevo.setHours(Math.floor(slot / 60), slot % 60, 0, 0);
-    setSaving(true);
+    nuevo.setHours(Math.floor(t / 60), t % 60, 0, 0);
+    setSavingSlot(t);
     setErr(null);
     const res = await reagendarReservaCliente(reservaId, nuevo.toISOString());
-    setSaving(false);
-    if (res.ok) onDone();
-    else {
-      setErr(res.error ?? "No se pudo reagendar");
-      setSlot(null);
+    if (res.ok) {
+      onDone();
+      return;
     }
+    // Error: se mantiene el panel abierto para reintentar con otra hora.
+    setSavingSlot(null);
+    setErr(res.error ?? "No se pudo reagendar");
   }
 
+  if (!barberoId) {
+    return (
+      <div className="mt-3 rounded-xl border border-accent/35 bg-accent/[0.05] p-3">
+        <p className="text-sm text-muted">
+          Esta cita no tiene barbero asignado; escribinos por WhatsApp para reagendarla.
+        </p>
+      </div>
+    );
+  }
+
+  const saving = savingSlot !== null;
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={onClose}>
-      <div className="w-full max-w-lg rounded-2xl border border-line bg-panel p-5" onClick={(e) => e.stopPropagation()}>
-        <div className="mb-4 flex items-center justify-between">
-          <h3 className="font-display text-xl">Reagendar cita</h3>
-          <button onClick={onClose} aria-label="Cerrar" className="text-muted transition hover:text-ink">✕</button>
-        </div>
+    <div className="mt-3 rounded-xl border border-accent/35 bg-accent/[0.05] p-3">
+      <div className="mb-2 text-[12.5px] font-bold">Elegí el nuevo horario</div>
 
-        {!barberoId ? (
-          <p className="text-sm text-muted">
-            Esta cita no tiene barbero asignado; escribinos por WhatsApp para reagendarla.
-          </p>
+      {/* Chips de día (pill, selección roja) */}
+      <div className="flex gap-2 overflow-x-auto pb-1">
+        {days.map((d) => {
+          const active = day?.toDateString() === d.toDateString();
+          return (
+            <button
+              key={d.toISOString()}
+              onClick={() => pickDay(d)}
+              disabled={saving}
+              className={`shrink-0 rounded-full border px-3 py-1.5 text-xs transition disabled:opacity-50 ${
+                active
+                  ? "border-accent/75 bg-accent/[0.14] text-ink"
+                  : "border-line text-muted hover:text-ink"
+              }`}
+            >
+              {dayLabel(d)}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Grid de horas (4 columnas, cabe a 390px sin scroll horizontal) */}
+      <div className="mt-3">
+        {!day ? (
+          <p className="text-sm text-muted">Elegí un día para ver horarios.</p>
+        ) : cargando ? (
+          <div className="grid grid-cols-4 gap-2">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <div key={i} className="h-10 animate-pulse rounded-[10px] border border-line/50 bg-bg" />
+            ))}
+          </div>
         ) : (
-          <>
-            <div className="mb-4 flex gap-2 overflow-x-auto pb-1">
-              {days.map((d) => {
-                const active = day?.toDateString() === d.toDateString();
-                return (
-                  <button
-                    key={d.toISOString()}
-                    onClick={() => pickDay(d)}
-                    className={`flex shrink-0 flex-col items-center rounded-xl border px-4 py-2.5 ${
-                      active ? "border-accent bg-accent/10" : "border-line hover:border-accent/40"
-                    }`}
-                  >
-                    <span className="text-[11px] uppercase text-muted">{DOW[d.getDay()]}</span>
-                    <span className="font-display text-xl">{d.getDate()}</span>
-                    <span className="text-[10px] text-muted">{MON[d.getMonth()]}</span>
-                  </button>
-                );
-              })}
-            </div>
-
-            {!day ? (
-              <p className="text-sm text-muted">Elegí un día para ver horarios.</p>
-            ) : cargando ? (
-              <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
-                {Array.from({ length: 8 }).map((_, i) => (
-                  <div key={i} className="h-10 animate-pulse rounded-lg border border-line/50 bg-bg" />
-                ))}
-              </div>
-            ) : (
-              <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
-                {slots.map((t) => {
-                  const isTaken = taken.has(t);
-                  const active = slot === t;
-                  return (
-                    <button
-                      key={t}
-                      disabled={isTaken}
-                      onClick={() => {
-                        setSlot(t);
-                        setErr(null);
-                      }}
-                      className={`rounded-lg border py-2.5 text-sm transition ${
-                        isTaken
-                          ? "cursor-not-allowed border-line/50 text-muted/40 line-through"
-                          : active
-                            ? "border-accent bg-accent text-on-accent"
-                            : "border-line hover:border-accent/50"
-                      }`}
-                    >
-                      {fmtTime(t)}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-
-            {err && (
-              <div className="mt-3 rounded-lg border border-accent/40 bg-accent/10 px-3 py-2 text-sm text-accent-soft">
-                {err}
-              </div>
-            )}
-
-            {slot !== null && (
-              <button
-                onClick={confirmar}
-                disabled={saving}
-                className="mt-5 w-full rounded-full bg-accent py-3 text-sm font-semibold uppercase tracking-wide text-on-accent transition hover:bg-accent-soft disabled:opacity-50"
-              >
-                {saving ? "Guardando…" : `Confirmar ${fmtTime(slot)}`}
-              </button>
-            )}
-          </>
+          <div className="grid grid-cols-4 gap-2">
+            {slots.map((t) => {
+              const isTaken = taken.has(t);
+              const isSaving = savingSlot === t;
+              return (
+                <button
+                  key={t}
+                  disabled={isTaken || saving}
+                  onClick={() => confirmar(t)}
+                  className={`flex min-h-10 items-center justify-center rounded-[10px] border text-xs tabular-nums transition ${
+                    isTaken
+                      ? "cursor-not-allowed border-line/50 text-muted/40 line-through"
+                      : isSaving
+                        ? "border-accent bg-accent text-on-accent"
+                        : "border-line bg-elevated hover:border-accent/50 disabled:opacity-50"
+                  }`}
+                >
+                  {isSaving ? "…" : fmtTime(t)}
+                </button>
+              );
+            })}
+          </div>
         )}
       </div>
+
+      {err && (
+        <div className="mt-3 rounded-lg border border-accent/40 bg-accent/10 px-3 py-2 text-sm text-accent-soft">
+          {err}
+        </div>
+      )}
+
+      <p className="mt-2 text-[11px] text-muted">
+        Tocá una hora y queda confirmada · te llega el correo con el cambio.
+      </p>
     </div>
   );
 }
