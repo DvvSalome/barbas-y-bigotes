@@ -159,9 +159,9 @@ export function SiteFooter({ conCtaMovil = false }: { conCtaMovil?: boolean }) {
         </p>
 
         <div className="mt-7 border-t border-[rgba(242,237,228,0.07)] pt-5 text-[11px] leading-relaxed text-[rgba(156,149,138,0.55)]">
-          <span className="md:hidden">© 2026 Barbas &amp; Bigotes Barbershop</span>
+          <span className="md:hidden">© {new Date().getFullYear()} Barbas &amp; Bigotes Barbershop</span>
           <span className="hidden md:inline">
-            © 2026 Barbas &amp; Bigotes Barbershop · Todos los derechos reservados
+            © {new Date().getFullYear()} Barbas &amp; Bigotes Barbershop · Todos los derechos reservados
           </span>
           <br />
           Tradición y estilo · Barranquilla, CO
