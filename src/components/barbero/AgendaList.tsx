@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { cop } from "@/lib/format";
 import {
@@ -10,8 +10,11 @@ import {
   historialCliente,
   validarCupon,
   proponerAdelanto,
+  getTarjetaParaCobro,
+  type ActionResult,
 } from "@/lib/actions";
 import { calcularCobro } from "@/lib/cobro";
+import { CERQUILLO_EXCLUIDOS } from "@/lib/tarjeta";
 import { ProductoThumb } from "@/components/staff/ProductoThumb";
 import { MedioLogo } from "@/components/staff/MedioLogo";
 import type { Sede, SedeId, Barbero, Servicio, Producto } from "@/lib/data/types";
@@ -437,8 +440,27 @@ function CheckoutForm({
     tipo?: "porcentaje" | "monto";
     valor?: number;
   } | null>(null);
-  const [resumen, setResumen] = useState<{ total: number; descuento: number; propina: number; puntos: number } | null>(null);
+  const [resumen, setResumen] = useState<{
+    total: number;
+    descuento: number;
+    propina: number;
+    puntos: number;
+    tarjeta?: ActionResult["tarjeta"];
+  } | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  // Estado de la tarjeta de cortes del cliente (solo cobro de reserva con cliente).
+  // Solo se setea si hay un beneficio (5º/10º); el server es la fuente de verdad.
+  const [tarjeta, setTarjeta] = useState<{ tipo: "50%" | "gratis"; descuento: number } | null>(null);
+  useEffect(() => {
+    if (!reserva?.clienteRef) return;
+    let vivo = true;
+    getTarjetaParaCobro(reserva.clienteRef, reserva.sede).then((r) => {
+      if (vivo && r.ok && r.tipo) setTarjeta({ tipo: r.tipo, descuento: r.descuento });
+    });
+    return () => {
+      vivo = false;
+    };
+  }, [reserva?.clienteRef, reserva?.sede]);
 
   const sedeId = sede as SedeId;
   const serviciosSede = servicios.filter((s) => s.precios[sedeId] != null);
@@ -485,6 +507,23 @@ function CheckoutForm({
     }
   }
 
+  // Detección de "corte" (igual criterio que la tarjeta): categoría cortes/combos
+  // menos los cerquillos. Sirve para saber si esta venta suma un sello y aplica el
+  // beneficio, para que el total en vivo coincida con lo que recomputa el server.
+  const esCorteId = (id: string | null | undefined): boolean => {
+    if (!id) return false;
+    const s = servicios.find((x) => x.id === id);
+    return s ? (s.categoria === "cortes" || s.categoria === "combos") && !CERQUILLO_EXCLUIDOS.has(s.id) : false;
+  };
+  const preciosCortePreview: number[] = [];
+  if (esCorteId(reserva?.servicioId) && precioFijo != null) preciosCortePreview.push(precioFijo);
+  for (const id of extras) {
+    if (esCorteId(id)) preciosCortePreview.push(serviciosSede.find((s) => s.id === id)?.precios[sedeId] ?? 0);
+  }
+  // El beneficio se topa al precio de la línea de corte más cara (como el server).
+  const precioCorteMax = preciosCortePreview.length ? Math.max(...preciosCortePreview) : null;
+  const descuentoTarjeta = tarjeta && precioCorteMax != null ? Math.min(tarjeta.descuento, precioCorteMax) : 0;
+
   // Total en vivo con la MISMA matemática del servidor (calcularCobro).
   const vivo = calcularCobro({
     items: [
@@ -497,6 +536,7 @@ function CheckoutForm({
     ],
     cupon: cuponInfo?.ok && cuponInfo.tipo ? { tipo: cuponInfo.tipo, valor: cuponInfo.valor ?? 0 } : null,
     propina,
+    descuentoExtra: descuentoTarjeta,
   });
   const sinItems = rapida && extras.length === 0 && Object.keys(prodQty).length === 0;
 
@@ -533,6 +573,7 @@ function CheckoutForm({
         descuento: res.descuento ?? 0,
         propina: res.propina ?? 0,
         puntos: res.puntos ?? 0,
+        tarjeta: res.tarjeta,
       });
     else setErr(res.error ?? "No se pudo completar");
   }
@@ -549,7 +590,16 @@ function CheckoutForm({
               + {cop(resumen.propina)} de propina · en la mano: <b className="text-ink">{cop(resumen.total + resumen.propina)}</b>
             </div>
           )}
-          {resumen.puntos > 0 && <div className="text-ok">+{resumen.puntos} puntos de fidelidad para el cliente</div>}
+          {resumen.tarjeta && (
+            <div className="text-accent-soft">
+              🎫{" "}
+              {resumen.tarjeta.beneficio === "gratis"
+                ? "¡Corte gratis aplicado! Tarjeta completa, arranca una nueva."
+                : resumen.tarjeta.beneficio === "50%"
+                  ? "50% aplicado (corte #5 de la tarjeta)."
+                  : `Corte ${((resumen.tarjeta.cortesTotales - 1) % 10) + 1}/10 de su tarjeta.`}
+            </div>
+          )}
         </div>
         <button onClick={onDone} className="mt-3 rounded-full bg-accent px-6 py-2 text-xs font-semibold uppercase tracking-wide text-on-accent transition hover:bg-accent-soft">
           Listo
@@ -806,6 +856,18 @@ function CheckoutForm({
           )}
         </div>
       </div>
+
+      {/* Tarjeta de cortes: aviso del canje automático (se aplica solo, el server
+          recomputa). Solo cuando esta venta suma un corte y toca beneficio. */}
+      {tarjeta && descuentoTarjeta > 0 && (
+        <div className="flex items-center gap-2 border-t border-accent/30 bg-accent/[0.07] px-4 py-2.5 text-sm font-semibold text-accent-soft">
+          <span aria-hidden>🎫</span>
+          <span>
+            {tarjeta.tipo === "gratis" ? "Corte #10 · ¡corte gratis!" : "Corte #5 · −50% en el corte"} · −
+            {cop(descuentoTarjeta)}
+          </span>
+        </div>
+      )}
 
       {/* Barra de cobro: pegada abajo mientras el form está a la vista (mobile-first). */}
       <div className="sticky bottom-0 rounded-b-2xl border-t border-line bg-bg/95 px-4 py-3 backdrop-blur-md">
