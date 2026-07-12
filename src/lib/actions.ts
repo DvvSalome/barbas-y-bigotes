@@ -3,15 +3,16 @@
 import { revalidatePath } from "next/cache";
 import { type SupabaseClient } from "@supabase/supabase-js";
 import { supabaseServerAuth, supabaseAdmin } from "@/lib/supabase/server";
-import { getStaffContext } from "@/lib/data/queries";
+import { getStaffContext, getCorteIds, contarCortesCliente, precioCorteBase } from "@/lib/data/queries";
 import { clienteIdForUser } from "@/lib/cliente-actions";
 import { bogotaDayRange, bogotaYmd, finEfectivo } from "@/lib/slots";
 import { errorPublico } from "@/lib/errors";
 import { calcularCobro, snapshotDinero, diferenciaCaja } from "@/lib/cobro";
+import { beneficioProximoCorte } from "@/lib/tarjeta";
 import { pushACliente } from "@/lib/push";
 import { fechaHoraBogota } from "@/lib/format";
 
-export type ActionResult = { ok: boolean; error?: string; id?: string; total?: number; descuento?: number; propina?: number; puntos?: number; encolado?: boolean; esperaHasta?: string | null };
+export type ActionResult = { ok: boolean; error?: string; id?: string; total?: number; descuento?: number; propina?: number; puntos?: number; encolado?: boolean; esperaHasta?: string | null; tarjeta?: { cortesTotales: number; posicion: number; beneficio: "50%" | "gratis" | null } };
 
 // --- Autorización (defensa en profundidad; la RLS es la barrera real) ---
 // Las server actions corren con la sesión del usuario, pero igual revalidamos el
@@ -64,6 +65,27 @@ export async function validarCupon(codigo: string): Promise<CuponResult> {
   if (c.usos_max !== null && c.usos >= c.usos_max) return { ok: false, error: "Cupón agotado" };
   if (c.vence_en && c.vence_en < bogotaYmd()) return { ok: false, error: "Cupón vencido" };
   return { ok: true, codigo: c.codigo, tipo: c.tipo, valor: c.valor, descripcion: c.descripcion };
+}
+
+// Preview de la tarjeta de cortes para el form de cobro: el beneficio del PRÓXIMO
+// corte del cliente. El server (completarReserva) es la fuente de verdad y lo
+// recomputa; esto solo alimenta el aviso y el total en vivo del barbero. Cuenta
+// con supabaseAdmin() (igual que el cobro) para no undercontar por la RLS 0010.
+export async function getTarjetaParaCobro(
+  clienteRef: string,
+  sede: string,
+): Promise<
+  | { ok: true; cortesPrevios: number; posicion: number; tipo: "50%" | "gratis" | null; descuento: number }
+  | { ok: false }
+> {
+  const sb = await supabaseServerAuth();
+  const denied = await requireStaff(sb);
+  if (denied || !clienteRef) return { ok: false };
+  const admin = supabaseAdmin();
+  const cortesPrevios = await contarCortesCliente(admin, clienteRef);
+  const base = await precioCorteBase(admin, sede);
+  const b = beneficioProximoCorte(cortesPrevios, base);
+  return { ok: true, cortesPrevios, posicion: b.posicion, tipo: b.tipo, descuento: b.descuento };
 }
 
 // Upsert de cliente por teléfono vía RPC SECURITY DEFINER: dedup correcto sin exponer
@@ -557,12 +579,38 @@ export async function completarReserva(input: {
     cuponCodigo = v.codigo!;
   }
 
+  // Tarjeta de cortes: si la venta incluye un corte y hay cliente, el 5º corte
+  // del ciclo va 50% y el 10º gratis (topado al precio del corte base de la sede).
+  // El conteo se deriva de las ventas previas; se recomputa acá (fuente de verdad).
+  // Cuenta con supabaseAdmin(): la RLS 0010 scopea las ventas por barbero, así que
+  // la sesión del barbero undercontaría el historial del cliente entre barberos.
+  let beneficioTarjeta: "50%" | "gratis" | null = null;
+  let descuentoTarjeta = 0;
+  let tarjetaPos = 0;
+  let cortesPrevios = 0;
+  if (input.clienteRef) {
+    const admin = supabaseAdmin();
+    const corteIds = await getCorteIds(admin);
+    const corteItem = items
+      .filter((it) => it.tipo === "servicio" && corteIds.includes(it.ref_id as string))
+      .sort((a, b) => (b.precio_unitario as number) - (a.precio_unitario as number))[0];
+    if (corteItem) {
+      cortesPrevios = await contarCortesCliente(admin, input.clienteRef);
+      const base = await precioCorteBase(admin, input.sede);
+      const b = beneficioProximoCorte(cortesPrevios, base);
+      beneficioTarjeta = b.tipo;
+      tarjetaPos = b.posicion;
+      descuentoTarjeta = Math.min(b.descuento, corteItem.precio_unitario as number);
+    }
+  }
+
   // Matemática del cobro (pura, testeada en scripts/check-cobro.ts):
   // total neto SIN propina; puntos sobre el neto.
   const cobro = calcularCobro({
     items: items.map((it) => ({ precio: it.precio_unitario as number, cantidad: it.cantidad as number })),
     cupon,
     propina: input.propina,
+    descuentoExtra: descuentoTarjeta,
   });
   const nota = (input.nota ?? "").trim() || null;
 
@@ -637,6 +685,7 @@ export async function completarReserva(input: {
       descuento: cobro.descuento,
       cupon_codigo: cuponCodigo,
       propina: cobro.propina,
+      beneficio_tarjeta: beneficioTarjeta,
       nota,
     })
     .select("id")
@@ -716,7 +765,18 @@ export async function completarReserva(input: {
 
   revalidatePath("/barbero");
   revalidatePath("/admin/inventario");
-  return { ok: true, total: cobro.total, descuento: cobro.descuento, propina: cobro.propina, puntos };
+  return {
+    ok: true,
+    total: cobro.total,
+    descuento: cobro.descuento,
+    propina: cobro.propina,
+    puntos,
+    // Estado de la tarjeta post-venta (solo si esta venta tenía un corte).
+    tarjeta:
+      tarjetaPos > 0
+        ? { cortesTotales: cortesPrevios + 1, posicion: tarjetaPos, beneficio: beneficioTarjeta }
+        : undefined,
+  };
 }
 
 // ---------- Búsqueda global (paleta Ctrl-K del admin) ----------
