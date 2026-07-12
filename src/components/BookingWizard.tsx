@@ -881,7 +881,7 @@ export function BookingWizard({
                     {upsellMode === "combo" ? (
                       <span className="font-display text-[16px] font-extrabold" style={{ color: "#34d399" }}>Incluida</span>
                     ) : (
-                      <span className="font-display text-[16px] font-extrabold tabular-nums text-accent-soft">{cop(b.precio).replace(/\s/g, "")}</span>
+                      <span className="font-display text-[16px] font-extrabold tabular-nums text-accent-soft">+{cop(b.precio).replace(/\s/g, "")}</span>
                     )}
                   </button>
                 ))}
