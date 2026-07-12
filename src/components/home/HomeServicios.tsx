@@ -41,7 +41,7 @@ export function HomeServicios({ servicios }: { servicios: Servicio[] }) {
                 <div className="text-xs text-muted">{f.dur} min</div>
               </div>
               <div className="whitespace-nowrap font-display text-[19px] font-bold tabular-nums text-accent-soft">
-                {formatCOP(f.precio)}
+                {f.precio != null ? formatCOP(f.precio) : "—"}
               </div>
             </div>
           ))}
@@ -68,7 +68,7 @@ export function HomeServicios({ servicios }: { servicios: Servicio[] }) {
               <div className="mt-1 flex items-baseline justify-between">
                 <span className="text-xs text-muted">{f.dur} min</span>
                 <span className="font-display text-2xl font-extrabold tabular-nums text-accent-soft">
-                  {formatCOP(f.precio)}
+                  {f.precio != null ? formatCOP(f.precio) : "—"}
                 </span>
               </div>
             </div>
