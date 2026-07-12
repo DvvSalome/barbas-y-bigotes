@@ -1,6 +1,8 @@
+import { type SupabaseClient } from "@supabase/supabase-js";
 import { supabaseServer, supabaseServerAuth, supabaseAdmin } from "@/lib/supabase/server";
 import { bogotaDayRange, bogotaDayRangeDeFecha, bogotaYmd } from "@/lib/slots";
 import { totalesPorMedio, snapshotDinero, type TotalesPorMedio } from "@/lib/cobro";
+import { CERQUILLO_EXCLUIDOS, estadoTarjeta, TARJETA_SIZE } from "@/lib/tarjeta";
 import type { Sede, SedeId, Servicio, Barbero, Producto, Categoria } from "./types";
 
 export async function getSedes(): Promise<Sede[]> {
@@ -1114,12 +1116,66 @@ export async function getStaffContext(): Promise<StaffContext> {
   return { rol: row.rol, barberoId: row.barbero_id ?? null, nombre: row.nombre ?? "" };
 }
 
+// ---------- Tarjeta de cortes (fidelización) ----------
+// El conteo de sellos se DERIVA de las ventas (no hay tabla nueva). "Corte" = un
+// servicio de categoría cortes/combos menos los cerquillos. Estas lecturas tocan
+// ventas/venta_items: el caller pasa el cliente Supabase correcto según su rol
+// (admin/service_role para el cobro del barbero — RLS 0010 scopea las ventas por
+// barbero y undercontaría; la sesión del cliente para su propio portal — RLS 0013).
+
+// Ids de servicios que cuentan como "corte" para la tarjeta: categoría cortes/combos
+// menos los cerquillos (flequillos). Los combos SIEMPRE incluyen corte ("Corte + …").
+export async function getCorteIds(sb: SupabaseClient): Promise<string[]> {
+  const { data } = await sb.from("servicios").select("id").in("categoria", ["cortes", "combos"]);
+  return ((data ?? []) as { id: string }[]).map((s) => s.id).filter((id) => !CERQUILLO_EXCLUIDOS.has(id));
+}
+
+// Nº de ventas del cliente que incluyeron al menos un corte (1 sello por venta).
+export async function contarCortesCliente(sb: SupabaseClient, clienteRef: string): Promise<number> {
+  if (!clienteRef) return 0;
+  const corteIds = await getCorteIds(sb);
+  if (corteIds.length === 0) return 0;
+  const { data } = await sb
+    .from("venta_items")
+    .select("venta_id, ventas!inner(cliente_ref)")
+    .eq("tipo", "servicio")
+    .in("ref_id", corteIds)
+    .eq("ventas.cliente_ref", clienteRef);
+  return new Set(((data ?? []) as { venta_id: string }[]).map((r) => r.venta_id)).size;
+}
+
+// Precio del corte base en la sede (para topar el beneficio). 0 si no está priceado.
+export async function precioCorteBase(sb: SupabaseClient, sede: string): Promise<number> {
+  const { data } = await sb
+    .from("servicio_sede")
+    .select("precio")
+    .eq("servicio_id", "corte")
+    .eq("sede_id", sede)
+    .maybeSingle();
+  return (data as { precio?: number } | null)?.precio ?? 0;
+}
+
+// Estado de la tarjeta para el admin (solo lectura). Corre bajo la sesión del admin
+// (RLS le da todas las ventas del cliente); la página que lo llama es admin-only.
+export async function getTarjetaCliente(clienteRef: string) {
+  const sb = await supabaseServerAuth();
+  const cortesTotales = await contarCortesCliente(sb, clienteRef);
+  const est = estadoTarjeta(cortesTotales);
+  return {
+    cortesTotales,
+    sellos: est.sellos,
+    tarjetasCompletas: Math.floor(cortesTotales / TARJETA_SIZE),
+    proximo: est.proximo,
+  };
+}
+
 // ---------- Portal del cliente ----------
 export type CuentaData = {
   proximas: { id: string; inicio: string; estado: string; servicio: string; barbero: string; sede: string; nota: string | null; barberoId: string | null; servicioId: string | null; duracionMin: number }[];
   pasadas: { id: string; inicio: string; estado: string; servicio: string; barbero: string }[];
   puntosBalance: number;
   puntos: { tipo: string; puntos: number; nota: string; fecha: string }[];
+  tarjeta: { cortes: number; sellos: number; proximo: { tipo: "50%" | "gratis"; faltan: number } };
   cola: { id: string; estado: string; servicio: string; barbero: string; creadoEn: string }[];
 };
 
@@ -1171,8 +1227,10 @@ export async function getReservaSinCalificar(clienteId: string): Promise<Reserva
   };
 }
 
-// Datos del cliente logueado. La RLS de cliente (0013) limita todo a lo propio.
-export async function getCuenta(): Promise<CuentaData> {
+// Datos del cliente logueado. La RLS de cliente (0013) limita todo a lo propio,
+// así que el conteo de cortes con la sesión del propio cliente es completo (ve
+// todas sus ventas, sin importar qué barbero lo atendió).
+export async function getCuenta(clienteRef: string): Promise<CuentaData> {
   const sb = await supabaseServerAuth();
   const now = Date.now();
   const [resR, puntosR, colaR] = await Promise.all([
@@ -1211,5 +1269,9 @@ export async function getCuenta(): Promise<CuentaData> {
     barbero: (c.barberos as { nombre?: string } | null)?.nombre ?? "Cualquiera",
     creadoEn: c.creado_en as string,
   }));
-  return { proximas, pasadas, puntosBalance, puntos, cola };
+  // Tarjeta de cortes: sellos reales derivados de las ventas del propio cliente.
+  const cortesTotales = await contarCortesCliente(sb, clienteRef);
+  const est = estadoTarjeta(cortesTotales);
+  const tarjeta = { cortes: cortesTotales, sellos: est.sellos, proximo: est.proximo };
+  return { proximas, pasadas, puntosBalance, puntos, tarjeta, cola };
 }

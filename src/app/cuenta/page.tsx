@@ -117,7 +117,7 @@ export default async function CuentaPage() {
 
 async function Portal({ clienteId }: { clienteId: string }) {
   const [{ proximas, pasadas, puntosBalance, cola }, sinCalificar] = await Promise.all([
-    getCuenta(),
+    getCuenta(clienteId),
     getReservaSinCalificar(clienteId),
   ]);
 
