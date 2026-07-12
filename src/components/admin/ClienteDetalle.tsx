@@ -33,7 +33,22 @@ function fecha(iso: string) {
   return new Date(iso).toLocaleDateString("es-CO", { day: "numeric", month: "short", year: "2-digit" });
 }
 
-export function ClienteDetalle({ detalle, barberos }: { detalle: Detalle; barberos: Barbero[] }) {
+export type TarjetaClienteView = {
+  cortesTotales: number;
+  sellos: number;
+  tarjetasCompletas: number;
+  proximo: { tipo: "50%" | "gratis"; faltan: number };
+};
+
+export function ClienteDetalle({
+  detalle,
+  barberos,
+  tarjeta,
+}: {
+  detalle: Detalle;
+  barberos: Barbero[];
+  tarjeta: TarjetaClienteView;
+}) {
   const [tab, setTab] = useState<Tab>("info");
   const d = detalle;
 
@@ -92,7 +107,7 @@ export function ClienteDetalle({ detalle, barberos }: { detalle: Detalle; barber
         {tab === "reservas" && <ReservasTab d={d} />}
         {tab === "notas" && <NotasTab d={d} />}
         {tab === "wallet" && <WalletTab d={d} />}
-        {tab === "fidelidad" && <FidelidadTab d={d} />}
+        {tab === "fidelidad" && <FidelidadTab d={d} tarjeta={tarjeta} />}
         {tab === "resenas" && <ResenasTab d={d} barberos={barberos} />}
         {tab === "calificaciones" && <CalificacionesTab d={d} />}
       </div>
@@ -276,7 +291,7 @@ function WalletTab({ d }: { d: Detalle }) {
   );
 }
 
-function FidelidadTab({ d }: { d: Detalle }) {
+function FidelidadTab({ d, tarjeta }: { d: Detalle; tarjeta: TarjetaClienteView }) {
   const router = useRouter();
   const [puntos, setPuntos] = useState("");
   const [nota, setNota] = useState("");
@@ -298,6 +313,21 @@ function FidelidadTab({ d }: { d: Detalle }) {
 
   return (
     <div>
+      {/* Tarjeta de cortes (solo lectura): sellos derivados de las ventas. */}
+      <div className="mb-5 rounded-2xl border border-line bg-panel p-5">
+        <div className="text-xs uppercase tracking-wide text-muted">Tarjeta de cortes</div>
+        <div className="mt-1 flex flex-wrap items-baseline gap-2">
+          <span className="font-display text-3xl font-bold tabular-nums text-accent-soft">{tarjeta.sellos}/10</span>
+          <span className="text-xs text-muted">
+            · {tarjeta.tarjetasCompletas} completada{tarjeta.tarjetasCompletas === 1 ? "" : "s"} · próximo:{" "}
+            {tarjeta.proximo.tipo === "50%" ? "50%" : "corte gratis"} en {tarjeta.proximo.faltan}
+          </span>
+        </div>
+        <p className="mt-1 text-xs text-muted">
+          {tarjeta.cortesTotales} corte{tarjeta.cortesTotales === 1 ? "" : "s"} en total. El 5º de cada ciclo va 50% y el 10º gratis (se aplica solo al cobrar).
+        </p>
+      </div>
+
       <div className="mb-5 rounded-2xl border border-line bg-panel p-5">
         <div className="text-xs uppercase tracking-wide text-muted">Puntos de fidelidad</div>
         <div className="font-display text-3xl text-accent-soft">{d.puntosBalance} pts</div>

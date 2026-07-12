@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getClienteDetalle, getBarberos } from "@/lib/data/queries";
+import { getClienteDetalle, getBarberos, getTarjetaCliente } from "@/lib/data/queries";
 import { ClienteDetalle } from "@/components/admin/ClienteDetalle";
 
 export const metadata: Metadata = { title: "Ficha de cliente · Admin" };
@@ -12,7 +12,11 @@ export default async function ClienteDetallePage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const [detalle, barberos] = await Promise.all([getClienteDetalle(id), getBarberos()]);
+  const [detalle, barberos, tarjeta] = await Promise.all([
+    getClienteDetalle(id),
+    getBarberos(),
+    getTarjetaCliente(id),
+  ]);
   if (!detalle) notFound();
 
   return (
@@ -20,7 +24,7 @@ export default async function ClienteDetallePage({
       <Link href="/admin/clientes" className="inline-flex items-center gap-1 text-sm text-muted transition hover:text-accent-soft">
         ← Clientes
       </Link>
-      <ClienteDetalle detalle={detalle} barberos={barberos} />
+      <ClienteDetalle detalle={detalle} barberos={barberos} tarjeta={tarjeta} />
     </div>
   );
 }
