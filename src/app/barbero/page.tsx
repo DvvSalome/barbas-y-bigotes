@@ -10,6 +10,7 @@ import {
   getStaffContext,
   getMedios,
   getCajaSede,
+  getCajaDesglose,
   getCobradoHoy,
 } from "@/lib/data/queries";
 import { AgendaList } from "@/components/barbero/AgendaList";
@@ -39,7 +40,9 @@ export default async function BarberoPage() {
   // /admin/cuadre). La caja se abre sola con la primera venta del día.
   const sedeBarbero =
     staff.rol === "barbero" ? barberos.find((b) => b.id === staff.barberoId)?.sede ?? null : null;
-  const caja = sedeBarbero ? await getCajaSede(sedeBarbero) : null;
+  const [caja, cajaDesglose] = sedeBarbero
+    ? await Promise.all([getCajaSede(sedeBarbero), getCajaDesglose(sedeBarbero)])
+    : [null, null];
 
   // Encabezado HERO del día: "Hoy, vie 10 jul" en el día civil de Bogotá (el
   // server corre en UTC) + "{barbero} · {sede}" (o "Todas las sedes" para admin).
@@ -87,7 +90,7 @@ export default async function BarberoPage() {
 
       {sedeBarbero && (
         <div className="mt-12 border-t border-line pt-8">
-          <CierreCaja caja={caja} />
+          <CierreCaja caja={caja} desglose={cajaDesglose} miBarberoId={staff.barberoId} />
         </div>
       )}
     </main>

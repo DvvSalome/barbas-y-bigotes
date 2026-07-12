@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { cerrarCajaSede } from "@/lib/actions";
 import { cop } from "@/lib/format";
-import type { CajaSedeEstado } from "@/lib/data/queries";
+import type { CajaSedeEstado, CajaDesglose } from "@/lib/data/queries";
 
 // Hora civil en Bogotá sin depender del TZ del proceso (server/cliente en UTC).
 function horaBogota(iso: string) {
@@ -20,12 +20,32 @@ function horaBogota(iso: string) {
   return `${((h + 11) % 12) + 1}:${m.toString().padStart(2, "0")} ${h < 12 ? "am" : "pm"}`;
 }
 
+// Avatar del barbero en el desglose: foto de la ficha si existe; si no, iniciales
+// sobre un tono cálido derivado del nombre (mismos tonos del prototipo que la
+// agenda). Son decorativos y estables por nombre; no hay token para ellos, por
+// eso van en crudo.
+const AVI_TONOS = ["#a3907c", "#e8675c", "#c9b18a", "#8f7a60", "#d9a066"];
+const aviTono = (n: string) => AVI_TONOS[(n?.trim().length ?? 0) % AVI_TONOS.length];
+const iniciales = (n: string) => {
+  const parts = (n || "").trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return "?";
+  return parts.slice(0, 2).map((p) => p.charAt(0).toUpperCase()).join("");
+};
+
 const fld =
   "w-full rounded-lg border border-line bg-bg px-3 py-2 text-ink placeholder:text-muted focus:border-accent focus:outline-none";
 const btn =
   "rounded-full bg-gradient-to-b from-accent-soft to-accent px-5 py-2 text-xs font-semibold uppercase tracking-wide text-on-accent shadow-[0_10px_24px_-10px_rgba(210,63,52,0.7)] transition hover:brightness-105 disabled:opacity-50 disabled:shadow-none";
 
-export function CierreCaja({ caja }: { caja: CajaSedeEstado }) {
+export function CierreCaja({
+  caja,
+  desglose,
+  miBarberoId,
+}: {
+  caja: CajaSedeEstado;
+  desglose: CajaDesglose;
+  miBarberoId: string | null;
+}) {
   const router = useRouter();
   const [abierto, setAbierto] = useState(false);
   const [contado, setContado] = useState("");
@@ -65,6 +85,7 @@ export function CierreCaja({ caja }: { caja: CajaSedeEstado }) {
   const esperado = caja.esperadoEfectivo;
   const contadoNum = Math.max(0, Math.floor(Number(contado) || 0));
   const diferencia = contadoNum - esperado;
+  const nBarberos = desglose?.barberos.length ?? 0;
 
   async function confirmar(e: React.FormEvent) {
     e.preventDefault();
@@ -88,18 +109,79 @@ export function CierreCaja({ caja }: { caja: CajaSedeEstado }) {
           Abierta desde {horaBogota(caja.abiertaEn)}
         </span>
       </div>
-      <div className="mt-4 rounded-xl border border-line bg-elevated p-4 text-center">
-        <div className="font-display text-[11px] font-bold uppercase tracking-[0.18em] text-muted">
-          Esperado en efectivo
+      <p className="mt-1 text-xs leading-relaxed text-muted">
+        La caja es de la sede: suma lo de {nBarberos === 1 ? "el barbero" : `los ${nBarberos} barberos`}. Se
+        abrió sola con la primera venta.
+      </p>
+
+      {/* Desglose por barbero (con foto/iniciales, badge "vos" y "Mi comisión" en el logueado). */}
+      {desglose && desglose.barberos.length > 0 && (
+        <>
+          <div className="mt-4 font-display text-[11px] font-bold uppercase tracking-[0.14em] text-muted">
+            Por barbero
+          </div>
+          <div className="mt-2 overflow-hidden rounded-2xl border border-line bg-elevated">
+            {desglose.barberos.map((b) => {
+              const esMi = b.barberoId === miBarberoId;
+              return (
+                <div key={b.barberoId} className="border-b border-line/60 last:border-b-0">
+                  <div className="flex items-center gap-2.5 px-3.5 py-2.5">
+                    {b.fotoUrl ? (
+                      <span
+                        className="h-[30px] w-[30px] shrink-0 rounded-full border border-line bg-elevated bg-cover bg-top"
+                        style={{ backgroundImage: `url(${b.fotoUrl})` }}
+                      />
+                    ) : (
+                      <span
+                        className="grid h-[30px] w-[30px] shrink-0 place-items-center rounded-full border border-line font-display text-[11px] font-bold text-[#0c0b0a]"
+                        style={{ background: aviTono(b.nombre) }}
+                      >
+                        {iniciales(b.nombre)}
+                      </span>
+                    )}
+                    <span className="min-w-0 flex-1 truncate text-sm font-bold text-ink">{b.nombre}</span>
+                    {esMi && (
+                      <span className="shrink-0 rounded-full bg-accent/15 px-2 py-0.5 text-[9.5px] font-bold uppercase tracking-wide text-accent-soft">
+                        vos
+                      </span>
+                    )}
+                    <span className="shrink-0 text-sm font-bold tabular-nums text-ink">{cop(b.ventas)}</span>
+                  </div>
+                  {/* "Mi comisión (50%)" resaltada SOLO en la fila del barbero logueado. */}
+                  {esMi && (
+                    <div className="flex items-center justify-between gap-2 border-t border-line/60 bg-ok/5 px-3.5 py-2">
+                      <span className="min-w-0 text-xs font-semibold text-ok">
+                        Mi comisión (50% de mis ventas)
+                      </span>
+                      <span className="shrink-0 text-sm font-bold tabular-nums text-ok">
+                        {cop(b.comision)}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
+
+      {/* Totales de la sede: efectivo esperado + digital. */}
+      {desglose && (
+        <div className="mt-3 overflow-hidden rounded-2xl border border-line bg-elevated">
+          <div className="flex items-center justify-between gap-2 px-3.5 py-2.5 text-sm">
+            <span className="min-w-0 text-muted">Efectivo esperado</span>
+            <span className="shrink-0 font-bold tabular-nums text-ink">{cop(desglose.efectivo)}</span>
+          </div>
+          <div className="flex items-center justify-between gap-2 border-t border-line/60 px-3.5 py-2.5 text-sm">
+            <span className="min-w-0 text-muted">Digital (Nequi + Daviplata)</span>
+            <span className="shrink-0 font-bold tabular-nums text-ink">{cop(desglose.digital)}</span>
+          </div>
         </div>
-        <div className="mt-1 font-display text-4xl font-extrabold tabular-nums text-ink">
-          {cop(esperado)}
-        </div>
-      </div>
+      )}
 
       {!abierto ? (
         <button className={`${btn} mt-4`} onClick={() => setAbierto(true)}>
-          Cerrar caja
+          Cerrar caja de la sede
         </button>
       ) : (
         <form onSubmit={confirmar} className="mt-4 space-y-3">
