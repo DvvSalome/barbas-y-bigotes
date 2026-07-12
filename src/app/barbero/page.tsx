@@ -10,6 +10,7 @@ import {
   getStaffContext,
   getMedios,
   getCajaSede,
+  getCobradoHoy,
 } from "@/lib/data/queries";
 import { AgendaList } from "@/components/barbero/AgendaList";
 import { EsperaPanel } from "@/components/barbero/EsperaPanel";
@@ -21,7 +22,7 @@ export const metadata: Metadata = { title: "App del barbero" };
 export default async function BarberoPage() {
   const staff = await getStaffContext();
   const filtro = staff.rol === "barbero" ? staff.barberoId : null;
-  const [sedes, barberos, servicios, preciosServicios, productos, medios, agenda, espera] =
+  const [sedes, barberos, servicios, preciosServicios, productos, medios, agenda, espera, cobradoHoy] =
     await Promise.all([
       getSedes(),
       getBarberos(),
@@ -31,6 +32,7 @@ export default async function BarberoPage() {
       getMedios(),
       getAgendaHoy(filtro),
       getListaEspera(filtro),
+      getCobradoHoy(filtro),
     ]);
 
   // Cierre de caja: sólo para el barbero, sobre SU sede (el admin cierra en
@@ -39,38 +41,52 @@ export default async function BarberoPage() {
     staff.rol === "barbero" ? barberos.find((b) => b.id === staff.barberoId)?.sede ?? null : null;
   const caja = sedeBarbero ? await getCajaSede(sedeBarbero) : null;
 
+  // Encabezado HERO del día: "Hoy, vie 10 jul" en el día civil de Bogotá (el
+  // server corre en UTC) + "{barbero} · {sede}" (o "Todas las sedes" para admin).
+  const partes = new Intl.DateTimeFormat("es-CO", {
+    timeZone: "America/Bogota",
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+  }).formatToParts(new Date());
+  const parte = (t: string) => partes.find((p) => p.type === t)?.value ?? "";
+  const hoyLabel = `${parte("weekday")} ${parte("day")} ${parte("month")}`.replace(/\./g, "");
+  const sedeNombre = sedeBarbero ? sedes.find((s) => s.id === sedeBarbero)?.nombre ?? null : null;
+  const subtitulo =
+    staff.rol === "barbero"
+      ? [staff.nombre || barberos.find((b) => b.id === staff.barberoId)?.nombre || "Barbero", sedeNombre]
+          .filter(Boolean)
+          .join(" · ")
+      : "Todas las sedes";
+
   return (
-    <main className="mx-auto max-w-5xl px-6 py-10">
+    <main className="mx-auto max-w-2xl px-4 py-6 sm:px-6">
       <RealtimeRefresh
         subscriptions={[
           { table: "reservas", filter: filtro ? `barbero_id=eq.${filtro}` : undefined },
           { table: "lista_espera", filter: filtro ? `barbero_id=eq.${filtro}` : undefined },
         ]}
       />
-      <h1 className="font-display text-4xl font-semibold uppercase">Agenda de hoy</h1>
-      <p className="mt-2 text-sm text-muted">
-        Clientes programados y walk-ins. Marcá la llegada, completá la atención y cobrá. El
-        historial de cada cliente está a un clic.
-      </p>
-      <div className="mt-8">
-        <AgendaList
-          agenda={agenda}
-          sedes={sedes}
-          barberos={barberos}
-          servicios={servicios}
-          preciosServicios={preciosServicios}
-          productos={productos}
-          medios={medios}
-          esAdmin={staff.rol === "admin"}
-        />
-      </div>
+      <AgendaList
+        agenda={agenda}
+        sedes={sedes}
+        barberos={barberos}
+        servicios={servicios}
+        preciosServicios={preciosServicios}
+        productos={productos}
+        medios={medios}
+        esAdmin={staff.rol === "admin"}
+        hoyLabel={hoyLabel}
+        subtitulo={subtitulo}
+        cobradoHoy={cobradoHoy}
+      />
 
-      <div className="mt-14 border-t border-line pt-10">
+      <div className="mt-12 border-t border-line pt-8">
         <EsperaPanel espera={espera} sedes={sedes} barberos={barberos} servicios={servicios} />
       </div>
 
       {sedeBarbero && (
-        <div className="mt-14 border-t border-line pt-10">
+        <div className="mt-12 border-t border-line pt-8">
           <CierreCaja caja={caja} />
         </div>
       )}

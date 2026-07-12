@@ -42,6 +42,39 @@ function hora(iso: string) {
   return `${h}:${m.toString().padStart(2, "0")} ${ap}`;
 }
 
+const DONE = ["completada", "no_show", "cancelada"];
+
+// Chips de estado (mapa del prototipo, resuelto con tokens del staff para que el
+// tema claro/oscuro entinte solo). El punto interno hereda currentColor.
+const CHIP: Record<string, string> = {
+  pendiente: "bg-ink/10 text-muted",
+  confirmada: "bg-accent/15 text-accent-soft",
+  en_curso: "bg-ok/15 text-ok",
+  completada: "bg-ok/15 text-ok",
+  no_show: "bg-warn/15 text-warn",
+  cancelada: "bg-ink/10 text-muted",
+};
+const chipCls = (estado: string) => CHIP[estado] ?? "bg-ink/10 text-muted";
+
+// Avatar del cliente: en la agenda no hay foto, así que van las iniciales sobre un
+// tono cálido derivado del nombre (tonos del prototipo). Son decorativos y estables
+// por nombre; no hay token para ellos, por eso van en crudo.
+const AVI_TONOS = ["#a3907c", "#e8675c", "#c9b18a", "#8f7a60", "#d9a066"];
+const aviTono = (n: string) => AVI_TONOS[(n?.trim().length ?? 0) % AVI_TONOS.length];
+const iniciales = (n: string) => {
+  const parts = (n || "").trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return "?";
+  return parts.slice(0, 2).map((p) => p.charAt(0).toUpperCase()).join("");
+};
+
+// Origen de la cita, en el copy del prototipo.
+const canalLabel = (r: AgendaItem) =>
+  r.canal === "walkin"
+    ? "Sin reserva · en la barbería"
+    : r.estado === "pendiente"
+      ? "Reservó por la app · aún no confirma el correo"
+      : "Reservó por la app";
+
 export function AgendaList({
   agenda,
   sedes,
@@ -51,6 +84,9 @@ export function AgendaList({
   productos,
   medios,
   esAdmin = false,
+  hoyLabel,
+  subtitulo,
+  cobradoHoy,
 }: {
   agenda: AgendaItem[];
   sedes: Sede[];
@@ -60,6 +96,9 @@ export function AgendaList({
   productos: Producto[];
   medios: MedioPago[];
   esAdmin?: boolean;
+  hoyLabel: string;
+  subtitulo: string;
+  cobradoHoy: number;
 }) {
   const router = useRouter();
   const [walkinOpen, setWalkinOpen] = useState(false);
@@ -68,8 +107,22 @@ export function AgendaList({
   const [historyFor, setHistoryFor] = useState<string | null>(null);
   const [history, setHistory] = useState<HistItem[] | null>(null);
   const [busy, setBusy] = useState(false);
+  const [terminadasOpen, setTerminadasOpen] = useState(false);
+  const [expandedRow, setExpandedRow] = useState<string | null>(null);
 
   const freeSlots = agenda.filter((item) => ["cancelada", "no_show"].includes(item.estado));
+
+  // Agenda HERO: activos primero, con el que está en la silla (en_curso) al tope;
+  // el resto conserva el orden por hora (getAgendaHoy ya ordena por inicio).
+  const activos = agenda.filter((r) => !DONE.includes(r.estado));
+  const hechas = agenda.filter((r) => DONE.includes(r.estado));
+  const activosOrd = [...activos].sort(
+    (a, b) => (b.estado === "en_curso" ? 1 : 0) - (a.estado === "en_curso" ? 1 : 0),
+  );
+  const hero = activosOrd.length > 0 ? activosOrd[0] : null;
+  const resto = activosOrd.slice(1);
+  const progPct = agenda.length ? Math.round((hechas.length / agenda.length) * 100) : 0;
+  const sigue = activosOrd.find((r) => r.estado !== "en_curso") ?? null;
 
   async function setEstado(id: string, patch: { estado?: string; llegada?: string }) {
     setBusy(true);
@@ -86,9 +139,271 @@ export function AgendaList({
     setHistory(h as HistItem[]);
   }
 
+  // Precio del servicio de la cita, resuelto desde preciosServicios (los mismos
+  // que usa el cobro). null si es walk-in sin servicio o no hay precio en la sede.
+  const precioDe = (r: AgendaItem): number | null => {
+    if (!r.servicioId) return null;
+    return preciosServicios.find((s) => s.id === r.servicioId)?.preciosPorSede[r.sede] ?? null;
+  };
+  const durDe = (r: AgendaItem): number | null =>
+    servicios.find((s) => s.id === r.servicioId)?.duracionMin ?? null;
+
+  // Adelanto: si un cupo anterior quedó libre (no llegó / canceló), se le puede
+  // ofrecer al cliente adelantar su cita. Conserva la lógica previa.
+  const proposalInfo = (r: AgendaItem) => {
+    const earliestSlot: AgendaItem | undefined = freeSlots
+      .filter(
+        (fs) =>
+          fs.barberoId === r.barberoId &&
+          new Date(fs.inicio).getTime() < new Date(r.inicio).getTime(),
+      )
+      .sort((a, b) => new Date(a.inicio).getTime() - new Date(b.inicio).getTime())[0];
+    let hasPendingProposal = false;
+    let proposedTimeStr = "";
+    if (r.nota) {
+      try {
+        const obj = JSON.parse(r.nota);
+        if (obj.propuesta_adelanto?.estado === "pendiente") {
+          hasPendingProposal = true;
+          proposedTimeStr = new Date(obj.propuesta_adelanto.inicio).toLocaleTimeString("es-CO", {
+            hour: "numeric",
+            minute: "2-digit",
+          });
+        }
+      } catch {}
+    }
+    return { earliestSlot, hasPendingProposal, proposedTimeStr };
+  };
+
+  const ofrecerAdelanto = async (r: AgendaItem, inicioISO: string) => {
+    setBusy(true);
+    const res = await proponerAdelanto({ reservaId: r.id, inicioISO });
+    setBusy(false);
+    if (res.ok) {
+      alert("Propuesta de adelanto enviada al cliente.");
+      router.refresh();
+    } else {
+      alert(res.error);
+    }
+  };
+
+  // Panel de historial (mismo markup para hero y filas de "Después").
+  const historialPanel = () => (
+    <div className="mt-3 rounded-xl border border-line bg-bg p-3">
+      <div className="mb-2 flex items-center justify-between">
+        <span className="text-[10px] uppercase tracking-[0.18em] text-muted">Historial del cliente</span>
+        <button onClick={() => setHistoryFor(null)} className="text-xs text-muted hover:text-ink">
+          cerrar
+        </button>
+      </div>
+      {history === null ? (
+        <p className="text-sm text-muted">Cargando…</p>
+      ) : history.length === 0 ? (
+        <p className="text-sm text-muted">Sin visitas previas.</p>
+      ) : (
+        <ul className="space-y-1.5 text-sm">
+          {history.map((h) => (
+            <li key={h.id} className="flex justify-between gap-3">
+              <span className="text-muted">
+                {new Date(h.fecha).toLocaleDateString("es-CO")} · {h.items.join(", ") || "—"}
+              </span>
+              <span className="text-ink">{cop(h.total)}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+
+  // Hoja de cobro (CheckoutForm): lógica de cobro/tarjeta intacta; solo cambia
+  // desde dónde se dispara (botón "Cobrar" del hero o de una fila).
+  const cobroDe = (r: AgendaItem) => (
+    <CheckoutForm
+      reserva={r}
+      sedes={sedes}
+      barberos={barberos}
+      servicios={servicios}
+      preciosServicios={preciosServicios}
+      productos={productos}
+      medios={medios}
+      esAdmin={esAdmin}
+      onDone={() => {
+        setCompleteFor(null);
+        router.refresh();
+      }}
+      onCancel={() => setCompleteFor(null)}
+    />
+  );
+
+  // Tarjeta HERO del cliente en foco (en la silla = verde, próximo = rojo).
+  const renderHero = (r: AgendaItem) => {
+    const enCurso = r.estado === "en_curso";
+    const precio = precioDe(r);
+    const dur = durDe(r);
+    const { earliestSlot, hasPendingProposal, proposedTimeStr } = proposalInfo(r);
+    return (
+      <div
+        className={`relative overflow-hidden rounded-[22px] border bg-panel p-4 shadow-[0_24px_50px_-30px_rgba(0,0,0,0.8)] ${
+          enCurso ? "border-ok/50" : "border-accent/40"
+        }`}
+      >
+        <span
+          aria-hidden
+          className={`pointer-events-none absolute inset-0 bg-gradient-to-br via-transparent to-transparent ${
+            enCurso ? "from-ok/15" : "from-accent/15"
+          }`}
+        />
+        <span aria-hidden className={`absolute inset-y-0 left-0 w-1 ${enCurso ? "bg-ok" : "bg-accent"}`} />
+        <div className="relative">
+          <div className="flex items-center justify-between gap-2">
+            <span
+              className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[10.5px] font-extrabold uppercase tracking-[0.1em] ${
+                enCurso ? "bg-ok/15 text-ok" : chipCls(r.estado)
+              }`}
+            >
+              <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-current" />
+              {enCurso ? "En la silla ahora" : ESTADO[r.estado] ?? r.estado}
+            </span>
+            <span className="flex items-baseline gap-1.5">
+              <span className="font-display text-3xl font-bold leading-none tabular-nums">{hora(r.inicio)}</span>
+              {dur != null && <span className="text-[11px] text-muted">· {dur} min</span>}
+            </span>
+          </div>
+
+          <div className="mt-3.5 flex items-center gap-3.5">
+            <span
+              className={`grid h-[66px] w-[66px] shrink-0 place-items-center rounded-full font-display text-[26px] font-bold text-[#0c0b0a] ring-2 ${
+                enCurso ? "ring-ok/70" : "ring-accent/60"
+              }`}
+              style={{ background: aviTono(r.cliente) }}
+            >
+              {iniciales(r.cliente || "Walk-in")}
+            </span>
+            <div className="min-w-0">
+              <div className="truncate font-display text-[27px] font-bold uppercase leading-none">
+                {r.cliente || "Walk-in"}
+              </div>
+              <div className="mt-1 truncate text-[13.5px] text-ink/80">{r.servicio || "—"}</div>
+            </div>
+          </div>
+
+          <div className="mt-3.5 flex items-center justify-between gap-3 border-t border-line pt-3">
+            <span className="min-w-0 truncate text-[11.5px] text-muted">{canalLabel(r)}</span>
+            {precio != null && (
+              <span className="shrink-0 font-display text-2xl font-bold tabular-nums">{cop(precio)}</span>
+            )}
+          </div>
+
+          <div className="mt-3.5 flex flex-col gap-2">
+            {enCurso ? (
+              <button
+                onClick={() => setCompleteFor(completeFor === r.id ? null : r.id)}
+                className="min-h-[58px] w-full whitespace-nowrap rounded-[15px] bg-gradient-to-b from-accent-soft to-accent text-base font-extrabold text-on-accent shadow-[0_12px_26px_-10px_rgba(210,63,52,0.6)] transition hover:brightness-105"
+              >
+                {precio != null ? `Cobrar ${cop(precio)} →` : "Cobrar →"}
+              </button>
+            ) : (
+              <>
+                <button
+                  onClick={() => setEstado(r.id, { estado: "en_curso", llegada: "a_tiempo" })}
+                  disabled={busy}
+                  className="min-h-[58px] w-full rounded-[15px] bg-gradient-to-b from-accent-soft to-accent text-base font-extrabold text-on-accent shadow-[0_12px_26px_-10px_rgba(210,63,52,0.6)] transition hover:brightness-105 disabled:opacity-50"
+                >
+                  ✓ Llegó · pasá a la silla
+                </button>
+                {r.estado === "pendiente" && (
+                  <button
+                    onClick={() => setEstado(r.id, { estado: "confirmada" })}
+                    disabled={busy}
+                    className="min-h-[44px] w-full rounded-xl border border-line text-[13px] text-ink/80 transition hover:border-accent/50 disabled:opacity-50"
+                  >
+                    El cliente confirmó (llamada o WhatsApp)
+                  </button>
+                )}
+                <button
+                  onClick={() => setEstado(r.id, { estado: "no_show" })}
+                  disabled={busy}
+                  className="min-h-[40px] w-full text-[13px] text-muted transition hover:text-ink disabled:opacity-50"
+                >
+                  No llegó · avisar a la fila
+                </button>
+              </>
+            )}
+            {(r.clienteRef || hasPendingProposal || earliestSlot) && (
+              <div className="flex flex-wrap justify-center gap-2 pt-0.5">
+                {r.clienteRef && (
+                  <button
+                    onClick={() => showHistory(r.clienteRef, r.id)}
+                    className="rounded-full border border-line px-3 py-1.5 text-xs text-muted transition hover:text-ink"
+                  >
+                    Ver historial
+                  </button>
+                )}
+                {hasPendingProposal && (
+                  <span className="rounded-full border border-warn/30 bg-warn/10 px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-warn">
+                    Propuesto {proposedTimeStr}
+                  </span>
+                )}
+                {earliestSlot && !hasPendingProposal && (
+                  <button
+                    onClick={() => ofrecerAdelanto(r, earliestSlot.inicio)}
+                    disabled={busy}
+                    className="rounded-full border border-accent/40 bg-accent/5 px-3 py-1.5 text-xs text-accent-soft transition hover:bg-accent/15 disabled:opacity-50"
+                  >
+                    Ofrecer adelanto ({hora(earliestSlot.inicio)})
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+
+          {historyFor === r.id && historialPanel()}
+          {completeFor === r.id && cobroDe(r)}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div>
-      <div className="mb-8 space-y-3">
+      {/* Encabezado del día + cobrado hoy */}
+      <div className="mb-3 flex items-baseline justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="font-display text-[26px] font-bold uppercase leading-none">Hoy, {hoyLabel}</h1>
+          {subtitulo && <p className="mt-1 truncate text-xs text-muted">{subtitulo}</p>}
+        </div>
+        <div className="shrink-0 text-right">
+          <div className="font-display text-[22px] font-bold tabular-nums text-ok">{cop(cobradoHoy)}</div>
+          <div className="text-[10px] uppercase tracking-[0.12em] text-muted">cobrado hoy</div>
+        </div>
+      </div>
+
+      {/* Progreso del día */}
+      <div className="mb-3 rounded-2xl border border-line bg-panel px-3.5 py-3">
+        <div className="flex items-center justify-between text-[11px] uppercase tracking-[0.1em] text-muted">
+          <span>Tu día</span>
+          <span>
+            {hechas.length} de {agenda.length} atenciones
+          </span>
+        </div>
+        <div className="mt-1.5 h-[5px] overflow-hidden rounded-full bg-ink/10">
+          <div
+            className="h-full rounded-full"
+            style={{ width: `${progPct}%`, background: "linear-gradient(90deg, var(--bar), var(--accent))" }}
+          />
+        </div>
+        {sigue && (
+          <div className="mt-2 text-[12.5px]">
+            <span className="text-muted">Sigue:</span>{" "}
+            <b>
+              {sigue.cliente || "Walk-in"} · {hora(sigue.inicio)}
+            </b>
+          </div>
+        )}
+      </div>
+
+      {/* Walk-in / Venta rápida (como estaban) */}
+      <div className="mb-4 space-y-3">
         {!walkinOpen && !ventaOpen && (
           <div className="flex flex-wrap gap-2">
             <button
@@ -136,121 +451,99 @@ export function AgendaList({
         )}
       </div>
 
-      {agenda.length === 0 ? (
-        <p className="text-sm text-muted">
-          No hay clientes en la agenda de hoy. Registrá un walk-in, o las reservas de la app
-          aparecerán acá.
-        </p>
+      {/* Tarjeta HERO del cliente en foco, o silla libre */}
+      {hero ? (
+        renderHero(hero)
       ) : (
-        <div className="space-y-3">
-          {agenda.map((r) => {
-            const done = ["completada", "no_show", "cancelada"].includes(r.estado);
-            
-            // Calculate advancement opportunities
-            const possibleAdvances = freeSlots.filter((fs) => 
-              fs.barberoId === r.barberoId && 
-              new Date(fs.inicio).getTime() < new Date(r.inicio).getTime()
-            );
-            const earliestSlot = possibleAdvances.sort((a, b) => new Date(a.inicio).getTime() - new Date(b.inicio).getTime())[0];
-            
-            let hasPendingProposal = false;
-            let proposedTimeStr = "";
-            if (r.nota) {
-              try {
-                const obj = JSON.parse(r.nota);
-                if (obj.propuesta_adelanto?.estado === "pendiente") {
-                  hasPendingProposal = true;
-                  proposedTimeStr = new Date(obj.propuesta_adelanto.inicio).toLocaleTimeString("es-CO", { hour: "numeric", minute: "2-digit" });
-                }
-              } catch {}
-            }
+        <div className="rounded-[18px] border border-dashed border-ink/15 px-5 py-9 text-center">
+          <div className="font-display text-[22px] font-bold uppercase">Silla libre</div>
+          <div className="mx-auto mt-1.5 max-w-xs text-[13px] text-muted">
+            No tenés a nadie en la silla ahora. Sumá un walk-in o esperá la próxima cita.
+          </div>
+        </div>
+      )}
 
-            const enCurso = r.estado === "en_curso";
-            return (
-              <div
-                key={r.id}
-                className={`relative overflow-hidden rounded-2xl border bg-panel p-4 ${enCurso ? "border-accent/40 pl-5" : "border-line"}`}
-              >
-                {enCurso && (
-                  <span
-                    aria-hidden
-                    className="absolute inset-y-0 left-0 w-1 bg-gradient-to-b from-accent-soft to-accent"
-                  />
-                )}
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div className="flex items-center gap-3">
-                    <div className="w-20 font-display text-2xl text-accent-soft">{hora(r.inicio)}</div>
-                    <div>
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="font-semibold">{r.cliente || "Walk-in"}</span>
-                        <span
-                          className={`rounded-full px-2 py-0.5 text-[10px] uppercase tracking-wide ${r.canal === "walkin" ? "bg-ink/10 text-muted" : "bg-accent/15 text-accent-soft"}`}
-                        >
-                          {r.canal === "walkin" ? "Sin reserva" : "App"}
-                        </span>
-                        <span className="text-[10px] uppercase tracking-wide text-muted">
-                          · {ESTADO[r.estado] ?? r.estado}
-                        </span>
-                      </div>
-                      <div className="text-sm text-muted">
-                        {r.servicio || "—"} · {r.barbero}
-                        {r.telefono ? ` · ${r.telefono}` : ""}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {r.clienteRef && (
-                      <button
-                        onClick={() => showHistory(r.clienteRef, r.id)}
-                        className="rounded-full border border-line px-3 py-1.5 text-xs text-muted transition hover:text-ink"
-                      >
-                        Ver historial
-                      </button>
-                    )}
-                    {hasPendingProposal && (
-                      <span className="rounded-full bg-warn/10 border border-warn/30 text-warn px-3 py-1.5 text-xs font-semibold uppercase tracking-wider">
-                        Propuesto {proposedTimeStr}
-                      </span>
-                    )}
-                    {earliestSlot && !done && !hasPendingProposal && (
-                      <button
-                        onClick={async () => {
-                          setBusy(true);
-                          const res = await proponerAdelanto({
-                            reservaId: r.id,
-                            inicioISO: earliestSlot.inicio
-                          });
-                          setBusy(false);
-                          if (res.ok) {
-                            alert("Propuesta de adelanto enviada al cliente.");
-                            router.refresh();
-                          } else {
-                            alert(res.error);
-                          }
-                        }}
-                        disabled={busy}
-                        className="rounded-full border border-accent/40 bg-accent/5 px-3 py-1.5 text-xs text-accent-soft hover:bg-accent/15 transition disabled:opacity-50"
-                      >
-                        Ofrecer Adelanto ({hora(earliestSlot.inicio)})
-                      </button>
-                    )}
-                    {!done && (
-                      <>
-                        {r.estado !== "en_curso" && (
+      {/* Después: resto de la agenda en filas compactas (tap para acciones) */}
+      {resto.length > 0 && (
+        <div className="mt-6">
+          <div className="mb-2.5 flex items-center gap-3">
+            <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-muted">Después</span>
+            <span aria-hidden className="h-px flex-1 bg-line" />
+          </div>
+          <div className="space-y-2">
+            {resto.map((r) => {
+              const abierto = expandedRow === r.id;
+              const enCurso = r.estado === "en_curso";
+              const { earliestSlot, hasPendingProposal, proposedTimeStr } = proposalInfo(r);
+              return (
+                <div key={r.id} className="overflow-hidden rounded-2xl border border-line bg-panel">
+                  <button
+                    onClick={() => setExpandedRow(abierto ? null : r.id)}
+                    className="flex w-full items-center gap-3 px-3.5 py-3 text-left transition hover:bg-ink/[0.02]"
+                  >
+                    <span className="w-12 shrink-0 font-display text-lg font-bold tabular-nums text-accent-soft">
+                      {hora(r.inicio)}
+                    </span>
+                    <span
+                      className="grid h-[38px] w-[38px] shrink-0 place-items-center rounded-full font-display text-sm font-bold text-[#0c0b0a]"
+                      style={{ background: aviTono(r.cliente) }}
+                    >
+                      {iniciales(r.cliente || "Walk-in")}
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm font-bold">{r.cliente || "Walk-in"}</span>
+                      <span className="block truncate text-[11.5px] text-muted">{r.servicio || "—"}</span>
+                    </span>
+                    <span
+                      className={`shrink-0 rounded-full px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-wide ${chipCls(r.estado)}`}
+                    >
+                      {ESTADO[r.estado] ?? r.estado}
+                    </span>
+                    <span aria-hidden className="shrink-0 text-xs text-muted">
+                      {abierto ? "▴" : "▾"}
+                    </span>
+                  </button>
+                  {abierto && (
+                    <div className="border-t border-line/60 px-3.5 py-3">
+                      <div className="flex flex-wrap gap-2">
+                        {r.clienteRef && (
+                          <button
+                            onClick={() => showHistory(r.clienteRef, r.id)}
+                            className="rounded-full border border-line px-3 py-1.5 text-xs text-muted transition hover:text-ink"
+                          >
+                            Ver historial
+                          </button>
+                        )}
+                        {hasPendingProposal && (
+                          <span className="rounded-full border border-warn/30 bg-warn/10 px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-warn">
+                            Propuesto {proposedTimeStr}
+                          </span>
+                        )}
+                        {earliestSlot && !hasPendingProposal && (
+                          <button
+                            onClick={() => ofrecerAdelanto(r, earliestSlot.inicio)}
+                            disabled={busy}
+                            className="rounded-full border border-accent/40 bg-accent/5 px-3 py-1.5 text-xs text-accent-soft transition hover:bg-accent/15 disabled:opacity-50"
+                          >
+                            Ofrecer adelanto ({hora(earliestSlot.inicio)})
+                          </button>
+                        )}
+                        {enCurso ? (
+                          <button
+                            onClick={() => setCompleteFor(completeFor === r.id ? null : r.id)}
+                            className="rounded-full bg-accent px-3 py-1.5 text-xs font-semibold uppercase text-on-accent transition hover:bg-accent-soft"
+                          >
+                            Cobrar
+                          </button>
+                        ) : (
                           <button
                             onClick={() => setEstado(r.id, { estado: "en_curso", llegada: "a_tiempo" })}
                             disabled={busy}
                             className="rounded-full border border-line px-3 py-1.5 text-xs transition hover:border-accent/50 disabled:opacity-50"
                           >
-                            Llegó
+                            Llegó · a la silla
                           </button>
                         )}
-                        <button
-                          onClick={() => setCompleteFor(completeFor === r.id ? null : r.id)}
-                          className="rounded-full bg-accent px-3 py-1.5 text-xs font-semibold uppercase text-on-accent transition hover:bg-accent-soft"
-                        >
-                          Completar
-                        </button>
                         <button
                           onClick={() => setEstado(r.id, { estado: "no_show" })}
                           disabled={busy}
@@ -258,54 +551,51 @@ export function AgendaList({
                         >
                           No llegó
                         </button>
-                      </>
-                    )}
-                  </div>
-                </div>
-
-                {historyFor === r.id && (
-                  <div className="mt-3 rounded-xl border border-line bg-bg p-3">
-                    <div className="mb-2 flex items-center justify-between">
-                      <span className="text-[10px] uppercase tracking-[0.18em] text-muted">Historial del cliente</span>
-                      <button onClick={() => setHistoryFor(null)} className="text-xs text-muted hover:text-ink">cerrar</button>
+                      </div>
+                      {historyFor === r.id && historialPanel()}
+                      {completeFor === r.id && cobroDe(r)}
                     </div>
-                    {history === null ? (
-                      <p className="text-sm text-muted">Cargando…</p>
-                    ) : history.length === 0 ? (
-                      <p className="text-sm text-muted">Sin visitas previas.</p>
-                    ) : (
-                      <ul className="space-y-1.5 text-sm">
-                        {history.map((h) => (
-                          <li key={h.id} className="flex justify-between gap-3">
-                            <span className="text-muted">
-                              {new Date(h.fecha).toLocaleDateString("es-CO")} · {h.items.join(", ") || "—"}
-                            </span>
-                            <span className="text-ink">{cop(h.total)}</span>
-                          </li>
-                        ))}
-                      </ul>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Terminadas hoy (colapsable) */}
+      {hechas.length > 0 && (
+        <div className="mt-6">
+          <button
+            onClick={() => setTerminadasOpen((v) => !v)}
+            className="min-h-[46px] w-full rounded-[13px] border border-line text-[13px] font-bold text-muted transition hover:text-ink"
+          >
+            Terminadas hoy ({hechas.length}) {terminadasOpen ? "▲" : "▼"}
+          </button>
+          {terminadasOpen && (
+            <div className="mt-2 space-y-1.5">
+              {hechas.map((r) => {
+                const precio = precioDe(r);
+                return (
+                  <div
+                    key={r.id}
+                    className="flex items-center gap-3 rounded-xl border border-line/60 bg-panel px-3.5 py-2.5 opacity-75"
+                  >
+                    <span className="w-12 shrink-0 font-display text-sm tabular-nums text-muted">{hora(r.inicio)}</span>
+                    <span className="min-w-0 flex-1 truncate text-sm">{r.cliente || "Walk-in"}</span>
+                    <span
+                      className={`shrink-0 rounded-full px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-wide ${chipCls(r.estado)}`}
+                    >
+                      {ESTADO[r.estado] ?? r.estado}
+                    </span>
+                    {precio != null && (
+                      <span className="shrink-0 text-[12.5px] tabular-nums text-muted">{cop(precio)}</span>
                     )}
                   </div>
-                )}
-
-                {completeFor === r.id && !done && (
-                  <CheckoutForm
-                    reserva={r}
-                    sedes={sedes}
-                    barberos={barberos}
-                    servicios={servicios}
-                    preciosServicios={preciosServicios}
-                    productos={productos}
-                    medios={medios}
-                    onDone={() => {
-                      setCompleteFor(null);
-                      router.refresh();
-                    }}
-                  />
-                )}
-              </div>
-            );
-          })}
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
     </div>

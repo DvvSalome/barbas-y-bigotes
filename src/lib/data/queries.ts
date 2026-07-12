@@ -188,6 +188,23 @@ export async function getAgendaHoy(barberoId?: string | null): Promise<AgendaIte
   }));
 }
 
+// "Cobrado hoy" del header de la agenda: suma de ventas del día civil (Bogotá).
+// Con la sesión del staff, RLS (0010) scopea las ventas al barbero logueado; el
+// admin (sin filtro) ve todas. Si se pasa barberoId, filtra explícito para
+// coincidir con el filtro de la agenda.
+export async function getCobradoHoy(barberoId?: string | null): Promise<number> {
+  const sb = await supabaseServerAuth();
+  const { desde, hasta } = bogotaDayRange();
+  let q = sb
+    .from("ventas")
+    .select("total")
+    .gte("creado_en", desde.toISOString())
+    .lt("creado_en", hasta.toISOString());
+  if (barberoId) q = q.eq("barbero_id", barberoId);
+  const { data } = await q;
+  return ((data ?? []) as { total: number }[]).reduce((a, v) => a + v.total, 0);
+}
+
 export async function getHistorialCliente(clienteRef: string) {
   const sb = await supabaseServerAuth();
   const { data } = await sb
