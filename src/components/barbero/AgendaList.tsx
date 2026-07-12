@@ -736,6 +736,7 @@ function CheckoutForm({
     propina: number;
     puntos: number;
     tarjeta?: ActionResult["tarjeta"];
+    resenaUrl?: string | null;
   } | null>(null);
   const [err, setErr] = useState<string | null>(null);
   // Estado de la tarjeta de cortes del cliente (solo cobro de reserva con cliente).
@@ -864,6 +865,7 @@ function CheckoutForm({
         propina: res.propina ?? 0,
         puntos: res.puntos ?? 0,
         tarjeta: res.tarjeta,
+        resenaUrl: res.resenaUrl,
       });
     else setErr(res.error ?? "No se pudo completar");
   }
@@ -891,9 +893,21 @@ function CheckoutForm({
             </div>
           )}
         </div>
-        <button onClick={onDone} className="mt-3 rounded-full bg-accent px-6 py-2 text-xs font-semibold uppercase tracking-wide text-on-accent transition hover:bg-accent-soft">
-          Listo
-        </button>
+        <div className="mt-3 flex flex-wrap gap-2">
+          {resumen.resenaUrl && (
+            <a
+              href={resumen.resenaUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="rounded-full border border-accent/50 bg-accent/[0.06] px-5 py-2 text-xs font-semibold uppercase tracking-wide text-accent-soft transition hover:bg-accent/15"
+            >
+              ★ Abrir reseña de Google
+            </a>
+          )}
+          <button onClick={onDone} className="rounded-full bg-gradient-to-b from-accent-soft to-accent px-6 py-2 text-xs font-semibold uppercase tracking-wide text-on-accent shadow-[0_10px_24px_-10px_rgba(210,63,52,0.7)] transition hover:brightness-105">
+            Listo
+          </button>
+        </div>
       </div>
     );
   }

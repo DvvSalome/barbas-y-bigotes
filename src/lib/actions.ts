@@ -12,7 +12,7 @@ import { beneficioProximoCorte } from "@/lib/tarjeta";
 import { pushACliente } from "@/lib/push";
 import { fechaHoraBogota } from "@/lib/format";
 
-export type ActionResult = { ok: boolean; error?: string; id?: string; total?: number; descuento?: number; propina?: number; puntos?: number; encolado?: boolean; esperaHasta?: string | null; tarjeta?: { cortesTotales: number; posicion: number; beneficio: "50%" | "gratis" | null } };
+export type ActionResult = { ok: boolean; error?: string; id?: string; total?: number; descuento?: number; propina?: number; puntos?: number; encolado?: boolean; esperaHasta?: string | null; tarjeta?: { cortesTotales: number; posicion: number; beneficio: "50%" | "gratis" | null }; resenaUrl?: string | null };
 
 // --- Autorización (defensa en profundidad; la RLS es la barrera real) ---
 // Las server actions corren con la sesión del usuario, pero igual revalidamos el
@@ -763,6 +763,18 @@ export async function completarReserva(input: {
     });
   }
 
+  // Link de reseña de Google de la sede (best-effort) para el "¡Cobrado!": el
+  // barbero invita al cliente a dejar la reseña al terminar. Nunca tumba el cobro.
+  let resenaUrl: string | null = null;
+  {
+    const { data: sedeRow } = await supabaseAdmin()
+      .from("sedes")
+      .select("google_review_url")
+      .eq("id", input.sede)
+      .maybeSingle();
+    resenaUrl = (sedeRow as { google_review_url?: string | null } | null)?.google_review_url ?? null;
+  }
+
   revalidatePath("/barbero");
   revalidatePath("/admin/inventario");
   return {
@@ -771,6 +783,7 @@ export async function completarReserva(input: {
     descuento: cobro.descuento,
     propina: cobro.propina,
     puntos,
+    resenaUrl,
     // Estado de la tarjeta post-venta (solo si esta venta tenía un corte).
     tarjeta:
       tarjetaPos > 0
