@@ -25,10 +25,10 @@ const TAG_SEDE: Record<string, string> = {
   "parque-venezuela": "PV",
   "plaza-de-la-paz": "PLAZA",
 };
-
-// Un solo tono neutro cálido para magnitudes (DESIGN.md: el rojo es acción, no
-// decoración). Token en globals.css: cambia con el tema claro/oscuro del staff.
-const BAR = "var(--bar)";
+const FOTO_SEDE: Record<string, string> = {
+  "parque-venezuela": "/sedes/parque-venezuela-frente.jpg",
+  "plaza-de-la-paz": "/sedes/plaza-de-la-paz-frente.jpg",
+};
 
 function horaBogota(iso: string) {
   const [h, m] = new Intl.DateTimeFormat("en-GB", {
@@ -53,7 +53,9 @@ function compacto(n: number) {
   return cop(n);
 }
 
-const SEC = "flex items-baseline justify-between text-[11px] font-bold uppercase tracking-[0.16em] text-muted";
+// Label de sección (proto §0/§2): 11px 700 uppercase ls .14em, color muted.
+const SEC = "flex items-baseline justify-between text-[11px] font-bold uppercase tracking-[0.14em] text-muted";
+// Link de acción a la derecha del label (rojo suave, 12px 600 — proto §2.4).
 const SEC_ACTION = "text-xs font-semibold normal-case tracking-normal text-accent-soft transition hover:text-ink";
 
 export default async function AdminHoy({
@@ -95,79 +97,88 @@ export default async function AdminHoy({
 
   return (
     <div>
-      <div className="flex flex-wrap items-baseline gap-x-3.5 gap-y-1">
-        <h1 className="font-display text-2xl font-bold tracking-tight text-ink sm:text-[26px]">
+      {/* ── Encabezado ─────────────────────────────────────── */}
+      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+        <h1 className="font-display text-[24px] font-extrabold uppercase leading-none text-ink lg:text-[32px]">
           {sede ? `El día en ${NOMBRE_SEDE[sede]}` : "El día en las dos sedes"}
         </h1>
-        <span className="text-[13px] text-muted">
+        <span className="text-[12px] text-muted lg:text-[12.5px]">
           {fecha} · cierre {fmtTime(CLOSE)}
         </span>
       </div>
 
-      <div className="mt-5 grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_330px]">
-        {/* ── Columna principal ─────────────────────────────── */}
-        <div>
-          {/* La plata */}
-          <section
-            aria-label="Plata del día"
-            className="grid gap-x-9 gap-y-3 rounded-[14px] border border-line bg-panel px-5 py-5 sm:grid-cols-[auto_1fr] sm:px-6"
-          >
-            <div>
-              <div className="text-xs text-muted">Cobrado hoy</div>
-              <div className="font-display text-[44px] font-bold leading-[1.1] tracking-tight text-ink tabular-nums">
-                {cop(plata.total)}
-              </div>
-              <div className="mt-1 text-[12.5px] text-muted tabular-nums">
-                <span className="font-semibold text-ink/80">
-                  {plata.atenciones} {plata.atenciones === 1 ? "atención" : "atenciones"}
-                </span>{" "}
-                · {cop(plata.propinas)} en propinas
-              </div>
-            </div>
-            <div className="flex min-w-0 flex-col justify-center gap-2">
-              {plata.medios.length === 0 ? (
-                <p className="text-sm text-muted">Todavía no se cobró nada hoy. Lo del día va a ir apareciendo acá.</p>
-              ) : (
-                plata.medios.map((m) => (
-                  <div
-                    key={m.slug}
-                    className="group grid grid-cols-[86px_1fr_84px] items-center gap-2.5 text-[12.5px] tabular-nums"
-                    title={`${m.nombre}: ${cop(m.total)}${m.propina > 0 ? ` (+${cop(m.propina)} propina)` : ""}`}
-                  >
-                    <span className="truncate text-muted">{m.nombre}</span>
-                    <span className="h-3.5 overflow-hidden rounded bg-line/60">
-                      <span
-                        className="block h-full rounded transition-colors group-hover:bg-accent-soft"
-                        style={{ width: `${(m.total / maxMedio) * 100}%`, background: BAR }}
-                      />
-                    </span>
-                    <span className="text-right font-semibold text-ink">{cop(m.total)}</span>
-                  </div>
-                ))
-              )}
-            </div>
-          </section>
+      {/* Móvil: pila única. Desktop (§2): grid 2 columnas con 4 cards; "Para
+          hacer", "Postventa" y el sparkline quedan solo en móvil. */}
+      <div className="mt-5 flex flex-col gap-7 lg:grid lg:grid-cols-2 lg:items-start lg:gap-3.5">
+        {/* ── Cobrado hoy (con desglose por medio en barras) ── */}
+        <section
+          aria-label="Plata del día"
+          className="min-w-0 rounded-2xl border border-line bg-panel p-4 lg:px-5 lg:py-[18px]"
+        >
+          <div className="text-[11.5px] text-muted lg:uppercase lg:tracking-[0.14em]">Cobrado hoy</div>
+          <div className="font-display text-[38px] font-extrabold leading-[1.05] tracking-tight text-ink tabular-nums lg:text-[44px]">
+            {cop(plata.total)}
+          </div>
+          <div className="mt-1 text-[12.5px] text-muted tabular-nums">
+            <span className="font-semibold text-ink">
+              {plata.atenciones} {plata.atenciones === 1 ? "atención" : "atenciones"}
+            </span>{" "}
+            · {cop(plata.propinas)} en propinas
+          </div>
 
-          {/* Caja (read-only): la abre sola la 1ra venta, la cierra el barbero. */}
-          <h2 className={`${SEC} mt-7 mb-2.5`}>
+          <div className="mt-4 flex min-w-0 flex-col gap-2">
+            {plata.medios.length === 0 ? (
+              <p className="text-sm text-muted">Todavía no se cobró nada hoy. Lo del día va a ir apareciendo acá.</p>
+            ) : (
+              plata.medios.map((m) => (
+                <div
+                  key={m.slug}
+                  className="grid grid-cols-[70px_1fr_76px] items-center gap-2.5 text-[12.5px] tabular-nums lg:grid-cols-[76px_1fr_84px]"
+                  title={`${m.nombre}: ${cop(m.total)}${m.propina > 0 ? ` (+${cop(m.propina)} propina)` : ""}`}
+                >
+                  <span className="truncate text-[12px] text-muted">{m.nombre}</span>
+                  <span className="h-[13px] overflow-hidden rounded bg-line/60 lg:h-[9px] lg:rounded-full">
+                    <span
+                      className="block h-full rounded bg-[var(--bar)] lg:rounded-full"
+                      style={{ width: `${(m.total / maxMedio) * 100}%` }}
+                    />
+                  </span>
+                  <span className="text-right font-bold text-ink">{cop(m.total)}</span>
+                </div>
+              ))
+            )}
+          </div>
+        </section>
+
+        {/* ── Caja (read-only) ──────────────────────────────── */}
+        <div className="min-w-0">
+          <h2 className={`${SEC} mb-2.5`}>
             <span>Caja</span>
             <Link href="/admin/cuadre" className={SEC_ACTION}>
               Cuadre manual
             </Link>
           </h2>
-          <section className="overflow-hidden rounded-[14px] border border-line bg-panel">
+          <section className="overflow-hidden rounded-2xl border border-line bg-panel">
             {caja.map((c) => (
               <div
                 key={c.sede}
-                className={`grid grid-cols-[1fr_auto] items-center gap-3 border-b border-line/60 px-4 py-3 transition last:border-b-0 ${
-                  c.estado === "abierta" ? "bg-warn/[0.06]" : ""
+                className={`grid grid-cols-[42px_1fr_auto] items-center gap-3 border-b border-line/60 px-4 py-3 last:border-b-0 ${
+                  c.estado === "abierta" ? "bg-warn/[0.04]" : ""
                 }`}
               >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={FOTO_SEDE[c.sede] ?? "/sedes/parque-venezuela-frente.jpg"}
+                  alt=""
+                  width={44}
+                  height={44}
+                  className="h-[42px] w-[42px] rounded-[10px] object-cover lg:h-11 lg:w-11"
+                />
                 <span className="min-w-0">
                   <span className="block text-[13.5px] font-semibold text-ink">
                     {NOMBRE_SEDE[c.sede] ?? c.nombre}
                   </span>
-                  <span className="block truncate text-xs text-muted">
+                  <span className="block truncate text-[12px] text-muted">
                     {c.estado === "abierta" && `Abierta desde ${horaBogota(c.hora as string)}`}
                     {c.estado === "cerrada" &&
                       `Cerrada ${horaBogota(c.hora as string)}${c.cerradaPor ? ` · ${c.cerradaPor}` : ""}`}
@@ -175,34 +186,38 @@ export default async function AdminHoy({
                   </span>
                 </span>
                 <span className="text-right tabular-nums">
-                  <span className="block font-display text-[15px] font-bold text-ink">{cop(c.total)}</span>
+                  <span className="block font-display text-[15px] font-extrabold text-ink">{cop(c.total)}</span>
                   {c.estado === "abierta" && (
-                    <span className="block text-[11.5px] font-semibold text-warn">abierta</span>
+                    <span className="mt-1 inline-block rounded-full bg-warn/[0.13] px-[9px] py-0.5 text-[9.5px] font-extrabold uppercase tracking-[0.06em] text-warn lg:mt-0.5 lg:bg-transparent lg:px-0 lg:text-[10px]">
+                      Abierta
+                    </span>
                   )}
                   {c.estado === "cerrada" && c.diferencia !== null && (
                     <span
-                      className={`block text-[11.5px] font-semibold ${
-                        c.diferencia === 0 ? "text-ok" : "text-warn"
+                      className={`mt-1 inline-block rounded-full px-[9px] py-0.5 text-[9.5px] font-extrabold uppercase tracking-[0.06em] lg:mt-0.5 lg:bg-transparent lg:px-0 lg:text-[10px] ${
+                        c.diferencia === 0 ? "bg-ok/[0.12] text-ok" : "bg-warn/[0.13] text-warn"
                       }`}
                     >
                       {c.diferencia === 0
-                        ? "cuadra"
-                        : `dif ${c.diferencia > 0 ? "+" : ""}${cop(c.diferencia)}`}
+                        ? "Cuadra"
+                        : `Dif ${c.diferencia > 0 ? "+" : ""}${cop(c.diferencia)}`}
                     </span>
                   )}
                 </span>
               </div>
             ))}
           </section>
+        </div>
 
-          {/* Equipo ahora */}
-          <h2 className={`${SEC} mt-7 mb-2.5`}>
+        {/* ── Equipo ahora ──────────────────────────────────── */}
+        <div className="min-w-0">
+          <h2 className={`${SEC} mb-2.5`}>
             <span>Equipo ahora</span>
             <Link href="/admin/equipo" className={SEC_ACTION}>
               Gestionar PINes
             </Link>
           </h2>
-          <section className="overflow-hidden rounded-[14px] border border-line bg-panel">
+          <section className="overflow-hidden rounded-2xl border border-line bg-panel">
             {equipo.length === 0 ? (
               <p className="px-4 py-5 text-sm text-muted">No hay barberos activos{sede ? " en esta sede" : ""}.</p>
             ) : (
@@ -211,7 +226,7 @@ export default async function AdminHoy({
                   key={b.id}
                   className="grid grid-cols-[38px_1fr_auto] items-center gap-3 border-b border-line/60 px-4 py-2.5 transition last:border-b-0 hover:bg-elevated"
                 >
-                  <span className="relative grid h-[34px] w-[34px] place-items-center rounded-full border border-line bg-elevated text-xs font-bold text-ink">
+                  <span className="relative grid h-[34px] w-[34px] place-items-center rounded-full border border-line bg-elevated text-xs font-bold text-ink lg:h-9 lg:w-9">
                     {b.nombre
                       .split(" ")
                       .map((x) => x[0])
@@ -226,24 +241,22 @@ export default async function AdminHoy({
                   </span>
                   <span className="min-w-0">
                     <span className="block truncate text-[13.5px] font-semibold text-ink">{b.nombre}</span>
-                    <span className="block truncate text-xs text-muted">
+                    <span className="block truncate text-[11.5px] text-muted">
                       {b.enSilla ? `${b.enSilla.servicio} · ${b.enSilla.cliente}` : NOMBRE_SEDE[b.sede] ?? b.sede}
                     </span>
                   </span>
                   <span className="flex items-center gap-2">
                     {b.pinBloqueado && (
                       <>
-                        <span className="whitespace-nowrap rounded-full border border-warn/40 px-2.5 py-1 text-[11.5px] font-semibold text-warn">
+                        <span className="whitespace-nowrap rounded-full border border-warn/40 px-2.5 py-[3px] text-[10.5px] font-bold text-warn">
                           PIN bloqueado
                         </span>
                         <DesbloquearPinBtn barberoId={b.id} />
                       </>
                     )}
                     <span
-                      className={`whitespace-nowrap rounded-full border px-2.5 py-1 text-[11.5px] font-semibold ${
-                        b.enSilla
-                          ? "border-accent/40 text-accent-soft"
-                          : "border-ok/35 text-ok"
+                      className={`whitespace-nowrap rounded-full border px-2.5 py-[3px] text-[10.5px] font-bold ${
+                        b.enSilla ? "border-accent/40 text-accent-soft" : "border-ok/35 text-ok"
                       }`}
                     >
                       {b.enSilla ? `En silla · sale ${horaBogota(b.enSilla.fin)}` : "Libre"}
@@ -253,33 +266,35 @@ export default async function AdminHoy({
               ))
             )}
           </section>
+        </div>
 
-          {/* Siguientes citas */}
-          <h2 className={`${SEC} mt-7 mb-2.5`}>
+        {/* ── Siguientes citas ──────────────────────────────── */}
+        <div className="min-w-0">
+          <h2 className={`${SEC} mb-2.5`}>
             <span>Siguientes citas</span>
             <Link href="/barbero" className={SEC_ACTION}>
               Ver agenda completa
             </Link>
           </h2>
-          <section className="overflow-hidden rounded-[14px] border border-line bg-panel">
+          <section className="overflow-hidden rounded-2xl border border-line bg-panel">
             {citas.length === 0 ? (
               <p className="px-4 py-5 text-sm text-muted">No quedan citas agendadas para hoy.</p>
             ) : (
               citas.map((c) => (
                 <div
                   key={c.id}
-                  className="grid grid-cols-[64px_1fr_auto] items-center gap-3 border-b border-line/60 px-4 py-2.5 transition last:border-b-0 hover:bg-elevated"
+                  className="grid grid-cols-[56px_1fr_auto] items-center gap-3 border-b border-line/60 px-4 py-2.5 transition last:border-b-0 hover:bg-elevated lg:grid-cols-[64px_1fr_auto]"
                 >
-                  <span className="font-display text-[15px] font-bold tracking-tight text-ink tabular-nums">
+                  <span className="font-display text-[15px] font-extrabold tracking-tight text-ink tabular-nums lg:text-base">
                     {horaBogota(c.inicio)}
                   </span>
                   <span className="min-w-0">
                     <span className="block truncate text-[13.5px] font-semibold text-ink">{c.cliente}</span>
-                    <span className="block truncate text-xs text-muted">
+                    <span className="block truncate text-[11.5px] text-muted">
                       {c.servicio} · {c.barbero}
                     </span>
                   </span>
-                  <span className="text-[10.5px] font-bold tracking-[0.06em] text-muted">
+                  <span className="text-[10px] font-extrabold tracking-[0.06em] text-muted">
                     {TAG_SEDE[c.sede] ?? c.sede}
                   </span>
                 </div>
@@ -288,8 +303,8 @@ export default async function AdminHoy({
           </section>
         </div>
 
-        {/* ── Rail derecho ──────────────────────────────────── */}
-        <aside>
+        {/* ── Para hacer (solo móvil, §2) ───────────────────── */}
+        <div className="min-w-0 lg:hidden">
           <h2 className={`${SEC} mb-2.5`}>
             <span>Para hacer</span>
           </h2>
@@ -308,12 +323,12 @@ export default async function AdminHoy({
                   <AlertIcon className="h-3.5 w-3.5" />
                 </span>
                 <span className="min-w-0">
-                  <span className="block text-[13px] font-semibold text-ink">
+                  <span className="block text-[12.5px] font-semibold text-ink">
                     {tareas.bajoMinimo.length === 1
                       ? "1 producto bajo mínimo"
                       : `${tareas.bajoMinimo.length} productos bajo mínimo`}
                   </span>
-                  <span className="block truncate text-[11.5px] text-muted">
+                  <span className="block truncate text-[11px] text-muted">
                     {tareas.bajoMinimo
                       .slice(0, 3)
                       .map((p) => `${p.nombre} (${TAG_SEDE[p.sede] ?? p.sede})`)
@@ -334,10 +349,10 @@ export default async function AdminHoy({
               >
                 <span className="grid h-7 w-7 place-items-center rounded-lg bg-elevated text-[13px] text-accent-soft">★</span>
                 <span className="min-w-0">
-                  <span className="block text-[13px] font-semibold text-ink">
+                  <span className="block text-[12.5px] font-semibold text-ink">
                     Calificación de {r.score}★ · {r.barbero}
                   </span>
-                  <span className="block truncate text-[11.5px] text-muted">
+                  <span className="block truncate text-[11px] text-muted">
                     {r.comentario ? `“${r.comentario}”` : "Sin comentario"} · {TAG_SEDE[r.sede] ?? r.sede} ·{" "}
                     {fechaCorta(r.fecha)}
                   </span>
@@ -355,10 +370,10 @@ export default async function AdminHoy({
               >
                 <span className="grid h-7 w-7 place-items-center rounded-lg bg-elevated text-[13px] text-muted">%</span>
                 <span className="min-w-0">
-                  <span className="block text-[13px] font-semibold text-ink">
+                  <span className="block text-[12.5px] font-semibold text-ink">
                     Cupón {c.codigo} vence {fechaCorta(`${c.venceEn}T12:00:00-05:00`)}
                   </span>
-                  <span className="block text-[11.5px] text-muted tabular-nums">
+                  <span className="block text-[11px] text-muted tabular-nums">
                     {c.usosMax != null ? `${c.usos} de ${c.usosMax} usos` : `${c.usos} usos`}
                   </span>
                 </span>
@@ -368,14 +383,16 @@ export default async function AdminHoy({
               </div>
             ))}
           </div>
+        </div>
 
-          {/* Postventa (30 días) */}
-          <h2 className={`${SEC} mt-7 mb-2.5`}>
+        {/* ── Postventa · 30 días (solo móvil, §2) ──────────── */}
+        <div className="min-w-0 lg:hidden">
+          <h2 className={`${SEC} mb-2.5`}>
             <span>Postventa · 30 días</span>
           </h2>
-          <div className="rounded-[14px] border border-line bg-panel p-4">
+          <div className="rounded-2xl border border-line bg-panel p-4">
             <div className="flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
-              <span className="font-display text-3xl font-bold tracking-tight text-ink tabular-nums">
+              <span className="font-display text-3xl font-extrabold tracking-tight text-ink tabular-nums">
                 {postventa.promedio !== null ? postventa.promedio.toLocaleString("es-CO") : "—"}
               </span>
               {postventa.promedio !== null && (
@@ -384,7 +401,7 @@ export default async function AdminHoy({
                   <span className="text-line">{"★".repeat(5 - Math.round(postventa.promedio))}</span>
                 </span>
               )}
-              <span className="text-xs text-muted">
+              <span className="text-[11.5px] text-muted">
                 {postventa.total > 0
                   ? `${postventa.total} ${postventa.total === 1 ? "calificación" : "calificaciones"}`
                   : "Sin calificaciones todavía"}
@@ -393,21 +410,23 @@ export default async function AdminHoy({
             {postventa.ultimas.map((c) => (
               <div key={c.id} className="mt-3 border-t border-line/60 pt-3 text-[12.5px]">
                 <p className="text-ink/85">“{c.comentario}”</p>
-                <p className="mt-0.5 text-[11.5px] text-muted">
+                <p className="mt-0.5 text-[11px] text-muted">
                   {"★".repeat(c.score)}
                   {"☆".repeat(5 - c.score)} · {c.barbero} · {c.sede} · {fechaCorta(c.fecha)}
                 </p>
               </div>
             ))}
           </div>
+        </div>
 
-          {/* Últimos 7 días */}
-          <h2 className={`${SEC} mt-7 mb-2.5`}>
+        {/* ── Últimos 7 días (solo móvil, §2) ───────────────── */}
+        <div className="min-w-0 lg:hidden">
+          <h2 className={`${SEC} mb-2.5`}>
             <span>Últimos 7 días</span>
           </h2>
-          <div className="rounded-[14px] border border-line bg-panel px-4 pb-2.5 pt-3.5">
-            <div className="flex items-baseline justify-between text-xs text-muted tabular-nums">
-              <span className="font-display text-base font-bold text-ink">{compacto(serie.semana)}</span>
+          <div className="rounded-2xl border border-line bg-panel px-4 pb-2.5 pt-3.5">
+            <div className="flex items-baseline justify-between text-[11.5px] text-muted tabular-nums">
+              <span className="font-display text-base font-extrabold text-ink">{compacto(serie.semana)}</span>
               <span>vs {compacto(serie.semanaAnterior)} semana pasada</span>
             </div>
             <svg
@@ -418,7 +437,7 @@ export default async function AdminHoy({
             >
               <polyline
                 fill="none"
-                stroke={BAR}
+                stroke="var(--bar)"
                 strokeWidth="2"
                 strokeLinecap="round"
                 points={puntos.map((p) => `${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(" ")}
@@ -426,7 +445,7 @@ export default async function AdminHoy({
               <circle cx={ultimo[0].toFixed(1)} cy={ultimo[1].toFixed(1)} r="3.5" fill="var(--accent-soft)" />
             </svg>
           </div>
-        </aside>
+        </div>
       </div>
     </div>
   );
