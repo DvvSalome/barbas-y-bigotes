@@ -468,9 +468,12 @@ export function BookingWizard({
 
   // ---------------------------------------------------------------
   //  App-shell del wizard: header + progreso + cuerpo scroll + footer sticky
+  //  Ancho completo en desktop (pedido del dueño): sin el marco de 1152px del
+  //  prototipo, que dejaba grandes márgenes negros y se veía compactado. El
+  //  padding lateral md:px-14 da el aire; el mobile ya era full width.
   // ---------------------------------------------------------------
   return (
-    <div className="mx-auto flex h-[100dvh] w-full max-w-[1152px] flex-col overflow-hidden bg-bg md:border-x md:border-[rgba(242,237,228,0.08)] md:shadow-[0_0_80px_rgba(0,0,0,0.55)]">
+    <div className="flex h-[100dvh] w-full flex-col overflow-hidden bg-bg">
       {/* Header */}
       <header className="flex shrink-0 items-center gap-3 border-b border-line px-4 pb-3 pt-[calc(env(safe-area-inset-top)+12px)] md:px-14">
         <button onClick={irAtras} aria-label="Atrás" className="text-[20px] leading-none text-muted transition hover:text-ink">
@@ -859,7 +862,7 @@ export function BookingWizard({
       {upsellMode && (
         <div className="fixed inset-0 z-[9] flex flex-col justify-end" style={{ background: "rgba(5,4,3,.65)", backdropFilter: "blur(2px)" }} onClick={() => elegirBebida(null)}>
           <div
-            className="mx-auto w-full max-w-[1152px] px-0"
+            className="w-full px-0"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="rounded-t-[22px] border-t border-line px-4 pb-[calc(env(safe-area-inset-bottom)+30px)] pt-5 md:px-14" style={{ background: "#0c0b0a" }}>
