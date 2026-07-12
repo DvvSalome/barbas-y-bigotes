@@ -4,6 +4,12 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 
+/*
+  Header público del prototipo (spec §1.1 móvil, §2.1 desktop):
+  - Móvil: logo lockup 44px + pill "Entrar" (va a Mi cuenta).
+  - Desktop: nav sticky con blur, links Barberos / Nosotros / Mi cuenta
+    (activa en rojo suave) + botón "Reservar".
+*/
 export function SiteHeader() {
   const pathname = usePathname();
 
@@ -14,8 +20,8 @@ export function SiteHeader() {
   ];
 
   return (
-    <header className="sticky top-0 z-50 border-b border-white/[0.04] bg-bg/40 pt-[env(safe-area-inset-top)] backdrop-blur-md transition-all duration-300">
-      <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 sm:px-6">
+    <header className="sticky top-0 z-50 border-b border-[rgba(242,237,228,0.1)] bg-bg pt-[env(safe-area-inset-top)] md:border-white/[0.04] md:bg-[rgba(12,11,10,0.55)] md:backdrop-blur-[12px]">
+      <div className="flex items-center justify-between px-[18px] py-2.5 md:px-12 md:py-3">
         <Link href="/" aria-label="Barbas & Bigotes Barbershop" className="transition hover:opacity-95">
           <Image
             src="/brand/logo-lockup.png"
@@ -23,30 +29,37 @@ export function SiteHeader() {
             width={1024}
             height={348}
             priority
-            className="h-12 w-auto sm:h-14"
+            className="h-11 w-auto md:h-[68px]"
           />
         </Link>
-        <nav className="flex items-center gap-4 text-[11px] font-semibold uppercase tracking-wider sm:gap-6 sm:text-xs">
+
+        {/* Móvil: solo "Entrar" */}
+        <Link
+          href="/cuenta"
+          className="rounded-full border border-[rgba(242,237,228,0.16)] px-3.5 py-[7px] text-xs text-ink md:hidden"
+        >
+          Entrar
+        </Link>
+
+        {/* Desktop: nav + Reservar */}
+        <nav className="hidden items-center gap-[26px] md:flex">
           {links.map((link) => {
-            const isActive = pathname === link.href;
+            const activa = pathname === link.href;
             return (
               <Link
                 key={link.href}
                 href={link.href}
-                className={`relative py-1.5 transition-colors duration-300 hover:text-accent-soft ${
-                  isActive ? "text-accent-soft" : "text-muted hover:text-white"
+                className={`text-[11.5px] font-semibold uppercase tracking-[0.1em] transition-colors ${
+                  activa ? "text-accent-soft" : "text-muted hover:text-accent-soft"
                 }`}
               >
                 {link.label}
-                {isActive && (
-                  <span className="absolute bottom-0 left-0 h-0.5 w-full bg-accent rounded-full animate-fade-in" />
-                )}
               </Link>
             );
           })}
           <Link
             href="/reservar"
-            className="rounded-full bg-accent px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-on-accent transition-all duration-300 hover:bg-accent-soft hover:shadow-[0_0_20px_rgba(210,63,52,0.35)] hover:scale-103 sm:px-5 sm:py-2.5 sm:text-[11px]"
+            className="rounded-full bg-accent px-[22px] py-[11px] text-[11px] font-bold uppercase tracking-[0.14em] text-on-accent transition hover:bg-accent-soft"
           >
             Reservar
           </Link>

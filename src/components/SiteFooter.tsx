@@ -1,122 +1,171 @@
 import Image from "next/image";
 import Link from "next/link";
 
-export function SiteFooter() {
+/*
+  Footer del prototipo (spec §1.7 móvil + §5 desktop), centrado:
+  logo + tagline + redes redondas + divisor "Sedes" + cards de sede +
+  pill de horario + nota de cancelación + copyright. En desktop suma el
+  CTA final "¿Listo para tu mejor versión?" y la fila de links.
+*/
+
+const SEDES_FOOTER = [
+  {
+    nombre: "Parque Venezuela",
+    direccion: "Calle 88 #44 - 10, Local 4",
+    tel: "+57 300 409 7624",
+    telHref: "tel:+573004097624",
+  },
+  {
+    nombre: "Plaza de la Paz",
+    direccion: "Cra. 45 #50-168, frente a la plaza",
+    tel: "+57 300 673 4799",
+    telHref: "tel:+573006734799",
+  },
+];
+
+const WA_URL =
+  "https://wa.me/573006734799?text=Hola%20Barbas%20%26%20Bigotes%2C%20quisiera%20saber%20m%C3%A1s%20informaci%C3%B3n%20sobre%20sus%20servicios%20y%20reservas.";
+
+export function SiteFooter({ conCtaMovil = false }: { conCtaMovil?: boolean }) {
   return (
-    <footer className="mt-16 border-t border-line bg-panel/30">
-      <div className="mx-auto max-w-6xl px-6 py-12">
-        
-        {/* Main Footer Content */}
-        <div className="grid gap-10 md:grid-cols-3 md:gap-8 lg:gap-12 mb-10 text-center">
-          
-          {/* Brand & Socials */}
-          <div className="flex flex-col items-center">
-            <Image
-              src="/brand/logo-lockup.png"
-              alt="Barbas & Bigotes Barbershop"
-              width={1024}
-              height={348}
-              className="h-12 w-auto opacity-90 hover:opacity-100 transition duration-300 mb-4"
-            />
-            <p className="text-xs text-muted leading-relaxed mb-6 max-w-xs mx-auto">
-              El ritual clásico de la barbería en Barranquilla. Tradición, estilo y excelencia en cada detalle.
-            </p>
-            
-            <div className="flex items-center justify-center gap-3">
-              <a
-                href="https://instagram.com/barbasybigotes.baq"
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label="Instagram"
-                className="group flex h-10 items-center gap-2 rounded-full border border-line bg-bg/50 px-4 text-xs font-semibold text-white hover:border-accent-soft hover:bg-panel transition-all duration-300"
-              >
-                <svg className="h-4 w-4 text-muted group-hover:text-white transition-colors" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
-                  <rect x="2" y="2" width="20" height="20" rx="5" ry="5"/>
-                  <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/>
-                  <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/>
-                </svg>
-                Instagram
-              </a>
+    <footer className="mt-3.5 border-t border-[rgba(242,237,228,0.08)] bg-[linear-gradient(180deg,#0a0908,#050403)] md:border-[rgba(242,237,228,0.1)]">
+      {/* CTA final (solo desktop, §5) */}
+      <div className="hidden text-center md:block">
+        <div className="mx-auto max-w-[900px] px-10 pt-[52px]">
+          <h2 className="font-display text-[42px] font-extrabold uppercase leading-tight">
+            ¿Listo para tu <span className="text-accent-soft">mejor versión</span>?
+          </h2>
+          <p className="mt-2 text-sm text-muted">
+            Reservá en menos de un minuto · confirmación directa a tu correo.
+          </p>
+          <Link
+            href="/reservar"
+            className="mt-6 inline-block rounded-full bg-[linear-gradient(180deg,var(--accent-soft),var(--accent))] px-10 py-4 font-display text-lg font-bold uppercase text-on-accent shadow-[0_16px_40px_-12px_rgba(210,63,52,0.7)] transition hover:brightness-105"
+          >
+            Reservar cita
+          </Link>
+          <div className="mt-[52px] border-t border-[rgba(242,237,228,0.08)]" />
+        </div>
+      </div>
 
-              <a
-                href="https://wa.me/573006734799?text=Hola%20Barbas%20%26%20Bigotes%2C%20quisiera%20saber%20m%C3%A1s%20informaci%C3%B3n%20sobre%20sus%20servicios%20y%20reservas."
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label="WhatsApp"
-                className="flex h-10 items-center gap-2 rounded-full bg-[#25D366] px-4 text-xs font-bold text-white transition-all duration-300 hover:bg-[#22c35e] hover:-translate-y-0.5 hover:shadow-[0_4px_16px_rgba(37,211,102,0.4)] shadow-[0_4px_10px_rgba(37,211,102,0.2)]"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-                  <path d="M13.601 2.326A7.85 7.85 0 0 0 7.994 0C3.627 0 .068 3.558.064 7.926c0 1.399.366 2.76 1.057 3.965L0 16l4.204-1.102a7.9 7.9 0 0 0 3.79.965h.004c4.368 0 7.926-3.558 7.93-7.93A7.9 7.9 0 0 0 13.6 2.326zM7.994 14.521a6.6 6.6 0 0 1-3.356-.92l-.24-.144-2.494.654.666-2.433-.156-.251a6.56 6.56 0 0 1-1.007-3.505c0-3.626 2.957-6.584 6.591-6.584a6.56 6.56 0 0 1 4.66 1.931 6.56 6.56 0 0 1 1.928 4.66c-.004 3.639-2.961 6.592-6.592 6.592m3.615-4.934c-.197-.099-1.17-.578-1.353-.646-.182-.065-.315-.099-.445.099-.133.197-.513.646-.627.775-.114.133-.232.148-.43.05-.197-.1-.836-.308-1.592-.985-.59-.525-.985-1.175-1.103-1.372-.114-.198-.011-.304.088-.403.087-.088.197-.232.296-.346.1-.114.133-.198.198-.33.065-.134.034-.248-.015-.347-.05-.099-.445-1.076-.612-1.47-.16-.389-.323-.335-.445-.34-.114-.007-.247-.007-.38-.007a.73.73 0 0 0-.529.247c-.182.198-.691.677-.691 1.654s.71 1.916.81 2.049c.098.133 1.394 2.132 3.383 2.992.47.205.84.326 1.129.418.475.152.904.129 1.246.08.38-.058 1.171-.48 1.338-.943.164-.464.164-.86.114-.943-.049-.084-.182-.133-.38-.232"/>
-                </svg>
-                WhatsApp
-              </a>
-            </div>
-          </div>
+      <div
+        className={`mx-auto max-w-[900px] px-[22px] pt-9 text-center md:px-10 md:pb-[52px] ${
+          conCtaMovil ? "pb-[104px]" : "pb-12"
+        }`}
+      >
+        <Image
+          src="/brand/logo-lockup.png"
+          alt="Barbas & Bigotes Barbershop"
+          width={1024}
+          height={348}
+          className="mx-auto h-[52px] w-auto opacity-95 md:h-[54px]"
+        />
+        <p className="mx-auto mt-4 max-w-[30ch] text-[12.5px] leading-[1.7] text-muted">
+          El ritual clásico de la barbería en Barranquilla. Tradición, estilo y excelencia en cada
+          detalle.
+        </p>
 
-          {/* Sedes */}
-          <div className="flex flex-col items-center space-y-4">
-            <h4 className="font-display text-xs font-bold uppercase tracking-[0.2em] text-white">
-              Nuestras Sedes
-            </h4>
-            
-            <div>
-              <strong className="text-white font-semibold text-[13px] block mb-1">Parque Venezuela</strong>
-              <div className="text-[11px] text-muted leading-relaxed">
-                Calle 88 #44 - 10, Local 4<br />
-                <a href="tel:+573004097624" className="text-accent-soft hover:text-white transition inline-block mt-0.5">📞 +57 300 409 7624</a>
-              </div>
-            </div>
-            
-            <div>
-              <strong className="text-white font-semibold text-[13px] block mb-1">Plaza de la Paz</strong>
-              <div className="text-[11px] text-muted leading-relaxed">
-                Carrera 45 frente a la Plaza de la Paz<br />
-                <a href="tel:+573006734799" className="text-accent-soft hover:text-white transition inline-block mt-0.5">📞 +57 300 673 4799</a>
-              </div>
-            </div>
-          </div>
-
-          {/* Enlaces & Horario */}
-          <div className="flex flex-col items-center space-y-5">
-            <div>
-              <h4 className="font-display text-xs font-bold uppercase tracking-[0.2em] text-white mb-3">
-                Enlaces Rápidos
-              </h4>
-              <ul className="flex flex-wrap justify-center gap-x-4 gap-y-2 text-xs text-muted">
-                <li><Link href="/barberos" className="hover:text-accent-soft transition duration-300">Barberos</Link></li>
-                <li><Link href="/nosotros" className="hover:text-accent-soft transition duration-300">Nosotros</Link></li>
-                <li><Link href="/cuenta" className="hover:text-accent-soft transition duration-300">Mi Cuenta</Link></li>
-                <li><Link href="/reservar" className="text-accent-soft hover:text-accent font-semibold transition duration-300">Reservar Cita</Link></li>
-              </ul>
-            </div>
-            
-            <div className="text-[11px] text-muted/80 border border-line/40 rounded-lg px-4 py-2 text-center bg-bg/50 inline-flex flex-col items-center">
-              <div className="flex items-center gap-2 mb-1 justify-center">
-                <svg className="w-3.5 h-3.5 text-accent-soft shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                <span className="font-semibold text-white">Horario de Atención</span>
-              </div>
-              <div>Lunes a Sábado: 9:00 am a 8:00 pm</div>
-              <div className="text-accent-soft font-medium mt-0.5">Domingos Cerrado</div>
-              <div className="mt-1.5 border-t border-line/40 pt-1.5 text-muted">
-                Cancelaciones online hasta 2 horas antes
-              </div>
-            </div>
-          </div>
-
+        {/* Redes: círculos de 46px */}
+        <div className="mt-6 flex items-center justify-center gap-2.5">
+          <a
+            href="https://instagram.com/barbasybigotes.baq"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Instagram de Barbas & Bigotes"
+            className="grid h-[46px] w-[46px] place-items-center rounded-full border border-[rgba(242,237,228,0.14)] text-ink transition hover:border-accent-soft hover:text-accent-soft"
+          >
+            <svg
+              className="h-5 w-5"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              viewBox="0 0 24 24"
+              aria-hidden
+            >
+              <rect x="2" y="2" width="20" height="20" rx="5" ry="5" />
+              <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
+              <line x1="17.5" y1="6.5" x2="17.51" y2="6.5" />
+            </svg>
+          </a>
+          <a
+            href={WA_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="WhatsApp de Barbas & Bigotes"
+            className="grid h-[46px] w-[46px] place-items-center rounded-full bg-[#25D366] text-white transition hover:brightness-105"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16" aria-hidden>
+              <path d="M13.601 2.326A7.85 7.85 0 0 0 7.994 0C3.627 0 .068 3.558.064 7.926c0 1.399.366 2.76 1.057 3.965L0 16l4.204-1.102a7.9 7.9 0 0 0 3.79.965h.004c4.368 0 7.926-3.558 7.93-7.93A7.9 7.9 0 0 0 13.6 2.326zM7.994 14.521a6.6 6.6 0 0 1-3.356-.92l-.24-.144-2.494.654.666-2.433-.156-.251a6.56 6.56 0 0 1-1.007-3.505c0-3.626 2.957-6.584 6.591-6.584a6.56 6.56 0 0 1 4.66 1.931 6.56 6.56 0 0 1 1.928 4.66c-.004 3.639-2.961 6.592-6.592 6.592m3.615-4.934c-.197-.099-1.17-.578-1.353-.646-.182-.065-.315-.099-.445.099-.133.197-.513.646-.627.775-.114.133-.232.148-.43.05-.197-.1-.836-.308-1.592-.985-.59-.525-.985-1.175-1.103-1.372-.114-.198-.011-.304.088-.403.087-.088.197-.232.296-.346.1-.114.133-.198.198-.33.065-.134.034-.248-.015-.347-.05-.099-.445-1.076-.612-1.47-.16-.389-.323-.335-.445-.34-.114-.007-.247-.007-.38-.007a.73.73 0 0 0-.529.247c-.182.198-.691.677-.691 1.654s.71 1.916.81 2.049c.098.133 1.394 2.132 3.383 2.992.47.205.84.326 1.129.418.475.152.904.129 1.246.08.38-.058 1.171-.48 1.338-.943.164-.464.164-.86.114-.943-.049-.084-.182-.133-.38-.232" />
+            </svg>
+          </a>
         </div>
 
-        {/* Línea divisora y Copyright */}
-        <div className="border-t border-line/30 pt-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-[11px] text-muted/50 font-medium">
-          <div>
-            © {new Date().getFullYear()} Barbas &amp; Bigotes Barbershop. Todos los derechos reservados.
-          </div>
-          <div className="flex gap-3">
-            <span>Tradición y Estilo</span>
-            <span>·</span>
-            <span>Barranquilla, CO</span>
-          </div>
+        {/* Divisor "Sedes" (desktop: "Nuestras sedes") */}
+        <div className="mt-8 flex items-center gap-3">
+          <span aria-hidden className="h-px flex-1 bg-gradient-to-r from-transparent to-[rgba(242,237,228,0.16)]" />
+          <span className="font-display text-[13px] font-extrabold uppercase tracking-[0.24em] text-accent">
+            <span className="md:hidden">Sedes</span>
+            <span className="hidden md:inline">Nuestras sedes</span>
+          </span>
+          <span aria-hidden className="h-px flex-1 bg-gradient-to-l from-transparent to-[rgba(242,237,228,0.16)]" />
         </div>
 
+        <div className="mt-5 grid gap-3 md:grid-cols-2 md:gap-3.5">
+          {SEDES_FOOTER.map((s) => (
+            <div
+              key={s.nombre}
+              className="rounded-[14px] border border-[rgba(242,237,228,0.08)] bg-[rgba(21,19,17,0.5)] px-4 py-3.5"
+            >
+              <div className="font-display text-base font-bold uppercase">{s.nombre}</div>
+              <div className="mt-0.5 text-xs text-muted">{s.direccion}</div>
+              <a href={s.telHref} className="mt-1 inline-block text-[12.5px] font-bold text-accent-soft">
+                {s.tel}
+              </a>
+            </div>
+          ))}
+        </div>
+
+        {/* Fila de links (solo desktop, §5) */}
+        <nav className="mt-6 hidden items-center justify-center gap-3 text-[13px] text-muted md:flex">
+          <Link href="/barberos" className="transition hover:text-accent-soft">
+            Barberos
+          </Link>
+          <span aria-hidden className="h-[3px] w-[3px] rounded-full bg-muted/60" />
+          <Link href="/nosotros" className="transition hover:text-accent-soft">
+            Nosotros
+          </Link>
+          <span aria-hidden className="h-[3px] w-[3px] rounded-full bg-muted/60" />
+          <Link href="/cuenta" className="transition hover:text-accent-soft">
+            Mi cuenta
+          </Link>
+          <span aria-hidden className="h-[3px] w-[3px] rounded-full bg-muted/60" />
+          <Link href="/reservar" className="font-bold text-accent-soft transition hover:text-accent">
+            Reservar cita →
+          </Link>
+        </nav>
+
+        {/* Pill de horario */}
+        <div className="mt-6 inline-flex items-center gap-2.5 rounded-full border border-[rgba(242,237,228,0.1)] bg-[rgba(21,19,17,0.5)] px-5 py-[11px] text-[12.5px]">
+          <span className="text-muted">Lun – Sáb</span>
+          <span className="font-extrabold tabular-nums">9am – 8pm</span>
+          <span aria-hidden className="h-[3px] w-[3px] rounded-full bg-muted/60" />
+          <span className="font-bold text-accent-soft">Dom cerrado</span>
+        </div>
+
+        <p className="mt-3.5 text-[11.5px] text-muted">
+          Cancelaciones online hasta 2 horas antes de tu cita.
+        </p>
+
+        <div className="mt-7 border-t border-[rgba(242,237,228,0.07)] pt-5 text-[11px] leading-relaxed text-[rgba(156,149,138,0.55)]">
+          <span className="md:hidden">© 2026 Barbas &amp; Bigotes Barbershop</span>
+          <span className="hidden md:inline">
+            © 2026 Barbas &amp; Bigotes Barbershop · Todos los derechos reservados
+          </span>
+          <br />
+          Tradición y estilo · Barranquilla, CO
+        </div>
       </div>
     </footer>
   );

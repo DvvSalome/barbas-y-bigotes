@@ -1,12 +1,13 @@
 import type { Metadata, Viewport } from "next";
 import { Barlow_Condensed, Inter } from "next/font/google";
 import "./globals.css";
-import { WhatsAppFloatingButton } from "@/components/WhatsAppFloatingButton";
 import { siteGraph, jsonLd } from "@/lib/schema-org";
 
+// El prototipo usa Barlow Condensed 500-800 como display; el 800 carga porque
+// los títulos grandes (hero, H1) son font-extrabold.
 const barlow = Barlow_Condensed({
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
+  weight: ["400", "500", "600", "700", "800"],
   style: ["normal", "italic"],
   variable: "--font-barlow",
 });
@@ -17,7 +18,8 @@ const inter = Inter({
 });
 
 export const viewport: Viewport = {
-  themeColor: "#D4AF37",
+  // Fondo base del prototipo (§0): la status bar acompaña al carbón del sitio.
+  themeColor: "#0c0b0a",
   // PWA iOS con status bar translúcida: el contenido se dibuja hasta el notch
   // y el header compensa con env(safe-area-inset-top).
   viewportFit: "cover",
@@ -79,7 +81,6 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{ __html: jsonLd(siteGraph) }}
         />
         {children}
-        <WhatsAppFloatingButton />
       </body>
     </html>
   );

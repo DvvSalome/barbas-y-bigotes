@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
+import { ContactoWidget } from "@/components/ContactoWidget";
 import { ClienteLoginButton, ClienteLogout } from "@/components/cuenta/ClienteAuth";
 import { AdelantoBanner } from "@/components/cuenta/AdelantoBanner";
 import { PushManager } from "@/components/cuenta/PushManager";
@@ -108,6 +109,8 @@ export default async function CuentaPage() {
         {ctx.estado === "cliente" && <Portal clienteId={ctx.clienteId ?? ""} />}
       </main>
       <SiteFooter />
+      {/* Widget de contacto: en el proto vive en home y Mi cuenta (§2.11). */}
+      <ContactoWidget />
     </>
   );
 }
