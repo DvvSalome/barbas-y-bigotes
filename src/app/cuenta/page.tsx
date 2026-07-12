@@ -116,7 +116,7 @@ export default async function CuentaPage() {
 }
 
 async function Portal({ clienteId }: { clienteId: string }) {
-  const [{ proximas, pasadas, puntosBalance, cola }, sinCalificar] = await Promise.all([
+  const [{ proximas, pasadas, tarjeta, cola }, sinCalificar] = await Promise.all([
     getCuenta(clienteId),
     getReservaSinCalificar(clienteId),
   ]);
@@ -208,25 +208,86 @@ async function Portal({ clienteId }: { clienteId: string }) {
         </section>
       )}
 
-      {/* Puntos (balance real, sin niveles inventados) */}
+      {/* Tarjeta de cortes (reemplaza puntos): sellos reales derivados de las ventas.
+          10 casillas; el 5º corte del ciclo va 50% y el 10º gratis. */}
       <section
-        className="mb-8 flex items-center justify-between rounded-2xl border border-line p-5"
+        className="mb-8 overflow-hidden rounded-2xl border border-line p-5"
         style={{ background: "linear-gradient(155deg, #1c1714, var(--panel))" }}
       >
-        <div>
-          <div className="font-display text-[11px] font-bold uppercase tracking-[0.18em] text-muted">
-            Puntos de fidelidad
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <div className="font-display text-[11px] font-bold uppercase tracking-[0.18em] text-muted">
+              Tarjeta de cortes
+            </div>
+            <div className="mt-1 text-sm text-muted">
+              Llevás{" "}
+              <b className="font-display text-base font-bold tabular-nums text-accent-soft">
+                {tarjeta.sellos}
+              </b>{" "}
+              de 10 cortes
+            </div>
           </div>
-          <div className="mt-1 font-display text-5xl font-extrabold leading-none tabular-nums">
-            {puntosBalance}
-          </div>
+          <Link
+            href="/reservar"
+            className="shrink-0 rounded-full bg-gradient-to-b from-accent-soft to-accent px-5 py-2.5 font-display text-[13px] font-bold uppercase tracking-wide text-on-accent shadow-[0_12px_26px_-10px_rgba(210,63,52,0.7)] transition hover:brightness-105"
+          >
+            Reservar
+          </Link>
         </div>
-        <Link
-          href="/reservar"
-          className="rounded-full bg-gradient-to-b from-accent-soft to-accent px-6 py-3 font-display text-sm font-bold uppercase tracking-wide text-on-accent shadow-[0_12px_26px_-10px_rgba(210,63,52,0.7)] transition hover:brightness-105"
-        >
-          Reservar
-        </Link>
+
+        <div className="mt-5 grid grid-cols-5 gap-2.5" aria-hidden>
+          {Array.from({ length: 10 }).map((_, i) => {
+            const lleno = i < tarjeta.sellos;
+            const hito = i === 4 || i === 9; // 5º (50%) y 10º (gratis)
+            const label = i === 9 ? "GRATIS" : i === 4 ? "50%" : String(i + 1);
+            return (
+              <div
+                key={i}
+                className={`relative flex aspect-square items-center justify-center rounded-xl border ${
+                  hito ? "border-accent/50" : "border-line"
+                } ${lleno ? "bg-accent/[0.07]" : "bg-elevated"}`}
+              >
+                <span
+                  className={`font-display font-bold leading-none ${i === 9 ? "text-[10px]" : "text-[15px]"} ${
+                    lleno ? "text-muted/60" : hito ? "text-accent-soft" : "text-ink"
+                  }`}
+                >
+                  {label}
+                </span>
+                {lleno && (
+                  <span
+                    className="absolute inset-0 flex items-center justify-center"
+                    style={{ animation: `bbstamp .45s cubic-bezier(.2,1.4,.4,1) ${i * 0.08}s both` }}
+                  >
+                    <span className="text-2xl font-extrabold text-accent-soft [text-shadow:0_0_12px_rgba(210,63,52,0.7)]">
+                      ✕
+                    </span>
+                  </span>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        <p className="mt-4 text-sm text-muted">
+          {tarjeta.proximo.tipo === "50%" ? (
+            <>
+              Faltan{" "}
+              <b className="text-accent-soft">
+                {tarjeta.proximo.faltan} corte{tarjeta.proximo.faltan === 1 ? "" : "s"}
+              </b>{" "}
+              para el <b className="text-ink">50%</b>. Al corte 10 es gratis.
+            </>
+          ) : (
+            <>
+              Faltan{" "}
+              <b className="text-accent-soft">
+                {tarjeta.proximo.faltan} corte{tarjeta.proximo.faltan === 1 ? "" : "s"}
+              </b>{" "}
+              para tu <b className="text-ink">corte gratis</b>.
+            </>
+          )}
+        </p>
       </section>
 
       {/* Próximas citas */}
