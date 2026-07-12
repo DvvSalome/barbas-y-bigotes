@@ -14,7 +14,7 @@ export default async function BarberoLayout({
   // Deny-by-default: solo staff entra. Un cliente Google NO tiene fila en
   // profiles, así que un guard que solo expulsa rol === 'cliente' lo dejaba pasar.
   const staff = await getStaffContext();
-  if (staff.rol === "anon") redirect("/entrar");
+  if (staff.rol === "anon") redirect("/login");
   if (staff.rol !== "admin" && staff.rol !== "barbero") redirect("/cuenta");
 
   // Tema del staff desde la cookie (SSR sin flash). cookies() vuelve dinámico
@@ -30,7 +30,7 @@ export default async function BarberoLayout({
           </Link>
           <div className="flex items-center gap-3.5">
             <span className="text-xs uppercase tracking-[0.3em] text-accent">App del barbero</span>
-            <PerfilMenu nombre={staff.nombre || "Barbero"} salidaHref="/entrar" />
+            <PerfilMenu nombre={staff.nombre || "Barbero"} salidaHref="/login" />
           </div>
         </div>
       </header>

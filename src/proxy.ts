@@ -37,5 +37,5 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   // Solo las rutas que usan sesión (Google del cliente o PIN del barbero).
-  matcher: ["/admin/:path*", "/barbero/:path*", "/cuenta/:path*", "/entrar", "/login"],
+  matcher: ["/admin/:path*", "/barbero/:path*", "/cuenta/:path*", "/login"],
 };

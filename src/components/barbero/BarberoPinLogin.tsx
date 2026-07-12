@@ -7,7 +7,19 @@ import Link from "next/link";
 import { loginBarberoPin } from "@/lib/barbero-auth";
 import type { Barbero, Sede } from "@/lib/data/types";
 
-export function BarberoPinLogin({ barberos, sedes }: { barberos: Barbero[]; sedes: Sede[] }) {
+export function BarberoPinLogin({
+  barberos,
+  sedes,
+  onAdmin,
+  onVolver,
+}: {
+  barberos: Barbero[];
+  sedes: Sede[];
+  /** Cambiar al login de admin (dentro del gateway unificado /login). */
+  onAdmin?: () => void;
+  /** Volver al selector de perfil. */
+  onVolver?: () => void;
+}) {
   const router = useRouter();
   const [barbero, setBarbero] = useState<Barbero | null>(null);
   const [pin, setPin] = useState("");
@@ -40,6 +52,11 @@ export function BarberoPinLogin({ barberos, sedes }: { barberos: Barbero[]; sede
   if (!barbero) {
     return (
       <div className="w-full max-w-md">
+        {onVolver && (
+          <button onClick={onVolver} className="mb-3 text-xs text-muted transition hover:text-ink">
+            ← Volver
+          </button>
+        )}
         <div className="text-center text-[10px] uppercase tracking-[0.3em] text-accent">App del barbero</div>
         <h1 className="mt-2 text-center font-display text-3xl font-semibold uppercase">¿Quién sos?</h1>
         {sedes.map((s) => {
@@ -71,9 +88,18 @@ export function BarberoPinLogin({ barberos, sedes }: { barberos: Barbero[]; sede
             </div>
           );
         })}
-        <Link href="/login" className="mt-8 block text-center text-xs text-muted transition hover:text-ink">
-          Soy admin (entrar con contraseña) →
-        </Link>
+        {onAdmin ? (
+          <button
+            onClick={onAdmin}
+            className="mt-8 block w-full text-center text-xs text-muted transition hover:text-ink"
+          >
+            Soy admin (entrar con contraseña) →
+          </button>
+        ) : (
+          <Link href="/login" className="mt-8 block text-center text-xs text-muted transition hover:text-ink">
+            Soy admin (entrar con contraseña) →
+          </Link>
+        )}
       </div>
     );
   }

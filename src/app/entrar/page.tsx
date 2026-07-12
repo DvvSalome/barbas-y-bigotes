@@ -1,18 +1,8 @@
-import type { Metadata } from "next";
-import { getBarberos, getSedes } from "@/lib/data/queries";
-import { BarberoPinLogin } from "@/components/barbero/BarberoPinLogin";
+import { redirect } from "next/navigation";
 
-export const metadata: Metadata = { title: "Entrar" };
-
-// Gateway de login del staff: no cachear la lista de barberos (un barbero nuevo
-// debe poder entrar sin esperar un rebuild).
-export const dynamic = "force-dynamic";
-
-export default async function EntrarPage() {
-  const [barberos, sedes] = await Promise.all([getBarberos(), getSedes()]);
-  return (
-    <main className="flex min-h-dvh items-center justify-center px-6 py-10">
-      <BarberoPinLogin barberos={barberos} sedes={sedes} />
-    </main>
-  );
+// /entrar quedó unificado en /login (un solo gateway del staff con selector de
+// perfil). Se mantiene esta ruta como redirect para no romper enlaces viejos
+// (QRs, marcadores de los barberos).
+export default function EntrarRedirect() {
+  redirect("/login");
 }

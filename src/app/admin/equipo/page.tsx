@@ -13,7 +13,7 @@ export default async function EquipoPage() {
       <SectionHeader
         eyebrow="Acceso"
         title="Equipo"
-        description="Asigná el PIN de 6 dígitos con el que cada barbero entra a su app desde /entrar."
+        description="Asigná el PIN de 6 dígitos con el que cada barbero entra a su app desde /login."
       />
       <div className="mt-5">
         <EquipoPinAdmin barberos={barberos} sedes={sedes} estado={estado} />

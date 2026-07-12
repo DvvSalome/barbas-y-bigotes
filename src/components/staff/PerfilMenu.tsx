@@ -19,7 +19,7 @@ export function PerfilMenu({
   nombre: string;
   /** Línea de identidad arriba del menú (ej. email). Sin detalle se usa el nombre. */
   detalle?: string;
-  /** A dónde ir tras cerrar sesión (admin: /login, barbero: /entrar). */
+  /** A dónde ir tras cerrar sesión (staff: /login, el gateway unificado). */
   salidaHref?: string;
 }) {
   const router = useRouter();
