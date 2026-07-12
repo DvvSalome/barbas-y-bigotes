@@ -1307,7 +1307,7 @@ export type CuentaData = {
   puntosBalance: number;
   puntos: { tipo: string; puntos: number; nota: string; fecha: string }[];
   tarjeta: { cortes: number; sellos: number; proximo: { tipo: "50%" | "gratis"; faltan: number } };
-  cola: { id: string; estado: string; servicio: string; barbero: string; creadoEn: string }[];
+  cola: { id: string; estado: string; servicio: string; barbero: string; fotoBarbero: string | null; creadoEn: string }[];
 };
 
 export type ReservaSinCalificar = {
@@ -1367,7 +1367,7 @@ export async function getCuenta(clienteRef: string): Promise<CuentaData> {
   const [resR, puntosR, colaR] = await Promise.all([
     sb.from("reservas").select("id,inicio,estado,sede_id,nota,barbero_id,servicio_id,servicios(nombre,duracion_min),barberos(nombre)").order("inicio", { ascending: false }).limit(40),
     sb.from("puntos_mov").select("tipo,puntos,nota,creado_en").order("creado_en", { ascending: false }).limit(40),
-    sb.from("lista_espera").select("id,estado,creado_en,servicios(nombre),barberos(nombre)").in("estado", ["esperando", "notificado"]),
+    sb.from("lista_espera").select("id,estado,creado_en,servicios(nombre),barberos(nombre,foto_url)").in("estado", ["esperando", "notificado"]),
   ]);
   const reservas = ((resR.data ?? []) as Record<string, unknown>[]).map((r) => ({
     id: r.id as string,
@@ -1398,6 +1398,7 @@ export async function getCuenta(clienteRef: string): Promise<CuentaData> {
     estado: c.estado as string,
     servicio: (c.servicios as { nombre?: string } | null)?.nombre ?? "—",
     barbero: (c.barberos as { nombre?: string } | null)?.nombre ?? "Cualquiera",
+    fotoBarbero: (c.barberos as { foto_url?: string | null } | null)?.foto_url ?? null,
     creadoEn: c.creado_en as string,
   }));
   // Tarjeta de cortes: sellos reales derivados de las ventas del propio cliente.

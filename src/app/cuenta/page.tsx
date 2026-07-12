@@ -163,11 +163,23 @@ async function Portal({ clienteId }: { clienteId: string }) {
       {/* Turnos llamados: hero (uno por cada entrada notificada) */}
       {turnos.map((turno) => (
         <section key={turno.id} className="mb-8 overflow-hidden rounded-2xl border border-accent/40 bg-accent/[0.07] p-6 text-center">
-          <span
-            aria-hidden
-            className="mx-auto block h-20 w-3 rounded-full shadow-[0_0_34px_-4px_rgba(210,63,52,0.7)]"
-            style={{ background: POLE }}
-          />
+          {/* Foto del barbero con anillo rojo pulsante (proto §4). Fallback: inicial. */}
+          <div className="relative mx-auto h-24 w-24">
+            <span
+              aria-hidden
+              className="absolute inset-0 rounded-full bg-accent/30 [animation:bbping_1.6s_ease-out_infinite]"
+            />
+            <span
+              className="relative block h-24 w-24 overflow-hidden rounded-full border-2 border-accent bg-elevated bg-cover bg-top shadow-[0_0_34px_-4px_rgba(210,63,52,0.7)]"
+              style={turno.fotoBarbero ? { backgroundImage: `url(${turno.fotoBarbero})` } : undefined}
+            >
+              {!turno.fotoBarbero && (
+                <span className="grid h-full w-full place-items-center font-display text-3xl font-bold text-accent-soft">
+                  {turno.barbero.charAt(0)}
+                </span>
+              )}
+            </span>
+          </div>
           <h2 className="mt-5 font-display text-4xl font-extrabold uppercase leading-[0.92]">
             ¡Es tu <span className="text-accent-soft">turno</span>!
           </h2>
