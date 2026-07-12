@@ -8,6 +8,24 @@ export const STEP = 30;       // minutos entre inicios de slot
 // Ventana mínima para cancelar/reagendar online (horas). Regla de negocio única.
 export const CANCELACION_MIN_HORAS = 2;
 
+// Disponibilidad guiada por la silla real: una cita EN CURSO (el barbero marcó
+// "Llegó") mantiene ocupada la silla hasta que la cierra ("Completar"), aunque se
+// pase del fin estimado. Red de olvido: si no la cierra, se libera sola pasado
+// estimado + esta gracia (marcar "Completar" es cuando cobra, así que rara vez se
+// olvida; esto solo evita congelar la agenda).
+export const EN_CURSO_GRACIA_MIN = 60;
+
+// Fin EFECTIVO de una reserva para calcular disponibilidad. Trabaja con instantes
+// absolutos (no minutos-del-día), así que es TZ-safe. Puro y testeable.
+export function finEfectivo(estado: string, finISO: string, ahoraMs: number): string {
+  const fin = new Date(finISO).getTime();
+  if (estado === "en_curso" && ahoraMs > fin) {
+    // Rueda con el tiempo real mientras la silla sigue ocupada, con tope de gracia.
+    return new Date(Math.min(ahoraMs, fin + EN_CURSO_GRACIA_MIN * 60000)).toISOString();
+  }
+  return finISO;
+}
+
 export const DOW = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
 export const MON = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
 

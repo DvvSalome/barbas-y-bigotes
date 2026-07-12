@@ -7,7 +7,7 @@
     "build": "next build --webpack",
     "start": "next start",
     "lint": "eslint",
-    "test": "node scripts/check-cobro.ts && node scripts/check-caja.ts && node scripts/check-tz.ts && node scripts/check-push.ts"
+    "test": "node scripts/check-cobro.ts && node scripts/check-caja.ts && node scripts/check-tz.ts && node scripts/check-push.ts && node scripts/check-slots.ts"
   },
   "dependencies": {
     "@ducanh2912/next-pwa": "^10.2.9",

@@ -5,7 +5,7 @@ import { type SupabaseClient } from "@supabase/supabase-js";
 import { supabaseServerAuth, supabaseAdmin } from "@/lib/supabase/server";
 import { getStaffContext } from "@/lib/data/queries";
 import { clienteIdForUser } from "@/lib/cliente-actions";
-import { bogotaDayRange, bogotaYmd } from "@/lib/slots";
+import { bogotaDayRange, bogotaYmd, finEfectivo } from "@/lib/slots";
 import { errorPublico } from "@/lib/errors";
 import { calcularCobro, snapshotDinero, diferenciaCaja } from "@/lib/cobro";
 import { pushACliente } from "@/lib/push";
@@ -264,12 +264,19 @@ export async function getDisponibilidad(input: {
   const { desde, hasta } = bogotaDayRange(new Date(input.fechaISO));
   const { data } = await sb
     .from("reservas")
-    .select("inicio,fin")
+    .select("inicio,fin,estado")
     .eq("barbero_id", input.barberoId)
     .not("estado", "in", "(cancelada,no_show)")
     .gte("inicio", desde.toISOString())
     .lt("inicio", hasta.toISOString());
-  return ((data ?? []) as { inicio: string; fin: string }[]).map((r) => ({ inicio: r.inicio, fin: r.fin }));
+  // Silla real: una cita EN CURSO ocupa hasta que el barbero la cierra, no solo
+  // hasta el fin estimado (finEfectivo), así una atención que se alarga no libera
+  // el cupo online antes de tiempo.
+  const ahora = Date.now();
+  return ((data ?? []) as { inicio: string; fin: string; estado: string }[]).map((r) => ({
+    inicio: r.inicio,
+    fin: finEfectivo(r.estado, r.fin, ahora),
+  }));
 }
 
 // Walk-in registrado por el barbero (con sesión).
