@@ -793,6 +793,11 @@ export function BookingWizard({
                           ★ {b.rating?.toFixed(1) ?? "—"}
                           {b.resenas ? ` · ${b.resenas} reseñas` : ""}
                         </div>
+                        {b.especialidades.length > 0 && (
+                          <div className="mt-0.5 truncate text-[10px] text-[#9c958a]">
+                            {b.especialidades.slice(0, 3).join(" · ")}
+                          </div>
+                        )}
                         <span
                           className="mt-1.5 inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[10px] font-semibold"
                           style={{ borderColor: chipBorder, background: "rgba(5,4,3,.55)", color: chipColor }}
