@@ -897,8 +897,12 @@ export function BookingWizard({
                   <div className="space-y-5">
                     {(
                       [
-                        ["Mañana", slots.filter((t) => t < 720)],
-                        ["Tarde", slots.filter((t) => t >= 720)],
+                        // Los horarios ya pasados (hoy) se OCULTAN, no se muestran en
+                        // gris: menos ruido visual. Los ocupados sí quedan (tachados,
+                        // informan que están tomados). Si toda una franja queda vacía,
+                        // el `lista.length ?` de abajo no la pinta.
+                        ["Mañana", slots.filter((t) => t < 720 && !pasadoSet.has(t))],
+                        ["Tarde", slots.filter((t) => t >= 720 && !pasadoSet.has(t))],
                       ] as const
                     ).map(([label, lista]) =>
                       lista.length ? (
