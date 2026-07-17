@@ -188,6 +188,118 @@ export async function subirFotoProducto(formData: FormData): Promise<ActionResul
   return { ok: true };
 }
 
+// --- Armador de combos (F3) ---
+
+// Bebida que suma el combo cuando el admin la incluye (proto §7.1: "+$5.000").
+const BEBIDA_COMBO = 5000;
+
+// id kebab a partir del nombre (sin acentos, solo [a-z0-9-]). El que llama
+// resuelve la colisión con sufijo -2, -3…
+function slugCombo(nombre: string): string {
+  const base = nombre
+    .toLowerCase()
+    .replace(/[áàä]/g, "a")
+    .replace(/[éèë]/g, "e")
+    .replace(/[íìï]/g, "i")
+    .replace(/[óòö]/g, "o")
+    .replace(/[úùü]/g, "u")
+    .replace(/ñ/g, "n")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 60)
+    .replace(/-+$/g, "");
+  return base || "combo";
+}
+
+// Crea un combo EN LA SEDE ACTIVA del módulo Precios (decisión del dueño): queda
+// priceado/disponible SOLO en esa sede (una fila en servicio_sede). Si el admin
+// lo quiere en la otra sede, lo arma allá también.
+export async function crearCombo(input: {
+  sede: string;
+  partes: string[];
+  conBebida: boolean;
+  nombre: string;
+  duracionMin: number;
+  precio: number;
+}): Promise<ActionResult> {
+  const sb = await supabaseServerAuth();
+  const denied = await requireAdmin(sb);
+  if (denied) return { ok: false, error: denied };
+
+  // Validación (defensa en profundidad: la UI ya deshabilita el CTA).
+  const nombre = (input.nombre ?? "").trim();
+  const partes = Array.isArray(input.partes) ? input.partes.filter((p) => typeof p === "string" && p) : [];
+  const precio = Math.round(Number(input.precio));
+  const duracionMin = Math.round(Number(input.duracionMin));
+  const conBebida = !!input.conBebida;
+  if (partes.length < 2 && !(partes.length >= 1 && conBebida))
+    return { ok: false, error: "Elegí al menos 2 partes (o 1 parte más la bebida)." };
+  if (!nombre) return { ok: false, error: "Poné el nombre del combo." };
+  if (!Number.isFinite(precio) || precio <= 0) return { ok: false, error: "Poné un precio válido." };
+  if (!Number.isFinite(duracionMin) || duracionMin <= 0) return { ok: false, error: "Poné una duración válida." };
+
+  const admin = supabaseAdmin();
+
+  const { data: sedeRow } = await admin.from("sedes").select("id").eq("id", input.sede).maybeSingle();
+  if (!sedeRow) return { ok: false, error: "Sede inválida." };
+
+  // cuenta_corte: el combo cuenta para la tarjeta solo si alguna parte es un corte
+  // (misma semántica que getCorteIds). Un combo sin corte NO suma sello.
+  const corteIds = new Set(await getCorteIds(admin));
+  const cuentaCorte = partes.some((p) => corteIds.has(p));
+
+  // id único: slug del nombre, con sufijo -2, -3… si choca.
+  const baseId = slugCombo(nombre);
+  const { data: existentes } = await admin.from("servicios").select("id").like("id", `${baseId}%`);
+  const tomados = new Set(((existentes ?? []) as { id: string }[]).map((r) => r.id));
+  let id = baseId;
+  for (let n = 2; tomados.has(id); n++) id = `${baseId}-${n}`;
+
+  const row = {
+    id,
+    nombre,
+    categoria: "combos",
+    es_combo: true,
+    duracion_min: duracionMin,
+    activo: true,
+  };
+  // Intentá con cuenta_corte (0027); si la columna aún no existe, reintentá sin ella
+  // (mismo espíritu tolerante que getCorteIds: no explotar si el orden se invierte).
+  let { error: insErr } = await admin.from("servicios").insert({ ...row, cuenta_corte: cuentaCorte });
+  if (insErr && /cuenta_corte/i.test(insErr.message ?? "")) {
+    ({ error: insErr } = await admin.from("servicios").insert(row));
+  }
+  if (insErr) return { ok: false, error: errorPublico("crearCombo servicio", insErr) };
+
+  // Precio/disponibilidad SOLO en la sede activa.
+  const { error: ssErr } = await admin
+    .from("servicio_sede")
+    .insert({ servicio_id: id, sede_id: input.sede, precio, disponible: true });
+  if (ssErr) {
+    // No dejar un servicio huérfano (sin precio en ninguna sede).
+    await admin.from("servicios").delete().eq("id", id);
+    return { ok: false, error: errorPublico("crearCombo servicio_sede", ssErr) };
+  }
+
+  revalidatePath("/admin/precios");
+  revalidatePath("/reservar");
+  return { ok: true, id };
+}
+
+// Desactiva/reactiva un servicio (toggle servicios.activo). Desactivado no aparece
+// en la reserva; el historial de ventas no se toca. Sirve para retirar un combo.
+export async function setServicioActivo(id: string, activo: boolean): Promise<ActionResult> {
+  const sb = await supabaseServerAuth();
+  const denied = await requireAdmin(sb);
+  if (denied) return { ok: false, error: denied };
+  const admin = supabaseAdmin();
+  const { error } = await admin.from("servicios").update({ activo }).eq("id", id);
+  if (error) return { ok: false, error: errorPublico("setServicioActivo", error) };
+  revalidatePath("/admin/precios");
+  revalidatePath("/reservar");
+  return { ok: true };
+}
+
 // Reserva desde el sitio público (sin sesión) → service role.
 export async function createReserva(input: {
   sede: string;

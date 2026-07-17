@@ -25,6 +25,10 @@ export interface Servicio {
   /** Precio "desde $X". */
   desde?: boolean;
   esCombo?: boolean;
+  /** Solo lo llena el catálogo admin (getServiciosCatalogoAdmin): un servicio
+   *  desactivado (activo=false) no aparece en la reserva. La lectura pública
+   *  (getServicios) ya filtra activo=true, así que ahí queda undefined. */
+  activo?: boolean;
 }
 
 export type TipoContrato = "porcentaje" | "arriendo";

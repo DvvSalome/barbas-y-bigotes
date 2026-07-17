@@ -38,6 +38,33 @@ export async function getServicios(): Promise<Servicio[]> {
   });
 }
 
+// Catálogo COMPLETO para /admin/precios: incluye servicios INACTIVOS (para poder
+// reactivar combos desactivados; getServicios() los filtra). servicios es catálogo
+// público sin RLS y la página que lo consume es admin-only, así que va con anon.
+export async function getServiciosCatalogoAdmin(): Promise<Servicio[]> {
+  const sb = supabaseServer();
+  const { data } = await sb
+    .from("servicios")
+    .select("id,nombre,categoria,duracion_min,es_combo,desde,activo,servicio_sede(sede_id,precio)")
+    .order("categoria");
+  return (data ?? []).map((s: Record<string, unknown>) => {
+    const precios = {} as Record<SedeId, number>;
+    for (const p of (s.servicio_sede as { sede_id: string; precio: number }[]) ?? []) {
+      precios[p.sede_id as SedeId] = p.precio;
+    }
+    return {
+      id: s.id as string,
+      nombre: s.nombre as string,
+      categoria: s.categoria as Categoria,
+      duracionMin: s.duracion_min as number,
+      esCombo: s.es_combo as boolean,
+      desde: s.desde as boolean,
+      activo: s.activo as boolean,
+      precios,
+    };
+  });
+}
+
 // Precio por sede de TODOS los servicios (activos e inactivos) para el checkout
 // del staff. A diferencia de getServicios() (solo activos, para los chips de
 // adicionales), esto resuelve el precio del servicio FIJO de una reserva aunque
@@ -1255,10 +1282,24 @@ export async function getStaffContext(): Promise<StaffContext> {
 // barbero y undercontaría; la sesión del cliente para su propio portal — RLS 0013).
 
 // Ids de servicios que cuentan como "corte" para la tarjeta: categoría cortes/combos
-// menos los cerquillos (flequillos). Los combos SIEMPRE incluyen corte ("Corte + …").
+// menos los cerquillos (flequillos). Los combos legado SIEMPRE incluyen corte
+// ("Corte + …"), pero el armador (F3) puede crear combos SIN corte: esos llevan
+// cuenta_corte=false (migración 0027) y NO deben sumar sello. null/true siguen contando.
 export async function getCorteIds(sb: SupabaseClient): Promise<string[]> {
-  const { data } = await sb.from("servicios").select("id").in("categoria", ["cortes", "combos"]);
-  return ((data ?? []) as { id: string }[]).map((s) => s.id).filter((id) => !CERQUILLO_EXCLUIDOS.has(id));
+  let rows: { id: string; cuenta_corte: boolean | null }[];
+  const res = await sb.from("servicios").select("id,cuenta_corte").in("categoria", ["cortes", "combos"]);
+  if (res.error) {
+    // Compat pre-0027: si la columna cuenta_corte todavía no existe (deploy antes
+    // de aplicar la migración), reintentá sin ella — todo combo cuenta, como antes.
+    const fb = await sb.from("servicios").select("id").in("categoria", ["cortes", "combos"]);
+    rows = ((fb.data ?? []) as { id: string }[]).map((s) => ({ id: s.id, cuenta_corte: null }));
+  } else {
+    rows = (res.data ?? []) as { id: string; cuenta_corte: boolean | null }[];
+  }
+  return rows
+    .filter((s) => s.cuenta_corte !== false)
+    .map((s) => s.id)
+    .filter((id) => !CERQUILLO_EXCLUIDOS.has(id));
 }
 
 // Nº de ventas del cliente que incluyeron al menos un corte (1 sello por venta).

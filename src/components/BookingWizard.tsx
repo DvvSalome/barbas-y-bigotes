@@ -165,9 +165,15 @@ export function BookingWizard({
 
   const sedeBarberos = useMemo(() => barberos.filter((b) => b.sede === sedeId), [barberos, sedeId]);
   const sedeNombre = sedes.find((s) => s.id === sedeId)?.nombre ?? "—";
+  // Solo servicios con precio en la sede activa: los combos son por sede (F3) y un
+  // servicio sin fila en servicio_sede de esta sede no debe ofrecerse (mostraba "—").
+  const serviciosSede = useMemo(
+    () => servicios.filter((s) => (sedeId ? s.precios[sedeId] != null : true)),
+    [servicios, sedeId],
+  );
   const cats = useMemo(
-    () => (Object.keys(categorias) as Categoria[]).filter((c) => servicios.some((s) => s.categoria === c)),
-    [servicios],
+    () => (Object.keys(categorias) as Categoria[]).filter((c) => serviciosSede.some((s) => s.categoria === c)),
+    [serviciosSede],
   );
 
   // Días disponibles: próximos días hábiles (domingos cerrado). Estable entre renders.
@@ -660,7 +666,7 @@ export function BookingWizard({
             <div className="grid grid-cols-2 gap-2 md:grid-cols-[repeat(auto-fit,minmax(230px,1fr))]">
               {cats.map((cat) => {
                 const activa = selectedCat === cat;
-                const n = servicios.filter((s) => s.categoria === cat).length;
+                const n = serviciosSede.filter((s) => s.categoria === cat).length;
                 return (
                   <button
                     key={cat}
@@ -680,11 +686,11 @@ export function BookingWizard({
 
             <div className="mb-3 mt-6 flex items-center justify-between">
               <span className="text-[10px] font-bold uppercase tracking-[0.24em] text-accent-soft">Servicios disponibles</span>
-              <span className="text-[11px] text-muted">{servicios.filter((s) => s.categoria === selectedCat).length} opciones</span>
+              <span className="text-[11px] text-muted">{serviciosSede.filter((s) => s.categoria === selectedCat).length} opciones</span>
             </div>
 
             <div className="grid grid-cols-2 gap-[9px] md:grid-cols-[repeat(auto-fill,minmax(230px,260px))] md:justify-center md:gap-4">
-              {servicios
+              {serviciosSede
                 .filter((s) => s.categoria === selectedCat)
                 .map((s, i) => {
                   const sel = servicio?.id === s.id;
