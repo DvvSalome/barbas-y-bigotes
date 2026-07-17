@@ -689,7 +689,7 @@ export function BookingWizard({
               <span className="text-[11px] text-muted">{serviciosSede.filter((s) => s.categoria === selectedCat).length} opciones</span>
             </div>
 
-            <div className="grid grid-cols-2 gap-[9px] md:grid-cols-[repeat(auto-fill,minmax(230px,260px))] md:justify-center md:gap-4">
+            <div className="grid grid-cols-2 gap-[9px] md:grid-cols-[repeat(auto-fill,minmax(160px,190px))] md:justify-center md:gap-3">
               {serviciosSede
                 .filter((s) => s.categoria === selectedCat)
                 .map((s, i) => {
@@ -713,7 +713,7 @@ export function BookingWizard({
                       className="flex flex-col overflow-hidden rounded-xl text-left"
                       style={{ border: `2px solid ${sel ? "#d23f34" : "rgba(242,237,228,.1)"}` }}
                     >
-                      <div className="relative aspect-[4/3] w-full overflow-hidden bg-elevated">
+                      <div className="relative aspect-[4/3] w-full overflow-hidden bg-elevated md:aspect-[3/2]">
                         <Image src={foto} alt="" fill sizes="(max-width:768px) 50vw, 240px" className="object-cover" />
                         <span
                           className="absolute bottom-1.5 left-1.5 flex items-center gap-1 rounded-[5px] px-2 py-0.5 font-display text-[11px] font-extrabold text-white"
