@@ -6,10 +6,46 @@ import { supabaseBrowser } from "@/lib/supabase/client";
 
 export type RtSub = { table: string; filter?: string };
 
+// Ding de dos notas por Web Audio (sin archivo de audio) + vibración. Si el
+// navegador aún bloquea el audio (sin gesto previo), falla en silencio: el
+// refresh de la agenda igual muestra la cita nueva.
+function ding() {
+  try {
+    const w = window as Window & { __bbDing?: AudioContext };
+    w.__bbDing ??= new AudioContext();
+    const ctx = w.__bbDing;
+    if (ctx.state === "suspended") ctx.resume().catch(() => {});
+    const t = ctx.currentTime;
+    [880, 1174.66].forEach((freq, i) => {
+      const o = ctx.createOscillator();
+      const g = ctx.createGain();
+      o.type = "sine";
+      o.frequency.value = freq;
+      g.gain.setValueAtTime(0.0001, t + i * 0.13);
+      g.gain.exponentialRampToValueAtTime(0.14, t + i * 0.13 + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + i * 0.13 + 0.4);
+      o.connect(g).connect(ctx.destination);
+      o.start(t + i * 0.13);
+      o.stop(t + i * 0.13 + 0.45);
+    });
+    navigator.vibrate?.(120);
+  } catch {
+    // AudioContext no disponible o bloqueado: no pasa nada.
+  }
+}
+
 // Escucha postgres_changes (RLS-filtrado por la sesión) y dispara router.refresh()
 // debounced. Refresh-only: NUNCA usa el payload → la data siempre viene del fetch
 // del server (RLS-correcto, con joins). Señal de "algo cambió", no sync de estado.
-export function RealtimeRefresh({ subscriptions }: { subscriptions: RtSub[] }) {
+// dingOnInsertTable: suena un ding cuando entra un INSERT de esa tabla (ej. una
+// reserva nueva en la agenda del barbero); updates/deletes solo refrescan.
+export function RealtimeRefresh({
+  subscriptions,
+  dingOnInsertTable,
+}: {
+  subscriptions: RtSub[];
+  dingOnInsertTable?: string;
+}) {
   const router = useRouter();
   const key = subscriptions.map((s) => `${s.table}:${s.filter ?? ""}`).join("|");
 
@@ -44,7 +80,10 @@ export function RealtimeRefresh({ subscriptions }: { subscriptions: RtSub[] }) {
         ch.on(
           "postgres_changes",
           { event: "*", schema: "public", table: s.table, ...(s.filter ? { filter: s.filter } : {}) },
-          bump,
+          (payload: { eventType: string; table: string }) => {
+            if (dingOnInsertTable && payload.eventType === "INSERT" && payload.table === dingOnInsertTable) ding();
+            bump();
+          },
         );
       }
       ch.subscribe();

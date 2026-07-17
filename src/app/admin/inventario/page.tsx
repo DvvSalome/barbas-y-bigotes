@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import { getProductos, getSedes } from "@/lib/data/queries";
 import { AddProductForm } from "@/components/admin/AddProductForm";
 import { UpsellToggle } from "@/components/admin/UpsellToggle";
+import { PrecioEditable } from "@/components/admin/PrecioEditable";
 import { FotoProducto } from "@/components/staff/FotoProducto";
-import { cop } from "@/lib/format";
 import { SectionHeader } from "@/components/admin/SectionHeader";
 import { Stat } from "@/components/admin/Stat";
 import { AlertIcon } from "@/components/icons";
@@ -52,7 +52,7 @@ export default async function InventarioPage() {
                       )}
                     </div>
                     <div className="mt-3 grid grid-cols-3 gap-2">
-                      <Stat label="Precio" value={cop(p.precio)} />
+                      <Stat label="Precio" value={<PrecioEditable productoId={p.id} precio={p.precio} />} />
                       <Stat label="Stock" value={p.stock} className={low ? "font-semibold text-red-300" : ""} />
                       <Stat label="Mínimo" value={p.stockMinimo} className="text-muted" />
                     </div>
@@ -88,7 +88,9 @@ export default async function InventarioPage() {
                             <span>{p.nombre}</span>
                           </div>
                         </td>
-                        <td className="px-4 py-3 text-right">{cop(p.precio)}</td>
+                        <td className="px-4 py-3 text-right">
+                          <PrecioEditable productoId={p.id} precio={p.precio} />
+                        </td>
                         <td className={`px-4 py-3 text-right font-semibold ${low ? "text-red-300" : ""}`}>{p.stock}</td>
                         <td className="px-4 py-3 text-right text-muted">{p.stockMinimo}</td>
                         <td className="px-4 py-3 text-right">

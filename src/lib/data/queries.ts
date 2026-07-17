@@ -1096,6 +1096,7 @@ export type EquipoAhoraItem = {
   id: string;
   nombre: string;
   sede: SedeId;
+  fotoUrl: string | null;
   /** Reserva en_curso de hoy (si hay): a quién atiende y cuándo sale. */
   enSilla: { cliente: string; servicio: string; fin: string } | null;
   pinBloqueado: boolean;
@@ -1110,7 +1111,7 @@ export async function equipoAhora(sede?: SedeId | null): Promise<EquipoAhoraItem
   const { desde, hasta } = bogotaDayRange();
   let bq = admin
     .from("barberos")
-    .select("id,nombre,sede_id,orden")
+    .select("id,nombre,sede_id,orden,foto_url")
     .eq("activo", true)
     .order("sede_id")
     .order("orden");
@@ -1146,6 +1147,7 @@ export async function equipoAhora(sede?: SedeId | null): Promise<EquipoAhoraItem
     id: b.id as string,
     nombre: b.nombre as string,
     sede: b.sede_id as SedeId,
+    fotoUrl: (b.foto_url as string) ?? null,
     enSilla: enCurso.get(b.id as string) ?? null,
     pinBloqueado: bloqueados.has(b.id as string),
   }));

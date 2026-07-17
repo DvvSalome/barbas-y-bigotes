@@ -2,6 +2,7 @@
 
 import { Suspense } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { AdminTabs } from "@/components/admin/AdminNav";
 import { PerfilMenu } from "@/components/staff/PerfilMenu";
@@ -74,8 +75,14 @@ export function AdminTopbar({ email, sedes, caja }: { email: string; sedes: Sede
   return (
     <header className="sticky top-0 z-40 border-b border-line bg-bg/90 backdrop-blur-md">
       <div className="mx-auto flex w-full max-w-[1180px] flex-wrap items-center gap-x-3 gap-y-2 px-4 py-2.5 sm:px-5">
-        <Link href="/admin" className="whitespace-nowrap font-display text-base font-bold tracking-[0.04em] text-ink">
-          BARBAS <span className="text-accent-soft">&amp;</span> BIGOTES
+        <Link href="/admin" aria-label="Barbas & Bigotes" className="shrink-0 transition hover:opacity-95">
+          <Image
+            src="/brand/logo-lockup.png"
+            alt="Barbas & Bigotes"
+            width={1024}
+            height={348}
+            className="logo-staff h-8 w-auto"
+          />
         </Link>
 
         <Suspense fallback={null}>

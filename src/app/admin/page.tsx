@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import Image from "next/image";
 import {
   ventasHoyPorMedio,
   equipoAhora,
@@ -226,13 +227,23 @@ export default async function AdminHoy({
                   key={b.id}
                   className="grid grid-cols-[38px_1fr_auto] items-center gap-3 border-b border-line/60 px-4 py-2.5 transition last:border-b-0 hover:bg-elevated"
                 >
-                  <span className="relative grid h-[34px] w-[34px] place-items-center rounded-full border border-line bg-elevated text-xs font-bold text-ink lg:h-9 lg:w-9">
-                    {b.nombre
-                      .split(" ")
-                      .map((x) => x[0])
-                      .join("")
-                      .slice(0, 2)
-                      .toUpperCase()}
+                  <span className="relative grid h-[34px] w-[34px] place-items-center overflow-visible rounded-full border border-line bg-elevated text-xs font-bold text-ink lg:h-9 lg:w-9">
+                    {b.fotoUrl ? (
+                      <Image
+                        src={b.fotoUrl}
+                        alt={b.nombre}
+                        width={36}
+                        height={36}
+                        className="h-full w-full rounded-full object-cover"
+                      />
+                    ) : (
+                      b.nombre
+                        .split(" ")
+                        .map((x) => x[0])
+                        .join("")
+                        .slice(0, 2)
+                        .toUpperCase()
+                    )}
                     <span
                       className={`absolute -bottom-px -right-px h-[9px] w-[9px] rounded-full border-2 border-panel ${
                         b.enSilla ? "bg-accent-soft" : "bg-ok"

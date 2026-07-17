@@ -69,6 +69,7 @@ export default async function BarberoPage() {
           { table: "reservas", filter: filtro ? `barbero_id=eq.${filtro}` : undefined },
           { table: "lista_espera", filter: filtro ? `barbero_id=eq.${filtro}` : undefined },
         ]}
+        dingOnInsertTable="reservas"
       />
       <AgendaList
         agenda={agenda}

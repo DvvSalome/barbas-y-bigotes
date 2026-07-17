@@ -131,6 +131,13 @@ export function AgendaList({
     router.refresh();
   }
 
+  // Cancelar por la barbería: confirmación nativa, libera el cupo (constraint y
+  // disponibilidad excluyen canceladas) y le llega push al cliente.
+  function cancelarCita(r: AgendaItem) {
+    if (!window.confirm(`¿Cancelar la cita de ${r.cliente || "este cliente"} a las ${hora(r.inicio)}? Se le avisa al cliente y el cupo queda libre.`)) return;
+    setEstado(r.id, { estado: "cancelada" });
+  }
+
   async function showHistory(ref: string | null, id: string) {
     if (!ref) return;
     setHistoryFor(id);
@@ -320,13 +327,22 @@ export function AgendaList({
                     El cliente confirmó (llamada o WhatsApp)
                   </button>
                 )}
-                <button
-                  onClick={() => setEstado(r.id, { estado: "no_show" })}
-                  disabled={busy}
-                  className="min-h-[40px] w-full text-[13px] text-muted transition hover:text-ink disabled:opacity-50"
-                >
-                  No llegó · avisar a la fila
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setEstado(r.id, { estado: "no_show" })}
+                    disabled={busy}
+                    className="min-h-[40px] flex-1 text-[13px] text-muted transition hover:text-ink disabled:opacity-50"
+                  >
+                    No llegó · avisar a la fila
+                  </button>
+                  <button
+                    onClick={() => cancelarCita(r)}
+                    disabled={busy}
+                    className="min-h-[40px] flex-1 text-[13px] text-muted transition hover:text-accent-soft disabled:opacity-50"
+                  >
+                    Cancelar cita
+                  </button>
+                </div>
               </>
             )}
             {(r.clienteRef || hasPendingProposal || earliestSlot) && (
@@ -551,6 +567,15 @@ export function AgendaList({
                         >
                           No llegó
                         </button>
+                        {!enCurso && (
+                          <button
+                            onClick={() => cancelarCita(r)}
+                            disabled={busy}
+                            className="rounded-full border border-line px-3 py-1.5 text-xs text-muted transition hover:border-accent/40 hover:text-accent-soft disabled:opacity-50"
+                          >
+                            Cancelar cita
+                          </button>
+                        )}
                       </div>
                       {historyFor === r.id && historialPanel()}
                       {completeFor === r.id && cobroDe(r)}

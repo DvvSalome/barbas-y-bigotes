@@ -137,6 +137,21 @@ export async function addProducto(input: {
   return { ok: true, id: (data as { id: string }).id };
 }
 
+// Precio editable desde /admin/inventario. Revalida /reservar porque las
+// bebidas del upsell (en_upsell) muestran este precio en el wizard.
+export async function actualizarPrecioProducto(id: string, precio: number): Promise<ActionResult> {
+  const sb = await supabaseServerAuth();
+  const denied = await requireAdmin(sb);
+  if (denied) return { ok: false, error: denied };
+  const p = Math.floor(precio);
+  if (!Number.isFinite(p) || p < 0) return { ok: false, error: "Precio inválido" };
+  const { error } = await sb.from("productos").update({ precio: p }).eq("id", id);
+  if (error) return { ok: false, error: errorPublico("actualizarPrecioProducto", error) };
+  revalidatePath("/admin/inventario");
+  revalidatePath("/reservar");
+  return { ok: true };
+}
+
 // Marca/desmarca un producto para el paso "¿le sumás una bebida?" del wizard.
 // Config por sede: cada fila de productos es de una sede, así el dueño decide
 // qué bebidas ofrece en cada una (migración 0028).
@@ -574,6 +589,17 @@ export async function actualizarReserva(
       body: "El barbero te está esperando.",
       url: "/cuenta",
       tag: "turno",
+    });
+  }
+  // Cancelación por la barbería (barbero o admin): avisar al cliente para que
+  // no llegue a una cita que ya no existe. El cupo queda libre solo (el
+  // constraint y la disponibilidad excluyen canceladas).
+  if (patch.estado === "cancelada" && clienteRef) {
+    await pushACliente(clienteRef, {
+      title: "Tu cita fue cancelada",
+      body: "La barbería tuvo que cancelar tu cita. Podés reservar de nuevo cuando quieras.",
+      url: "/reservar",
+      tag: "cancelacion",
     });
   }
 
