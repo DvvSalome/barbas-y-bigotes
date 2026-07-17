@@ -775,7 +775,7 @@ export function BookingWizard({
                           src={b.fotoUrl || "/barberos/generico.jpg"}
                           alt={b.nombre}
                           fill
-                          sizes="(max-width:768px) 50vw, 240px"
+                          sizes="(max-width:768px) 50vw, 33vw"
                           className="object-cover object-top transition-[filter] duration-300"
                           style={{ filter: sel ? "none" : "grayscale(1) contrast(1.05) brightness(.88)" }}
                         />
