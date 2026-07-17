@@ -58,6 +58,20 @@ const GRAD_CTA = "linear-gradient(180deg,#e8675c,#d23f34)";
 // correo", así que es el canal real de contacto. Regex simple (no RFC completo).
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+// El OAuth de Google recarga la página y el estado del wizard vive en React:
+// antes del redirect se guarda un snapshot en sessionStorage y al volver se
+// restaura (válido 30 min).
+const RESUME_KEY = "bb-reserva-reanudar";
+
+const GoogleG = () => (
+  <svg viewBox="0 0 48 48" className="h-[18px] w-[18px] shrink-0" aria-hidden>
+    <path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9 3.6l6.7-6.7C35.6 2.6 30.2 0 24 0 14.6 0 6.5 5.4 2.6 13.3l7.8 6.1C12.3 13.3 17.6 9.5 24 9.5z" />
+    <path fill="#4285F4" d="M46.1 24.6c0-1.6-.1-3.1-.4-4.6H24v9.1h12.4c-.5 2.9-2.1 5.3-4.6 7l7.1 5.5c4.2-3.9 6.6-9.6 6.6-16.6z" />
+    <path fill="#FBBC05" d="M10.4 28.6c-.5-1.5-.8-3-.8-4.6s.3-3.1.8-4.6l-7.8-6.1C1 16.3 0 20 0 24s1 7.7 2.6 10.7l7.8-6.1z" />
+    <path fill="#34A853" d="M24 48c6.2 0 11.4-2 15.2-5.5l-7.1-5.5c-2 1.4-4.6 2.2-8.1 2.2-6.4 0-11.7-3.8-13.6-9.4l-7.8 6.1C6.5 42.6 14.6 48 24 48z" />
+  </svg>
+);
+
 type Bebida = (typeof BEBIDAS)[number];
 
 function mismoDia(a: Date, b: Date) {
@@ -140,6 +154,9 @@ export function BookingWizard({
   const [upsellSeen, setUpsellSeen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  // Sesión Google del cliente: si está logueado, la reserva queda atada a su
+  // cuenta (el server usa el email de la sesión) y el paso datos no pide correo.
+  const [sesion, setSesion] = useState<{ nombre: string; email: string } | null>(null);
   // Ocupación del día elegido, por barbero (para los slots del paso 4).
   const [ocupadosDia, setOcupadosDia] = useState<Record<string, { inicio: string; fin: string }[]>>({});
   const [cargandoSlots, setCargandoSlots] = useState(false);
@@ -172,6 +189,57 @@ export function BookingWizard({
   useEffect(() => {
     if (step === "horario" && !day && dias.length) setDay(dias[0]);
   }, [step, day, dias]);
+
+  // Al montar: (1) si venimos del redirect de Google, restaurar la reserva a
+  // medias desde sessionStorage; (2) detectar la sesión del cliente para el
+  // paso datos ("Reservando como …").
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem(RESUME_KEY);
+      if (raw) {
+        sessionStorage.removeItem(RESUME_KEY);
+        const s = JSON.parse(raw) as {
+          t?: number;
+          sedeId?: SedeId;
+          servicioId?: string;
+          barberoId?: string | null;
+          dayISO?: string;
+          slot?: number;
+          bebida?: Bebida | null;
+          bebidaIncluida?: boolean;
+          servicioFoto?: string;
+        };
+        const sv = servicios.find((x) => x.id === s.servicioId) ?? null;
+        const d = s.dayISO ? new Date(s.dayISO) : null;
+        if (s.t && Date.now() - s.t < 30 * 60000 && s.sedeId && sv && d && !isNaN(d.getTime()) && s.slot != null) {
+          setSedeId(s.sedeId);
+          setServicio(sv);
+          if (s.servicioFoto) setServicioFoto(s.servicioFoto);
+          setBarbero(barberos.find((x) => x.id === s.barberoId) ?? null);
+          setDay(d);
+          setSlot(s.slot);
+          setBebida(s.bebida ?? null);
+          setBebidaIncluida(!!s.bebidaIncluida);
+          setUpsellSeen(true);
+          setStep("datos");
+        }
+      }
+    } catch {
+      // Snapshot corrupto: el wizard arranca normal.
+    }
+    let vivo = true;
+    supabaseBrowser()
+      .auth.getSession()
+      .then(({ data }) => {
+        const u = data.session?.user;
+        if (!vivo || !u?.email) return;
+        const meta = (u.user_metadata ?? {}) as { full_name?: string; name?: string };
+        setSesion({ nombre: meta.full_name || meta.name || "", email: u.email });
+      });
+    return () => {
+      vivo = false;
+    };
+  }, [servicios, barberos]);
 
   // Disponibilidad del día elegido: barbero fijo o todos los de la sede (para "cualquier barbero").
   useEffect(() => {
@@ -282,8 +350,9 @@ export function BookingWizard({
   const bebidaTxt = bebida ? ` + ${bebida.nombre.toLowerCase()}${bebidaIncluida ? " (incluida)" : ""}` : "";
 
   // Nombre y correo obligatorios para habilitar "Confirmar" en el paso datos.
+  // Con sesión Google no se piden: el server usa el email (y nombre) de la sesión.
   const emailValido = EMAIL_RE.test(email.trim());
-  const datosValidos = nombre.trim().length > 0 && emailValido;
+  const datosValidos = sesion ? true : nombre.trim().length > 0 && emailValido;
 
   const paso = (ORDEN.indexOf(step as Exclude<Step, "ok">) + 1) as number;
 
@@ -337,10 +406,35 @@ export function BookingWizard({
     setStep("barbero");
   }
 
+  // Login con Google desde el paso datos: guarda el snapshot del wizard y va al
+  // OAuth; al volver a /reservar el effect de montaje restaura todo en el paso 5.
+  async function loginGoogle() {
+    if (!sedeId || !servicio || slot === null || !day) return;
+    const snap = {
+      t: Date.now(),
+      sedeId,
+      servicioId: servicio.id,
+      barberoId: barbero?.id ?? null,
+      dayISO: day.toISOString(),
+      slot,
+      bebida,
+      bebidaIncluida,
+      servicioFoto,
+    };
+    try {
+      sessionStorage.setItem(RESUME_KEY, JSON.stringify(snap));
+    } catch {}
+    await supabaseBrowser().auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: `${window.location.origin}/auth/callback?next=/reservar` },
+    });
+  }
+
   async function confirmar() {
     if (!servicio || !day || slot === null || !sedeId) return;
     // Defensa: el botón ya exige datos válidos, pero confirmar() es la puerta real.
-    if (!nombre.trim() || !EMAIL_RE.test(email.trim())) {
+    // (Con sesión Google el server usa el correo de la sesión: no se exige acá.)
+    if (!sesion && (!nombre.trim() || !EMAIL_RE.test(email.trim()))) {
       setErrorMsg("Completá tu nombre y un correo válido para confirmar.");
       return;
     }
@@ -367,9 +461,9 @@ export function BookingWizard({
       sede: sedeId,
       barberoId: elegido.id,
       servicioId: servicio.id,
-      clienteNombre: nombre.trim() || "Cliente",
+      clienteNombre: (sesion ? sesion.nombre || nombre.trim() : nombre.trim()) || "Cliente",
       telefono: "",
-      email: email.trim(),
+      email: sesion ? sesion.email : email.trim(),
       inicioISO: inicio.toISOString(),
       nota,
     });
@@ -837,28 +931,69 @@ export function BookingWizard({
             <h2 className="font-display text-[26px] font-extrabold uppercase leading-none">Tus datos</h2>
             <p className="mt-1.5 text-xs text-muted">Te llega la confirmación al correo.</p>
 
-            <div className="mt-5 flex flex-col gap-2">
-              <input
-                value={nombre}
-                onChange={(e) => setNombre(e.target.value)}
-                placeholder="Tu nombre"
-                className="w-full rounded-xl border border-line px-3.5 py-3 text-sm text-ink placeholder:text-muted focus:border-accent focus:outline-none"
-                style={{ background: "#151311" }}
-              />
-              <input
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                type="email"
-                inputMode="email"
-                placeholder="Correo (te llega la confirmación)"
-                aria-invalid={email.trim().length > 0 && !emailValido}
-                className="w-full rounded-xl border border-line px-3.5 py-3 text-sm text-ink placeholder:text-muted focus:border-accent focus:outline-none"
-                style={{ background: "#151311" }}
-              />
-              {email.trim().length > 0 && !emailValido && (
-                <p className="px-1 text-[11.5px] text-accent-soft">Ingresá un correo válido (ej. nombre@correo.com).</p>
-              )}
-            </div>
+            {sesion ? (
+              <div className="mt-5 flex flex-col gap-2">
+                {/* Cliente logueado: la reserva queda en su cuenta, sin re-tipear datos. */}
+                <div className="flex items-center gap-3 rounded-xl border border-line px-3.5 py-3" style={{ background: "#151311" }}>
+                  <GoogleG />
+                  <div className="min-w-0">
+                    <div className="truncate text-sm font-semibold text-ink">
+                      Reservando como {sesion.nombre || sesion.email}
+                    </div>
+                    <div className="truncate text-xs text-muted">{sesion.email} · la confirmación llega acá</div>
+                  </div>
+                </div>
+                {!sesion.nombre && (
+                  <input
+                    value={nombre}
+                    onChange={(e) => setNombre(e.target.value)}
+                    placeholder="Tu nombre"
+                    className="w-full rounded-xl border border-line px-3.5 py-3 text-sm text-ink placeholder:text-muted focus:border-accent focus:outline-none"
+                    style={{ background: "#151311" }}
+                  />
+                )}
+              </div>
+            ) : (
+              <div className="mt-5 flex flex-col gap-2">
+                <input
+                  value={nombre}
+                  onChange={(e) => setNombre(e.target.value)}
+                  placeholder="Tu nombre"
+                  className="w-full rounded-xl border border-line px-3.5 py-3 text-sm text-ink placeholder:text-muted focus:border-accent focus:outline-none"
+                  style={{ background: "#151311" }}
+                />
+                <input
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  type="email"
+                  inputMode="email"
+                  placeholder="Correo (te llega la confirmación)"
+                  aria-invalid={email.trim().length > 0 && !emailValido}
+                  className="w-full rounded-xl border border-line px-3.5 py-3 text-sm text-ink placeholder:text-muted focus:border-accent focus:outline-none"
+                  style={{ background: "#151311" }}
+                />
+                {email.trim().length > 0 && !emailValido && (
+                  <p className="px-1 text-[11.5px] text-accent-soft">Ingresá un correo válido (ej. nombre@correo.com).</p>
+                )}
+
+                {/* Como invitado (arriba) o con la cuenta Google del cliente. */}
+                <div className="flex items-center gap-3 py-1" aria-hidden>
+                  <span className="h-px flex-1 bg-line" />
+                  <span className="font-display text-[10px] font-bold uppercase tracking-[0.24em] text-muted">o</span>
+                  <span className="h-px flex-1 bg-line" />
+                </div>
+                <button
+                  type="button"
+                  onClick={loginGoogle}
+                  className="flex w-full items-center justify-center gap-3 rounded-xl bg-ink py-3 text-sm font-semibold text-bg transition hover:bg-white"
+                >
+                  <GoogleG /> Continuar con Google
+                </button>
+                <p className="px-1 text-center text-[11px] text-muted">
+                  Con tu cuenta la reserva queda en Mi cuenta y sumás en tu tarjeta de cortes.
+                </p>
+              </div>
+            )}
 
             <div className="mt-4 rounded-2xl border border-line bg-panel px-4 py-3.5">
               <div className="mb-2 text-[10px] font-bold uppercase tracking-[0.2em] text-accent-soft">Tu reserva</div>
