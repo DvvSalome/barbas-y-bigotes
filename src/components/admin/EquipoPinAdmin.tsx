@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { setearPinBarbero, desbloquearBarbero } from "@/lib/barbero-auth";
+import { actualizarPerfilBarbero } from "@/lib/actions";
 import type { Barbero, Sede } from "@/lib/data/types";
 
 type Estado = Record<string, { tienePin: boolean; bloqueado: boolean }>;
@@ -13,6 +14,41 @@ export function EquipoPinAdmin({ barberos, sedes, estado }: { barberos: Barbero[
   const [pin, setPin] = useState("");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ id: string; text: string; ok: boolean } | null>(null);
+  // Editor de perfil (bio + especialidades), independiente del editor de PIN.
+  const [perfilEditing, setPerfilEditing] = useState<string | null>(null);
+  const [bioDraft, setBioDraft] = useState("");
+  const [espDraft, setEspDraft] = useState("");
+
+  function abrirPerfil(b: Barbero) {
+    if (perfilEditing === b.id) {
+      setPerfilEditing(null);
+      return;
+    }
+    setPerfilEditing(b.id);
+    setBioDraft(b.bio ?? "");
+    setEspDraft(b.especialidades.join("\n"));
+    setEditing(null);
+    setMsg(null);
+  }
+
+  async function guardarPerfil(barberoId: string) {
+    setBusy(true);
+    setMsg(null);
+    // Una especialidad por línea o separadas por coma; la action vuelve a sanear.
+    const especialidades = espDraft
+      .split(/[\n,]/)
+      .map((e) => e.trim())
+      .filter(Boolean);
+    const res = await actualizarPerfilBarbero({ barberoId, bio: bioDraft, especialidades });
+    setBusy(false);
+    if (res.ok) {
+      setPerfilEditing(null);
+      setMsg({ id: barberoId, text: "Perfil guardado", ok: true });
+      router.refresh();
+    } else {
+      setMsg({ id: barberoId, text: res.error ?? "Error", ok: false });
+    }
+  }
 
   async function guardar(barberoId: string) {
     setBusy(true);
@@ -57,16 +93,22 @@ export function EquipoPinAdmin({ barberos, sedes, estado }: { barberos: Barbero[
                         <div className="text-xs text-muted">
                           {e?.tienePin ? "PIN configurado" : "Sin PIN"}
                           {e?.bloqueado ? " · 🔒 bloqueado" : ""}
+                          {b.especialidades.length ? ` · ${b.especialidades.length} especialidades` : " · sin especialidades"}
+                          {b.bio ? " · con bio" : ""}
                         </div>
                       </div>
-                      <div className="flex gap-2">
+                      <div className="flex flex-wrap justify-end gap-2">
                         {e?.bloqueado && (
                           <button onClick={() => desbloquear(b.id)} disabled={busy}
                             className="rounded-full border border-line px-3 py-1.5 text-xs text-muted transition hover:text-ink disabled:opacity-50">
                             Desbloquear
                           </button>
                         )}
-                        <button onClick={() => { setEditing(editing === b.id ? null : b.id); setPin(""); setMsg(null); }}
+                        <button onClick={() => abrirPerfil(b)}
+                          className="rounded-full border border-line px-4 py-1.5 text-xs font-semibold uppercase text-muted transition hover:text-ink">
+                          {perfilEditing === b.id ? "Cerrar perfil" : "Perfil"}
+                        </button>
+                        <button onClick={() => { setEditing(editing === b.id ? null : b.id); setPin(""); setPerfilEditing(null); setMsg(null); }}
                           className="rounded-full bg-accent px-4 py-1.5 text-xs font-semibold uppercase text-on-accent transition hover:bg-accent-soft">
                           {e?.tienePin ? "Cambiar PIN" : "Setear PIN"}
                         </button>
@@ -88,6 +130,41 @@ export function EquipoPinAdmin({ barberos, sedes, estado }: { barberos: Barbero[
                         <button onClick={() => { setEditing(null); setPin(""); }} className="text-xs text-muted transition hover:text-ink">
                           Cancelar
                         </button>
+                      </div>
+                    )}
+                    {perfilEditing === b.id && (
+                      <div className="mt-3 space-y-3 border-t border-line pt-3">
+                        <label className="block">
+                          <span className="mb-1 block text-[11px] uppercase tracking-[0.2em] text-muted">Bio</span>
+                          <textarea
+                            value={bioDraft}
+                            onChange={(ev) => setBioDraft(ev.target.value)}
+                            rows={3}
+                            placeholder="Contá quién es este barbero (opcional)."
+                            className="w-full resize-y rounded-lg border border-line bg-bg px-3 py-2 text-sm text-ink placeholder:text-muted focus:border-accent focus:outline-none"
+                          />
+                        </label>
+                        <label className="block">
+                          <span className="mb-1 block text-[11px] uppercase tracking-[0.2em] text-muted">
+                            Especialidades <span className="normal-case tracking-normal text-muted/70">(una por línea o separadas por coma · máx 6)</span>
+                          </span>
+                          <textarea
+                            value={espDraft}
+                            onChange={(ev) => setEspDraft(ev.target.value)}
+                            rows={3}
+                            placeholder={"Fade\nBarba\nDiseños"}
+                            className="w-full resize-y rounded-lg border border-line bg-bg px-3 py-2 text-sm text-ink placeholder:text-muted focus:border-accent focus:outline-none"
+                          />
+                        </label>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <button onClick={() => guardarPerfil(b.id)} disabled={busy}
+                            className="rounded-full bg-accent px-4 py-2 text-xs font-semibold uppercase text-on-accent transition hover:bg-accent-soft disabled:opacity-50">
+                            {busy ? "…" : "Guardar perfil"}
+                          </button>
+                          <button onClick={() => setPerfilEditing(null)} className="text-xs text-muted transition hover:text-ink">
+                            Cancelar
+                          </button>
+                        </div>
                       </div>
                     )}
                     {msg?.id === b.id && (

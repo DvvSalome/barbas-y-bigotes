@@ -300,6 +300,61 @@ export async function setServicioActivo(id: string, activo: boolean): Promise<Ac
   return { ok: true };
 }
 
+// Edita el perfil público de un barbero (bio + especialidades) desde /admin/equipo.
+// Va con supabaseAdmin() detrás del gate admin (mismo patrón que las otras
+// mutaciones del back-office). Las especialidades se reemplazan enteras: se borran
+// las viejas y se reinsertan las nuevas saneadas (trim, sin vacíos, sin duplicados
+// —case-insensitive, para no chocar con el PK (barbero_id, especialidad)—, máx 6).
+export async function actualizarPerfilBarbero(input: {
+  barberoId: string;
+  bio: string;
+  especialidades: string[];
+}): Promise<ActionResult> {
+  const sb = await supabaseServerAuth();
+  const denied = await requireAdmin(sb);
+  if (denied) return { ok: false, error: denied };
+
+  const barberoId = (input.barberoId ?? "").trim();
+  if (!barberoId) return { ok: false, error: "Barbero inválido." };
+
+  const bio = (input.bio ?? "").trim();
+
+  const vistas = new Set<string>();
+  const especialidades: string[] = [];
+  for (const raw of Array.isArray(input.especialidades) ? input.especialidades : []) {
+    const e = (typeof raw === "string" ? raw : "").trim();
+    if (!e) continue;
+    const key = e.toLowerCase();
+    if (vistas.has(key)) continue;
+    vistas.add(key);
+    especialidades.push(e);
+    if (especialidades.length >= 6) break;
+  }
+
+  const admin = supabaseAdmin();
+
+  const { data: barberoRow } = await admin.from("barberos").select("id").eq("id", barberoId).maybeSingle();
+  if (!barberoRow) return { ok: false, error: "Barbero inválido." };
+
+  const { error: bioErr } = await admin.from("barberos").update({ bio: bio || null }).eq("id", barberoId);
+  if (bioErr) return { ok: false, error: errorPublico("actualizarPerfilBarbero bio", bioErr) };
+
+  const { error: delErr } = await admin.from("barbero_especialidades").delete().eq("barbero_id", barberoId);
+  if (delErr) return { ok: false, error: errorPublico("actualizarPerfilBarbero delete", delErr) };
+
+  if (especialidades.length) {
+    const { error: insErr } = await admin
+      .from("barbero_especialidades")
+      .insert(especialidades.map((especialidad) => ({ barbero_id: barberoId, especialidad })));
+    if (insErr) return { ok: false, error: errorPublico("actualizarPerfilBarbero insert", insErr) };
+  }
+
+  revalidatePath("/admin/equipo");
+  revalidatePath("/barberos");
+  revalidatePath("/reservar");
+  return { ok: true };
+}
+
 // Reserva desde el sitio público (sin sesión) → service role.
 export async function createReserva(input: {
   sede: string;
