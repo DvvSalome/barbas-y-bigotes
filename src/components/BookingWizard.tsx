@@ -994,22 +994,36 @@ export function BookingWizard({
                   <p className="px-1 text-[11.5px] text-accent-soft">Ingresá un correo válido (ej. nombre@correo.com).</p>
                 )}
 
-                {/* Como invitado (arriba) o con la cuenta Google del cliente. */}
-                <div className="flex items-center gap-3 py-1" aria-hidden>
-                  <span className="h-px flex-1 bg-line" />
-                  <span className="font-display text-[10px] font-bold uppercase tracking-[0.24em] text-muted">o</span>
-                  <span className="h-px flex-1 bg-line" />
-                </div>
-                <button
-                  type="button"
-                  onClick={loginGoogle}
-                  className="flex w-full items-center justify-center gap-3 rounded-xl bg-ink py-3 text-sm font-semibold text-bg transition hover:bg-white"
-                >
-                  <GoogleG /> Continuar con Google
-                </button>
-                <p className="px-1 text-center text-[11px] text-muted">
-                  Con tu cuenta la reserva queda en Mi cuenta y sumás en tu tarjeta de cortes.
-                </p>
+                {/* Como invitado (arriba) o con la cuenta Google del cliente. Si ya
+                    empezó a escribir como invitado, el bloque de Google se achica a
+                    una línea para que no parezca un paso pendiente. */}
+                {nombre.trim().length > 0 || email.trim().length > 0 ? (
+                  <button
+                    type="button"
+                    onClick={loginGoogle}
+                    className="py-1 text-center text-[11.5px] text-muted underline decoration-line underline-offset-4 transition hover:text-ink"
+                  >
+                    ¿Preferís continuar con Google? Queda en tu cuenta y sumás tarjeta
+                  </button>
+                ) : (
+                  <>
+                    <div className="flex items-center gap-3 py-1" aria-hidden>
+                      <span className="h-px flex-1 bg-line" />
+                      <span className="font-display text-[10px] font-bold uppercase tracking-[0.24em] text-muted">o</span>
+                      <span className="h-px flex-1 bg-line" />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={loginGoogle}
+                      className="flex w-full items-center justify-center gap-3 rounded-xl bg-ink py-3 text-sm font-semibold text-bg transition hover:bg-white"
+                    >
+                      <GoogleG /> Continuar con Google
+                    </button>
+                    <p className="px-1 text-center text-[11px] text-muted">
+                      Con tu cuenta la reserva queda en Mi cuenta y sumás en tu tarjeta de cortes.
+                    </p>
+                  </>
+                )}
               </div>
             )}
 
