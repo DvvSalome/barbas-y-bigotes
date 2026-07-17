@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { BookingWizard } from "@/components/BookingWizard";
-import { getSedes, getBarberos, getServicios } from "@/lib/data/queries";
+import { getSedes, getBarberos, getServicios, getBebidasUpsell } from "@/lib/data/queries";
 
 export const metadata: Metadata = {
   title: "Reservar",
@@ -16,10 +16,11 @@ export default async function ReservarPage({
   searchParams: Promise<{ barbero?: string; sede?: string }>;
 }) {
   const { barbero, sede } = await searchParams;
-  const [sedes, barberos, servicios] = await Promise.all([
+  const [sedes, barberos, servicios, bebidas] = await Promise.all([
     getSedes(),
     getBarberos(),
     getServicios(),
+    getBebidasUpsell(),
   ]);
   const initialSedeId = sedes.find((s) => s.id === sede)?.id;
   return (
@@ -28,6 +29,7 @@ export default async function ReservarPage({
         sedes={sedes}
         barberos={barberos}
         servicios={servicios}
+        bebidas={bebidas}
         initialBarberoId={barbero}
         initialSedeId={initialSedeId}
       />

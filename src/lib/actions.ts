@@ -137,6 +137,20 @@ export async function addProducto(input: {
   return { ok: true, id: (data as { id: string }).id };
 }
 
+// Marca/desmarca un producto para el paso "¿le sumás una bebida?" del wizard.
+// Config por sede: cada fila de productos es de una sede, así el dueño decide
+// qué bebidas ofrece en cada una (migración 0028).
+export async function toggleProductoUpsell(id: string, value: boolean): Promise<ActionResult> {
+  const sb = await supabaseServerAuth();
+  const denied = await requireAdmin(sb);
+  if (denied) return { ok: false, error: denied };
+  const { error } = await sb.from("productos").update({ en_upsell: value }).eq("id", id);
+  if (error) return { ok: false, error: errorPublico("toggleProductoUpsell", error) };
+  revalidatePath("/admin/inventario");
+  revalidatePath("/reservar");
+  return { ok: true };
+}
+
 const FOTO_MAX_BYTES = 2 * 1024 * 1024;
 
 // Foto del producto → Supabase Storage (bucket público "productos", migración 0019).

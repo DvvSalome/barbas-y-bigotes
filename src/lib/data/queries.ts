@@ -120,11 +120,11 @@ export async function getProductos(): Promise<Producto[]> {
   const sb = supabaseServer();
   const res = await sb
     .from("productos")
-    .select("id,nombre,sede_id,precio,stock,stock_minimo,comision_pct,foto_url")
+    .select("id,nombre,sede_id,precio,stock,stock_minimo,comision_pct,foto_url,en_upsell")
     .order("sede_id");
   let rows: Record<string, unknown>[] | null = res.data;
   if (res.error) {
-    // Compat pre-0019: si foto_url todavía no existe en la DB, el POS no se cae.
+    // Compat pre-0019/0028: si foto_url o en_upsell todavía no existen, el POS no se cae.
     rows = (
       await sb
         .from("productos")
@@ -140,7 +140,29 @@ export async function getProductos(): Promise<Producto[]> {
     stock: p.stock as number,
     stockMinimo: p.stock_minimo as number,
     comisionPct: p.comision_pct as number,
+    enUpsell: (p.en_upsell as boolean) ?? false,
     fotoUrl: (p.foto_url as string) ?? null,
+  }));
+}
+
+export type BebidaUpsell = { id: string; nombre: string; precio: number; sede: SedeId };
+
+// Bebidas del paso "¿le sumás una bebida?" del wizard: productos activos marcados
+// en_upsell, por sede. El wizard filtra por la sede activa. Orden por precio para
+// que el menú quede ascendente (Agua, Gaseosa, Cerveza, Energizante).
+export async function getBebidasUpsell(): Promise<BebidaUpsell[]> {
+  const sb = supabaseServer();
+  const { data } = await sb
+    .from("productos")
+    .select("id,nombre,precio,sede_id")
+    .eq("en_upsell", true)
+    .eq("activo", true)
+    .order("precio");
+  return (data ?? []).map((p: Record<string, unknown>) => ({
+    id: p.id as string,
+    nombre: p.nombre as string,
+    precio: p.precio as number,
+    sede: p.sede_id as SedeId,
   }));
 }
 

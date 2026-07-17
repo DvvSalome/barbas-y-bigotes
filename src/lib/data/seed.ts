@@ -118,11 +118,11 @@ export const barberos: Barbero[] = [
 
 // Productos de muestra (retail / consumos). Reemplazar por el inventario real del cliente.
 export const productos: Producto[] = [
-  { id: "cera-mate", nombre: "Cera mate fijación fuerte", sede: "parque-venezuela", precio: 28000, stock: 14, stockMinimo: 5, comisionPct: 10 },
-  { id: "aceite-barba", nombre: "Aceite para barba", sede: "parque-venezuela", precio: 32000, stock: 9, stockMinimo: 4, comisionPct: 10 },
-  { id: "shampoo-anticaspa", nombre: "Shampoo anticaspa", sede: "parque-venezuela", precio: 25000, stock: 3, stockMinimo: 5, comisionPct: 10 },
-  { id: "bebida", nombre: "Bebida (gaseosa / energizante)", sede: "parque-venezuela", precio: 5000, stock: 40, stockMinimo: 12, comisionPct: 0 },
-  { id: "cera-mate-pp", nombre: "Cera mate fijación fuerte", sede: "plaza-de-la-paz", precio: 28000, stock: 7, stockMinimo: 5, comisionPct: 10 },
-  { id: "gel-fijador-pp", nombre: "Gel fijador", sede: "plaza-de-la-paz", precio: 18000, stock: 2, stockMinimo: 6, comisionPct: 10 },
-  { id: "bebida-pp", nombre: "Bebida (gaseosa / energizante)", sede: "plaza-de-la-paz", precio: 5000, stock: 33, stockMinimo: 12, comisionPct: 0 },
+  { id: "cera-mate", nombre: "Cera mate fijación fuerte", sede: "parque-venezuela", precio: 28000, stock: 14, stockMinimo: 5, comisionPct: 10, enUpsell: false },
+  { id: "aceite-barba", nombre: "Aceite para barba", sede: "parque-venezuela", precio: 32000, stock: 9, stockMinimo: 4, comisionPct: 10, enUpsell: false },
+  { id: "shampoo-anticaspa", nombre: "Shampoo anticaspa", sede: "parque-venezuela", precio: 25000, stock: 3, stockMinimo: 5, comisionPct: 10, enUpsell: false },
+  { id: "bebida", nombre: "Bebida (gaseosa / energizante)", sede: "parque-venezuela", precio: 5000, stock: 40, stockMinimo: 12, comisionPct: 0, enUpsell: false },
+  { id: "cera-mate-pp", nombre: "Cera mate fijación fuerte", sede: "plaza-de-la-paz", precio: 28000, stock: 7, stockMinimo: 5, comisionPct: 10, enUpsell: false },
+  { id: "gel-fijador-pp", nombre: "Gel fijador", sede: "plaza-de-la-paz", precio: 18000, stock: 2, stockMinimo: 6, comisionPct: 10, enUpsell: false },
+  { id: "bebida-pp", nombre: "Bebida (gaseosa / energizante)", sede: "plaza-de-la-paz", precio: 5000, stock: 33, stockMinimo: 12, comisionPct: 0, enUpsell: false },
 ];

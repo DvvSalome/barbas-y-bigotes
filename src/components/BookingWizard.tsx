@@ -7,6 +7,7 @@ import { categorias } from "@/lib/data/seed";
 import { createReserva, getDisponibilidad } from "@/lib/actions";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import type { Sede, SedeId, Servicio, Barbero, Categoria } from "@/lib/data/types";
+import type { BebidaUpsell } from "@/lib/data/queries";
 import { cop } from "@/lib/format";
 import { DOW, MON, STEP, fmtTime, buildSlots } from "@/lib/slots";
 
@@ -37,14 +38,6 @@ const SEDE_INFO: Record<string, { detalle: string; frente: string }> = {
 // Fotos de servicio que cicla el proto (§6.4): corte-2, corte-3, corte-5, corte-1 por índice.
 const SERV_FOTOS = ["/cortes/corte-2.jpg", "/cortes/corte-3.jpg", "/cortes/corte-5.jpg", "/cortes/corte-1.jpg"];
 
-// Bebidas del upsell (§6.9 / §7 — inventario cat "bebidas").
-const BEBIDAS = [
-  { id: "gaseosa", nombre: "Gaseosa", precio: 5000 },
-  { id: "agua", nombre: "Agua", precio: 3000 },
-  { id: "energizante", nombre: "Energizante", precio: 8000 },
-  { id: "cerveza", nombre: "Cerveza", precio: 7000 },
-];
-
 // Copy default del upsell (proto §6.9; sin fuente admin, usamos el del prototipo).
 const UPSELL_EXTRA = { titulo: "¿Le sumás una bebida a tu corte?", sub: "Te la sirven apenas te sentás en la silla.", rechazo: "No, gracias" };
 const UPSELL_COMBO = { titulo: "Tu combo incluye bebida. ¿Cuál querés?", sub: "Va incluida en el precio del combo.", rechazo: "Sin bebida" };
@@ -72,7 +65,7 @@ const GoogleG = () => (
   </svg>
 );
 
-type Bebida = (typeof BEBIDAS)[number];
+type Bebida = BebidaUpsell;
 
 function mismoDia(a: Date, b: Date) {
   return a.toDateString() === b.toDateString();
@@ -119,12 +112,14 @@ export function BookingWizard({
   sedes,
   barberos,
   servicios,
+  bebidas,
   initialBarberoId,
   initialSedeId,
 }: {
   sedes: Sede[];
   barberos: Barbero[];
   servicios: Servicio[];
+  bebidas: BebidaUpsell[];
   initialBarberoId?: string;
   initialSedeId?: SedeId;
 }) {
@@ -177,6 +172,11 @@ export function BookingWizard({
   const cats = useMemo(
     () => (Object.keys(categorias) as Categoria[]).filter((c) => serviciosSede.some((s) => s.categoria === c)),
     [serviciosSede],
+  );
+  // Bebidas del upsell filtradas por la sede activa (config por sede, migración 0028).
+  const bebidasSede = useMemo(
+    () => bebidas.filter((b) => b.sede === sedeId),
+    [bebidas, sedeId],
   );
 
   // Días disponibles: próximos días hábiles (domingos cerrado). Estable entre renders.
@@ -387,7 +387,8 @@ export function BookingWizard({
     if (!puedeContinuar) return;
     if (step === "servicio") {
       // Upsell de bebida entre paso 2 y 3, una sola vez por flujo (proto §6.9).
-      if (!upsellSeen && servicio) {
+      // Solo si la sede tiene bebidas configuradas (en_upsell); si no, se salta.
+      if (!upsellSeen && servicio && bebidasSede.length > 0) {
         const esComboBebida = servicio.nombre.toLowerCase().includes("bebida");
         if (esComboBebida && COMBO_ON) {
           setUpsellMode("combo");
@@ -1061,7 +1062,7 @@ export function BookingWizard({
               <p className="mt-1 text-center text-xs text-muted">{upsellMode === "combo" ? UPSELL_COMBO.sub : UPSELL_EXTRA.sub}</p>
 
               <div className="mt-5 grid grid-cols-2 gap-2 md:grid-cols-[repeat(auto-fit,minmax(230px,1fr))]">
-                {BEBIDAS.map((b) => (
+                {bebidasSede.map((b) => (
                   <button
                     key={b.id}
                     onClick={() => elegirBebida(b)}

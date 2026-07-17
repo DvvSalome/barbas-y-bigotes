@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { getProductos, getSedes } from "@/lib/data/queries";
 import { AddProductForm } from "@/components/admin/AddProductForm";
+import { UpsellToggle } from "@/components/admin/UpsellToggle";
 import { FotoProducto } from "@/components/staff/FotoProducto";
 import { cop } from "@/lib/format";
 import { SectionHeader } from "@/components/admin/SectionHeader";
@@ -55,6 +56,9 @@ export default async function InventarioPage() {
                       <Stat label="Stock" value={p.stock} className={low ? "font-semibold text-red-300" : ""} />
                       <Stat label="Mínimo" value={p.stockMinimo} className="text-muted" />
                     </div>
+                    <div className="mt-3 flex justify-end">
+                      <UpsellToggle productoId={p.id} enUpsell={p.enUpsell} />
+                    </div>
                   </div>
                 );
               })}
@@ -70,6 +74,7 @@ export default async function InventarioPage() {
                     <th className="px-4 py-3 text-right font-medium">Stock</th>
                     <th className="px-4 py-3 text-right font-medium">Mínimo</th>
                     <th className="px-4 py-3 text-right font-medium">Estado</th>
+                    <th className="px-4 py-3 text-right font-medium">Reserva</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -94,6 +99,9 @@ export default async function InventarioPage() {
                           ) : (
                             <span className="text-xs text-muted">OK</span>
                           )}
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <UpsellToggle productoId={p.id} enUpsell={p.enUpsell} />
                         </td>
                       </tr>
                     );
