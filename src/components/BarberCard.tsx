@@ -6,7 +6,7 @@ import Link from "next/link";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import type { Barbero } from "@/lib/data/types";
 import { sedes } from "@/lib/data/seed";
-import { FaceIcon, PinIcon, CamIcon } from "@/components/icons";
+import { PinIcon, CamIcon } from "@/components/icons";
 
 const EASE = [0.22, 1, 0.36, 1] as const;
 

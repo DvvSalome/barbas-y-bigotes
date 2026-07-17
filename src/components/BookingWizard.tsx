@@ -157,6 +157,9 @@ export function BookingWizard({
   // Sesión Google del cliente: si está logueado, la reserva queda atada a su
   // cuenta (el server usa el email de la sesión) y el paso datos no pide correo.
   const [sesion, setSesion] = useState<{ nombre: string; email: string } | null>(null);
+  // "Ahora" estable por montaje: evita llamar Date.now() en render (regla de pureza
+  // del React Compiler). El estado en vivo del barbero se refresca con statusHoy.
+  const [ahora] = useState(() => Date.now());
   // Ocupación del día elegido, por barbero (para los slots del paso 4).
   const [ocupadosDia, setOcupadosDia] = useState<Record<string, { inicio: string; fin: string }[]>>({});
   const [cargandoSlots, setCargandoSlots] = useState(false);
@@ -193,6 +196,7 @@ export function BookingWizard({
 
   // Al entrar al paso horario sin día elegido, preselecciona el primero (proto muestra "Hoy").
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- preselección de UX al entrar al paso (no cascada real)
     if (step === "horario" && !day && dias.length) setDay(dias[0]);
   }, [step, day, dias]);
 
@@ -218,6 +222,7 @@ export function BookingWizard({
         const sv = servicios.find((x) => x.id === s.servicioId) ?? null;
         const d = s.dayISO ? new Date(s.dayISO) : null;
         if (s.t && Date.now() - s.t < 30 * 60000 && s.sedeId && sv && d && !isNaN(d.getTime()) && s.slot != null) {
+          // eslint-disable-next-line react-hooks/set-state-in-effect -- hidratación al montar desde sessionStorage (redirect de Google)
           setSedeId(s.sedeId);
           setServicio(sv);
           if (s.servicioFoto) setServicioFoto(s.servicioFoto);
@@ -252,6 +257,7 @@ export function BookingWizard({
     if (!day || !sedeId) return;
     const consulta = barbero ? [barbero] : sedeBarberos;
     if (!consulta.length) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- limpiar disponibilidad cuando no hay barbero que consultar
       setOcupadosDia({});
       return;
     }
@@ -340,7 +346,7 @@ export function BookingWizard({
   // Estado en vivo de un barbero para el chip del paso 3.
   function estadoBarbero(bId: string): { tipo: "libre" | "silla"; label: string } {
     const rangos = statusHoy[bId] ?? [];
-    const now = Date.now();
+    const now = ahora;
     const activa = rangos.find((o) => new Date(o.inicio).getTime() <= now && now <= new Date(o.fin).getTime());
     if (activa) {
       const f = new Date(activa.fin);

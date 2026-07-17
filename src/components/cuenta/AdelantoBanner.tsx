@@ -10,7 +10,7 @@ type AdelantoBannerProps = {
   finPropuesto: string;
 };
 
-export function AdelantoBanner({ reservaId, inicioPropuesto, finPropuesto }: AdelantoBannerProps) {
+export function AdelantoBanner({ reservaId, inicioPropuesto }: AdelantoBannerProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState<{ success?: boolean; error?: string } | null>(null);

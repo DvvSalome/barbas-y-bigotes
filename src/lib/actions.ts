@@ -190,9 +190,6 @@ export async function subirFotoProducto(formData: FormData): Promise<ActionResul
 
 // --- Armador de combos (F3) ---
 
-// Bebida que suma el combo cuando el admin la incluye (proto §7.1: "+$5.000").
-const BEBIDA_COMBO = 5000;
-
 // id kebab a partir del nombre (sin acentos, solo [a-z0-9-]). El que llama
 // resuelve la colisión con sufijo -2, -3…
 function slugCombo(nombre: string): string {

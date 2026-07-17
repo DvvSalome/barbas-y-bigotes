@@ -12,6 +12,13 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Artefactos generados por next-pwa en el build (no son fuente): en CI no
+    // existen al correr lint (lint va antes del build), pero localmente sí y
+    // ensuciaban el lint con miles de errores de JS compilado.
+    "public/sw.js",
+    "public/workbox-*.js",
+    "public/worker-*.js",
+    "public/fallback-*.js",
   ]),
   {
     // react-three-fiber muta el scene graph imperativamente cada frame
