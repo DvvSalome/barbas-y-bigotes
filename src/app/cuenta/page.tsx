@@ -26,7 +26,6 @@ const ESTADO: Record<string, string> = {
 
 // Poste de barbero: motivo de marca reutilizado del sitio (rojo + hueso).
 const POLE = "repeating-linear-gradient(150deg, var(--accent) 0 6px, var(--ink) 6px 12px)";
-const POLE_MINI = "repeating-linear-gradient(115deg, var(--accent) 0 7px, var(--ink) 7px 14px)";
 
 function fechaLarga(iso: string) {
   // Server component: sin timeZone explícito la hora saldría en UTC (Vercel).
@@ -49,11 +48,9 @@ export default async function CuentaPage() {
       <main className="mx-auto max-w-2xl px-6 py-16">
         {ctx.estado === "anon" && (
           <div className="mx-auto max-w-md text-center">
-            <span
-              aria-hidden
-              className="mx-auto mb-6 block h-1.5 w-10 rounded-full"
-              style={{ background: POLE_MINI }}
-            />
+            {/* Barra sólida: la rayada (POLE_MINI) a 6px de alto se pixelaba en
+                mobile y se veía sucia arriba del kicker. */}
+            <span aria-hidden className="mx-auto mb-6 block h-1 w-12 rounded-full bg-accent" />
             <p className="font-display text-[11px] font-bold uppercase tracking-[0.34em] text-accent-soft">
               Mi cuenta
             </p>
