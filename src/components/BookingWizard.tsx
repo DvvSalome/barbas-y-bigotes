@@ -759,55 +759,59 @@ export function BookingWizard({
                   const est = estadoBarbero(b.id);
                   const chipColor = est.tipo === "silla" ? "#e8675c" : "#34d399";
                   const chipBorder = est.tipo === "silla" ? "rgba(210,63,52,.45)" : "rgba(52,211,153,.4)";
+                  // Misma estructura que la card de /barberos: foto arriba (B/N → color
+                  // al seleccionar/hover), barra accent y cuerpo con rating + chips.
                   return (
                     <button
                       key={b.id}
                       onClick={() => setBarbero(sel ? null : b)}
-                      className="relative aspect-[3/3.6] w-full overflow-hidden rounded-[14px] text-left"
-                      style={{
-                        border: `2px solid ${sel ? "#d23f34" : "rgba(242,237,228,.12)"}`,
-                        background: sel
-                          ? "radial-gradient(circle at 50% 30%, rgba(210,63,52,.22), #151311 72%)"
-                          : "radial-gradient(circle at 50% 30%, #272119, #0e0d0b 76%)",
-                      }}
+                      className={`group flex flex-col overflow-hidden rounded-[18px] border bg-panel text-left transition duration-200 hover:-translate-y-1 ${
+                        sel ? "border-accent" : "border-line hover:border-accent/40"
+                      }`}
                     >
-                      <div
-                        className="absolute inset-0"
-                        style={{
-                          maskImage: "radial-gradient(ellipse 82% 92% at 50% 40%, black 48%, transparent 74%)",
-                          WebkitMaskImage: "radial-gradient(ellipse 82% 92% at 50% 40%, black 48%, transparent 74%)",
-                        }}
-                      >
+                      <div className="relative aspect-[4/4.4] bg-[linear-gradient(165deg,#262019,#0b0a09)]">
                         <Image
                           src={b.fotoUrl || "/barberos/generico.jpg"}
                           alt={b.nombre}
                           fill
                           sizes="(max-width:768px) 50vw, 33vw"
-                          className="object-cover object-top transition-[filter] duration-300"
-                          style={{ filter: sel ? "none" : "grayscale(1) contrast(1.05) brightness(.88)" }}
+                          className={`object-cover object-top transition-[filter] duration-500 group-hover:grayscale-0 ${sel ? "grayscale-0" : "grayscale"}`}
                         />
-                      </div>
-                      <div className="absolute inset-0" style={{ background: "linear-gradient(180deg, rgba(12,11,10,0) 45%, rgba(12,11,10,.82) 100%)" }} />
-                      {b.destacado && (
-                        <span className="absolute left-2 top-2 rounded-full bg-accent px-2 py-0.5 text-[9.5px] font-extrabold uppercase tracking-[0.08em] text-on-accent">★ TOP</span>
-                      )}
-                      {sel && (
-                        <span className="absolute right-2 top-2 flex h-[22px] w-[22px] items-center justify-center rounded-full bg-accent text-[11px] font-extrabold text-on-accent">✓</span>
-                      )}
-                      <div className="absolute inset-x-3 bottom-3">
-                        <div className="font-display text-[21px] font-extrabold uppercase leading-none text-white">{b.nombre}</div>
-                        <div className="mt-1 text-[10px] text-[#c9c2b6]">
-                          ★ {b.rating?.toFixed(1) ?? "—"}
-                          {b.resenas ? ` · ${b.resenas} reseñas` : ""}
-                        </div>
-                        {b.especialidades.length > 0 && (
-                          <div className="mt-0.5 truncate text-[10px] text-[#9c958a]">
-                            {b.especialidades.slice(0, 3).join(" · ")}
-                          </div>
+                        <div className="absolute inset-0" style={{ background: "linear-gradient(180deg,transparent 45%,rgba(0,0,0,.85))" }} />
+                        {b.destacado && (
+                          <span className="absolute left-2.5 top-2.5 rounded-full bg-accent px-2 py-0.5 text-[9.5px] font-extrabold uppercase tracking-[0.08em] text-on-accent">★ TOP</span>
                         )}
+                        {sel && (
+                          <span className="absolute right-2.5 top-2.5 flex h-[22px] w-[22px] items-center justify-center rounded-full bg-accent text-[11px] font-extrabold text-on-accent">✓</span>
+                        )}
+                        <div className="absolute inset-x-3 bottom-2.5">
+                          <div className="font-display text-[21px] font-extrabold uppercase leading-none text-white">{b.nombre}</div>
+                        </div>
+                      </div>
+
+                      <div className="h-0.5 w-full bg-accent/70" />
+
+                      <div className="flex flex-1 flex-col px-3 py-3">
+                        <div className="flex items-center gap-1.5 text-[11.5px]">
+                          <span className="tracking-[1px] text-accent">★★★★★</span>
+                          {b.rating != null && <b className="text-ink">{b.rating.toFixed(1)}</b>}
+                          {b.resenas ? <span className="text-muted">· {b.resenas}</span> : null}
+                        </div>
+
+                        {b.especialidades.length > 0 && (
+                          <>
+                            <div className="mb-1.5 mt-2.5 text-[9px] uppercase tracking-[0.18em] text-muted">Especialista en</div>
+                            <div className="flex flex-wrap gap-1">
+                              {b.especialidades.slice(0, 4).map((e) => (
+                                <span key={e} className="rounded-full border border-line bg-white/[0.04] px-2 py-0.5 text-[10px] text-ink/85">{e}</span>
+                              ))}
+                            </div>
+                          </>
+                        )}
+
                         <span
-                          className="mt-1.5 inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[10px] font-semibold"
-                          style={{ borderColor: chipBorder, background: "rgba(5,4,3,.55)", color: chipColor }}
+                          className="mt-2.5 inline-flex w-fit items-center gap-1.5 rounded-full border px-2 py-0.5 text-[10px] font-semibold"
+                          style={{ borderColor: chipBorder, background: "rgba(5,4,3,.35)", color: chipColor }}
                         >
                           <span className="h-1.5 w-1.5 rounded-full" style={{ background: chipColor }} />
                           {est.label}
