@@ -522,14 +522,18 @@ export async function getDisponibilidad(input: {
   const { desde, hasta } = bogotaDayRange(new Date(input.fechaISO));
   // Ausencia: si el barbero no atiende esa fecha, se bloquea el día completo (todos
   // los slots quedan ocupados → el wizard muestra "sin horarios" y "cualquier
-  // barbero" lo excluye porque nunca cuenta como libre).
+  // barbero" lo excluye porque nunca cuenta como libre). OJO: el fin va 23:59 del
+  // MISMO día, no 00:00 del siguiente: ocupaSlot del wizard compara minutos-del-día
+  // (getHours()*60) y con fin=medianoche el rango colapsaba a [0,0] y no bloqueaba
+  // nada (bug cazado en QA 2026-07-17).
   const { data: aus } = await sb
     .from("barbero_ausencias")
     .select("id")
     .eq("barbero_id", input.barberoId)
     .eq("fecha", bogotaYmd(new Date(input.fechaISO)))
     .limit(1);
-  if (aus && aus.length) return [{ inicio: desde.toISOString(), fin: hasta.toISOString() }];
+  if (aus && aus.length)
+    return [{ inicio: desde.toISOString(), fin: new Date(hasta.getTime() - 60000).toISOString() }];
   const { data } = await sb
     .from("reservas")
     .select("inicio,fin,estado")
@@ -926,7 +930,18 @@ export async function completarReserva(input: {
     }
   }
 
-  // 3) La venta. Los unique index ventas_reserva_unica (reserva) y ventas_idem_unica
+  // 3) Auto-open de caja ANTES de insertar la venta: el panel/cierre de caja solo
+  //    cuenta ventas con creado_en >= abierta_en, y la primera venta del día quedaba
+  //    84ms más vieja que la apertura → caja en $0 y cierre descuadrado (bug cazado
+  //    en QA 2026-07-17). Best-effort: jamás tumba el cobro; si la venta luego falla,
+  //    queda una caja auto-abierta vacía (inofensivo).
+  try {
+    await asegurarCajaAbierta(supabaseAdmin(), input.sede);
+  } catch (e) {
+    errorPublico("completarReserva auto-open caja", e as { message?: string });
+  }
+
+  // 4) La venta. Los unique index ventas_reserva_unica (reserva) y ventas_idem_unica
   //    (venta rápida, 0021) son el backstop anti doble-cobro.
   const { data: venta, error } = await sb
     .from("ventas")
@@ -959,7 +974,7 @@ export async function completarReserva(input: {
   }
   const ventaId = (venta as { id: string }).id;
 
-  // 4) Los ítems. Si fallan, NO puede quedar la venta huérfana: se borra la
+  // 5) Los ítems. Si fallan, NO puede quedar la venta huérfana: se borra la
   //    venta y se revierte la reserva para reintentar el cobro completo.
   if (items.length) {
     const { error: itemsErr } = await sb.from("venta_items").insert(items.map((it) => ({ ...it, venta_id: ventaId })));
@@ -969,15 +984,6 @@ export async function completarReserva(input: {
       await revertirClaim();
       return { ok: false, error: errorPublico("completarReserva items", itemsErr, "No se pudieron registrar los consumos de la venta. Intentá de nuevo.") };
     }
-  }
-
-  // 5) Auto-open de caja: la venta ya quedó registrada (con sus ítems), así que
-  //    esta es la primera venta que abre la caja del día si estaba cerrada. Es
-  //    best-effort: envuelto para que una caja que no abrió JAMÁS tumbe el cobro.
-  try {
-    await asegurarCajaAbierta(supabaseAdmin(), input.sede);
-  } catch (e) {
-    errorPublico("completarReserva auto-open caja", e as { message?: string });
   }
 
   // 6) Efectos secundarios: la venta ya quedó registrada; si algo de esto falla

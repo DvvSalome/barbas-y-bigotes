@@ -374,7 +374,6 @@ export function AgendaList({
           </div>
 
           {historyFor === r.id && historialPanel()}
-          {completeFor === r.id && cobroDe(r)}
         </div>
       </div>
     );
@@ -479,6 +478,17 @@ export function AgendaList({
         </div>
       )}
 
+      {/* Hoja de cobro en un punto de montaje ESTABLE (no dentro del hero/fila):
+          al cobrar, el realtime refresca y la cita salta a "Terminadas"; si el
+          form vivía dentro de la fila se desmontaba y el ¡Cobrado! (con el botón
+          de reseña) desaparecía antes de poder tocarlo (bug cazado en QA). Acá
+          sobrevive al reordenamiento hasta que el barbero toque "Listo". */}
+      {completeFor &&
+        (() => {
+          const r = agenda.find((x) => x.id === completeFor);
+          return r ? cobroDe(r) : null;
+        })()}
+
       {/* Después: resto de la agenda en filas compactas (tap para acciones) */}
       {resto.length > 0 && (
         <div className="mt-6">
@@ -578,7 +588,6 @@ export function AgendaList({
                         )}
                       </div>
                       {historyFor === r.id && historialPanel()}
-                      {completeFor === r.id && cobroDe(r)}
                     </div>
                   )}
                 </div>
