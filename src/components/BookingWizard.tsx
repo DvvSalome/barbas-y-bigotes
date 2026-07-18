@@ -9,7 +9,7 @@ import { supabaseBrowser } from "@/lib/supabase/client";
 import type { Sede, SedeId, Servicio, Barbero, Categoria } from "@/lib/data/types";
 import type { BebidaUpsell } from "@/lib/data/queries";
 import { cop } from "@/lib/format";
-import { DOW, MON, STEP, fmtTime, buildSlots } from "@/lib/slots";
+import { DOW, MON, STEP, OPEN, CLOSE, fmtTime, buildSlots } from "@/lib/slots";
 
 // ------------------------------------------------------------------
 //  WIZARD DE RESERVA — recreación 1:1 del prototipo (Claude Design).
@@ -348,13 +348,20 @@ export function BookingWizard({
   const sinCupos = slots.length > 0 && slots.every((t) => ocupadoSet.has(t) || pasadoSet.has(t));
 
   // Estado en vivo de un barbero para el chip del paso 3.
-  function estadoBarbero(bId: string): { tipo: "libre" | "silla"; label: string } {
+  function estadoBarbero(bId: string): { tipo: "libre" | "silla" | "cerrado"; label: string } {
     const rangos = statusHoy[bId] ?? [];
     const now = ahora;
     const activa = rangos.find((o) => new Date(o.inicio).getTime() <= now && now <= new Date(o.fin).getTime());
     if (activa) {
       const f = new Date(activa.fin);
       return { tipo: "silla", label: `En silla · sale ${fmtTime(f.getHours() * 60 + f.getMinutes())}` };
+    }
+    // Fuera del horario de la barbería (domingo, antes de abrir o después de cerrar)
+    // "Libre ahora" (verde) engaña: no está trabajando. Se muestra neutro.
+    const d = new Date(now);
+    const min = d.getHours() * 60 + d.getMinutes();
+    if (d.getDay() === 0 || min < OPEN || min >= CLOSE) {
+      return { tipo: "cerrado", label: "Disponible para reservar" };
     }
     return { tipo: "libre", label: "Libre ahora" };
   }
@@ -777,12 +784,12 @@ export function BookingWizard({
             <h2 className="font-display text-[26px] font-extrabold uppercase leading-none">Elegí tu barbero</h2>
             <p className="mt-1.5 text-xs text-muted">{sedeNombre} · o seguí sin elegir y te asignamos uno.</p>
             {sedeBarberos.length ? (
-              <div className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-[repeat(auto-fill,minmax(190px,240px))] md:justify-center">
+              <div className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-[repeat(auto-fit,minmax(190px,240px))] md:justify-center">
                 {sedeBarberos.map((b) => {
                   const sel = barbero?.id === b.id;
                   const est = estadoBarbero(b.id);
-                  const chipColor = est.tipo === "silla" ? "#e8675c" : "#34d399";
-                  const chipBorder = est.tipo === "silla" ? "rgba(210,63,52,.45)" : "rgba(52,211,153,.4)";
+                  const chipColor = est.tipo === "silla" ? "#e8675c" : est.tipo === "cerrado" ? "#9c958a" : "#34d399";
+                  const chipBorder = est.tipo === "silla" ? "rgba(210,63,52,.45)" : est.tipo === "cerrado" ? "rgba(242,237,228,.16)" : "rgba(52,211,153,.4)";
                   // Misma estructura que la card de /barberos: foto arriba (B/N → color
                   // al seleccionar/hover), barra accent y cuerpo con rating + chips.
                   return (
