@@ -777,7 +777,7 @@ export function BookingWizard({
             <h2 className="font-display text-[26px] font-extrabold uppercase leading-none">Elegí tu barbero</h2>
             <p className="mt-1.5 text-xs text-muted">{sedeNombre} · o seguí sin elegir y te asignamos uno.</p>
             {sedeBarberos.length ? (
-              <div className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-[repeat(auto-fit,minmax(230px,1fr))]">
+              <div className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-[repeat(auto-fill,minmax(190px,240px))] md:justify-center">
                 {sedeBarberos.map((b) => {
                   const sel = barbero?.id === b.id;
                   const est = estadoBarbero(b.id);
