@@ -152,6 +152,40 @@ export async function actualizarPrecioProducto(id: string, precio: number): Prom
   return { ok: true };
 }
 
+// Ausencias de barbero (MVP F4): el admin marca que un barbero no atiende una
+// fecha. El booking deja de ofrecerlo/permitirlo ese día (guards en getDisponibilidad
+// y createReserva). No toca citas ya creadas de ese día.
+export async function marcarAusencia(input: { barberoId: string; fecha: string; motivo?: string }): Promise<ActionResult> {
+  const sb = await supabaseServerAuth();
+  const denied = await requireAdmin(sb);
+  if (denied) return { ok: false, error: denied };
+  if (!input.barberoId || !/^\d{4}-\d{2}-\d{2}$/.test(input.fecha)) return { ok: false, error: "Datos inválidos" };
+  if (input.fecha < bogotaYmd()) return { ok: false, error: "No se puede marcar una fecha pasada." };
+  const { error } = await sb.from("barbero_ausencias").insert({
+    barbero_id: input.barberoId,
+    fecha: input.fecha,
+    motivo: (input.motivo ?? "").trim() || null,
+  });
+  if (error) {
+    if (error.code === "23505") return { ok: false, error: "Ese barbero ya está marcado ausente esa fecha." };
+    return { ok: false, error: errorPublico("marcarAusencia", error) };
+  }
+  revalidatePath("/admin/equipo");
+  revalidatePath("/reservar");
+  return { ok: true };
+}
+
+export async function quitarAusencia(id: string): Promise<ActionResult> {
+  const sb = await supabaseServerAuth();
+  const denied = await requireAdmin(sb);
+  if (denied) return { ok: false, error: denied };
+  const { error } = await sb.from("barbero_ausencias").delete().eq("id", id);
+  if (error) return { ok: false, error: errorPublico("quitarAusencia", error) };
+  revalidatePath("/admin/equipo");
+  revalidatePath("/reservar");
+  return { ok: true };
+}
+
 // Marca/desmarca un producto para el paso "¿le sumás una bebida?" del wizard.
 // Config por sede: cada fila de productos es de una sede, así el dueño decide
 // qué bebidas ofrece en cada una (migración 0028).
@@ -408,6 +442,15 @@ export async function createReserva(input: {
   // (El wizard normal siempre manda barbero; solo el path del asistente IA lo omitía.)
   if (!input.barberoId) return { ok: false, error: "Elegí un barbero para reservar." };
   const barberoId = input.barberoId;
+  // Guard de ausencia (autoritativo): el admin marcó que el barbero no atiende esa
+  // fecha. Se bloquea acá aunque la UI se saltara (endpoint POST directo).
+  const { data: aus } = await sb
+    .from("barbero_ausencias")
+    .select("id")
+    .eq("barbero_id", barberoId)
+    .eq("fecha", bogotaYmd(inicio))
+    .limit(1);
+  if (aus && aus.length) return { ok: false, error: "Ese barbero no atiende ese día. Elegí otra fecha u otro barbero." };
   // Pre-chequeo de solape (UX: evita crear el cliente si el cupo ya está tomado).
   // El EXCLUDE constraint en la DB es la garantía real contra carreras concurrentes.
   const { data: clash } = await sb
@@ -477,6 +520,16 @@ export async function getDisponibilidad(input: {
   // El rango es el del día elegido EN BOGOTÁ: el server corre en UTC y con
   // setHours(0,0,0,0) la ventana quedaba corrida 5 horas.
   const { desde, hasta } = bogotaDayRange(new Date(input.fechaISO));
+  // Ausencia: si el barbero no atiende esa fecha, se bloquea el día completo (todos
+  // los slots quedan ocupados → el wizard muestra "sin horarios" y "cualquier
+  // barbero" lo excluye porque nunca cuenta como libre).
+  const { data: aus } = await sb
+    .from("barbero_ausencias")
+    .select("id")
+    .eq("barbero_id", input.barberoId)
+    .eq("fecha", bogotaYmd(new Date(input.fechaISO)))
+    .limit(1);
+  if (aus && aus.length) return [{ inicio: desde.toISOString(), fin: hasta.toISOString() }];
   const { data } = await sb
     .from("reservas")
     .select("inicio,fin,estado")

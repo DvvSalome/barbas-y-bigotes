@@ -7,7 +7,7 @@ import { categorias } from "@/lib/data/seed";
 import { createReserva, getDisponibilidad } from "@/lib/actions";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import type { Sede, SedeId, Servicio, Barbero, Categoria } from "@/lib/data/types";
-import type { BebidaUpsell } from "@/lib/data/queries";
+import type { BebidaUpsell, Ausencia } from "@/lib/data/queries";
 import { cop } from "@/lib/format";
 import { DOW, MON, STEP, OPEN, CLOSE, fmtTime, buildSlots } from "@/lib/slots";
 
@@ -113,6 +113,7 @@ export function BookingWizard({
   barberos,
   servicios,
   bebidas,
+  ausencias,
   initialBarberoId,
   initialSedeId,
 }: {
@@ -120,6 +121,7 @@ export function BookingWizard({
   barberos: Barbero[];
   servicios: Servicio[];
   bebidas: BebidaUpsell[];
+  ausencias: Ausencia[];
   initialBarberoId?: string;
   initialSedeId?: SedeId;
 }) {
@@ -182,6 +184,13 @@ export function BookingWizard({
     () => bebidas.filter((b) => b.sede === sedeId),
     [bebidas, sedeId],
   );
+  // Barberos ausentes en el día de referencia (el elegido, o hoy si aún no hay).
+  // Se compara por YYYY-MM-DD local, igual que la fecha que guarda el admin.
+  const ausenteSet = useMemo(() => {
+    const ref = day ?? new Date(ahora);
+    const ymd = `${ref.getFullYear()}-${String(ref.getMonth() + 1).padStart(2, "0")}-${String(ref.getDate()).padStart(2, "0")}`;
+    return new Set(ausencias.filter((a) => a.fecha === ymd).map((a) => a.barberoId));
+  }, [ausencias, day, ahora]);
 
   // Días disponibles: próximos días hábiles (domingos cerrado). Estable entre renders.
   const [dias] = useState<Date[]>(() => {
@@ -787,9 +796,12 @@ export function BookingWizard({
               <div className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-[repeat(auto-fit,minmax(190px,240px))] md:justify-center">
                 {sedeBarberos.map((b) => {
                   const sel = barbero?.id === b.id;
+                  const ausente = ausenteSet.has(b.id);
                   const est = estadoBarbero(b.id);
-                  const chipColor = est.tipo === "silla" ? "#e8675c" : est.tipo === "cerrado" ? "#9c958a" : "#34d399";
-                  const chipBorder = est.tipo === "silla" ? "rgba(210,63,52,.45)" : est.tipo === "cerrado" ? "rgba(242,237,228,.16)" : "rgba(52,211,153,.4)";
+                  // Ausente pisa el estado en vivo: no está trabajando ese día.
+                  const chipColor = ausente ? "#fbbf24" : est.tipo === "silla" ? "#e8675c" : est.tipo === "cerrado" ? "#9c958a" : "#34d399";
+                  const chipBorder = ausente ? "rgba(251,191,36,.4)" : est.tipo === "silla" ? "rgba(210,63,52,.45)" : est.tipo === "cerrado" ? "rgba(242,237,228,.16)" : "rgba(52,211,153,.4)";
+                  const estadoLabel = ausente ? (day ? "Ausente ese día" : "Ausente hoy") : est.label;
                   // Misma estructura que la card de /barberos: foto arriba (B/N → color
                   // al seleccionar/hover), barra accent y cuerpo con rating + chips.
                   return (
@@ -845,7 +857,7 @@ export function BookingWizard({
                           style={{ borderColor: chipBorder, background: "rgba(5,4,3,.35)", color: chipColor }}
                         >
                           <span className="h-1.5 w-1.5 rounded-full" style={{ background: chipColor }} />
-                          {est.label}
+                          {estadoLabel}
                         </span>
                       </div>
                     </button>

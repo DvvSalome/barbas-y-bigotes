@@ -145,6 +145,24 @@ export async function getProductos(): Promise<Producto[]> {
   }));
 }
 
+export type Ausencia = { id: string; barberoId: string; fecha: string };
+
+// Ausencias de hoy en adelante (barbero + fecha). Lectura pública: el wizard filtra
+// al barbero ausente y el admin lista/quita. `fecha` es YYYY-MM-DD (date de Postgres).
+export async function getAusencias(): Promise<Ausencia[]> {
+  const sb = supabaseServer();
+  const { data } = await sb
+    .from("barbero_ausencias")
+    .select("id,barbero_id,fecha")
+    .gte("fecha", bogotaYmd())
+    .order("fecha");
+  return (data ?? []).map((a: Record<string, unknown>) => ({
+    id: a.id as string,
+    barberoId: a.barbero_id as string,
+    fecha: a.fecha as string,
+  }));
+}
+
 export type BebidaUpsell = { id: string; nombre: string; precio: number; sede: SedeId };
 
 // Bebidas del paso "¿le sumás una bebida?" del wizard: productos activos marcados
