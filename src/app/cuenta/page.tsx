@@ -106,7 +106,9 @@ export default async function CuentaPage() {
           </div>
         )}
 
-        {ctx.estado === "cliente" && <Portal clienteId={ctx.clienteId ?? ""} />}
+        {ctx.estado === "cliente" && (
+          <Portal clienteId={ctx.clienteId ?? ""} nombre={ctx.nombre} avatarUrl={ctx.avatarUrl} />
+        )}
       </main>
       <SiteFooter />
       {/* Widget de contacto: en el proto vive en home y Mi cuenta (§2.11). */}
@@ -115,7 +117,7 @@ export default async function CuentaPage() {
   );
 }
 
-async function Portal({ clienteId }: { clienteId: string }) {
+async function Portal({ clienteId, nombre, avatarUrl }: { clienteId: string; nombre?: string; avatarUrl?: string | null }) {
   const [{ proximas, pasadas, tarjeta, cola }, sinCalificar] = await Promise.all([
     getCuenta(clienteId),
     getReservaSinCalificar(clienteId),
@@ -132,12 +134,24 @@ async function Portal({ clienteId }: { clienteId: string }) {
       {/* Encabezado */}
       <div className="mb-9 flex items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <span aria-hidden className="h-8 w-2 rounded" style={{ background: POLE }} />
+          {avatarUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element -- foto remota de Google; next/image exigiría configurar el dominio.
+            <img
+              src={avatarUrl}
+              alt=""
+              referrerPolicy="no-referrer"
+              className="h-12 w-12 shrink-0 rounded-full border border-line object-cover"
+            />
+          ) : (
+            <span aria-hidden className="h-8 w-2 rounded" style={{ background: POLE }} />
+          )}
           <div>
             <p className="font-display text-[11px] font-bold uppercase tracking-[0.3em] text-accent-soft">
               Mi cuenta
             </p>
-            <h1 className="font-display text-3xl font-extrabold uppercase leading-none">Hola de nuevo</h1>
+            <h1 className="font-display text-3xl font-extrabold uppercase leading-none">
+              Hola{nombre ? `, ${nombre.split(" ")[0]}` : " de nuevo"}
+            </h1>
           </div>
         </div>
         <ClienteLogout />

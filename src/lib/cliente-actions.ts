@@ -8,7 +8,13 @@ import { errorPublico } from "@/lib/errors";
 import { pushACliente } from "@/lib/push";
 import { fechaHoraBogota } from "@/lib/format";
 
-export type CuentaContext = { estado: "anon" | "staff" | "cliente"; clienteId?: string };
+export type CuentaContext = {
+  estado: "anon" | "staff" | "cliente";
+  clienteId?: string;
+  nombre?: string;
+  /** Foto de la cuenta de Google (user_metadata.avatar_url/picture); null si no hay. */
+  avatarUrl?: string | null;
+};
 
 // Devuelve el cliente_id de un usuario logueado NO-staff, creando su ficha si no existe.
 // CLAVE DE SEGURIDAD: el enlace es por auth_id (identidad VERIFICADA de Google), nunca por
@@ -48,8 +54,9 @@ export async function ensureCliente(): Promise<CuentaContext> {
   const email = (user.email ?? "").trim().toLowerCase();
   const meta = (user.user_metadata ?? {}) as Record<string, unknown>;
   const nombre = (meta.full_name as string) || (meta.name as string) || (email ? email.split("@")[0] : "Cliente");
+  const avatarUrl = (meta.avatar_url as string) || (meta.picture as string) || null;
   const id = await clienteIdForUser(admin, user.id, email, nombre);
-  return { estado: "cliente", clienteId: id ?? undefined };
+  return { estado: "cliente", clienteId: id ?? undefined, nombre, avatarUrl };
 }
 
 export async function responderPropuestaAdelanto(

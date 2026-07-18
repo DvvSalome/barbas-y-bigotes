@@ -147,6 +147,10 @@ export function BookingWizard({
   const [bebidaIncluida, setBebidaIncluida] = useState(false); // combo → sin cargo
   const [upsellMode, setUpsellMode] = useState<"extra" | "combo" | null>(null);
   const [upsellSeen, setUpsellSeen] = useState(false);
+  // Nudge de Google antes de confirmar como invitado (una vez por flujo): sin
+  // cuenta no hay seguimiento (cita en la fila, tarjeta de cortes, recordatorios).
+  const [loginNudge, setLoginNudge] = useState(false);
+  const [nudgeSeen, setNudgeSeen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   // Sesión Google del cliente: si está logueado, la reserva queda atada a su
@@ -405,6 +409,12 @@ export function BookingWizard({
       return;
     }
     if (step === "datos") {
+      // Invitado: antes de confirmar, recomendar una vez entrar con Google (con
+      // cuenta hay seguimiento de la cita y tarjeta de cortes; como invitado no).
+      if (!sesion && !nudgeSeen) {
+        setLoginNudge(true);
+        return;
+      }
       confirmar();
       return;
     }
@@ -1068,6 +1078,39 @@ export function BookingWizard({
           {step === "datos" ? (saving ? "Confirmando…" : "Confirmar") : "Continuar"}
         </button>
       </footer>
+
+      {/* Nudge de Google antes de confirmar como invitado (bottom sheet) */}
+      {loginNudge && (
+        <div className="fixed inset-0 z-[10] flex flex-col justify-end" style={{ background: "rgba(5,4,3,.7)", backdropFilter: "blur(2px)" }} onClick={() => setLoginNudge(false)}>
+          <div className="w-full px-0" onClick={(e) => e.stopPropagation()}>
+            <div className="rounded-t-[22px] border-t border-line px-5 pb-[calc(env(safe-area-inset-bottom)+28px)] pt-5 md:mx-auto md:max-w-md md:rounded-[22px] md:border" style={{ background: "#0c0b0a" }}>
+              <div className="mx-auto mb-4 h-1 w-[38px] rounded-full md:hidden" style={{ background: "rgba(242,237,228,.18)" }} />
+              <h3 className="text-center font-display text-[23px] font-extrabold uppercase leading-tight">¿Querés seguirle el rastro a tu cita?</h3>
+              <p className="mx-auto mt-2 max-w-[34ch] text-center text-[13px] leading-relaxed text-muted">
+                Si entrás con Google, la reserva queda en <b className="text-ink">Mi cuenta</b>: ves tu lugar en la fila, te avisamos si se libera un cupo antes y sumás en tu <b className="text-ink">tarjeta de cortes</b>. Como invitado no hay forma de hacer seguimiento.
+              </p>
+              <button
+                type="button"
+                onClick={loginGoogle}
+                className="mt-5 flex w-full items-center justify-center gap-3 rounded-xl bg-ink py-3 text-sm font-semibold text-bg transition hover:bg-white"
+              >
+                <GoogleG /> Continuar con Google
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setNudgeSeen(true);
+                  setLoginNudge(false);
+                  confirmar();
+                }}
+                className="mt-2.5 min-h-[46px] w-full rounded-xl border border-line text-[13px] font-semibold text-muted transition hover:text-ink"
+              >
+                Reservar como invitado
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Upsell de bebida (bottom sheet) */}
       {upsellMode && (

@@ -28,9 +28,12 @@ export default async function BarberoLayout({
           <Link href="/" aria-label="Barbas & Bigotes">
             <Image src="/brand/logo-lockup.png" alt="Barbas & Bigotes" width={1024} height={348} className="logo-staff h-10 w-auto" />
           </Link>
-          <div className="flex items-center gap-3.5">
-            <span className="text-xs uppercase tracking-[0.3em] text-accent">App del barbero</span>
-            <PerfilMenu nombre={staff.nombre || "Barbero"} salidaHref="/login" />
+          <div className="flex items-center gap-2.5">
+            <span className="hidden text-xs uppercase tracking-[0.3em] text-accent sm:inline">App del barbero</span>
+            {staff.nombre && (
+              <span className="text-sm font-semibold text-ink">{staff.nombre.split(" ")[0]}</span>
+            )}
+            <PerfilMenu nombre={staff.nombre || "Barbero"} fotoUrl={staff.fotoUrl} salidaHref="/login" />
           </div>
         </div>
       </header>

@@ -13,12 +13,15 @@ import { LogoutIcon } from "@/components/icons";
 export function PerfilMenu({
   nombre,
   detalle,
+  fotoUrl,
   salidaHref = "/login",
 }: {
   /** Nombre a mostrar (define la inicial del avatar). */
   nombre: string;
   /** Línea de identidad arriba del menú (ej. email). Sin detalle se usa el nombre. */
   detalle?: string;
+  /** Foto del avatar (ej. barbero). Sin foto se usa la inicial. */
+  fotoUrl?: string | null;
   /** A dónde ir tras cerrar sesión (staff: /login, el gateway unificado). */
   salidaHref?: string;
 }) {
@@ -80,11 +83,16 @@ export function PerfilMenu({
         aria-label={`Menú de ${nombre}`}
         title={detalle ?? nombre}
         onClick={() => setOpen((v) => !v)}
-        className={`grid h-[30px] w-[30px] place-items-center rounded-full border text-[11px] font-bold transition ${foco} ${
+        className={`grid h-[30px] w-[30px] place-items-center overflow-hidden rounded-full border text-[11px] font-bold transition ${foco} ${
           open ? "border-accent/60 bg-elevated text-ink" : "border-line bg-elevated text-ink hover:border-accent/40"
         }`}
       >
-        {inicial}
+        {fotoUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element -- avatar remoto (Google/Storage); next/image exigiría configurar el dominio.
+          <img src={fotoUrl} alt="" className="h-full w-full object-cover" />
+        ) : (
+          inicial
+        )}
       </button>
 
       {open && (
