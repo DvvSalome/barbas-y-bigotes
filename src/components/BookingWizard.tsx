@@ -449,8 +449,22 @@ export function BookingWizard({
     } catch {}
     await supabaseBrowser().auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: `${window.location.origin}/auth/callback?next=/reservar` },
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback?next=/reservar`,
+        // Forzar el selector de cuenta: si no, Google reusa la última sesión y no
+        // deja elegir/​cambiar de cuenta (importante para no reservar con la equivocada).
+        queryParams: { prompt: "select_account" },
+      },
     });
+  }
+
+  // "¿No sos vos?": cierra la sesión y vuelve al formulario de invitado. Desde ahí
+  // se puede entrar con OTRA cuenta de Google (el botón fuerza el selector) o seguir
+  // como invitado. Reseteo el nudge para que vuelva a ofrecer login si sigue de invitado.
+  async function cambiarCuenta() {
+    await supabaseBrowser().auth.signOut();
+    setSesion(null);
+    setNudgeSeen(false);
   }
 
   async function confirmar() {
@@ -972,12 +986,19 @@ export function BookingWizard({
                 {/* Cliente logueado: la reserva queda en su cuenta, sin re-tipear datos. */}
                 <div className="flex items-center gap-3 rounded-xl border border-line px-3.5 py-3" style={{ background: "#151311" }}>
                   <GoogleG />
-                  <div className="min-w-0">
+                  <div className="min-w-0 flex-1">
                     <div className="truncate text-sm font-semibold text-ink">
                       Reservando como {sesion.nombre || sesion.email}
                     </div>
                     <div className="truncate text-xs text-muted">{sesion.email} · la confirmación llega acá</div>
                   </div>
+                  <button
+                    type="button"
+                    onClick={cambiarCuenta}
+                    className="shrink-0 whitespace-nowrap text-xs font-semibold text-accent-soft underline decoration-line underline-offset-4 transition hover:text-accent"
+                  >
+                    ¿No sos vos?
+                  </button>
                 </div>
                 {!sesion.nombre && (
                   <input

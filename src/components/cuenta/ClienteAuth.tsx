@@ -17,7 +17,12 @@ export function ClienteLoginButton() {
     const sb = supabaseBrowser();
     await sb.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: `${window.location.origin}/auth/callback?next=/cuenta` },
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback?next=/cuenta`,
+        // Selector de cuenta siempre: sin esto Google reusa la última sesión y no
+        // deja entrar con otra cuenta tras cerrar sesión.
+        queryParams: { prompt: "select_account" },
+      },
     });
   }
   return (
