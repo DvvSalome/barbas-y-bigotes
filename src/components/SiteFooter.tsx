@@ -146,6 +146,18 @@ export function SiteFooter({ conCtaMovil = false }: { conCtaMovil?: boolean }) {
           </Link>
         </nav>
 
+        {/* Legales: exigidas por Google (consentimiento OAuth) y por la Ley 1581.
+            Visibles en mobile también: Google revisa que sean alcanzables. */}
+        <nav className="mt-4 flex items-center justify-center gap-3 text-[12px] text-muted">
+          <Link href="/privacidad" className="transition hover:text-accent-soft">
+            Privacidad
+          </Link>
+          <span aria-hidden className="h-[3px] w-[3px] rounded-full bg-muted/60" />
+          <Link href="/terminos" className="transition hover:text-accent-soft">
+            Términos
+          </Link>
+        </nav>
+
         {/* Pill de horario */}
         <div className="mt-6 inline-flex items-center gap-2.5 rounded-full border border-[rgba(242,237,228,0.1)] bg-[rgba(21,19,17,0.5)] px-5 py-[11px] text-[12.5px]">
           <span className="text-muted">Lun – Sáb</span>
