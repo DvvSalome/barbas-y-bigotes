@@ -996,104 +996,183 @@ export function BookingWizard({
 
         {/* ---------- Paso 5 · Datos ---------- */}
         {step === "datos" && servicio && day && slot !== null && (
-          <div>
+          // Ancho tope + centrado: a pantalla completa los campos se estiraban a
+          // todo lo ancho y el paso se veía vacío. En desktop va a dos columnas
+          // (formulario | resumen), en mobile apilado.
+          <div className="mx-auto w-full max-w-[980px]">
             <h2 className="font-display text-[26px] font-extrabold uppercase leading-none">Tus datos</h2>
-            <p className="mt-1.5 text-xs text-muted">Te llega la confirmación al correo.</p>
+            <p className="mt-1.5 text-xs text-muted">Último paso: te llega la confirmación al correo.</p>
 
-            {sesion ? (
-              <div className="mt-5 flex flex-col gap-2">
-                {/* Cliente logueado: la reserva queda en su cuenta, sin re-tipear datos. */}
-                <div className="flex items-center gap-3 rounded-xl border border-line px-3.5 py-3" style={{ background: "#151311" }}>
-                  <GoogleG />
-                  <div className="min-w-0 flex-1">
-                    <div className="truncate text-sm font-semibold text-ink">
-                      Reservando como {sesion.nombre || sesion.email}
+            <div className="mt-6 grid items-start gap-5 md:grid-cols-[minmax(0,1fr)_340px] md:gap-7">
+              {/* ---- Columna izquierda: identificación ---- */}
+              <div>
+                {sesion ? (
+                  <div className="flex flex-col gap-3">
+                    {/* Cliente logueado: la reserva queda en su cuenta, sin re-tipear datos. */}
+                    <div className="rounded-[18px] border border-accent/35 bg-panel p-4">
+                      <div className="flex items-center gap-3">
+                        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-ink">
+                          <GoogleG />
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <div className="truncate text-sm font-semibold text-ink">
+                            {sesion.nombre || sesion.email}
+                          </div>
+                          <div className="truncate text-xs text-muted">{sesion.email}</div>
+                        </div>
+                      </div>
+                      <div className="mt-3 flex items-center justify-between gap-3 border-t border-line pt-3">
+                        <span className="text-[11.5px] text-muted">La confirmación llega a este correo.</span>
+                        <button
+                          type="button"
+                          onClick={cambiarCuenta}
+                          className="shrink-0 whitespace-nowrap text-xs font-semibold text-accent-soft underline decoration-line underline-offset-4 transition hover:text-accent"
+                        >
+                          ¿No sos vos?
+                        </button>
+                      </div>
                     </div>
-                    <div className="truncate text-xs text-muted">{sesion.email} · la confirmación llega acá</div>
+                    {!sesion.nombre && (
+                      <label className="block">
+                        <span className="mb-1.5 block text-[10.5px] font-bold uppercase tracking-[0.16em] text-muted">
+                          Tu nombre
+                        </span>
+                        <input
+                          value={nombre}
+                          onChange={(e) => setNombre(e.target.value)}
+                          placeholder="Como querés que te llamemos"
+                          className="w-full rounded-xl border border-line bg-panel px-3.5 py-3 text-sm text-ink placeholder:text-muted/70 focus:border-accent focus:outline-none"
+                        />
+                      </label>
+                    )}
                   </div>
-                  <button
-                    type="button"
-                    onClick={cambiarCuenta}
-                    className="shrink-0 whitespace-nowrap text-xs font-semibold text-accent-soft underline decoration-line underline-offset-4 transition hover:text-accent"
-                  >
-                    ¿No sos vos?
-                  </button>
-                </div>
-                {!sesion.nombre && (
-                  <input
-                    value={nombre}
-                    onChange={(e) => setNombre(e.target.value)}
-                    placeholder="Tu nombre"
-                    className="w-full rounded-xl border border-line px-3.5 py-3 text-sm text-ink placeholder:text-muted focus:border-accent focus:outline-none"
-                    style={{ background: "#151311" }}
-                  />
-                )}
-              </div>
-            ) : (
-              <div className="mt-5 flex flex-col gap-2">
-                <input
-                  value={nombre}
-                  onChange={(e) => setNombre(e.target.value)}
-                  placeholder="Tu nombre"
-                  className="w-full rounded-xl border border-line px-3.5 py-3 text-sm text-ink placeholder:text-muted focus:border-accent focus:outline-none"
-                  style={{ background: "#151311" }}
-                />
-                <input
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  type="email"
-                  inputMode="email"
-                  placeholder="Correo (te llega la confirmación)"
-                  aria-invalid={email.trim().length > 0 && !emailValido}
-                  className="w-full rounded-xl border border-line px-3.5 py-3 text-sm text-ink placeholder:text-muted focus:border-accent focus:outline-none"
-                  style={{ background: "#151311" }}
-                />
-                {email.trim().length > 0 && !emailValido && (
-                  <p className="px-1 text-[11.5px] text-accent-soft">Ingresá un correo válido (ej. nombre@correo.com).</p>
-                )}
-
-                {/* Como invitado (arriba) o con la cuenta Google del cliente. Si ya
-                    empezó a escribir como invitado, el bloque de Google se achica a
-                    una línea para que no parezca un paso pendiente. */}
-                {nombre.trim().length > 0 || email.trim().length > 0 ? (
-                  <button
-                    type="button"
-                    onClick={loginGoogle}
-                    className="py-1 text-center text-[11.5px] text-muted underline decoration-line underline-offset-4 transition hover:text-ink"
-                  >
-                    ¿Preferís continuar con Google? Queda en tu cuenta y sumás tarjeta
-                  </button>
                 ) : (
-                  <>
-                    <div className="flex items-center gap-3 py-1" aria-hidden>
-                      <span className="h-px flex-1 bg-line" />
-                      <span className="font-display text-[10px] font-bold uppercase tracking-[0.24em] text-muted">o</span>
-                      <span className="h-px flex-1 bg-line" />
-                    </div>
-                    <button
-                      type="button"
-                      onClick={loginGoogle}
-                      className="flex w-full items-center justify-center gap-3 rounded-xl bg-ink py-3 text-sm font-semibold text-bg transition hover:bg-white"
-                    >
-                      <GoogleG /> Continuar con Google
-                    </button>
-                    <p className="px-1 text-center text-[11px] text-muted">
-                      Con tu cuenta la reserva queda en Mi cuenta y sumás en tu tarjeta de cortes.
-                    </p>
-                  </>
+                  <div className="flex flex-col gap-3">
+                    <label className="block">
+                      <span className="mb-1.5 block text-[10.5px] font-bold uppercase tracking-[0.16em] text-muted">
+                        Tu nombre
+                      </span>
+                      <input
+                        value={nombre}
+                        onChange={(e) => setNombre(e.target.value)}
+                        placeholder="Como querés que te llamemos"
+                        className="w-full rounded-xl border border-line bg-panel px-3.5 py-3 text-sm text-ink placeholder:text-muted/70 focus:border-accent focus:outline-none"
+                      />
+                    </label>
+                    <label className="block">
+                      <span className="mb-1.5 block text-[10.5px] font-bold uppercase tracking-[0.16em] text-muted">
+                        Tu correo
+                      </span>
+                      <input
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        type="email"
+                        inputMode="email"
+                        placeholder="nombre@correo.com"
+                        aria-invalid={email.trim().length > 0 && !emailValido}
+                        className={`w-full rounded-xl border bg-panel px-3.5 py-3 text-sm text-ink placeholder:text-muted/70 focus:outline-none ${
+                          email.trim().length > 0 && !emailValido
+                            ? "border-accent/60 focus:border-accent"
+                            : "border-line focus:border-accent"
+                        }`}
+                      />
+                      <span className="mt-1.5 block text-[11px] text-muted">
+                        {email.trim().length > 0 && !emailValido
+                          ? "Revisá el correo: falta el @ o el dominio."
+                          : "Ahí te mandamos la confirmación y el recordatorio."}
+                      </span>
+                    </label>
+
+                    {/* Como invitado (arriba) o con la cuenta Google del cliente. Si ya
+                        empezó a escribir como invitado, el bloque de Google se achica a
+                        una línea para que no parezca un paso pendiente. */}
+                    {nombre.trim().length > 0 || email.trim().length > 0 ? (
+                      <button
+                        type="button"
+                        onClick={loginGoogle}
+                        className="py-1 text-center text-[11.5px] text-muted underline decoration-line underline-offset-4 transition hover:text-ink"
+                      >
+                        ¿Preferís continuar con Google? Queda en tu cuenta y sumás tarjeta
+                      </button>
+                    ) : (
+                      <>
+                        <div className="flex items-center gap-3 py-0.5" aria-hidden>
+                          <span className="h-px flex-1 bg-line" />
+                          <span className="font-display text-[10px] font-bold uppercase tracking-[0.24em] text-muted">o</span>
+                          <span className="h-px flex-1 bg-line" />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={loginGoogle}
+                          className="flex w-full items-center justify-center gap-3 rounded-xl bg-ink py-3.5 text-sm font-semibold text-bg transition hover:bg-white"
+                        >
+                          <GoogleG /> Continuar con Google
+                        </button>
+                        <p className="text-center text-[11px] leading-relaxed text-muted">
+                          Con tu cuenta la reserva queda en Mi cuenta y sumás en tu tarjeta de cortes.
+                        </p>
+                      </>
+                    )}
+                  </div>
+                )}
+
+                {errorMsg && (
+                  <div className="mt-4 rounded-xl border border-accent/40 bg-accent/10 px-4 py-3 text-sm text-accent-soft">
+                    {errorMsg}
+                  </div>
                 )}
               </div>
-            )}
 
-            <div className="mt-4 rounded-2xl border border-line bg-panel px-4 py-3.5">
-              <div className="mb-2 text-[10px] font-bold uppercase tracking-[0.2em] text-accent-soft">Tu reserva</div>
-              <ResumenRow k="Sede" v={sedeNombre} />
-              <ResumenRow k="Servicio" v={`${servicio.nombre}${bebidaTxt}`} />
-              <ResumenRow k="Barbero" v={barbero?.nombre ?? "Cualquier barbero"} />
-              <ResumenRow k="Cuándo" v={`${diaLabel(day)}, ${fmtTime(slot)}`} />
+              {/* ---- Columna derecha: resumen de la reserva ---- */}
+              <aside className="overflow-hidden rounded-[18px] border border-line bg-panel">
+                <div className="border-b border-line/70 px-4 py-3">
+                  <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-accent-soft">Tu reserva</div>
+                </div>
+
+                {/* Barbero con foto: el mismo anclaje visual de los otros pasos. */}
+                <div className="flex items-center gap-3 px-4 py-3.5">
+                  {barbero?.fotoUrl ? (
+                    <Image
+                      src={barbero.fotoUrl}
+                      alt={barbero.nombre}
+                      width={48}
+                      height={48}
+                      className="h-12 w-12 shrink-0 rounded-full object-cover object-top ring-2 ring-accent/40"
+                    />
+                  ) : (
+                    <span className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-elevated font-display text-lg font-bold text-accent-soft ring-2 ring-line">
+                      ✂
+                    </span>
+                  )}
+                  <div className="min-w-0">
+                    <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted">Barbero</div>
+                    <div className="truncate font-display text-[19px] font-bold uppercase leading-tight text-ink">
+                      {barbero?.nombre ?? "Cualquier barbero"}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-2.5 border-t border-line/70 px-4 py-3.5">
+                  <ResumenRow k="Servicio" v={`${servicio.nombre}${bebidaTxt}`} />
+                  <ResumenRow k="Sede" v={sedeNombre} />
+                  <ResumenRow k="Cuándo" v={`${diaLabel(day)}, ${fmtTime(slot)}`} />
+                </div>
+
+                {/* Total, alineado con lo que muestra el footer sticky. */}
+                {total !== null && (
+                  <div className="flex items-baseline justify-between gap-3 border-t border-line bg-elevated/40 px-4 py-3.5">
+                    <span className="text-[11px] font-bold uppercase tracking-[0.16em] text-muted">Total</span>
+                    <span className="font-display text-[26px] font-extrabold leading-none tabular-nums text-ink">
+                      {cop(total)}
+                    </span>
+                  </div>
+                )}
+
+                <p className="px-4 pb-4 pt-3 text-[11px] leading-relaxed text-muted">
+                  Se paga en la barbería. Podés cancelar o reagendar hasta 2 horas antes.
+                </p>
+              </aside>
             </div>
-
-            {errorMsg && <div className="mt-4 rounded-xl border border-accent/40 bg-accent/10 px-4 py-3 text-sm text-accent-soft">{errorMsg}</div>}
           </div>
         )}
       </main>
