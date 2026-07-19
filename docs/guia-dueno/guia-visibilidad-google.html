@@ -1,0 +1,506 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<title>Guía de visibilidad en Google · Barbas &amp; Bigotes | FourG Solutions</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,600&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" />
+<style>
+:root {
+  --paper: #fcfaf6; --paper-2: #f6f1e7;
+  --ink: #2a2622; --ink-2: #4a4239; --muted: #8a8073;
+  --gold: #b8923f; --gold-soft: #c9a85a;
+  --hairline: rgba(184, 146, 63, 0.22);
+  --hairline-2: rgba(74, 66, 57, 0.10);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+html, body { background: #ede4d2; color: var(--ink); font-family: 'Inter', system-ui, sans-serif; font-size: 13.5px; line-height: 1.65; }
+.page { width: 210mm; min-height: 297mm; padding: 18mm 18mm 16mm; margin: 14px auto; position: relative; display: flex; flex-direction: column; background: var(--paper); box-shadow: 0 6px 24px rgba(0,0,0,0.08); page-break-after: always; }
+.page:last-of-type { page-break-after: auto; }
+.doc-header { display: grid; grid-template-columns: auto 1fr auto; gap: 16px; align-items: center; padding-bottom: 8mm; border-bottom: 1px solid var(--hairline); }
+.doc-header .brand { display: flex; align-items: center; gap: 12px; }
+.doc-header .brand-text { display: flex; flex-direction: column; line-height: 1.15; }
+.doc-header .brand-name { font-family: 'Cormorant Garamond', serif; font-size: 17px; font-weight: 600; color: var(--ink); letter-spacing: -0.01em; }
+.doc-header .brand-tag { font-family: 'Inter', sans-serif; font-size: 8.5px; letter-spacing: 0.34em; text-transform: uppercase; color: var(--gold); font-weight: 500; margin-top: 3px; }
+.doc-header .meta { text-align: right; display: flex; flex-direction: column; gap: 3px; }
+.doc-header .meta .num { font-family: 'Cormorant Garamond', serif; font-size: 14px; font-weight: 600; font-style: italic; color: var(--gold); }
+.doc-header .meta .date { font-family: 'Inter', sans-serif; font-size: 8.5px; letter-spacing: 0.32em; text-transform: uppercase; color: var(--muted); font-weight: 500; }
+.hero { padding: 8mm 0 6mm; border-bottom: 1px solid var(--hairline); }
+.eyebrow { font-family: 'Inter', sans-serif; font-weight: 500; font-size: 10px; letter-spacing: 0.42em; text-transform: uppercase; color: var(--gold); margin-bottom: 10px; }
+h1.title { font-family: 'Cormorant Garamond', serif; font-weight: 500; font-size: 40px; line-height: 1.05; letter-spacing: -0.014em; color: var(--ink); margin-bottom: 6px; }
+h1.title em { font-style: italic; font-weight: 500; color: var(--gold); }
+.client-line { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; margin-top: 10px; font-family: 'Inter', sans-serif; font-size: 11px; color: var(--ink-2); }
+.client-line .label { letter-spacing: 0.34em; text-transform: uppercase; font-size: 8.5px; color: var(--muted); }
+.client-line strong { color: var(--ink); font-weight: 600; }
+.client-line .sep { color: var(--gold-soft); }
+.intro { padding: 6mm 0 5mm; border-bottom: 1px solid var(--hairline); }
+.intro .lede { font-family: 'Cormorant Garamond', serif; font-style: italic; font-weight: 500; font-size: 16px; line-height: 1.55; color: var(--ink-2); max-width: 96%; }
+.intro .lede em { color: var(--gold); }
+.metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; padding: 6mm 0 0; }
+.metric { padding: 8px 12px; border: 1px solid var(--hairline); border-left: 2px solid var(--gold); border-radius: 3px; background: rgba(184, 146, 63, 0.03); }
+.metric .n { font-family: 'Cormorant Garamond', serif; font-weight: 600; font-style: italic; font-size: 24px; color: var(--gold); line-height: 1; }
+.metric .l { font-family: 'Inter', sans-serif; font-size: 8.5px; letter-spacing: 0.28em; text-transform: uppercase; color: var(--muted); margin-top: 4px; }
+.section { padding: 5mm 0 3mm; }
+.section + .section { border-top: 1px solid var(--hairline-2); padding-top: 4mm; }
+.section-head { display: grid; grid-template-columns: 36px 1fr auto; gap: 12px; align-items: baseline; margin-bottom: 5mm; padding-bottom: 3mm; border-bottom: 1px solid var(--hairline); }
+.section-num { font-family: 'Cormorant Garamond', serif; font-style: italic; font-weight: 600; font-size: 34px; line-height: 1; color: var(--gold); }
+.section-title { font-family: 'Cormorant Garamond', serif; font-weight: 600; font-size: 22px; line-height: 1.1; letter-spacing: -0.008em; color: var(--ink); }
+.section-title em { font-style: italic; color: var(--gold); font-weight: 600; }
+.section-eyebrow { display: block; font-family: 'Inter', sans-serif; font-weight: 500; font-size: 8.5px; letter-spacing: 0.42em; text-transform: uppercase; color: var(--gold); margin-bottom: 3px; }
+.section-date { font-family: 'Inter', sans-serif; font-size: 8.5px; letter-spacing: 0.32em; text-transform: uppercase; color: var(--muted); font-weight: 500; text-align: right; align-self: center; }
+.item { display: grid; grid-template-columns: 16px 1fr; gap: 10px; margin-bottom: 4mm; }
+.item .bullet { color: var(--gold); font-family: 'Cormorant Garamond', serif; font-weight: 600; font-style: italic; font-size: 14px; line-height: 1.4; }
+.item h4 { font-family: 'Inter', sans-serif; font-weight: 600; font-size: 12px; color: var(--ink); margin-bottom: 3px; line-height: 1.3; }
+.item p { font-size: 11px; line-height: 1.6; color: var(--ink-2); }
+.item ul { list-style: none; padding-left: 0; margin-top: 4px; }
+.item ul li { font-size: 10.5px; color: var(--ink-2); padding-left: 12px; position: relative; line-height: 1.6; margin-bottom: 2px; }
+.item ul li::before { content: "·"; position: absolute; left: 4px; color: var(--gold); font-weight: 700; }
+.callout { margin: 3.5mm 0; padding: 4mm 6mm; background: var(--paper-2); border: 1px solid var(--hairline); border-left: 3px solid var(--gold); border-radius: 3px; }
+.callout .label { font-family: 'Inter', sans-serif; font-weight: 500; font-size: 8.5px; letter-spacing: 0.42em; text-transform: uppercase; color: var(--gold); margin-bottom: 6px; }
+.callout h3 { font-family: 'Cormorant Garamond', serif; font-weight: 500; font-size: 18px; line-height: 1.15; color: var(--ink); margin-bottom: 6px; letter-spacing: -0.005em; }
+.callout h3 em { font-style: italic; color: var(--gold); }
+.callout p { font-size: 11px; line-height: 1.6; color: var(--ink-2); }
+.table { width: 100%; border-collapse: collapse; margin: 4mm 0; font-size: 10.5px; }
+.table th, .table td { text-align: left; padding: 5px 10px; border-bottom: 1px solid var(--hairline-2); vertical-align: top; }
+.table th { font-family: 'Inter', sans-serif; font-weight: 600; font-size: 8.5px; letter-spacing: 0.24em; text-transform: uppercase; color: var(--muted); border-bottom: 1px solid var(--hairline); background: rgba(184, 146, 63, 0.04); }
+.table td { color: var(--ink-2); }
+.table tr:last-child td { border-bottom: none; }
+code, .mono { font-family: 'JetBrains Mono', 'Courier New', monospace; font-size: 10.5px; background: var(--paper-2); padding: 1px 5px; border-radius: 2px; color: var(--ink); border: 1px solid var(--hairline-2); }
+.url { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--gold); word-break: break-all; }
+.doc-footer { margin-top: auto; padding-top: 6mm; border-top: 1px solid var(--hairline); display: flex; justify-content: space-between; align-items: center; font-family: 'Inter', sans-serif; font-size: 8.5px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--muted); }
+.doc-footer .left strong { color: var(--ink-2); font-weight: 600; }
+.doc-footer .right { color: var(--gold); font-weight: 500; }
+
+/* --- Componentes propios de esta guia --- */
+.shot { margin: 4mm 0 5mm; border: 1px solid var(--hairline); border-radius: 4px; overflow: hidden; background: var(--paper-2); }
+/* Tope de alto: las capturas son 1200x720 y a ancho completo ocupaban media
+   hoja, empujando el contenido a la pagina siguiente. Se recorta por abajo,
+   que es donde no hay UI relevante. */
+.shot img { display: block; width: 100%; height: auto; max-height: 34mm; object-fit: cover; object-position: top center; }
+.shot .cap { font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); padding: 6px 10px; border-top: 1px solid var(--hairline-2); background: var(--paper); }
+.steps { counter-reset: paso; margin: 3mm 0 0; }
+.step { display: grid; grid-template-columns: 20px 1fr; gap: 10px; margin-bottom: 3.5mm; }
+.step::before { counter-increment: paso; content: counter(paso); font-family: 'Cormorant Garamond', serif; font-style: italic; font-weight: 600; font-size: 15px; color: var(--gold); line-height: 1.3; text-align: center; }
+.step p { font-size: 11px; line-height: 1.6; color: var(--ink-2); }
+.step strong { color: var(--ink); font-weight: 600; }
+/* grid-column: 2 es obligatorio: .step es un grid de 20px + 1fr, y sin esto el
+   copybox caia en la columna de 20px y la URL se partia una letra por linea. */
+.copybox { grid-column: 2; margin: 2.5mm 0; padding: 7px 11px; background: var(--paper-2); border: 1px dashed var(--gold-soft); border-radius: 3px; font-family: 'JetBrains Mono', monospace; font-size: 10.5px; color: var(--ink); overflow-wrap: anywhere; }
+.impacto { display: inline-block; font-family: 'Inter', sans-serif; font-size: 8px; font-weight: 600; letter-spacing: 0.24em; text-transform: uppercase; padding: 3px 8px; border-radius: 2px; }
+.impacto.alto { background: rgba(184, 146, 63, 0.16); color: #8a6d24; border: 1px solid var(--gold-soft); }
+.impacto.medio { background: rgba(74, 66, 57, 0.07); color: var(--ink-2); border: 1px solid var(--hairline-2); }
+@media print {
+  html, body { background: #fff; }
+  .page { margin: 0; box-shadow: none; }
+  @page { size: A4; margin: 0; }
+}
+</style>
+</head>
+<body>
+
+<!-- ============ PAGINA 1 ============ -->
+<div class="page">
+  <div class="doc-header">
+    <div class="brand">
+      <div class="brand-text">
+        <span class="brand-name">FourG Solutions</span>
+        <span class="brand-tag">Software · Sistemas · Forensia</span>
+      </div>
+    </div>
+    <div></div>
+    <div class="meta">
+      <span class="num">FGS-2026-047</span>
+      <span class="date">2026 · 07 · 19</span>
+    </div>
+  </div>
+
+  <div class="hero">
+    <div class="eyebrow">Guía para el dueño</div>
+    <h1 class="title">Cómo hacer que la barbería <em>aparezca</em> en Google</h1>
+    <div class="client-line">
+      <span class="label">Cliente</span>
+      <strong>Barbas &amp; Bigotes Barbershop</strong>
+      <span class="sep">/</span>
+      <span class="label">Sedes</span>
+      <strong>Parque Venezuela y Plaza de la Paz</strong>
+    </div>
+  </div>
+
+  <div class="intro">
+    <p class="lede">
+      El sitio ya está construido y optimizado. Lo que falta son <em>cuatro tareas</em> que
+      nadie más puede hacer por usted, porque viven dentro de sus propias cuentas de Google
+      e Instagram. Ninguna cuesta dinero y todas juntas toman menos de treinta minutos.
+    </p>
+  </div>
+
+  <div class="metrics">
+    <div class="metric"><div class="n">4</div><div class="l">Tareas</div></div>
+    <div class="metric"><div class="n">30<span style="font-size:13px">min</span></div><div class="l">Tiempo total</div></div>
+    <div class="metric"><div class="n">$0</div><div class="l">Costo</div></div>
+    <div class="metric"><div class="n">2</div><div class="l">Fichas por conectar</div></div>
+  </div>
+
+  <div class="section">
+    <div class="section-head">
+      <span class="section-num">1</span>
+      <div>
+        <span class="section-eyebrow">Empiece por acá</span>
+        <h2 class="section-title">Conecte sus fichas de Google con el sitio</h2>
+      </div>
+      <span class="section-date"><span class="impacto alto">Impacto alto</span></span>
+    </div>
+
+    <div class="item">
+      <span class="bullet">§</span>
+      <div>
+        <h4>Por qué esto es lo más importante de toda la guía</h4>
+        <p>
+          Cuando alguien en Barranquilla busca "barbería cerca de mí", Google no muestra
+          páginas web: muestra el <strong>mapa</strong> con las fichas de los negocios. Usted ya
+          tiene dos fichas creadas, y esa es su mayor ventaja. El problema es que hoy esas
+          fichas no dicen que su sitio web existe, entonces Google no conecta que la ficha y
+          la página son el mismo negocio. Conectarlas es lo que le da fuerza a las dos.
+        </p>
+      </div>
+    </div>
+
+    <div class="shot">
+      <img src="img/gbp.png" alt="Pantalla de inicio del Perfil de Negocio de Google" />
+      <div class="cap">business.google.com · entre con la cuenta que administra las fichas</div>
+    </div>
+
+  </div>
+
+  <div class="doc-footer">
+    <div class="left"><strong>FourG Solutions</strong> · four4gsolutions@gmail.com</div>
+    <div class="right">Página 1 de 5</div>
+  </div>
+</div>
+
+<!-- ============ PAGINA 2 ============ -->
+<div class="page">
+  <div class="doc-header">
+    <div class="brand">
+      <div class="brand-text">
+        <span class="brand-name">FourG Solutions</span>
+        <span class="brand-tag">Software · Sistemas · Forensia</span>
+      </div>
+    </div>
+    <div></div>
+    <div class="meta">
+      <span class="num">FGS-2026-047</span>
+      <span class="date">2026 · 07 · 19</span>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-head">
+      <span class="section-num">1</span>
+      <div>
+        <span class="section-eyebrow">Continuación</span>
+        <h2 class="section-title">Paso a paso en Google</h2>
+      </div>
+      <span class="section-date"><span class="impacto alto">Impacto alto</span></span>
+    </div>
+
+    <div class="steps">
+      <div class="step"><p>Entre a <span class="url">business.google.com</span> y toque <strong>Acceder</strong>. Use la cuenta de Google con la que creó las fichas de la barbería.</p></div>
+      <div class="step"><p>Elija la sede <strong>Parque Venezuela</strong> y abra <strong>Editar perfil</strong>.</p></div>
+      <div class="step">
+        <p>Busque el campo <strong>Sitio web</strong> y escriba exactamente:</p>
+        <div class="copybox">https://barbasybigotes.com</div>
+      </div>
+      <div class="step">
+        <p>Busque el campo de <strong>citas o reservas</strong> (aparece como "Enlace para reservar" o "Pedir cita") y escriba:</p>
+        <div class="copybox">https://barbasybigotes.com/reservar</div>
+      </div>
+      <div class="step"><p><strong>Guarde</strong> y repita exactamente lo mismo con la sede <strong>Plaza de la Paz</strong>. Las dos fichas deben quedar apuntando al mismo sitio.</p></div>
+    </div>
+
+    <div class="callout">
+      <div class="label">Detalle que vale oro</div>
+      <h3>El botón de <em>reservar</em> aparece en el mapa</h3>
+      <p>
+        Al llenar el enlace de citas, Google agrega un botón de reserva directamente en su
+        ficha del mapa. El cliente puede agendar sin entrar al sitio, desde el resultado de
+        búsqueda. Es la diferencia entre que lo llamen y que reserven solos.
+      </p>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-head">
+      <span class="section-num">2</span>
+      <div>
+        <span class="section-eyebrow">Buscadores con inteligencia artificial</span>
+        <h2 class="section-title">Registre el negocio en Bing</h2>
+      </div>
+      <span class="section-date"><span class="impacto medio">Impacto medio</span></span>
+    </div>
+
+    <div class="item">
+      <span class="bullet">§</span>
+      <div>
+        <h4>Bing no es solo Bing</h4>
+        <p>
+          Bing es el buscador que alimenta a <strong>ChatGPT</strong> y a <strong>Copilot</strong>.
+          Cuando una persona le pregunta a ChatGPT "cuál es una buena barbería en Barranquilla",
+          la respuesta sale de ahí. Hoy su negocio no existe en ese índice, así que la IA nunca
+          lo va a mencionar. Lo bueno es que Bing permite importar todo desde Google, sin volver
+          a escribir nada.
+        </p>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="doc-footer">
+    <div class="left"><strong>FourG Solutions</strong> · four4gsolutions@gmail.com</div>
+    <div class="right">Página 2 de 5</div>
+  </div>
+</div>
+
+<!-- ============ PAGINA 3 ============ -->
+<div class="page">
+  <div class="doc-header">
+    <div class="brand">
+      <div class="brand-text">
+        <span class="brand-name">FourG Solutions</span>
+        <span class="brand-tag">Software · Sistemas · Forensia</span>
+      </div>
+    </div>
+    <div></div>
+    <div class="meta">
+      <span class="num">FGS-2026-047</span>
+      <span class="date">2026 · 07 · 19</span>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-head">
+      <span class="section-num">2</span>
+      <div>
+        <span class="section-eyebrow">Continuación</span>
+        <h2 class="section-title">Paso a paso en Bing</h2>
+      </div>
+      <span class="section-date"><span class="impacto medio">Impacto medio</span></span>
+    </div>
+
+    <div class="shot">
+      <img src="img/bing-places.png" alt="Pantalla de inicio de Bing Places for Business" />
+      <div class="cap">bingplaces.com · use la opción de importar desde Google</div>
+    </div>
+
+    <div class="steps">
+      <div class="step"><p>Entre a <span class="url">bingplaces.com</span> y toque <strong>Comenzar</strong>.</p></div>
+      <div class="step"><p>Elija la opción de <strong>importar desde Google Business Profile</strong>. Bing le va a pedir permiso para leer sus fichas.</p></div>
+      <div class="step"><p>Autorice con la misma cuenta de Google del paso 1. Sus dos sedes se copian solas con dirección, teléfono, horario y fotos.</p></div>
+      <div class="step"><p>Revise que el sitio web quedó como <span class="url">barbasybigotes.com</span> y confirme.</p></div>
+    </div>
+
+    <div class="callout">
+      <div class="label">Nota</div>
+      <h3>Esto es <em>gratis</em> y se hace una sola vez</h3>
+      <p>
+        Bing puede pedirle verificar el negocio por teléfono o correo postal, igual que hizo
+        Google en su momento. Si le pide un código, es normal. Si el trámite se complica,
+        avísenos y lo acompañamos.
+      </p>
+    </div>
+  </div>
+
+  <div class="doc-footer">
+    <div class="left"><strong>FourG Solutions</strong> · four4gsolutions@gmail.com</div>
+    <div class="right">Página 3 de 5</div>
+  </div>
+</div>
+
+<!-- ============ PAGINA 4 ============ -->
+<div class="page">
+  <div class="doc-header">
+    <div class="brand">
+      <div class="brand-text">
+        <span class="brand-name">FourG Solutions</span>
+        <span class="brand-tag">Software · Sistemas · Forensia</span>
+      </div>
+    </div>
+    <div></div>
+    <div class="meta">
+      <span class="num">FGS-2026-047</span>
+      <span class="date">2026 · 07 · 19</span>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-head">
+      <span class="section-num">3</span>
+      <div>
+        <span class="section-eyebrow">Redes sociales</span>
+        <h2 class="section-title">Ponga el sitio en la biografía de Instagram</h2>
+      </div>
+      <span class="section-date"><span class="impacto medio">Impacto medio</span></span>
+    </div>
+
+    <div class="item">
+      <span class="bullet">§</span>
+      <div>
+        <h4>Cierra el círculo de identidad</h4>
+        <p>
+          Google y las inteligencias artificiales confirman que un negocio es real cuando
+          encuentran los mismos datos repetidos en varios lugares: la ficha del mapa, el sitio
+          web y las redes. Su Instagram tiene seguidores y contenido, pero no enlaza al sitio,
+          así que ese voto de confianza se pierde.
+        </p>
+      </div>
+    </div>
+
+    <div class="steps">
+      <div class="step"><p>Abra Instagram con la cuenta <span class="url">@barbasybigotes.baq</span> y entre a <strong>Editar perfil</strong>.</p></div>
+      <div class="step">
+        <p>En el campo <strong>Sitio web</strong> escriba:</p>
+        <div class="copybox">https://barbasybigotes.com/reservar</div>
+      </div>
+      <div class="step"><p>En la descripción del perfil, agregue la frase <strong>"Reservá tu turno online"</strong> para que quede claro qué hay del otro lado del enlace.</p></div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-head">
+      <span class="section-num">4</span>
+      <div>
+        <span class="section-eyebrow">Rutina semanal</span>
+        <h2 class="section-title">Pida reseñas después de cada corte</h2>
+      </div>
+      <span class="section-date"><span class="impacto alto">Impacto alto</span></span>
+    </div>
+
+    <div class="item">
+      <span class="bullet">§</span>
+      <div>
+        <h4>La sede de Plaza de la Paz necesita ayuda</h4>
+        <p>
+          Parque Venezuela tiene 5.0 estrellas, que es excelente. Plaza de la Paz está en 3.7,
+          y esa nota le resta posiciones en el mapa frente a la competencia. La única forma de
+          subirla es con reseñas nuevas de clientes contentos.
+        </p>
+      </div>
+    </div>
+
+    <div class="item">
+      <span class="bullet">§</span>
+      <div>
+        <h4>Ya está resuelto dentro del sistema</h4>
+        <p>
+          Cuando el barbero cobra en la aplicación, le aparece un botón que dice
+          <strong>"Abrir reseña de Google"</strong>. Ese botón lleva directo al formulario de
+          la sede donde se atendió, sin buscar nada. El cliente todavía está en la silla,
+          contento y con el celular a mano: ese es el momento.
+        </p>
+        <ul>
+          <li>Pídale al equipo que lo use en cada cobro, sobre todo en Plaza de la Paz.</li>
+          <li>Al cliente que entra con su cuenta de Google también le llega la invitación por su lado.</li>
+          <li>Meta de arranque: 10 reseñas nuevas en Plaza de la Paz para subir de 3.7 a más de 4.5.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="doc-footer">
+    <div class="left"><strong>FourG Solutions</strong> · four4gsolutions@gmail.com</div>
+    <div class="right">Página 4 de 5</div>
+  </div>
+</div>
+
+<!-- ============ PAGINA 5 ============ -->
+<div class="page">
+  <div class="doc-header">
+    <div class="brand">
+      <div class="brand-text">
+        <span class="brand-name">FourG Solutions</span>
+        <span class="brand-tag">Software · Sistemas · Forensia</span>
+      </div>
+    </div>
+    <div></div>
+    <div class="meta">
+      <span class="num">FGS-2026-047</span>
+      <span class="date">2026 · 07 · 19</span>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-head">
+      <span class="section-num">5</span>
+      <div>
+        <span class="section-eyebrow">Expectativas</span>
+        <h2 class="section-title">Qué va a pasar y cuándo</h2>
+      </div>
+    </div>
+
+    <table class="table">
+      <thead>
+        <tr><th>Cuándo</th><th>Qué esperar</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Inmediato</td><td>El botón de reservar aparece en sus fichas del mapa. Los clientes pueden agendar desde ahí.</td></tr>
+        <tr><td>De 1 a 2 semanas</td><td>El sitio empieza a salir cuando alguien busca el nombre exacto "Barbas y Bigotes Barranquilla".</td></tr>
+        <tr><td>De 1 a 3 meses</td><td>Con reseñas nuevas y publicaciones en la ficha, empieza a competir por búsquedas como "barbería en Barranquilla".</td></tr>
+      </tbody>
+    </table>
+
+    <div class="callout">
+      <div class="label">Lo que hay que entender</div>
+      <h3>El dominio tiene <em>quince días</em> de nacido</h3>
+      <p>
+        Google tarda semanas en confiar en un sitio nuevo, y eso no se acelera con dinero ni
+        con trucos. Lo que sí acelera todo es lo de esta guía: las fichas del mapa ya tienen
+        años de historia y reseñas, así que conectarlas al sitio le transfiere esa confianza.
+        Por eso la tarea número 1 vale más que cualquier otra cosa.
+      </p>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-head">
+      <span class="section-num">6</span>
+      <div>
+        <span class="section-eyebrow">Control</span>
+        <h2 class="section-title">Lista para marcar</h2>
+      </div>
+    </div>
+
+    <table class="table">
+      <thead>
+        <tr><th style="width:60px">Hecho</th><th>Tarea</th><th style="width:120px">Dónde</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>☐</td><td>Sitio web y enlace de reservas en la ficha de Parque Venezuela</td><td>business.google.com</td></tr>
+        <tr><td>☐</td><td>Sitio web y enlace de reservas en la ficha de Plaza de la Paz</td><td>business.google.com</td></tr>
+        <tr><td>☐</td><td>Negocio importado a Bing Places</td><td>bingplaces.com</td></tr>
+        <tr><td>☐</td><td>Enlace del sitio en la biografía de Instagram</td><td>@barbasybigotes.baq</td></tr>
+        <tr><td>☐</td><td>El equipo usa el botón de reseña en cada cobro</td><td>App del barbero</td></tr>
+      </tbody>
+    </table>
+
+    <div class="callout">
+      <div class="label">Soporte</div>
+      <h3>Si algo se traba, <em>escríbanos</em></h3>
+      <p>
+        Cualquiera de estos pasos lo podemos acompañar en una llamada corta. Escríbanos a
+        four4gsolutions@gmail.com y lo resolvemos juntos. Lo técnico del sitio (velocidad,
+        estructura, datos para buscadores e inteligencia artificial) ya quedó hecho de nuestro
+        lado y no requiere mantenimiento suyo.
+      </p>
+    </div>
+  </div>
+
+  <div class="doc-footer">
+    <div class="left"><strong>FourG Solutions</strong> · four4gsolutions@gmail.com</div>
+    <div class="right">Página 5 de 5</div>
+  </div>
+</div>
+
+</body>
+</html>
