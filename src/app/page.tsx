@@ -46,12 +46,13 @@ export default async function Home() {
           barberosCount={barberos.length}
           serviciosCount={servicios.length}
         />
+        {/* Propósito de la app ARRIBA, justo tras el hero: el verificador de la
+            pantalla de consentimiento OAuth de Google busca el nombre y el
+            propósito de la app en la parte alta de la home. */}
+        <HomeApp />
         <HomeDiferencia />
         <HomeServicios servicios={destacados} />
         <HomeGaleria />
-        {/* Propósito de la app: visible en mobile y desktop (Google lo verifica
-            para la pantalla de consentimiento OAuth). */}
-        <HomeApp />
         <HomeSedes />
 
         {/* Secciones solo-desktop del prototipo (spec §2.8-2.10). El contenido

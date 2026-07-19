@@ -33,12 +33,13 @@ export function HomeApp() {
           Reservas online
         </p>
         <h2 className="mt-3 font-display text-[34px] font-extrabold uppercase leading-[0.95] md:text-[44px]">
-          La app de Barbas &amp; Bigotes
+          Barbas &amp; Bigotes
         </h2>
         <p className="mx-auto mt-4 max-w-[58ch] text-[15px] leading-[1.7] text-muted">
-          <strong className="text-ink">Barbas &amp; Bigotes</strong> es la aplicación de reservas
-          de nuestra barbería en Barranquilla. Con ella agendás tu cita por internet, mirás tu
-          historial de visitas y seguís tu tarjeta de cortes, sin llamar ni esperar en el local.
+          Esta aplicación se llama <strong className="text-ink">Barbas &amp; Bigotes</strong> y es
+          el sistema de reservas de nuestra barbería en Barranquilla, Colombia. Con ella agendás tu
+          cita por internet, mirás tu historial de visitas y seguís tu tarjeta de cortes, sin llamar
+          ni esperar en el local. La desarrolla y opera Barbas &amp; Bigotes Barbershop.
         </p>
       </div>
 

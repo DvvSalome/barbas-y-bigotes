@@ -55,7 +55,9 @@ export const siteGraph = {
       "@type": "Organization",
       "@id": ORG_ID,
       name: "Barbas & Bigotes Barbershop",
-      alternateName: ["Barbas y Bigotes", "Barbas y Bigotes Barranquilla"],
+      // "Barbas & Bigotes" exacto: es el App name de la pantalla de consentimiento
+      // OAuth y Google verifica que coincida con el nombre publicado en la home.
+      alternateName: ["Barbas & Bigotes", "Barbas y Bigotes", "Barbas y Bigotes Barranquilla"],
       url: `${BASE}/`,
       logo: {
         "@type": "ImageObject",
