@@ -669,7 +669,9 @@ export function BookingWizard({
       </div>
 
       {/* Cuerpo scrolleable */}
-      <main className="min-h-0 flex-1 overflow-y-auto px-4 pb-6 pt-5 md:px-14 md:pt-7">
+      {/* pb-10: el footer sticky del total tapaba el final del contenido al hacer
+          scroll hasta abajo (se comía el cierre del resumen en mobile). */}
+      <main className="min-h-0 flex-1 overflow-y-auto px-4 pb-10 pt-5 md:px-14 md:pt-7">
         {/* ---------- Paso 1 · Sede ---------- */}
         {step === "sede" && (
           <div>
@@ -1096,9 +1098,11 @@ export function BookingWizard({
                       </button>
                     ) : (
                       <>
+                        {/* Sin font-display ni tracking: una sola "o" condensada y
+                            espaciada se leía como un "0". */}
                         <div className="flex items-center gap-3 py-0.5" aria-hidden>
                           <span className="h-px flex-1 bg-line" />
-                          <span className="font-display text-[10px] font-bold uppercase tracking-[0.24em] text-muted">o</span>
+                          <span className="text-[11px] font-semibold lowercase text-muted">o bien</span>
                           <span className="h-px flex-1 bg-line" />
                         </div>
                         <button
