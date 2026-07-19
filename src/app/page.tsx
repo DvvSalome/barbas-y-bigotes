@@ -8,6 +8,7 @@ import { HomeDiferencia } from "@/components/home/HomeDiferencia";
 import { HomeServicios } from "@/components/home/HomeServicios";
 import { HomeGaleria } from "@/components/home/HomeGaleria";
 import { HomeSedes } from "@/components/home/HomeSedes";
+import { HomeApp } from "@/components/home/HomeApp";
 import { Testimonios } from "@/components/home/Testimonios";
 import { Ubicacion } from "@/components/home/Ubicacion";
 import { Faq } from "@/components/home/Faq";
@@ -48,6 +49,9 @@ export default async function Home() {
         <HomeDiferencia />
         <HomeServicios servicios={destacados} />
         <HomeGaleria />
+        {/* Propósito de la app: visible en mobile y desktop (Google lo verifica
+            para la pantalla de consentimiento OAuth). */}
+        <HomeApp />
         <HomeSedes />
 
         {/* Secciones solo-desktop del prototipo (spec §2.8-2.10). El contenido
