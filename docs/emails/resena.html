@@ -1,0 +1,91 @@
+<!-- Plantilla 5/5 · SEGUIMIENTO / RESEÑA (post-visita)
+     Spec: .superpowers/design/correos.md §5 (cuerpo) + §1 (shell compartido).
+     Asunto: ¿Cómo te quedó? Dejanos tu reseña ✂️
+     Se pega tal cual en el nodo emailSend de n8n "⭐ reseña postventa".
+     Datos: RPC public.tomar_resenas_pendientes() (migración 0035).
+
+     Layout con TABLAS, no flex/grid: Gmail recorta grid y el prototipo ya lo
+     anticipa (§8 de la spec, "degradar a tablas manteniendo estos valores").
+     Tema oscuro forzado: color-scheme + bgcolor en cada td, porque Gmail en modo
+     claro invierte fondos que solo estén en CSS.
+
+     PROHIBIDO tocar sin releer la política de Google (abr/2026): este correo NO
+     puede pedir que mencionen al barbero, ni salir solo a los clientes contentos. -->
+<div style="display:none;max-height:0;overflow:hidden;opacity:0;">Contanos cómo te quedó el corte. Son 10 segundos y nos ayuda un montón.</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#060504" style="background:#060504;margin:0;padding:24px 12px;">
+  <tr><td align="center">
+    <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px;max-width:100%;background:#0c0b0a;border:1px solid rgba(242,237,228,.1);border-radius:18px;overflow:hidden;font-family:Inter,Helvetica,Arial,sans-serif;">
+
+      <!-- 1 · Franja barber-pole -->
+      <tr><td height="5" style="height:5px;line-height:5px;font-size:0;background:repeating-linear-gradient(115deg,#d23f34 0 14px,#f2ede4 14px 28px,#12100e 28px 42px);">&nbsp;</td></tr>
+
+      <!-- 2 · Cabecera de marca -->
+      <tr><td align="center" background="https://barbasybigotes.com/sedes/parque-venezuela-interior.jpg" bgcolor="#0a0908" style="background-color:#0a0908;background-image:linear-gradient(180deg,rgba(10,9,8,.65),rgba(10,9,8,.92)),url('https://barbasybigotes.com/sedes/parque-venezuela-interior.jpg');background-size:cover;background-position:center;padding:34px 24px 28px;text-align:center;">
+        <img src="https://barbasybigotes.com/brand/logo-lockup.png" alt="Barbas &amp; Bigotes" height="50" style="height:50px;display:block;margin:0 auto;border:0;">
+        <div style="margin-top:10px;font-size:10px;text-transform:uppercase;letter-spacing:.34em;color:#cfc7ba;">Barbería clásica · Barranquilla</div>
+      </td></tr>
+
+      <!-- 3 · Cuerpo -->
+      <tr><td bgcolor="#0c0b0a" style="background:#0c0b0a;padding:34px 30px;">
+
+        <div style="text-align:center;font-size:32px;letter-spacing:5px;color:#d23f34;line-height:1;">★★★★★</div>
+
+        <h1 style="margin:14px 0 0;text-align:center;font-family:'Barlow Condensed',Inter,Helvetica,Arial,sans-serif;font-size:34px;font-weight:800;text-transform:uppercase;line-height:.95;color:#f2ede4;">¿Cómo te quedó?</h1>
+
+        <p style="margin:14px auto 0;max-width:44ch;text-align:center;font-size:14px;line-height:1.6;color:#9c958a;">
+          Gracias por venir, <b style="color:#f2ede4;">{{ $json.cliente }}</b>. Hoy
+          <b style="color:#f2ede4;">{{ $json.barbero || 'el equipo' }}</b> te hizo un
+          <b style="color:#f2ede4;">{{ $json.servicio }}</b>. Si te fuiste contento, contalo en Google, nos ayuda un montón.
+        </p>
+
+        <!-- CTA · link de reseña de LA SEDE donde lo atendieron -->
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:24px;">
+          <tr><td align="center" bgcolor="#d23f34" style="background:linear-gradient(180deg,#e8675c,#d23f34);background-color:#d23f34;border-radius:13px;">
+            <a href="{{ $json.resena_url }}" style="display:block;padding:17px 20px;text-align:center;font-family:'Barlow Condensed',Inter,Helvetica,Arial,sans-serif;font-size:18px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#fbf7f0;text-decoration:none;">★ Dejar mi reseña en Google</a>
+          </td></tr>
+        </table>
+
+        <!-- Card · Tu tarjeta de cortes -->
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:22px;background:#151311;border:1px solid rgba(242,237,228,.1);border-radius:16px;">
+          <tr><td style="padding:18px 20px;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+              <tr>
+                <td style="font-size:13px;color:#9c958a;">Tu tarjeta de cortes</td>
+                <td align="right" style="font-family:'Barlow Condensed',Inter,Helvetica,Arial,sans-serif;font-size:16px;font-weight:800;color:#e8675c;">{{ $json.cortes }} / {{ $json.meta }}</td>
+              </tr>
+            </table>
+
+            <!-- Barra segmentada: una celda por sello, las ya cumplidas en rojo.
+                 Ojo: nada de llaves dobles en los comentarios, n8n las evalúa igual. -->
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:12px;">
+              <tr>
+                {{ Array.from({length: $json.meta}, (_, i) => `<td width="10%" style="padding-right:5px;"><div style="height:8px;border-radius:99px;background:${i < $json.cortes ? '#d23f34' : 'rgba(242,237,228,.12)'};"></div></td>`).join('') }}
+              </tr>
+            </table>
+
+            <div style="margin-top:12px;font-size:12px;color:#9c958a;">Al llegar a {{ $json.meta }}, el corte va por la casa 💈</div>
+
+            <a href="https://barbasybigotes.com/reservar" style="display:inline-block;margin-top:14px;border:1px solid rgba(242,237,228,.18);border-radius:999px;padding:11px 22px;font-size:12.5px;font-weight:700;color:#f2ede4;text-decoration:none;">Reservar mi próxima cita</a>
+          </td></tr>
+        </table>
+
+      </td></tr>
+
+      <!-- 4 · Footer de marca -->
+      <tr><td align="center" bgcolor="#0a0908" style="background:#0a0908;border-top:1px solid rgba(242,237,228,.08);padding:26px 24px;text-align:center;">
+        <img src="https://barbasybigotes.com/brand/logo-face-transparent.png" alt="" height="30" style="height:30px;opacity:.8;display:block;margin:0 auto;border:0;">
+        <div style="margin-top:12px;font-size:11.5px;color:#9c958a;">Parque Venezuela <span style="color:rgba(242,237,228,.2);">·</span> Plaza de la Paz</div>
+        <div style="margin-top:10px;font-size:11px;">
+          <a href="https://instagram.com/barbasybigotes.baq" style="color:#9c958a;text-decoration:none;">Instagram</a>
+          <span style="color:rgba(242,237,228,.2);">·</span>
+          <a href="https://wa.me/573006734799" style="color:#9c958a;text-decoration:none;">WhatsApp</a>
+        </div>
+        <div style="margin-top:12px;font-size:11px;line-height:1.5;color:rgba(156,149,138,.6);">
+          Barbas &amp; Bigotes Barbershop · Barranquilla, CO<br>
+          Recibís este correo porque tenés una cuenta o una reserva con nosotros.
+        </div>
+      </td></tr>
+
+    </table>
+  </td></tr>
+</table>

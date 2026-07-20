@@ -981,17 +981,31 @@ function CheckoutForm({
             </div>
           )}
         </div>
+        {/* Reseña: QR para que la deje desde SU celular, nunca desde este equipo.
+            Antes acá había un link que abría el formulario de Google en la pantalla
+            del mostrador. Google marca como manipulación las reseñas publicadas de
+            forma coordinada desde un dispositivo compartido (misma máquina, misma
+            IP), y el castigo escala hasta un banner público de "reseñas falsas" en
+            la ficha. El QR corta ese riesgo sin quitarle nada al barbero.
+            ponytail: el SVG es estático por sede porque el place ID de Google no
+            cambia nunca. Sede nueva → generar su QR en public/qr/. */}
+        {resumen.resenaUrl && (
+          <div className="mt-3 flex items-center gap-3 rounded-xl border border-line bg-bg/60 p-3">
+            <img
+              src={`/qr/resena-${sede}.svg`}
+              alt="Código QR para dejar la reseña en Google"
+              className="h-[104px] w-[104px] shrink-0 rounded-lg bg-white p-1.5"
+            />
+            <div className="min-w-0">
+              <div className="text-[13px] font-semibold text-ink">Pedile la reseña en Google</div>
+              <p className="mt-1 text-xs leading-relaxed text-muted">
+                Que lo escanee con su celular. Se le abre Google directo en la ficha de{" "}
+                {sedes.find((s) => s.id === sede)?.nombre ?? "la sede"}.
+              </p>
+            </div>
+          </div>
+        )}
         <div className="mt-3 flex flex-wrap gap-2">
-          {resumen.resenaUrl && (
-            <a
-              href={resumen.resenaUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="rounded-full border border-accent/50 bg-accent/[0.06] px-5 py-2 text-xs font-semibold uppercase tracking-wide text-accent-soft transition hover:bg-accent/15"
-            >
-              ★ Abrir reseña de Google
-            </a>
-          )}
           <button onClick={onDone} className="rounded-full bg-gradient-to-b from-accent-soft to-accent px-6 py-2 text-xs font-semibold uppercase tracking-wide text-on-accent shadow-[0_10px_24px_-10px_rgba(210,63,52,0.7)] transition hover:brightness-105">
             Listo
           </button>
