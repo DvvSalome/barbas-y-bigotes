@@ -158,7 +158,7 @@ export function BookingWizard({
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   // Sesión Google del cliente: si está logueado, la reserva queda atada a su
   // cuenta (el server usa el email de la sesión) y el paso datos no pide correo.
-  const [sesion, setSesion] = useState<{ nombre: string; email: string } | null>(null);
+  const [sesion, setSesion] = useState<{ nombre: string; email: string; foto: string | null } | null>(null);
   // "Ahora" estable por montaje: evita llamar Date.now() en render (regla de pureza
   // del React Compiler). El estado en vivo del barbero se refresca con statusHoy.
   const [ahora] = useState(() => Date.now());
@@ -258,8 +258,17 @@ export function BookingWizard({
       .then(({ data }) => {
         const u = data.session?.user;
         if (!vivo || !u?.email) return;
-        const meta = (u.user_metadata ?? {}) as { full_name?: string; name?: string };
-        setSesion({ nombre: meta.full_name || meta.name || "", email: u.email });
+        const meta = (u.user_metadata ?? {}) as {
+          full_name?: string;
+          name?: string;
+          avatar_url?: string;
+          picture?: string;
+        };
+        setSesion({
+          nombre: meta.full_name || meta.name || "",
+          email: u.email,
+          foto: meta.avatar_url || meta.picture || null,
+        });
       });
     return () => {
       vivo = false;
@@ -359,6 +368,9 @@ export function BookingWizard({
   // Primer horario realmente reservable del día: lleva el sello "Próximo" para
   // que el ojo caiga ahí y no en la grilla completa.
   const proximoLibre = slots.find((t) => !ocupadoSet.has(t) && !pasadoSet.has(t)) ?? null;
+  // Sin cupos por CIERRE (ya pasó la jornada) vs por AGENDA LLENA: el mensaje
+  // cambia, porque uno invita a otro día y el otro es señal de demanda.
+  const diaCerrado = slots.length > 0 && slots.every((t) => pasadoSet.has(t));
   // Cuántos turnos ya tomó el barbero hoy (prueba social del encabezado).
   const tomadosHoy = slots.filter((t) => ocupadoSet.has(t)).length;
 
@@ -945,9 +957,41 @@ export function BookingWizard({
                     ))}
                   </div>
                 ) : sinCupos ? (
-                  <p className="rounded-xl border border-line bg-panel px-4 py-3 text-sm text-muted">
-                    No quedan horarios disponibles este día. Probá con otra fecha.
-                  </p>
+                  // Dos motivos distintos para quedarse sin horarios, y conviene
+                  // decirlos distinto: el día ya cerró (nadie puede reservar más
+                  // hoy) o el barbero se llenó (sí hay demanda, probá otro día).
+                  <div className="rounded-2xl border border-line bg-panel px-5 py-6 text-center">
+                    <span
+                      aria-hidden
+                      className="mx-auto grid h-11 w-11 place-items-center rounded-full"
+                      style={{ background: "#211d19", border: "1px solid rgba(242,237,228,.12)" }}
+                    >
+                      {diaCerrado ? <RelojIcon /> : <ScissorsIcon className="h-4 w-4 text-accent-soft" />}
+                    </span>
+                    <p className="mt-3 font-display text-[19px] font-bold uppercase leading-tight">
+                      {diaCerrado ? "Este día ya cerró" : "Agenda llena este día"}
+                    </p>
+                    <p className="mx-auto mt-1.5 max-w-[34ch] text-[13px] leading-relaxed text-muted">
+                      {diaCerrado
+                        ? "Ya pasó el horario de atención. Elegí otro día y te guardamos el turno."
+                        : `${barbero ? barbero.nombre : "El equipo"} ya tiene todos los turnos tomados. Probá con otra fecha${barbero ? " u otro barbero" : ""}.`}
+                    </p>
+                    {dias.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const i = dias.findIndex((d) => (day ? mismoDia(d, day) : false));
+                          const siguiente = dias[i + 1] ?? dias[0];
+                          setDay(siguiente);
+                          setSlot(null);
+                          setErrorMsg(null);
+                        }}
+                        className="mt-4 rounded-full bg-accent px-6 py-2.5 text-[12.5px] font-bold uppercase tracking-[0.08em] text-on-accent transition hover:bg-accent-soft"
+                      >
+                        Ver el día siguiente
+                      </button>
+                    )}
+                  </div>
                 ) : (
                   <div className="space-y-5">
                     {/* Leyenda: explica la tijera sin que nadie tenga que adivinar,
@@ -1085,9 +1129,20 @@ export function BookingWizard({
                     {/* Cliente logueado: la reserva queda en su cuenta, sin re-tipear datos. */}
                     <div className="rounded-[18px] border border-accent/35 bg-panel p-4">
                       <div className="flex items-center gap-3">
-                        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-ink">
-                          <GoogleG />
-                        </span>
+                        {sesion.foto ? (
+                          // Foto real de la cuenta; la G queda solo de respaldo.
+                          // eslint-disable-next-line @next/next/no-img-element -- avatar remoto de Google; next/image exigiría configurar el dominio.
+                          <img
+                            src={sesion.foto}
+                            alt=""
+                            referrerPolicy="no-referrer"
+                            className="h-10 w-10 shrink-0 rounded-full object-cover ring-1 ring-line"
+                          />
+                        ) : (
+                          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-ink">
+                            <GoogleG />
+                          </span>
+                        )}
                         <div className="min-w-0 flex-1">
                           <div className="truncate text-sm font-semibold text-ink">
                             {sesion.nombre || sesion.email}
