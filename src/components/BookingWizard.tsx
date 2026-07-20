@@ -9,6 +9,7 @@ import { supabaseBrowser } from "@/lib/supabase/client";
 import type { Sede, SedeId, Servicio, Barbero, Categoria } from "@/lib/data/types";
 import type { BebidaUpsell, Ausencia } from "@/lib/data/queries";
 import { cop } from "@/lib/format";
+import { ScissorsIcon } from "@/components/icons";
 import { DOW, MON, STEP, OPEN, CLOSE, fmtTime, buildSlots } from "@/lib/slots";
 
 // ------------------------------------------------------------------
@@ -956,10 +957,10 @@ export function BookingWizard({
                         <span className="inline-flex items-center gap-1.5 text-[11.5px] text-muted">
                           <span
                             aria-hidden
-                            className="grid h-[18px] w-[18px] place-items-center rounded-full text-[10px] leading-none"
-                            style={{ background: "#2a1d1b", border: "1px solid rgba(232,103,92,.4)", color: "#e8675c" }}
+                            className="grid h-[20px] w-[20px] place-items-center rounded-full"
+                            style={{ background: "#2a1d1b", border: "1px solid rgba(232,103,92,.5)" }}
                           >
-                            ✂
+                            <ScissorsIcon className="h-[11px] w-[11px] text-accent-soft" />
                           </span>
                           <b className="font-semibold text-ink">{tomadosHoy}</b>
                           {tomadosHoy === 1 ? " turno ya tomado" : " turnos ya tomados"}
@@ -1038,10 +1039,10 @@ export function BookingWizard({
                                   {tomado && (
                                     <span
                                       aria-hidden
-                                      className="absolute -right-1 -top-1 grid h-[18px] w-[18px] place-items-center rounded-full text-[10px] leading-none"
-                                      style={{ background: "#2a1d1b", border: "1px solid rgba(232,103,92,.4)", color: "#e8675c" }}
+                                      className="absolute -right-1.5 -top-1.5 grid h-[20px] w-[20px] place-items-center rounded-full"
+                                      style={{ background: "#2a1d1b", border: "1px solid rgba(232,103,92,.5)" }}
                                     >
-                                      ✂
+                                      <ScissorsIcon className="h-[11px] w-[11px] text-accent-soft" />
                                     </span>
                                   )}
                                   {esProximo && (
