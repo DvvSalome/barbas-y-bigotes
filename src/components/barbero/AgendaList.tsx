@@ -113,7 +113,10 @@ export function AgendaList({
   const router = useRouter();
   // Vista activa: "mia" (la del barbero) o "sede" (mostrador compartido). Vive acá
   // para que la hoja de cobro (completeFor) sea la misma en las dos.
-  const [vista, setVista] = useState<"mia" | "sede">("mia");
+  // Arranca en MOSTRADOR: el negocio se opera desde el equipo del local, con la
+  // sede entera a la vista. "Mi agenda" queda para el barbero que mira su día
+  // desde el celular, que es el caso secundario.
+  const [vista, setVista] = useState<"mia" | "sede">(mostrador ? "sede" : "mia");
   const [walkinOpen, setWalkinOpen] = useState(false);
   const [ventaOpen, setVentaOpen] = useState(false);
   const [completeFor, setCompleteFor] = useState<string | null>(null);
