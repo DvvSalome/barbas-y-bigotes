@@ -12,6 +12,8 @@ import {
   getCajaSede,
   getCajaDesglose,
   getCobradoHoy,
+  getAgendaSedeHoy,
+  getCobradoSedeHoy,
 } from "@/lib/data/queries";
 import { AgendaList } from "@/components/barbero/AgendaList";
 import { EsperaPanel } from "@/components/barbero/EsperaPanel";
@@ -44,6 +46,24 @@ export default async function BarberoPage() {
     ? await Promise.all([getCajaSede(sedeBarbero), getCajaDesglose(sedeBarbero)])
     : [null, null];
 
+  // Modo mostrador: el equipo comparte un aparato en el local, así que la sesión
+  // de un barbero puede ver y operar la agenda de TODA su sede. Lectura con
+  // service role ya autorizada acá (el barbero pertenece a esa sede por
+  // definición). El admin no lo necesita: su agenda ya viene sin filtrar.
+  const [agendaSede, cobradoSede] = sedeBarbero
+    ? await Promise.all([getAgendaSedeHoy(sedeBarbero), getCobradoSedeHoy(sedeBarbero)])
+    : [null, null];
+  const mostrador =
+    sedeBarbero && agendaSede && cobradoSede
+      ? {
+          sedeNombre: sedes.find((s) => s.id === sedeBarbero)?.nombre ?? "Mi sede",
+          agendaSede,
+          barberosSede: barberos.filter((b) => b.sede === sedeBarbero),
+          cobradoSede: cobradoSede.total,
+          porBarbero: cobradoSede.porBarbero,
+        }
+      : undefined;
+
   // Encabezado HERO del día: "Hoy, vie 10 jul" en el día civil de Bogotá (el
   // server corre en UTC) + "{barbero} · {sede}" (o "Todas las sedes" para admin).
   const partes = new Intl.DateTimeFormat("es-CO", {
@@ -63,10 +83,12 @@ export default async function BarberoPage() {
       : "Todas las sedes";
 
   return (
-    <main className="mx-auto max-w-2xl px-4 py-6 sm:px-6">
+    <main className={`mx-auto px-4 py-6 sm:px-6 ${mostrador ? "max-w-6xl" : "max-w-2xl"}`}>
       <RealtimeRefresh
         subscriptions={[
-          { table: "reservas", filter: filtro ? `barbero_id=eq.${filtro}` : undefined },
+          // Sin filtro por barbero cuando hay mostrador: la pantalla compartida
+          // debe reaccionar a las citas de todo el equipo, no solo a las propias.
+          { table: "reservas", filter: mostrador || !filtro ? undefined : `barbero_id=eq.${filtro}` },
           { table: "lista_espera", filter: filtro ? `barbero_id=eq.${filtro}` : undefined },
         ]}
         dingOnInsertTable="reservas"
@@ -83,14 +105,15 @@ export default async function BarberoPage() {
         hoyLabel={hoyLabel}
         subtitulo={subtitulo}
         cobradoHoy={cobradoHoy}
+        mostrador={mostrador}
       />
 
-      <div className="mt-12 border-t border-line pt-8">
+      <div className="mx-auto mt-12 w-full max-w-2xl border-t border-line pt-8">
         <EsperaPanel espera={espera} sedes={sedes} barberos={barberos} servicios={servicios} />
       </div>
 
       {sedeBarbero && (
-        <div className="mt-12 border-t border-line pt-8">
+        <div className="mx-auto mt-12 w-full max-w-2xl border-t border-line pt-8">
           <CierreCaja caja={caja} desglose={cajaDesglose} miBarberoId={staff.barberoId} />
         </div>
       )}

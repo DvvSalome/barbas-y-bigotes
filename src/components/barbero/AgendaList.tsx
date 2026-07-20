@@ -17,6 +17,7 @@ import { calcularCobro } from "@/lib/cobro";
 import { CERQUILLO_EXCLUIDOS } from "@/lib/tarjeta";
 import { ProductoThumb } from "@/components/staff/ProductoThumb";
 import { MedioLogo } from "@/components/staff/MedioLogo";
+import { Recepcion } from "@/components/barbero/Recepcion";
 import type { Sede, SedeId, Barbero, Servicio, Producto } from "@/lib/data/types";
 import type { AgendaItem, MedioPago, PrecioServicioStaff } from "@/lib/data/queries";
 
@@ -87,6 +88,7 @@ export function AgendaList({
   hoyLabel,
   subtitulo,
   cobradoHoy,
+  mostrador,
 }: {
   agenda: AgendaItem[];
   sedes: Sede[];
@@ -99,8 +101,19 @@ export function AgendaList({
   hoyLabel: string;
   subtitulo: string;
   cobradoHoy: number;
+  /** Datos de TODA la sede para la vista mostrador (solo sesión de barbero). */
+  mostrador?: {
+    sedeNombre: string;
+    agendaSede: AgendaItem[];
+    barberosSede: Barbero[];
+    cobradoSede: number;
+    porBarbero: Record<string, number>;
+  };
 }) {
   const router = useRouter();
+  // Vista activa: "mia" (la del barbero) o "sede" (mostrador compartido). Vive acá
+  // para que la hoja de cobro (completeFor) sea la misma en las dos.
+  const [vista, setVista] = useState<"mia" | "sede">("mia");
   const [walkinOpen, setWalkinOpen] = useState(false);
   const [ventaOpen, setVentaOpen] = useState(false);
   const [completeFor, setCompleteFor] = useState<string | null>(null);
@@ -379,8 +392,51 @@ export function AgendaList({
     );
   };
 
+  // La hoja de cobro se busca en la agenda de la sede también: desde el mostrador
+  // se cobra la cita de otro barbero, que no está en `agenda` (la propia).
+  const reservaEnCobro =
+    agenda.find((x) => x.id === completeFor) ??
+    mostrador?.agendaSede.find((x) => x.id === completeFor) ??
+    null;
+
   return (
     <div>
+      {/* Cambio de vista: mi agenda (celular) o mostrador (equipo del local) */}
+      {mostrador && (
+        <div className="mb-4 inline-flex rounded-full border border-line bg-panel p-1">
+          {(
+            [
+              { id: "mia", label: "Mi agenda" },
+              { id: "sede", label: "Mostrador" },
+            ] as const
+          ).map((o) => (
+            <button
+              key={o.id}
+              onClick={() => setVista(o.id)}
+              className={`rounded-full px-4 py-1.5 text-[12.5px] font-semibold transition ${
+                vista === o.id ? "bg-elevated text-ink shadow-[inset_0_0_0_1px_var(--line)]" : "text-muted hover:text-ink"
+              }`}
+            >
+              {o.label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {mostrador && vista === "sede" ? (
+        <>
+          <Recepcion
+            agenda={mostrador.agendaSede}
+            barberos={mostrador.barberosSede}
+            sedeNombre={mostrador.sedeNombre}
+            cobrado={mostrador.cobradoSede}
+            porBarbero={mostrador.porBarbero}
+            onCobrar={(id) => setCompleteFor(completeFor === id ? null : id)}
+          />
+          {reservaEnCobro && cobroDe(reservaEnCobro)}
+        </>
+      ) : (
+        <div className={mostrador ? "mx-auto w-full max-w-2xl" : ""}>
       {/* Encabezado del día + cobrado hoy */}
       <div className="mb-3 flex items-baseline justify-between gap-3">
         <div className="min-w-0">
@@ -483,11 +539,9 @@ export function AgendaList({
           form vivía dentro de la fila se desmontaba y el ¡Cobrado! (con el botón
           de reseña) desaparecía antes de poder tocarlo (bug cazado en QA). Acá
           sobrevive al reordenamiento hasta que el barbero toque "Listo". */}
-      {completeFor &&
-        (() => {
-          const r = agenda.find((x) => x.id === completeFor);
-          return r ? cobroDe(r) : null;
-        })()}
+      {reservaEnCobro && cobroDe(reservaEnCobro)}
+        </div>
+      )}
 
       {/* Después: resto de la agenda en filas compactas (tap para acciones) */}
       {resto.length > 0 && (

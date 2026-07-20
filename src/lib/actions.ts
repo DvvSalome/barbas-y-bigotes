@@ -563,9 +563,13 @@ export async function registrarWalkin(input: {
   const sb = await supabaseServerAuth();
   const staff = await getStaffContext();
   if (staff.rol !== "admin" && staff.rol !== "barbero") return { ok: false, error: "No autorizado" };
-  // El barbero solo agenda walk-ins a su propio nombre (RLS lo exige); el admin elige.
-  const barberoId = staff.rol === "admin" ? input.barberoId || null : staff.barberoId;
+  // Modo mostrador: el walk-in se puede anotar a cualquier barbero de la misma
+  // sede (quien lo registra no siempre es quien atiende). Sin elección, cae en
+  // uno mismo. El admin elige libre.
+  const barberoId = input.barberoId || staff.barberoId;
   if (!barberoId) return { ok: false, error: "No se pudo determinar el barbero" };
+  if (!(await staffPuedeOperarBarbero(staff, barberoId)))
+    return { ok: false, error: "Ese barbero es de otra sede." };
   const clienteRef = await upsertClienteId(sb, input.clienteNombre, input.telefono, "", "walkin", input.fidelizar ?? true);
   const now = new Date();
   let dur = 30;
@@ -627,9 +631,22 @@ export async function actualizarReserva(
   const sb = await supabaseServerAuth();
   const denied = await requireStaff(sb);
   if (denied) return { ok: false, error: denied };
-  // .select() para detectar 0 filas: bajo RLS, tocar una reserva ajena no es error pero
-  // no afecta filas → avisamos en vez de fingir éxito. cliente_ref: para el push de turno.
-  const { data, error } = await sb
+  // Modo mostrador: el equipo comparte un aparato, así que se puede marcar la
+  // llegada o cancelar la cita de cualquier barbero DE LA MISMA SEDE. El chequeo
+  // de sede se hace acá (la RLS de reservas sigue estricta por barbero, por eso
+  // el update va con admin una vez validado).
+  const staff = await getStaffContext();
+  const admin = supabaseAdmin();
+  const { data: rsv } = await admin
+    .from("reservas")
+    .select("sede_id")
+    .eq("id", reservaId)
+    .maybeSingle();
+  if (!rsv) return { ok: false, error: "Reserva no encontrada" };
+  if (!(await staffPuedeOperarSede(staff, (rsv as { sede_id: string }).sede_id)))
+    return { ok: false, error: "Esa cita es de otra sede." };
+
+  const { data, error } = await admin
     .from("reservas")
     .update(patch)
     .eq("id", reservaId)
@@ -662,6 +679,43 @@ export async function actualizarReserva(
 
   revalidatePath("/barbero");
   return { ok: true };
+}
+
+// ---------- Modo mostrador: alcance por sede ----------
+// El equipo comparte un solo aparato en el local, así que un barbero opera sobre
+// las citas de TODA SU SEDE (marcar llegada, cobrar), no solo las suyas. El límite
+// duro es la sede: nunca puede tocar la otra. El admin no tiene límite.
+// Se resuelve acá en el server (no aflojando RLS) para que el permiso viva en un
+// solo lugar auditable y las demás rutas sigan con el scope estricto de siempre.
+async function sedeDeBarbero(barberoId: string): Promise<string | null> {
+  const { data } = await supabaseAdmin()
+    .from("barberos")
+    .select("sede_id")
+    .eq("id", barberoId)
+    .maybeSingle();
+  return (data as { sede_id?: string } | null)?.sede_id ?? null;
+}
+
+/** ¿Este staff puede operar sobre algo de esta sede? */
+export async function staffPuedeOperarSede(
+  staff: { rol: string; barberoId: string | null },
+  sedeId: string,
+): Promise<boolean> {
+  if (staff.rol === "admin") return true;
+  if (staff.rol !== "barbero" || !staff.barberoId) return false;
+  return (await sedeDeBarbero(staff.barberoId)) === sedeId;
+}
+
+/** ¿Este staff puede atribuirle una venta a este barbero (misma sede)? */
+async function staffPuedeOperarBarbero(
+  staff: { rol: string; barberoId: string | null },
+  barberoId: string,
+): Promise<boolean> {
+  if (staff.rol === "admin") return true;
+  if (staff.rol !== "barbero" || !staff.barberoId) return false;
+  if (staff.barberoId === barberoId) return true;
+  const [mia, suya] = await Promise.all([sedeDeBarbero(staff.barberoId), sedeDeBarbero(barberoId)]);
+  return !!mia && mia === suya;
 }
 
 // Auto-open de caja: la primera venta del día abre sola la caja de la sede, sin
@@ -716,8 +770,30 @@ export async function completarReserva(input: {
   const sb = await supabaseServerAuth();
   const staff = await getStaffContext();
   if (staff.rol !== "admin" && staff.rol !== "barbero") return { ok: false, error: "No autorizado" };
-  // barbero_id de la venta lo fija el servidor: el barbero cobra a su nombre; el admin puede cobrar por otro.
-  const barberoId = staff.rol === "admin" ? input.barberoId : staff.barberoId;
+
+  // Atribución del barbero de la venta (define la comisión). Modo mostrador
+  // compartido: cualquiera del equipo cobra desde el mismo equipo y la comisión
+  // igual cae en quien atendió, sin pedir PIN.
+  //   1) Si la venta cierra una CITA, manda el barbero DE LA CITA.
+  //   2) Venta rápida (sin cita): el que se elija, o uno mismo si no se eligió.
+  // Siempre validado contra la sede: nadie cobra para una sede que no es la suya.
+  let barberoId: string | null;
+  if (input.reservaId) {
+    const { data: rsv } = await supabaseAdmin()
+      .from("reservas")
+      .select("barbero_id,sede_id")
+      .eq("id", input.reservaId)
+      .maybeSingle();
+    if (!rsv) return { ok: false, error: "Cita no encontrada" };
+    const r = rsv as { barbero_id: string | null; sede_id: string };
+    if (!(await staffPuedeOperarSede(staff, r.sede_id)))
+      return { ok: false, error: "Esa cita es de otra sede." };
+    barberoId = r.barbero_id;
+  } else {
+    barberoId = input.barberoId || staff.barberoId;
+    if (barberoId && !(await staffPuedeOperarBarbero(staff, barberoId)))
+      return { ok: false, error: "Ese barbero es de otra sede." };
+  }
 
   // Medio de pago: validación autoritativa contra la tabla administrable
   // (service role: la lectura no depende de la RLS del que cobra).

@@ -255,6 +255,64 @@ export async function getAgendaHoy(barberoId?: string | null): Promise<AgendaIte
   }));
 }
 
+// ---------- Modo mostrador (una pantalla compartida en el local) ----------
+// La agenda y el cobrado de TODA la sede, no solo del barbero logueado. Van con
+// service role a propósito: la RLS de reservas/ventas scopea por barbero (0010) y
+// acá el alcance correcto es la sede. Quien llama DEBE haber verificado antes que
+// el staff pertenece a esa sede (staffPuedeOperarSede en actions.ts); estas
+// funciones no son un permiso, son una lectura ya autorizada.
+export async function getAgendaSedeHoy(sedeId: string): Promise<AgendaItem[]> {
+  const admin = supabaseAdmin();
+  const { desde, hasta } = bogotaDayRange();
+  const { data } = await admin
+    .from("reservas")
+    .select(
+      "id,inicio,estado,canal,llegada,sede_id,servicio_id,barbero_id,cliente_ref,nota,servicios(nombre),barberos(nombre),clientes(nombre,telefono)",
+    )
+    .eq("sede_id", sedeId)
+    .gte("inicio", desde.toISOString())
+    .lt("inicio", hasta.toISOString())
+    .order("inicio");
+  return ((data ?? []) as Record<string, unknown>[]).map((r) => ({
+    id: r.id as string,
+    inicio: r.inicio as string,
+    estado: r.estado as string,
+    canal: r.canal as string,
+    llegada: (r.llegada as string) ?? null,
+    sede: r.sede_id as string,
+    barberoId: (r.barbero_id as string) ?? null,
+    barbero: (r.barberos as { nombre?: string } | null)?.nombre ?? "",
+    servicioId: (r.servicio_id as string) ?? null,
+    servicio: (r.servicios as { nombre?: string } | null)?.nombre ?? "",
+    clienteRef: (r.cliente_ref as string) ?? null,
+    cliente: (r.clientes as { nombre?: string } | null)?.nombre ?? "",
+    telefono: (r.clientes as { telefono?: string } | null)?.telefono ?? "",
+    nota: r.nota as string | null,
+  }));
+}
+
+/** Cobrado hoy de la sede completa, y el desglose por barbero para el mostrador. */
+export async function getCobradoSedeHoy(
+  sedeId: string,
+): Promise<{ total: number; porBarbero: Record<string, number> }> {
+  const admin = supabaseAdmin();
+  const { desde, hasta } = bogotaDayRange();
+  const { data } = await admin
+    .from("ventas")
+    .select("total,barbero_id")
+    .eq("sede_id", sedeId)
+    .gte("creado_en", desde.toISOString())
+    .lt("creado_en", hasta.toISOString());
+  const filas = (data ?? []) as { total: number; barbero_id: string | null }[];
+  const porBarbero: Record<string, number> = {};
+  let total = 0;
+  for (const v of filas) {
+    total += v.total;
+    if (v.barbero_id) porBarbero[v.barbero_id] = (porBarbero[v.barbero_id] ?? 0) + v.total;
+  }
+  return { total, porBarbero };
+}
+
 // "Cobrado hoy" del header de la agenda: suma de ventas del día civil (Bogotá).
 // Con la sesión del staff, RLS (0010) scopea las ventas al barbero logueado; el
 // admin (sin filtro) ve todas. Si se pasa barberoId, filtra explícito para
