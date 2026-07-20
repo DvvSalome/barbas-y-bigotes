@@ -1,0 +1,66 @@
+<!-- Plantilla de correo · CONFIRMACIÓN DE RESERVA
+     EXPORTADA DESDE n8n el 2026-07-20. La fuente de verdad en ejecución sigue
+     siendo el workflow JJiAjBoc9NBQbky1 (nodo "Enviar confirmación"); esto es la copia versionada
+     para no depender de que esa instancia siga viva. Si editás una, editá la otra.
+     Asunto: ¡Tu reserva en Barbas & Bigotes está confirmada!
+     Cron:   cada 1 min
+     Spec:   .superpowers/design/correos.md
+     Ojo: las {{ }} son expresiones de n8n. No poner llaves dobles ni en los
+     comentarios, n8n las evalúa igual y revienta el envío. -->
+<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><meta name="color-scheme" content="dark"><meta name="supported-color-schemes" content="dark"></head><body style="margin:0;padding:0;background:#060504;background-image:linear-gradient(#060504,#060504);">
+<div style="margin:0;padding:24px 12px;background:#060504;background-image:linear-gradient(#060504,#060504);">
+<div style="max-width:600px;margin:0 auto;font-family:Arial,Helvetica,sans-serif;color:#f2ede4;">
+<div style="background:#0c0b0a;background-image:linear-gradient(#0c0b0a,#0c0b0a);border:1px solid rgba(242,237,228,.12);border-radius:18px;overflow:hidden;">
+<div style="height:5px;background:repeating-linear-gradient(115deg,#d23f34 0 14px,#f2ede4 14px 28px,#12100e 28px 42px);"></div>
+<div style="background:#0a0908 url('https://barbasybigotes.com/sedes/parque-venezuela-interior.jpg') center/cover no-repeat;">
+<div style="background:rgba(10,9,8,.85);background-image:linear-gradient(rgba(10,9,8,.85),rgba(10,9,8,.85));padding:32px 24px 26px;text-align:center;">
+<img src="https://barbasybigotes.com/brand/logo-lockup.png" alt="Barbas &amp; Bigotes" height="46" style="height:46px;width:auto;">
+<div style="margin-top:8px;font-size:10px;text-transform:uppercase;letter-spacing:.34em;color:#cfc7ba;">Barber&iacute;a cl&aacute;sica &middot; Barranquilla</div>
+</div>
+</div>
+<div style="padding:32px 28px;text-align:center;">
+<span style="display:inline-block;border-radius:999px;padding:6px 14px;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;background:rgba(52,211,153,.12);border:1px solid rgba(52,211,153,.3);color:#34d399;">&#9679; Reserva confirmada</span>
+<h2 style="margin:16px 0 10px;font-family:'Barlow Condensed',Arial,sans-serif;font-size:32px;font-weight:800;text-transform:uppercase;line-height:1;color:#f2ede4;">Nos vemos en la silla, {{ $json.cliente }}</h2>
+<p style="margin:0 auto 22px;max-width:44ch;font-size:14px;color:#9c958a;line-height:1.6;">Tu turno qued&oacute; agendado. Guard&aacute; este correo o mir&aacute; los detalles en tu cuenta.</p>
+<div style="border:1px solid rgba(242,237,228,.1);background:#151311;background-image:linear-gradient(#151311,#151311);border-radius:16px;padding:18px 20px;text-align:left;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
+<td width="58" valign="middle">{{ $json.barbero_foto ? '<img src="https://barbasybigotes.com' + $json.barbero_foto + '" width="52" height="52" alt="" style="width:52px;height:52px;border-radius:50%;object-fit:cover;border:2px solid rgba(210,63,52,.6);display:block;">' : '<div style="width:52px;height:52px;border-radius:50%;border:2px solid rgba(210,63,52,.6);background:#211d19;background-image:linear-gradient(#211d19,#211d19);text-align:center;line-height:52px;font-family:Arial,sans-serif;font-size:24px;font-weight:800;color:#e8675c;">' + ($json.barbero || 'B').charAt(0).toUpperCase() + '</div>' }}</td>
+<td valign="middle" style="padding-left:14px;">
+<div style="font-size:11px;text-transform:uppercase;letter-spacing:.12em;color:#9c958a;">Tu barbero</div>
+<div style="font-family:'Barlow Condensed',Arial,sans-serif;font-size:24px;font-weight:800;text-transform:uppercase;color:#f2ede4;line-height:1.1;">{{ $json.barbero || 'Por asignar' }}</div>
+</td></tr></table>
+</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:10px;"><tr>
+<td width="49%" style="border:1px solid rgba(242,237,228,.1);background:#151311;background-image:linear-gradient(#151311,#151311);border-radius:14px;padding:14px 16px;">
+<div style="font-size:10.5px;text-transform:uppercase;letter-spacing:.12em;color:#9c958a;">Servicio</div>
+<div style="margin-top:3px;font-size:14px;font-weight:700;color:#f2ede4;">{{ $json.servicio || 'Tu servicio' }}</div>
+</td>
+<td width="2%"></td>
+<td width="49%" style="border:1px solid rgba(242,237,228,.1);background:#151311;background-image:linear-gradient(#151311,#151311);border-radius:14px;padding:14px 16px;">
+<div style="font-size:10.5px;text-transform:uppercase;letter-spacing:.12em;color:#9c958a;">Sede</div>
+<div style="margin-top:3px;font-size:14px;font-weight:700;color:#f2ede4;">{{ $json.sede_id === 'parque-venezuela' ? 'Parque Venezuela' : 'Plaza de la Paz' }}</div>
+<div style="margin-top:2px;font-size:11.5px;color:#9c958a;">{{ $json.sede_id === 'parque-venezuela' ? 'Cl. 88 #44-10 Loc 4' : 'Cra. 45 #50-168' }}</div>
+</td></tr></table>
+<div style="margin-top:10px;border:1px solid rgba(210,63,52,.3);background:rgba(210,63,52,.06);border-radius:14px;padding:16px 18px;text-align:left;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
+<td valign="middle">
+<div style="font-size:10.5px;text-transform:uppercase;letter-spacing:.12em;color:#e8675c;">Fecha y hora</div>
+<div style="margin-top:3px;font-family:'Barlow Condensed',Arial,sans-serif;font-size:23px;font-weight:800;color:#f2ede4;">{{ new Date($json.inicio).toLocaleDateString('es-CO',{timeZone:'America/Bogota',weekday:'short',day:'numeric',month:'short'}) }} &middot; {{ new Date($json.inicio).toLocaleTimeString('es-CO',{timeZone:'America/Bogota',hour:'numeric',minute:'2-digit',hour12:true}).replace('. m.','m').replace(' ','&nbsp;') }}</div>
+</td>
+<td valign="middle" align="right" style="font-size:30px;">&#9986;&#65039;</td>
+</tr></table>
+</div>
+<a href="https://barbasybigotes.com/cuenta" style="display:block;margin-top:20px;text-align:center;background:linear-gradient(180deg,#e8675c,#d23f34);color:#fbf7f0;border-radius:13px;padding:16px;font-family:'Barlow Condensed',Arial,sans-serif;font-size:17px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;text-decoration:none;">Ver, reagendar o cancelar</a>
+<p style="margin:14px 0 0;font-size:12px;color:#9c958a;">Pod&eacute;s cambiarla hasta 2 horas antes desde tu cuenta.</p>
+</div>
+<div style="border-top:1px solid rgba(242,237,228,.08);background:#0a0908;background-image:linear-gradient(#0a0908,#0a0908);padding:24px;text-align:center;">
+<img src="https://barbasybigotes.com/brand/logo-face-transparent.png" alt="" height="30" style="height:30px;width:auto;opacity:.8;">
+<div style="margin-top:8px;font-size:11.5px;color:#9c958a;">Parque Venezuela &middot; Plaza de la Paz</div>
+<div style="margin-top:8px;font-size:11px;color:rgba(156,149,138,.6);">Barbas &amp; Bigotes Barbershop &middot; Barranquilla, CO<br>Recib&iacute;s este correo porque ten&eacute;s una cuenta o una reserva con nosotros.</div>
+<div style="margin-top:8px;font-size:11px;"><a href="https://instagram.com/barbasybigotes.baq" style="color:#9c958a;text-decoration:none;">Instagram</a> &middot; <a href="https://wa.me/573006734799" style="color:#9c958a;text-decoration:none;">WhatsApp</a></div>
+</div>
+</div>
+</div>
+</div>
+
+</body></html>
