@@ -44,6 +44,15 @@ returns table (
 )
 language plpgsql security definer set search_path = '' as $$
 begin
+  -- Horario de silencio. La barbería cierra a las 8pm y el correo sale 2h después
+  -- del cobro, así que los últimos clientes del día recibirían la invitación cerca
+  -- de las 10pm. Fuera de 9am-9pm no se manda nada: la fila espera al otro día
+  -- (el techo de la ventana es de 2 días, sobra margen). Pedir una reseña a las
+  -- 10 de la noche molesta y se paga en bajas, no en estrellas.
+  if (now() at time zone 'America/Bogota')::time not between '09:00' and '21:00' then
+    return;
+  end if;
+
   return query
   with elegibles as (
     -- Un cliente puede tener dos cobros en la ventana (volvió, o le cobraron aparte
