@@ -7,7 +7,7 @@ import { categorias } from "@/lib/data/seed";
 import { createReserva, getDisponibilidad } from "@/lib/actions";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import type { Sede, SedeId, Servicio, Barbero, Categoria } from "@/lib/data/types";
-import type { BebidaUpsell, Ausencia } from "@/lib/data/queries";
+import type { BebidaUpsell, Ausencia, DiaEspecial } from "@/lib/data/queries";
 import { cop } from "@/lib/format";
 import { ScissorsIcon } from "@/components/icons";
 import { DOW, MON, STEP, OPEN, CLOSE, fmtTime, buildSlots } from "@/lib/slots";
@@ -115,6 +115,7 @@ export function BookingWizard({
   servicios,
   bebidas,
   ausencias,
+  diasEspeciales,
   initialBarberoId,
   initialSedeId,
 }: {
@@ -123,6 +124,7 @@ export function BookingWizard({
   servicios: Servicio[];
   bebidas: BebidaUpsell[];
   ausencias: Ausencia[];
+  diasEspeciales: DiaEspecial[];
   initialBarberoId?: string;
   initialSedeId?: SedeId;
 }) {
@@ -194,16 +196,26 @@ export function BookingWizard({
   }, [ausencias, day, ahora]);
 
   // Días disponibles: próximos días hábiles (domingos cerrado). Estable entre renders.
-  const [dias] = useState<Date[]>(() => {
+  // Días ofrecidos: por defecto lun-sáb, pero el dueño puede abrir un domingo o
+  // cerrar un festivo desde el admin (sede_dias_especiales). Depende de la sede
+  // porque una puede abrir y la otra no.
+  const dias = useMemo<Date[]>(() => {
+    const ymd = (d: Date) =>
+      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    const excepciones = new Map(
+      diasEspeciales.filter((e) => e.sede === sedeId).map((e) => [e.fecha, e.abierta]),
+    );
     const out: Date[] = [];
-    const base = new Date();
-    for (let i = 0; out.length < 6 && i < 14; i++) {
+    const base = new Date(ahora);
+    for (let i = 0; out.length < 6 && i < 21; i++) {
       const d = new Date(base);
       d.setDate(base.getDate() + i);
-      if (d.getDay() !== 0) out.push(d); // salta domingo
+      const exc = excepciones.get(ymd(d));
+      const abre = exc !== undefined ? exc : d.getDay() !== 0; // default: domingo cerrado
+      if (abre) out.push(d);
     }
     return out;
-  });
+  }, [diasEspeciales, sedeId, ahora]);
 
   const slots = useMemo(() => (servicio ? buildSlots(servicio.duracionMin) : ([] as number[])), [servicio]);
   const dur = servicio?.duracionMin ?? STEP;
@@ -940,9 +952,11 @@ export function BookingWizard({
                   })}
                 </div>
                 <p className="mt-3 hidden text-[11px] leading-relaxed text-muted md:block">
-                  Horario de la sede: 9:00 am – 8:00 pm.
+                  Horario de la sede: 9:00 am a 8:00 pm.
                   <br />
-                  Domingos cerrado.
+                  {dias.some((d) => d.getDay() === 0)
+                    ? "Este domingo abrimos."
+                    : "Domingos cerrado."}
                 </p>
               </div>
 

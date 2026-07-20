@@ -152,6 +152,48 @@ export async function actualizarPrecioProducto(id: string, precio: number): Prom
   return { ok: true };
 }
 
+// Días especiales de la sede: abrir un domingo/festivo o cerrar un día hábil.
+// El default (lun-sáb 9-20) sigue en el código; esto son las excepciones.
+export async function marcarDiaEspecial(input: {
+  sede: string;
+  fecha: string;
+  abierta: boolean;
+  motivo?: string;
+}): Promise<ActionResult> {
+  const sb = await supabaseServerAuth();
+  const denied = await requireAdmin(sb);
+  if (denied) return { ok: false, error: denied };
+  if (!input.sede || !/^\d{4}-\d{2}-\d{2}$/.test(input.fecha)) return { ok: false, error: "Datos inválidos" };
+  if (input.fecha < bogotaYmd()) return { ok: false, error: "No se puede cambiar una fecha pasada." };
+  // upsert: volver a marcar la misma fecha cambia la decisión en vez de fallar.
+  const { error } = await sb
+    .from("sede_dias_especiales")
+    .upsert(
+      {
+        sede_id: input.sede,
+        fecha: input.fecha,
+        abierta: input.abierta,
+        motivo: (input.motivo ?? "").trim() || null,
+      },
+      { onConflict: "sede_id,fecha" },
+    );
+  if (error) return { ok: false, error: errorPublico("marcarDiaEspecial", error) };
+  revalidatePath("/admin/equipo");
+  revalidatePath("/reservar");
+  return { ok: true };
+}
+
+export async function quitarDiaEspecial(id: string): Promise<ActionResult> {
+  const sb = await supabaseServerAuth();
+  const denied = await requireAdmin(sb);
+  if (denied) return { ok: false, error: denied };
+  const { error } = await sb.from("sede_dias_especiales").delete().eq("id", id);
+  if (error) return { ok: false, error: errorPublico("quitarDiaEspecial", error) };
+  revalidatePath("/admin/equipo");
+  revalidatePath("/reservar");
+  return { ok: true };
+}
+
 // Ausencias de barbero (MVP F4): el admin marca que un barbero no atiende una
 // fecha. El booking deja de ofrecerlo/permitirlo ese día (guards en getDisponibilidad
 // y createReserva). No toca citas ya creadas de ese día.
@@ -451,6 +493,24 @@ export async function createReserva(input: {
     .eq("fecha", bogotaYmd(inicio))
     .limit(1);
   if (aus && aus.length) return { ok: false, error: "Ese barbero no atiende ese día. Elegí otra fecha u otro barbero." };
+
+  // Guard de calendario: la sede cierra los domingos salvo que el dueño haya
+  // marcado ese día como abierto, y puede cerrar un día hábil por festivo. El
+  // wizard ya no ofrece esos días; esto blinda el POST directo.
+  const fechaYmd = bogotaYmd(inicio);
+  const { data: diaEsp } = await sb
+    .from("sede_dias_especiales")
+    .select("abierta")
+    .eq("sede_id", input.sede)
+    .eq("fecha", fechaYmd)
+    .maybeSingle();
+  const excepcion = (diaEsp as { abierta?: boolean } | null)?.abierta;
+  // getDay() sobre la fecha local del server no sirve (UTC): se deriva del YMD
+  // de Bogotá ya calculado, a mediodía para no cruzar husos.
+  const esDomingo = new Date(`${fechaYmd}T12:00:00Z`).getUTCDay() === 0;
+  const abre = excepcion !== undefined ? excepcion : !esDomingo;
+  if (!abre) return { ok: false, error: "Ese día la barbería no atiende. Elegí otra fecha." };
+
   // Pre-chequeo de solape (UX: evita crear el cliente si el cupo ya está tomado).
   // El EXCLUDE constraint en la DB es la garantía real contra carreras concurrentes.
   const { data: clash } = await sb

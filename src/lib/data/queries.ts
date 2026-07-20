@@ -145,6 +145,36 @@ export async function getProductos(): Promise<Producto[]> {
   }));
 }
 
+export type DiaEspecial = {
+  id: string;
+  sede: SedeId;
+  fecha: string;
+  abierta: boolean;
+  motivo: string | null;
+  abreMin: number | null;
+  cierraMin: number | null;
+};
+
+// Excepciones de calendario de hoy en adelante (abrir un domingo, cerrar un
+// festivo). Lectura pública: el wizard arma con esto los días que ofrece.
+export async function getDiasEspeciales(): Promise<DiaEspecial[]> {
+  const sb = supabaseServer();
+  const { data } = await sb
+    .from("sede_dias_especiales")
+    .select("id,sede_id,fecha,abierta,motivo,abre_min,cierra_min")
+    .gte("fecha", bogotaYmd())
+    .order("fecha");
+  return (data ?? []).map((d: Record<string, unknown>) => ({
+    id: d.id as string,
+    sede: d.sede_id as SedeId,
+    fecha: d.fecha as string,
+    abierta: d.abierta as boolean,
+    motivo: (d.motivo as string) ?? null,
+    abreMin: (d.abre_min as number) ?? null,
+    cierraMin: (d.cierra_min as number) ?? null,
+  }));
+}
+
 export type Ausencia = { id: string; barberoId: string; fecha: string };
 
 // Ausencias de hoy en adelante (barbero + fecha). Lectura pública: el wizard filtra

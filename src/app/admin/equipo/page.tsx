@@ -1,18 +1,20 @@
 import type { Metadata } from "next";
-import { getBarberos, getSedes, getAusencias } from "@/lib/data/queries";
+import { getBarberos, getSedes, getAusencias, getDiasEspeciales } from "@/lib/data/queries";
 import { getBarberosPinEstado } from "@/lib/barbero-auth";
 import { SectionHeader } from "@/components/admin/SectionHeader";
 import { EquipoPinAdmin } from "@/components/admin/EquipoPinAdmin";
 import { AusenciasAdmin } from "@/components/admin/AusenciasAdmin";
+import { DiasEspecialesAdmin } from "@/components/admin/DiasEspecialesAdmin";
 
 export const metadata: Metadata = { title: "Equipo · Admin" };
 
 export default async function EquipoPage() {
-  const [barberos, sedes, estado, ausencias] = await Promise.all([
+  const [barberos, sedes, estado, ausencias, diasEspeciales] = await Promise.all([
     getBarberos(),
     getSedes(),
     getBarberosPinEstado(),
     getAusencias(),
+    getDiasEspeciales(),
   ]);
   return (
     <div className="max-w-3xl">
@@ -33,6 +35,17 @@ export default async function EquipoPage() {
         />
         <div className="mt-5">
           <AusenciasAdmin barberos={barberos} sedes={sedes} ausencias={ausencias} />
+        </div>
+      </div>
+
+      <div className="mt-10">
+        <SectionHeader
+          eyebrow="Calendario"
+          title="Días especiales"
+          description="Abrí un domingo o un festivo, o cerrá un día hábil. Por defecto se atiende de lunes a sábado."
+        />
+        <div className="mt-5">
+          <DiasEspecialesAdmin sedes={sedes} dias={diasEspeciales} />
         </div>
       </div>
     </div>
