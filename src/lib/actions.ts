@@ -777,9 +777,16 @@ export async function completarReserva(input: {
   //   1) Si la venta cierra una CITA, manda el barbero DE LA CITA.
   //   2) Venta rápida (sin cita): el que se elija, o uno mismo si no se eligió.
   // Siempre validado contra la sede: nadie cobra para una sede que no es la suya.
+  // Cliente de servicio para la ruta de plata. La autorización ya se resolvió
+  // arriba (rol + sede + atribución fijada por el server), así que la RLS por
+  // barbero acá solo estorbaría: en el mostrador se cobra la cita de OTRO
+  // barbero de la misma sede y la RLS (0010) la bloquearía en el claim, la venta,
+  // los ítems y los puntos.
+  const admin = supabaseAdmin();
+
   let barberoId: string | null;
   if (input.reservaId) {
-    const { data: rsv } = await supabaseAdmin()
+    const { data: rsv } = await admin
       .from("reservas")
       .select("barbero_id,sede_id")
       .eq("id", input.reservaId)
@@ -956,7 +963,7 @@ export async function completarReserva(input: {
   //    update condicional; la otra ve 0 filas y no cobra de nuevo.
   let estadoAnterior: string | null = null;
   if (input.reservaId) {
-    const { data: prev, error: prevErr } = await sb
+    const { data: prev, error: prevErr } = await admin
       .from("reservas")
       .select("estado")
       .eq("id", input.reservaId)
@@ -965,7 +972,7 @@ export async function completarReserva(input: {
     if (!prev) return { ok: false, error: "Reserva no encontrada o sin permiso" };
     estadoAnterior = (prev as { estado: string }).estado;
 
-    const { data: claimed, error: claimErr } = await sb
+    const { data: claimed, error: claimErr } = await admin
       .from("reservas")
       .update({ estado: "completada" })
       .eq("id", input.reservaId)
@@ -980,7 +987,7 @@ export async function completarReserva(input: {
   // Revierte el claim si algo posterior falla (deja la reserva cobrable de nuevo).
   async function revertirClaim() {
     if (!input.reservaId || !estadoAnterior) return;
-    const { error: revErr } = await sb.from("reservas").update({ estado: estadoAnterior }).eq("id", input.reservaId);
+    const { error: revErr } = await admin.from("reservas").update({ estado: estadoAnterior }).eq("id", input.reservaId);
     if (revErr) errorPublico("completarReserva revertir", revErr);
   }
 
@@ -1019,7 +1026,7 @@ export async function completarReserva(input: {
 
   // 4) La venta. Los unique index ventas_reserva_unica (reserva) y ventas_idem_unica
   //    (venta rápida, 0021) son el backstop anti doble-cobro.
-  const { data: venta, error } = await sb
+  const { data: venta, error } = await admin
     .from("ventas")
     .insert({
       sede_id: input.sede,
@@ -1053,9 +1060,9 @@ export async function completarReserva(input: {
   // 5) Los ítems. Si fallan, NO puede quedar la venta huérfana: se borra la
   //    venta y se revierte la reserva para reintentar el cobro completo.
   if (items.length) {
-    const { error: itemsErr } = await sb.from("venta_items").insert(items.map((it) => ({ ...it, venta_id: ventaId })));
+    const { error: itemsErr } = await admin.from("venta_items").insert(items.map((it) => ({ ...it, venta_id: ventaId })));
     if (itemsErr) {
-      const { error: delErr } = await sb.from("ventas").delete().eq("id", ventaId);
+      const { error: delErr } = await admin.from("ventas").delete().eq("id", ventaId);
       if (delErr) errorPublico("completarReserva borrar venta", delErr);
       await revertirClaim();
       return { ok: false, error: errorPublico("completarReserva items", itemsErr, "No se pudieron registrar los consumos de la venta. Intentá de nuevo.") };
@@ -1073,10 +1080,10 @@ export async function completarReserva(input: {
   // Fidelidad: puntos por el neto cobrado (sin propina), solo si el cliente está inscrito.
   let puntos = input.clienteRef ? cobro.puntos : 0;
   if (input.clienteRef && puntos > 0) {
-    const { data: cli } = await sb.from("clientes").select("fidelizado").eq("id", input.clienteRef).maybeSingle();
+    const { data: cli } = await admin.from("clientes").select("fidelizado").eq("id", input.clienteRef).maybeSingle();
     if ((cli as { fidelizado?: boolean } | null)?.fidelizado === false) puntos = 0;
     if (puntos > 0) {
-      const { error: ptsErr } = await sb.from("puntos_mov").insert({
+      const { error: ptsErr } = await admin.from("puntos_mov").insert({
         cliente_ref: input.clienteRef,
         tipo: "ganado",
         puntos,
