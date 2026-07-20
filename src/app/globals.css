@@ -49,12 +49,20 @@
    más profundo (AA sobre claro). Decisión explícita del Bloque 8; el sitio
    público NO lee este tema. */
 [data-staff][data-theme="light"] {
-  --bg: #f6f3ec;
-  --panel: #fffdf9;
-  --elevated: #efeae0;
+  /* La rampa de elevación tiene que subir igual que en oscuro (bg < panel <
+     elevated, cada paso más cerca del "flota"). Estaba INVERTIDA: elevated
+     (#efeae0) era más oscuro que bg y que panel, así que todo lo que debía
+     flotar se veía hundido y sucio. El síntoma más visible era la pastilla
+     activa de los segmentados (Mi agenda / Mostrador): el ítem seleccionado
+     quedaba más oscuro que el riel y parecía deshabilitado. */
+  --bg: #f0ece2;
+  --panel: #faf7f1;
+  --elevated: #ffffff;
   --ink: #26211c;
   --muted: #6f6858;
-  --line: rgba(38, 33, 28, 0.12);
+  /* 0.12 sobre crema daba bordes fantasma, y encima hay usos con /60 y /70
+     que lo bajaban a ~7%. Las columnas del mostrador quedaban sin separación. */
+  --line: rgba(38, 33, 28, 0.2);
   --accent: #b9352a;
   /* En claro el "soft" va MÁS profundo que en dark: es color de TEXTO sobre
      fondos tenues (chips accent/15) y necesita AA (review midió 3.56:1 con el tono anterior). */

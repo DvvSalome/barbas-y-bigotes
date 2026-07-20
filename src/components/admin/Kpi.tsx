@@ -36,7 +36,7 @@ export function Kpi({
         )}
       </div>
       <div className={`mt-2 font-display ${valueSize} ${accent ? "text-accent-soft" : "text-ink"}`}>{value}</div>
-      {hint && <div className="mt-1 text-xs text-muted/70">{hint}</div>}
+      {hint && <div className="mt-1 text-xs text-muted">{hint}</div>}
     </div>
   );
 }

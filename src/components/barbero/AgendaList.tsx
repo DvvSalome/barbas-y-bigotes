@@ -15,6 +15,8 @@ import {
 } from "@/lib/actions";
 import { calcularCobro } from "@/lib/cobro";
 import { CERQUILLO_EXCLUIDOS } from "@/lib/tarjeta";
+import { categorias } from "@/lib/data/seed";
+import type { Categoria } from "@/lib/data/types";
 import { ProductoThumb } from "@/components/staff/ProductoThumb";
 import { MedioLogo } from "@/components/staff/MedioLogo";
 import { Recepcion } from "@/components/barbero/Recepcion";
@@ -436,7 +438,10 @@ export function AgendaList({
             porBarbero={mostrador.porBarbero}
             onCobrar={(id) => setCompleteFor(completeFor === id ? null : id)}
           />
-          {reservaEnCobro && cobroDe(reservaEnCobro)}
+          {/* La hoja de cobro estaba fuera de todo límite de ancho: en el equipo
+              del mostrador se estiraba a los 1152px del contenedor y los chips
+              quedaban desparramados de punta a punta. Misma medida que la agenda. */}
+          {reservaEnCobro && <div className="mx-auto w-full max-w-2xl">{cobroDe(reservaEnCobro)}</div>}
         </>
       ) : (
         <div className={mostrador ? "mx-auto w-full max-w-2xl" : ""}>
@@ -808,6 +813,9 @@ function CheckoutForm({
   const [barberoId, setBarberoId] = useState(""); // venta rápida: el admin puede cobrar por otro
   const [nombre, setNombre] = useState(""); // venta rápida: nombre del cliente (opcional)
   const [extras, setExtras] = useState<string[]>([]);
+  // Acordeón de adicionales: una categoría abierta a la vez, todas cerradas al
+  // entrar (lo normal es cobrar la cita tal cual, sin sumar nada).
+  const [catAbierta, setCatAbierta] = useState<Categoria | null>(null);
   const [prodQty, setProdQty] = useState<Record<string, number>>({});
   const [propina, setPropina] = useState(0);
   const [propinaOtra, setPropinaOtra] = useState(false); // "Otra…" abre el input libre
@@ -856,6 +864,14 @@ function CheckoutForm({
     ? preciosServicios.find((s) => s.id === reserva.servicioId) ?? null
     : null;
   const precioFijo = servicioFijo?.preciosPorSede[sedeId];
+
+  // Los adicionales EXCLUYEN el servicio de la cita. Estaba en las dos partes:
+  // fijo arriba y además como chip, y tocarlo lo sumaba dos veces al total (y el
+  // server hacía lo mismo, así que se cobraba de más de verdad).
+  const extrasPorCategoria = (Object.keys(categorias) as Categoria[]).flatMap((cat) => {
+    const items = serviciosSede.filter((s) => s.categoria === cat && s.id !== servicioFijo?.id);
+    return items.length ? [{ cat, label: categorias[cat], items }] : [];
+  });
 
   function cambiarSede(id: string) {
     // Cambiar de sede cambia precios y catálogo: se resetea lo elegido.
@@ -1068,27 +1084,62 @@ function CheckoutForm({
 
         <div>
           <div className={sLabel}>{rapida ? "Servicios" : "¿Se sumó algo en la silla?"}</div>
-          {serviciosSede.length === 0 ? (
+          {extrasPorCategoria.length === 0 ? (
             <p className="text-sm text-muted">Sin servicios con precio en esta sede.</p>
           ) : (
-            <div className="flex flex-wrap gap-2">
-              {serviciosSede.map((s) => {
-                const activo = extras.includes(s.id);
+            // Antes esto era UNA grilla plana con los ~45 servicios de la sede.
+            // Nombres de hasta 130 caracteres, chips de ancho desparejo y filas
+            // rotas: un muro que nadie lee con un cliente en la silla. Los
+            // servicios ya traen `categoria`, así que se agrupan y se abre una a
+            // la vez. Arranca todo cerrado porque el caso normal es no sumar nada.
+            <div className="space-y-1.5">
+              {extrasPorCategoria.map(({ cat, label, items }) => {
+                const elegidos = items.filter((s) => extras.includes(s.id)).length;
+                const abierta = catAbierta === cat;
                 return (
-                  <button
-                    key={s.id}
-                    type="button"
-                    aria-pressed={activo}
-                    onClick={() => toggleExtra(s.id)}
-                    className={`min-h-10 rounded-full border px-3.5 py-2 text-[13px] font-semibold transition ${
-                      activo ? "border-accent bg-accent/15 text-ink" : "border-line text-ink/80 hover:border-ink/25"
-                    }`}
-                  >
-                    {s.nombre}
-                    <span className={`ml-1.5 font-medium tabular-nums ${activo ? "text-accent-soft" : "text-muted"}`}>
-                      +{cop(s.precios[sedeId] ?? 0)}
-                    </span>
-                  </button>
+                  <div key={cat} className="overflow-hidden rounded-xl border border-line">
+                    <button
+                      type="button"
+                      aria-expanded={abierta}
+                      onClick={() => setCatAbierta(abierta ? null : cat)}
+                      className="flex w-full items-center justify-between gap-3 bg-panel px-3.5 py-2.5 text-left transition hover:bg-elevated"
+                    >
+                      <span className="text-[13px] font-semibold text-ink">
+                        {label}
+                        {elegidos > 0 && (
+                          <span className="ml-2 rounded-full bg-accent/15 px-2 py-0.5 text-[11px] font-bold text-accent-soft">
+                            {elegidos}
+                          </span>
+                        )}
+                      </span>
+                      <span className="text-xs text-muted">
+                        {items.length} · {abierta ? "▲" : "▼"}
+                      </span>
+                    </button>
+                    {abierta && (
+                      <div className="flex flex-wrap gap-2 border-t border-line bg-bg p-3">
+                        {items.map((s) => {
+                          const activo = extras.includes(s.id);
+                          return (
+                            <button
+                              key={s.id}
+                              type="button"
+                              aria-pressed={activo}
+                              onClick={() => toggleExtra(s.id)}
+                              className={`min-h-10 max-w-full rounded-full border px-3.5 py-2 text-left text-[13px] font-semibold transition ${
+                                activo ? "border-accent bg-accent/15 text-ink" : "border-line text-ink/80 hover:border-ink/25"
+                              }`}
+                            >
+                              {s.nombre}
+                              <span className={`ml-1.5 font-medium tabular-nums ${activo ? "text-accent-soft" : "text-muted"}`}>
+                                +{cop(s.precios[sedeId] ?? 0)}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
                 );
               })}
             </div>
@@ -1129,7 +1180,7 @@ function CheckoutForm({
                         aria-label={`Quitar ${p.nombre}`}
                         onClick={() => setQty(p.id, q - 1)}
                         disabled={q === 0}
-                        className="h-[38px] w-[38px] rounded-full text-lg font-bold text-ink transition disabled:text-line"
+                        className="h-[38px] w-[38px] rounded-full text-lg font-bold text-ink transition disabled:text-muted/40"
                       >
                         −
                       </button>
@@ -1139,7 +1190,7 @@ function CheckoutForm({
                         aria-label={`Agregar ${p.nombre}`}
                         onClick={() => setQty(p.id, Math.min(q + 1, p.stock))}
                         disabled={agotado || resta <= 0}
-                        className="h-[38px] w-[38px] rounded-full text-lg font-bold text-ink transition disabled:text-line"
+                        className="h-[38px] w-[38px] rounded-full text-lg font-bold text-ink transition disabled:text-muted/40"
                       >
                         +
                       </button>
