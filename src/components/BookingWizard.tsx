@@ -355,6 +355,11 @@ export function BookingWizard({
   }, [day, slots]);
 
   const sinCupos = slots.length > 0 && slots.every((t) => ocupadoSet.has(t) || pasadoSet.has(t));
+  // Primer horario realmente reservable del día: lleva el sello "Próximo" para
+  // que el ojo caiga ahí y no en la grilla completa.
+  const proximoLibre = slots.find((t) => !ocupadoSet.has(t) && !pasadoSet.has(t)) ?? null;
+  // Cuántos turnos ya tomó el barbero hoy (prueba social del encabezado).
+  const tomadosHoy = slots.filter((t) => ocupadoSet.has(t)).length;
 
   // Estado en vivo de un barbero para el chip del paso 3.
   function estadoBarbero(bId: string): { tipo: "libre" | "silla" | "cerrado"; label: string } {
@@ -944,14 +949,36 @@ export function BookingWizard({
                   </p>
                 ) : (
                   <div className="space-y-5">
+                    {/* Leyenda: explica la tijera sin que nadie tenga que adivinar,
+                        y de paso dice cuántos turnos ya se tomaron ese día. */}
+                    {tomadosHoy > 0 && (
+                      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-xl border border-line bg-panel px-3.5 py-2.5">
+                        <span className="inline-flex items-center gap-1.5 text-[11.5px] text-muted">
+                          <span
+                            aria-hidden
+                            className="grid h-[18px] w-[18px] place-items-center rounded-full text-[10px] leading-none"
+                            style={{ background: "#2a1d1b", border: "1px solid rgba(232,103,92,.4)", color: "#e8675c" }}
+                          >
+                            ✂
+                          </span>
+                          <b className="font-semibold text-ink">{tomadosHoy}</b>
+                          {tomadosHoy === 1 ? " turno ya tomado" : " turnos ya tomados"}
+                        </span>
+                        {proximoLibre !== null && (
+                          <span className="text-[11.5px] text-muted">
+                            Próximo libre: <b className="font-semibold text-accent-soft">{fmtTime(proximoLibre)}</b>
+                          </span>
+                        )}
+                      </div>
+                    )}
                     {(
                       [
-                        // Los horarios ya pasados (hoy) se OCULTAN, no se muestran en
-                        // gris: menos ruido visual. Los ocupados sí quedan (tachados,
-                        // informan que están tomados). Si toda una franja queda vacía,
-                        // el `lista.length ?` de abajo no la pinta.
-                        ["Mañana", slots.filter((t) => t < 720 && !pasadoSet.has(t))],
-                        ["Tarde", slots.filter((t) => t >= 720 && !pasadoSet.has(t))],
+                        // NADA se oculta: la agenda del día se muestra completa. Los
+                        // turnos tomados van tachados con tijera (prueba social: el
+                        // cliente ve que al barbero le están reservando) y los que ya
+                        // pasaron quedan atenuados. El próximo libre destaca.
+                        ["Mañana", slots.filter((t) => t < 720)],
+                        ["Tarde", slots.filter((t) => t >= 720)],
                       ] as const
                     ).map(([label, lista]) =>
                       lista.length ? (
@@ -963,25 +990,69 @@ export function BookingWizard({
                               const pasado = pasadoSet.has(t);
                               const deshab = ocupado || pasado;
                               const activo = slot === t;
-                              const tachado = ocupado && !pasado;
+                              // "Tomado" = reservado por alguien. Se muestra tachado con
+                              // tijera aunque ya haya pasado: es la prueba de que el
+                              // barbero tuvo turnos ese día.
+                              const tomado = ocupado;
+                              const esProximo = t === proximoLibre && !activo;
                               return (
                                 <button
                                   key={t}
                                   disabled={deshab}
+                                  aria-label={
+                                    tomado ? `${fmtTime(t)}, turno tomado` : pasado ? `${fmtTime(t)}, ya pasó` : fmtTime(t)
+                                  }
                                   onClick={() => {
                                     setSlot(t);
                                     setErrorMsg(null);
                                   }}
-                                  className="flex min-h-[54px] items-center justify-center rounded-[13px] font-display text-[18px] font-extrabold tabular-nums md:min-h-[50px] md:rounded-xl md:text-[17px]"
+                                  className="relative flex min-h-[54px] items-center justify-center rounded-[13px] font-display text-[18px] font-extrabold tabular-nums transition md:min-h-[50px] md:rounded-xl md:text-[17px]"
                                   style={
                                     activo
                                       ? { background: GRAD_CTA, border: "1px solid rgba(232,103,92,.9)", color: "#fbf7f0", boxShadow: "0 10px 22px -8px rgba(210,63,52,.65)" }
-                                      : deshab
-                                        ? { background: "transparent", border: "1px solid rgba(242,237,228,.05)", color: "rgba(156,149,138,.4)", textDecoration: tachado ? "line-through" : "none" }
-                                        : { background: "linear-gradient(180deg,#211d19,#151311)", border: "1px solid rgba(242,237,228,.1)", color: "#f2ede4" }
+                                      : tomado
+                                        ? {
+                                            // Tomado: se lee, pero tachado. Un pelín más
+                                            // presente que un hueco vacío, porque es la
+                                            // señal de demanda.
+                                            background: "rgba(210,63,52,.06)",
+                                            border: "1px solid rgba(210,63,52,.16)",
+                                            color: "rgba(156,149,138,.75)",
+                                            textDecoration: "line-through",
+                                            textDecorationColor: "rgba(232,103,92,.7)",
+                                            textDecorationThickness: "2px",
+                                          }
+                                        : pasado
+                                          ? { background: "transparent", border: "1px solid rgba(242,237,228,.05)", color: "rgba(156,149,138,.32)" }
+                                          : esProximo
+                                            ? {
+                                                background: "linear-gradient(180deg,#2a231d,#171412)",
+                                                border: "1px solid rgba(232,103,92,.55)",
+                                                color: "#f2ede4",
+                                                boxShadow: "0 0 0 3px rgba(210,63,52,.12)",
+                                              }
+                                            : { background: "linear-gradient(180deg,#211d19,#151311)", border: "1px solid rgba(242,237,228,.1)", color: "#f2ede4" }
                                   }
                                 >
                                   {fmtTime(t)}
+                                  {tomado && (
+                                    <span
+                                      aria-hidden
+                                      className="absolute -right-1 -top-1 grid h-[18px] w-[18px] place-items-center rounded-full text-[10px] leading-none"
+                                      style={{ background: "#2a1d1b", border: "1px solid rgba(232,103,92,.4)", color: "#e8675c" }}
+                                    >
+                                      ✂
+                                    </span>
+                                  )}
+                                  {esProximo && (
+                                    <span
+                                      aria-hidden
+                                      className="absolute -top-2 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full px-1.5 py-[1px] text-[8.5px] font-bold uppercase tracking-[0.1em]"
+                                      style={{ background: "#d23f34", color: "#fbf7f0" }}
+                                    >
+                                      Próximo
+                                    </span>
+                                  )}
                                 </button>
                               );
                             })}
@@ -1156,10 +1227,30 @@ export function BookingWizard({
                   </div>
                 </div>
 
+                {/* La HORA es el ancla del resumen: es el dato que el cliente
+                    viene a confirmar. Como fila suelta se perdía entre servicio
+                    y sede; acá va en grande, con la franja accent al borde. */}
+                <div className="relative overflow-hidden border-t border-line/70 bg-accent/[0.07] px-4 py-3.5">
+                  <span aria-hidden className="absolute inset-y-0 left-0 w-1 bg-accent" />
+                  <div className="text-[10px] font-bold uppercase tracking-[0.16em] text-accent-soft">
+                    {diaLabel(day)}
+                    {diaLabel(day) === "Hoy" || diaLabel(day) === "Mañana"
+                      ? ` · ${DOW[day.getDay()].toLowerCase()} ${day.getDate()} ${MON[day.getMonth()]}`
+                      : ""}
+                  </div>
+                  <div className="mt-1 font-display text-[34px] font-extrabold leading-none tabular-nums text-ink">
+                    {fmtTime(slot)}
+                  </div>
+                  {servicio.duracionMin != null && (
+                    <div className="mt-1 text-[11.5px] text-muted">
+                      Dura {durBadge(servicio.duracionMin).toLowerCase()} aprox.
+                    </div>
+                  )}
+                </div>
+
                 <div className="space-y-2.5 border-t border-line/70 px-4 py-3.5">
                   <ResumenRow k="Servicio" v={`${servicio.nombre}${bebidaTxt}`} />
                   <ResumenRow k="Sede" v={sedeNombre} />
-                  <ResumenRow k="Cuándo" v={`${diaLabel(day)}, ${fmtTime(slot)}`} />
                 </div>
 
                 {/* Total, alineado con lo que muestra el footer sticky. */}
