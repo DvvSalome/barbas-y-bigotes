@@ -5,6 +5,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { cop } from "@/lib/format";
 import { actualizarReserva } from "@/lib/actions";
+import { faltaParaLlegar } from "@/lib/slots";
 import type { Barbero } from "@/lib/data/types";
 import type { AgendaItem } from "@/lib/data/queries";
 
@@ -61,6 +62,9 @@ export function Recepcion({
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
+  // Instante estable: evita recalcular "faltan Xh" en cada render (regla del
+  // React Compiler). Basta con la frescura del refresh de la agenda.
+  const [ahora] = useState(() => Date.now());
 
   async function marcar(r: AgendaItem, estado: string) {
     if (estado === "cancelada" && !window.confirm(`¿Cancelar la cita de ${r.cliente || "este cliente"} a las ${hora(r.inicio)}? Se le avisa al cliente y el cupo queda libre.`))
@@ -160,16 +164,29 @@ export function Recepcion({
                           <span className="block truncate text-[13.5px] font-bold">{r.cliente || "Walk-in"}</span>
                           <span className="block truncate text-[11.5px] text-muted">{r.servicio || "—"}</span>
                         </span>
-                        <span
-                          className={`shrink-0 rounded-full px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-wide ${
-                            CHIP[r.estado] ?? "bg-ink/10 text-muted"
-                          }`}
-                        >
-                          {ESTADO[r.estado] ?? r.estado}
+                        <span className="flex shrink-0 flex-col items-end gap-1">
+                          <span
+                            className={`rounded-full px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-wide ${
+                              CHIP[r.estado] ?? "bg-ink/10 text-muted"
+                            }`}
+                          >
+                            {ESTADO[r.estado] ?? r.estado}
+                          </span>
+                          {/* Señal de confirmación: solo relevante en citas por venir
+                              (una cita reservada por app; el walk-in llega en persona). */}
+                          {!enCurso && r.canal !== "walkin" && (
+                            <span
+                              className={`rounded-full px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-wide ${
+                                r.confirmado ? "bg-ok/15 text-ok" : "bg-warn/15 text-warn"
+                              }`}
+                            >
+                              {r.confirmado ? "✓ confirmó" : "sin confirmar"}
+                            </span>
+                          )}
                         </span>
                       </div>
 
-                      <div className="mt-2.5 flex flex-wrap gap-1.5">
+                      <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
                         {enCurso ? (
                           <button
                             onClick={() => onCobrar(r.id)}
@@ -178,13 +195,19 @@ export function Recepcion({
                             Cobrar
                           </button>
                         ) : (
-                          <button
-                            onClick={() => marcar(r, "en_curso")}
-                            disabled={busy === r.id}
-                            className="rounded-lg bg-gradient-to-b from-accent-soft to-accent px-3.5 py-2 text-[12.5px] font-bold text-on-accent transition hover:brightness-105 disabled:opacity-50"
-                          >
-                            ✓ Llegó
-                          </button>
+                          (() => {
+                            const temprano = faltaParaLlegar(r.inicio, ahora);
+                            return (
+                              <button
+                                onClick={() => marcar(r, "en_curso")}
+                                disabled={busy === r.id || temprano !== null}
+                                title={temprano ? "Todavía no empieza esta cita" : undefined}
+                                className="rounded-lg bg-gradient-to-b from-accent-soft to-accent px-3.5 py-2 text-[12.5px] font-bold text-on-accent transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-40"
+                              >
+                                {temprano ? `Llegó · ${temprano}` : "✓ Llegó"}
+                              </button>
+                            );
+                          })()
                         )}
                         <button
                           onClick={() => marcar(r, "no_show")}

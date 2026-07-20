@@ -8,6 +8,21 @@ export const STEP = 30;       // minutos entre inicios de slot
 // Ventana mínima para cancelar/reagendar online (horas). Regla de negocio única.
 export const CANCELACION_MIN_HORAS = 2;
 
+// "Llegó" solo se habilita cuando faltan como mucho estas horas para la cita. En
+// el mostrador hay varias tarjetas juntas; sin este tope, un clic en la del turno
+// de la tarde cerraba esa cita como venta de ahora. El servidor la re-chequea.
+export const MARGEN_LLEGADA_HORAS = 2;
+
+// ¿Todavía es muy temprano para marcar "Llegó"? (mismo criterio en UI y server).
+// Devuelve la etiqueta "faltan Xh"/"faltan Xm" para el botón deshabilitado, o null
+// si ya se puede marcar.
+export function faltaParaLlegar(inicioISO: string, ahoraMs: number): string | null {
+  const faltanMs = new Date(inicioISO).getTime() - ahoraMs;
+  if (faltanMs <= MARGEN_LLEGADA_HORAS * 3600_000) return null;
+  const min = Math.round(faltanMs / 60000);
+  return min >= 120 ? `faltan ${Math.round(min / 60)}h` : `faltan ${min}m`;
+}
+
 // Disponibilidad guiada por la silla real: una cita EN CURSO (el barbero marcó
 // "Llegó") mantiene ocupada la silla hasta que la cierra ("Completar"), aunque se
 // pase del fin estimado. Red de olvido: si no la cierra, se libera sola pasado

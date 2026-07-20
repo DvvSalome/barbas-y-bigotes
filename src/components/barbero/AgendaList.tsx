@@ -16,6 +16,7 @@ import {
 import { calcularCobro } from "@/lib/cobro";
 import { CERQUILLO_EXCLUIDOS } from "@/lib/tarjeta";
 import { categorias } from "@/lib/data/seed";
+import { faltaParaLlegar } from "@/lib/slots";
 import type { Categoria } from "@/lib/data/types";
 import { ProductoThumb } from "@/components/staff/ProductoThumb";
 import { MedioLogo } from "@/components/staff/MedioLogo";
@@ -74,9 +75,9 @@ const iniciales = (n: string) => {
 const canalLabel = (r: AgendaItem) =>
   r.canal === "walkin"
     ? "Sin reserva · en la barbería"
-    : r.estado === "pendiente"
-      ? "Reservó por la app · aún no confirma el correo"
-      : "Reservó por la app";
+    : r.confirmado
+      ? "Reservó por la app · confirmó"
+      : "Reservó por la app · sin confirmar";
 
 export function AgendaList({
   agenda,
@@ -127,6 +128,9 @@ export function AgendaList({
   const [busy, setBusy] = useState(false);
   const [terminadasOpen, setTerminadasOpen] = useState(false);
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
+  // Instante estable para "faltan Xh" (regla del React Compiler: nada de Date.now()
+  // en cada render). La frescura la da el router.refresh de la agenda.
+  const [ahora] = useState(() => Date.now());
 
   const freeSlots = agenda.filter((item) => ["cancelada", "no_show"].includes(item.estado));
 
@@ -289,9 +293,21 @@ export function AgendaList({
               <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-current" />
               {enCurso ? "En la silla ahora" : ESTADO[r.estado] ?? r.estado}
             </span>
-            <span className="flex items-baseline gap-1.5">
-              <span className="font-display text-3xl font-bold leading-none tabular-nums">{hora(r.inicio)}</span>
-              {dur != null && <span className="text-[11px] text-muted">· {dur} min</span>}
+            <span className="flex items-center gap-2">
+              {/* Señal de confirmación del cliente (solo citas por venir de la app). */}
+              {!enCurso && r.canal !== "walkin" && (
+                <span
+                  className={`rounded-full px-2 py-0.5 text-[9.5px] font-extrabold uppercase tracking-wide ${
+                    r.confirmado ? "bg-ok/15 text-ok" : "bg-warn/15 text-warn"
+                  }`}
+                >
+                  {r.confirmado ? "✓ confirmó" : "sin confirmar"}
+                </span>
+              )}
+              <span className="flex items-baseline gap-1.5">
+                <span className="font-display text-3xl font-bold leading-none tabular-nums">{hora(r.inicio)}</span>
+                {dur != null && <span className="text-[11px] text-muted">· {dur} min</span>}
+              </span>
             </span>
           </div>
 
@@ -329,22 +345,19 @@ export function AgendaList({
               </button>
             ) : (
               <>
-                <button
-                  onClick={() => setEstado(r.id, { estado: "en_curso", llegada: "a_tiempo" })}
-                  disabled={busy}
-                  className="min-h-[58px] w-full rounded-[15px] bg-gradient-to-b from-accent-soft to-accent text-base font-extrabold text-on-accent shadow-[0_12px_26px_-10px_rgba(210,63,52,0.6)] transition hover:brightness-105 disabled:opacity-50"
-                >
-                  ✓ Llegó · pasá a la silla
-                </button>
-                {r.estado === "pendiente" && (
-                  <button
-                    onClick={() => setEstado(r.id, { estado: "confirmada" })}
-                    disabled={busy}
-                    className="min-h-[44px] w-full rounded-xl border border-line text-[13px] text-ink/80 transition hover:border-accent/50 disabled:opacity-50"
-                  >
-                    El cliente confirmó (llamada o WhatsApp)
-                  </button>
-                )}
+                {(() => {
+                  const temprano = faltaParaLlegar(r.inicio, ahora);
+                  return (
+                    <button
+                      onClick={() => setEstado(r.id, { estado: "en_curso", llegada: "a_tiempo" })}
+                      disabled={busy || temprano !== null}
+                      title={temprano ? "Todavía no empieza esta cita" : undefined}
+                      className="min-h-[58px] w-full rounded-[15px] bg-gradient-to-b from-accent-soft to-accent text-base font-extrabold text-on-accent shadow-[0_12px_26px_-10px_rgba(210,63,52,0.6)] transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      {temprano ? `Llegó · ${temprano}` : "✓ Llegó · pasá a la silla"}
+                    </button>
+                  );
+                })()}
                 <div className="flex gap-2">
                   <button
                     onClick={() => setEstado(r.id, { estado: "no_show" })}

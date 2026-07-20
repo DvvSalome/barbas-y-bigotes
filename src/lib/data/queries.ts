@@ -252,6 +252,8 @@ export type AgendaItem = {
   cliente: string;
   telefono: string;
   nota: string | null;
+  /** El cliente confirmó su asistencia desde el correo (señal para el mostrador). */
+  confirmado: boolean;
 };
 
 export async function getAgendaHoy(barberoId?: string | null): Promise<AgendaItem[]> {
@@ -261,7 +263,7 @@ export async function getAgendaHoy(barberoId?: string | null): Promise<AgendaIte
   let q = sb
     .from("reservas")
     .select(
-      "id,inicio,estado,canal,llegada,sede_id,servicio_id,barbero_id,cliente_ref,nota,servicios(nombre),barberos(nombre),clientes(nombre,telefono)",
+      "id,inicio,estado,canal,llegada,confirmado_en,sede_id,servicio_id,barbero_id,cliente_ref,nota,servicios(nombre),barberos(nombre),clientes(nombre,telefono)",
     )
     .gte("inicio", desde.toISOString())
     .lt("inicio", hasta.toISOString());
@@ -282,6 +284,7 @@ export async function getAgendaHoy(barberoId?: string | null): Promise<AgendaIte
     cliente: (r.clientes as { nombre?: string } | null)?.nombre ?? "",
     telefono: (r.clientes as { telefono?: string } | null)?.telefono ?? "",
     nota: r.nota as string | null,
+    confirmado: r.confirmado_en != null,
   }));
 }
 
@@ -297,7 +300,7 @@ export async function getAgendaSedeHoy(sedeId: string): Promise<AgendaItem[]> {
   const { data } = await admin
     .from("reservas")
     .select(
-      "id,inicio,estado,canal,llegada,sede_id,servicio_id,barbero_id,cliente_ref,nota,servicios(nombre),barberos(nombre),clientes(nombre,telefono)",
+      "id,inicio,estado,canal,llegada,confirmado_en,sede_id,servicio_id,barbero_id,cliente_ref,nota,servicios(nombre),barberos(nombre),clientes(nombre,telefono)",
     )
     .eq("sede_id", sedeId)
     .gte("inicio", desde.toISOString())
@@ -318,6 +321,7 @@ export async function getAgendaSedeHoy(sedeId: string): Promise<AgendaItem[]> {
     cliente: (r.clientes as { nombre?: string } | null)?.nombre ?? "",
     telefono: (r.clientes as { telefono?: string } | null)?.telefono ?? "",
     nota: r.nota as string | null,
+    confirmado: r.confirmado_en != null,
   }));
 }
 

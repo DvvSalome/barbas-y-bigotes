@@ -349,7 +349,10 @@ export async function reagendarReservaCliente(
     .from("reservas")
     // reminder_sent: false → la NUEVA fecha vuelve a entrar a la vista de
     // recordatorios (si ya se había mandado el de la fecha vieja, no se perdería).
-    .update({ inicio: nuevoInicio.toISOString(), fin: nuevoFin.toISOString(), reminder_sent: false })
+    // confirmado_en a null: el cliente confirmó la hora VIEJA; para la nueva se le
+    // vuelve a preguntar en el recordatorio. El mostrador no debe mostrar "confirmó"
+    // sobre una hora que ya no es.
+    .update({ inicio: nuevoInicio.toISOString(), fin: nuevoFin.toISOString(), reminder_sent: false, confirmado_en: null })
     .eq("id", reservaId)
     .in("estado", ["pendiente", "confirmada"])
     .select("id");
@@ -367,4 +370,58 @@ export async function reagendarReservaCliente(
   revalidatePath("/cuenta");
   revalidatePath("/barbero");
   return { ok: true };
+}
+
+// Confirmación de asistencia desde el link del correo, SIN login (el token es la
+// credencial). La usa la ruta pública /confirmar/[token]. Idempotente: confirmar
+// dos veces no cambia nada. Es una señal para el mostrador, nunca cancela ni mueve
+// la cita, así que si un antivirus de correo prefetchea el link no hay daño.
+// Devuelve los datos para pintar la pantalla de "listo, te esperamos".
+export type ConfirmarResultado =
+  | { estado: "ok" | "ya"; fecha: string; sede: string; barbero: string | null; servicio: string | null }
+  | { estado: "invalida" }
+  | { estado: "cancelada" };
+
+export async function confirmarCitaPorToken(token: string): Promise<ConfirmarResultado> {
+  // Un UUID mal formado ni toca la base.
+  if (!/^[0-9a-f-]{36}$/i.test(token)) return { estado: "invalida" };
+
+  const admin = supabaseAdmin();
+  const { data } = await admin
+    .from("reservas")
+    .select("id,inicio,estado,confirmado_en,sede_id,servicios(nombre),barberos(nombre),sedes(nombre)")
+    .eq("confirm_token", token)
+    .maybeSingle();
+  if (!data) return { estado: "invalida" };
+
+  const r = data as {
+    id: string;
+    inicio: string;
+    estado: string;
+    confirmado_en: string | null;
+    servicios: { nombre?: string } | null;
+    barberos: { nombre?: string } | null;
+    sedes: { nombre?: string } | null;
+  };
+
+  const detalle = {
+    fecha: fechaHoraBogota(new Date(r.inicio)),
+    sede: r.sedes?.nombre ?? "la barbería",
+    barbero: r.barberos?.nombre ?? null,
+    servicio: r.servicios?.nombre ?? null,
+  };
+
+  // Una cita cerrada no se "confirma": se le dice al cliente que ya no aplica.
+  if (["cancelada", "no_show", "completada"].includes(r.estado)) return { estado: "cancelada" };
+  if (r.confirmado_en) return { estado: "ya", ...detalle };
+
+  const { error } = await admin
+    .from("reservas")
+    .update({ confirmado_en: new Date().toISOString() })
+    .eq("id", r.id)
+    .is("confirmado_en", null);
+  if (error) return { estado: "invalida" };
+
+  revalidatePath("/barbero");
+  return { estado: "ok", ...detalle };
 }

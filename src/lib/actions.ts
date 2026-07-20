@@ -5,7 +5,7 @@ import { type SupabaseClient } from "@supabase/supabase-js";
 import { supabaseServerAuth, supabaseAdmin } from "@/lib/supabase/server";
 import { getStaffContext, getCorteIds, contarCortesCliente, precioCorteBase } from "@/lib/data/queries";
 import { clienteIdForUser } from "@/lib/cliente-actions";
-import { bogotaDayRange, bogotaYmd, finEfectivo } from "@/lib/slots";
+import { bogotaDayRange, bogotaYmd, finEfectivo, MARGEN_LLEGADA_HORAS } from "@/lib/slots";
 import { errorPublico } from "@/lib/errors";
 import { calcularCobro, snapshotDinero, diferenciaCaja } from "@/lib/cobro";
 import { beneficioProximoCorte } from "@/lib/tarjeta";
@@ -243,6 +243,9 @@ export async function toggleProductoUpsell(id: string, value: boolean): Promise<
 }
 
 const FOTO_MAX_BYTES = 2 * 1024 * 1024;
+
+// Margen para marcar "Llegó" (regla en slots.ts, compartida con la UI).
+const MARGEN_LLEGADA_MS = MARGEN_LLEGADA_HORAS * 3600_000;
 
 // Foto del producto → Supabase Storage (bucket público "productos", migración 0019).
 // service role para el storage: la escritura del bucket no se expone por RLS,
@@ -699,12 +702,24 @@ export async function actualizarReserva(
   const admin = supabaseAdmin();
   const { data: rsv } = await admin
     .from("reservas")
-    .select("sede_id")
+    .select("sede_id,inicio")
     .eq("id", reservaId)
     .maybeSingle();
   if (!rsv) return { ok: false, error: "Reserva no encontrada" };
-  if (!(await staffPuedeOperarSede(staff, (rsv as { sede_id: string }).sede_id)))
+  const rsvRow = rsv as { sede_id: string; inicio: string };
+  if (!(await staffPuedeOperarSede(staff, rsvRow.sede_id)))
     return { ok: false, error: "Esa cita es de otra sede." };
+
+  // Guard de "Llegó": no se puede pasar a la silla una cita que arranca dentro de
+  // más de 2 horas. En el mostrador hay varias tarjetas juntas y un clic en la del
+  // turno de la tarde la cerraba como venta de ahora. El que llega temprano igual
+  // pasa (hasta 2h antes); un cliente que aún no existe, no.
+  if (patch.estado === "en_curso") {
+    const faltanMs = new Date(rsvRow.inicio).getTime() - Date.now();
+    if (faltanMs > MARGEN_LLEGADA_MS) {
+      return { ok: false, error: "Esa cita todavía no empieza. Marcá la llegada más cerca de la hora." };
+    }
+  }
 
   const { data, error } = await admin
     .from("reservas")
