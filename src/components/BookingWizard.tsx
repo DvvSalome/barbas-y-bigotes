@@ -621,7 +621,10 @@ export function BookingWizard({
               </div>
               <div className="min-w-0">
                 <div className="text-[10.5px] font-bold uppercase tracking-[0.12em] text-muted">Servicio</div>
-                <div className="truncate text-sm font-semibold text-ink">
+                {/* Sin truncar: esta card es el comprobante de lo que reservó. Un
+                    "Corte (clásico, degradado, tijera …" acá deja al cliente sin
+                    saber qué pidió. Que ocupe dos líneas, hay lugar de sobra. */}
+                <div className="text-sm font-semibold leading-snug text-ink">
                   {servicio.nombre}
                   {bebidaTxt}
                 </div>
@@ -1364,8 +1367,21 @@ export function BookingWizard({
         style={{ background: "rgba(12,11,10,.95)", backdropFilter: "blur(10px)" }}
       >
         <div className="min-w-0 flex-1">
+          {/* El día y la hora van PRIMERO cuando ya se eligieron: la línea trunca
+              por la derecha, así que antes se comía justo el dato que el cliente
+              está por confirmar ("Corte (clásico, degradado, tijera o niñ…" y la
+              hora invisible). El nombre del servicio sí puede cortarse: ya está
+              arriba en grande. */}
           <div className="truncate text-[11px] text-muted">
-            {servicio ? `${servicio.nombre}${bebidaTxt} · ${barbero ? barbero.nombre : "Cualquier barbero"}${day && slot !== null ? ` · ${diaLabel(day)} ${fmtTime(slot)}` : ""}` : "Elegí un servicio y una hora"}
+            {servicio
+              ? [
+                  day && slot !== null ? `${diaLabel(day)} ${fmtTime(slot)}` : null,
+                  `${servicio.nombre}${bebidaTxt}`,
+                  barbero ? barbero.nombre : "Cualquier barbero",
+                ]
+                  .filter(Boolean)
+                  .join(" · ")
+              : "Elegí un servicio y una hora"}
           </div>
           <div className="font-display text-[24px] font-extrabold tabular-nums leading-none text-ink">{total !== null ? cop(total) : "—"}</div>
         </div>
