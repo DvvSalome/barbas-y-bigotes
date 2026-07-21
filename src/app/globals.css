@@ -23,6 +23,13 @@
   --accent-soft: #e8675c;
   --on-accent: #fbf7f0; /* texto sobre el rojo */
 
+  /* Degradado del CTA primario. Va aparte de accent/accent-soft porque en el
+     tema claro "soft" se redefinió como color de TEXTO (más oscuro que accent),
+     y usarlo de tope dejaba el botón iluminado desde ABAJO. Regla: --cta-1
+     SIEMPRE más claro que --cta-2. */
+  --cta-1: #e8675c;
+  --cta-2: #d23f34;
+
   color-scheme: dark;
 }
 
@@ -37,6 +44,8 @@
   --accent: #d23f34;
   --accent-soft: #e8675c;
   --on-accent: #fbf7f0;
+  --cta-1: #e8675c;
+  --cta-2: #d23f34;
   /* Estados sobrios (DESIGN.md: verde/ámbar solo para ok/alerta) y neutrales
      de gráficos. Viven acá y no en las clases para que el claro los re-resuelva. */
   --ok: #34d399;
@@ -68,6 +77,10 @@
      fondos tenues (chips accent/15) y necesita AA (review midió 3.56:1 con el tono anterior). */
   --accent-soft: #a52f25;
   --on-accent: #fbf7f0;
+  /* Tope MÁS CLARO que --cta-2 para conservar la luz desde arriba. #c33d31
+     mantiene el texto hueso en 4.88:1 (AA); tonos más claros lo bajan de 4.5. */
+  --cta-1: #c33d31;
+  --cta-2: #b9352a;
   --ok: #065f46;
   --warn: #92400e;
   --bar: #8f7a60;

@@ -69,7 +69,7 @@ export function AdminLoginForm({ onVolver }: { onVolver?: () => void }) {
         <button
           type="submit"
           disabled={loading}
-          className="w-full rounded-full bg-gradient-to-b from-accent-soft to-accent py-3 text-sm font-semibold uppercase tracking-wide text-on-accent shadow-[0_12px_26px_-10px_rgba(210,63,52,0.7)] transition hover:brightness-105 disabled:opacity-50"
+          className="w-full rounded-full bg-[linear-gradient(180deg,var(--cta-1),var(--cta-2))] py-3 text-sm font-semibold uppercase tracking-wide text-on-accent shadow-[0_12px_26px_-10px_rgba(210,63,52,0.7)] transition hover:brightness-105 disabled:opacity-50"
         >
           {loading ? "Entrando…" : "Entrar"}
         </button>

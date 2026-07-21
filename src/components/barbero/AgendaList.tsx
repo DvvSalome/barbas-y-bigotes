@@ -339,7 +339,7 @@ export function AgendaList({
             {enCurso ? (
               <button
                 onClick={() => setCompleteFor(completeFor === r.id ? null : r.id)}
-                className="min-h-[58px] w-full whitespace-nowrap rounded-[15px] bg-gradient-to-b from-accent-soft to-accent text-base font-extrabold text-on-accent shadow-[0_12px_26px_-10px_rgba(210,63,52,0.6)] transition hover:brightness-105"
+                className="min-h-[58px] w-full whitespace-nowrap rounded-[15px] bg-[linear-gradient(180deg,var(--cta-1),var(--cta-2))] text-base font-extrabold text-on-accent shadow-[0_12px_26px_-10px_rgba(210,63,52,0.6)] transition hover:brightness-105"
               >
                 {precio != null ? `Cobrar ${cop(precio)} →` : "Cobrar →"}
               </button>
@@ -352,7 +352,7 @@ export function AgendaList({
                       onClick={() => setEstado(r.id, { estado: "en_curso", llegada: "a_tiempo" })}
                       disabled={busy || temprano !== null}
                       title={temprano ? "Todavía no empieza esta cita" : undefined}
-                      className="min-h-[58px] w-full rounded-[15px] bg-gradient-to-b from-accent-soft to-accent text-base font-extrabold text-on-accent shadow-[0_12px_26px_-10px_rgba(210,63,52,0.6)] transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-40"
+                      className="min-h-[58px] w-full rounded-[15px] bg-[linear-gradient(180deg,var(--cta-1),var(--cta-2))] text-base font-extrabold text-on-accent shadow-[0_12px_26px_-10px_rgba(210,63,52,0.6)] transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-40"
                     >
                       {temprano ? `Llegó · ${temprano}` : "✓ Llegó · pasá a la silla"}
                     </button>
@@ -500,7 +500,7 @@ export function AgendaList({
           <div className="flex flex-wrap gap-2">
             <button
               onClick={() => setWalkinOpen(true)}
-              className="rounded-full bg-gradient-to-b from-accent-soft to-accent px-6 py-2.5 text-sm font-semibold uppercase tracking-wide text-on-accent shadow-[0_10px_24px_-10px_rgba(210,63,52,0.7)] transition hover:brightness-105"
+              className="rounded-full bg-[linear-gradient(180deg,var(--cta-1),var(--cta-2))] px-6 py-2.5 text-sm font-semibold uppercase tracking-wide text-on-accent shadow-[0_10px_24px_-10px_rgba(210,63,52,0.7)] transition hover:brightness-105"
             >
               + Cliente sin reserva (walk-in)
             </button>
@@ -1038,7 +1038,7 @@ function CheckoutForm({
           </div>
         )}
         <div className="mt-3 flex flex-wrap gap-2">
-          <button onClick={onDone} className="rounded-full bg-gradient-to-b from-accent-soft to-accent px-6 py-2 text-xs font-semibold uppercase tracking-wide text-on-accent shadow-[0_10px_24px_-10px_rgba(210,63,52,0.7)] transition hover:brightness-105">
+          <button onClick={onDone} className="rounded-full bg-[linear-gradient(180deg,var(--cta-1),var(--cta-2))] px-6 py-2 text-xs font-semibold uppercase tracking-wide text-on-accent shadow-[0_10px_24px_-10px_rgba(210,63,52,0.7)] transition hover:brightness-105">
             Listo
           </button>
         </div>

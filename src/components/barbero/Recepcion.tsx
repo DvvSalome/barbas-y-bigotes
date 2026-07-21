@@ -190,7 +190,7 @@ export function Recepcion({
                         {enCurso ? (
                           <button
                             onClick={() => onCobrar(r.id)}
-                            className="rounded-lg bg-gradient-to-b from-accent-soft to-accent px-3.5 py-2 text-[12.5px] font-bold text-on-accent transition hover:brightness-105"
+                            className="rounded-lg bg-[linear-gradient(180deg,var(--cta-1),var(--cta-2))] px-3.5 py-2 text-[12.5px] font-bold text-on-accent transition hover:brightness-105"
                           >
                             Cobrar
                           </button>
@@ -202,7 +202,7 @@ export function Recepcion({
                                 onClick={() => marcar(r, "en_curso")}
                                 disabled={busy === r.id || temprano !== null}
                                 title={temprano ? "Todavía no empieza esta cita" : undefined}
-                                className="rounded-lg bg-gradient-to-b from-accent-soft to-accent px-3.5 py-2 text-[12.5px] font-bold text-on-accent transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-40"
+                                className="rounded-lg bg-[linear-gradient(180deg,var(--cta-1),var(--cta-2))] px-3.5 py-2 text-[12.5px] font-bold text-on-accent transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-40"
                               >
                                 {temprano ? `Llegó · ${temprano}` : "✓ Llegó"}
                               </button>

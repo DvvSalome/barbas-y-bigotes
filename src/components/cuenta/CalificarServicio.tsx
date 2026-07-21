@@ -40,7 +40,7 @@ export function CalificarServicio({ pendiente }: { pendiente: VisitaPendiente | 
               href={googleUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="mt-4 inline-block rounded-full bg-gradient-to-b from-accent-soft to-accent px-6 py-3 text-sm font-semibold uppercase tracking-wide text-on-accent shadow-[0_12px_26px_-10px_rgba(210,63,52,0.7)] transition hover:brightness-105"
+              className="mt-4 inline-block rounded-full bg-[linear-gradient(180deg,var(--cta-1),var(--cta-2))] px-6 py-3 text-sm font-semibold uppercase tracking-wide text-on-accent shadow-[0_12px_26px_-10px_rgba(210,63,52,0.7)] transition hover:brightness-105"
             >
               ⭐ Dejanos tu reseña en Google
             </a>
@@ -123,7 +123,7 @@ export function CalificarServicio({ pendiente }: { pendiente: VisitaPendiente | 
 
         <button
           disabled={busy || score < 1}
-          className="rounded-full bg-gradient-to-b from-accent-soft to-accent px-6 py-2.5 text-sm font-semibold uppercase tracking-wide text-on-accent shadow-[0_12px_26px_-10px_rgba(210,63,52,0.7)] transition hover:brightness-105 disabled:opacity-50 disabled:shadow-none"
+          className="rounded-full bg-[linear-gradient(180deg,var(--cta-1),var(--cta-2))] px-6 py-2.5 text-sm font-semibold uppercase tracking-wide text-on-accent shadow-[0_12px_26px_-10px_rgba(210,63,52,0.7)] transition hover:brightness-105 disabled:opacity-50 disabled:shadow-none"
         >
           {busy ? "Enviando…" : "Enviar calificación"}
         </button>

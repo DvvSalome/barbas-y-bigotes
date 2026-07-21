@@ -89,7 +89,7 @@ export default async function CuentaPage() {
             <div className="mt-7 flex justify-center gap-3">
               <Link
                 href="/admin"
-                className="rounded-full bg-gradient-to-b from-accent-soft to-accent px-6 py-3 text-sm font-semibold uppercase tracking-wide text-on-accent shadow-[0_10px_24px_-8px_rgba(210,63,52,0.6)] transition hover:brightness-105"
+                className="rounded-full bg-[linear-gradient(180deg,var(--cta-1),var(--cta-2))] px-6 py-3 text-sm font-semibold uppercase tracking-wide text-on-accent shadow-[0_10px_24px_-8px_rgba(210,63,52,0.6)] transition hover:brightness-105"
               >
                 Panel admin
               </Link>
@@ -197,7 +197,7 @@ async function Portal({ clienteId, nombre, avatarUrl }: { clienteId: string; nom
           <p className="mx-auto mt-3 max-w-[26ch] text-sm text-muted">
             Pasá a la silla con {turno.barbero}. Te está esperando.
           </p>
-          <div className="mt-5 inline-flex items-center gap-2 rounded-full bg-gradient-to-b from-accent-soft to-accent px-5 py-2.5 font-display text-sm font-bold uppercase tracking-wide text-on-accent shadow-[0_12px_30px_-10px_rgba(210,63,52,0.8)]">
+          <div className="mt-5 inline-flex items-center gap-2 rounded-full bg-[linear-gradient(180deg,var(--cta-1),var(--cta-2))] px-5 py-2.5 font-display text-sm font-bold uppercase tracking-wide text-on-accent shadow-[0_12px_30px_-10px_rgba(210,63,52,0.8)]">
             <span className="relative flex h-2 w-2">
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-on-accent/70" />
               <span className="relative inline-flex h-2 w-2 rounded-full bg-on-accent" />
@@ -252,7 +252,7 @@ async function Portal({ clienteId, nombre, avatarUrl }: { clienteId: string; nom
           </div>
           <Link
             href="/reservar"
-            className="shrink-0 rounded-full bg-gradient-to-b from-accent-soft to-accent px-5 py-2.5 font-display text-[13px] font-bold uppercase tracking-wide text-on-accent shadow-[0_12px_26px_-10px_rgba(210,63,52,0.7)] transition hover:brightness-105"
+            className="shrink-0 rounded-full bg-[linear-gradient(180deg,var(--cta-1),var(--cta-2))] px-5 py-2.5 font-display text-[13px] font-bold uppercase tracking-wide text-on-accent shadow-[0_12px_26px_-10px_rgba(210,63,52,0.7)] transition hover:brightness-105"
           >
             Reservar
           </Link>
@@ -335,7 +335,7 @@ async function Portal({ clienteId, nombre, avatarUrl }: { clienteId: string; nom
                   <div className="relative overflow-hidden rounded-2xl border border-line bg-panel p-4 pl-5">
                     <span
                       aria-hidden
-                      className="absolute inset-y-0 left-0 w-1 bg-gradient-to-b from-accent-soft to-accent"
+                      className="absolute inset-y-0 left-0 w-1 bg-[linear-gradient(180deg,var(--cta-1),var(--cta-2))]"
                     />
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div>
@@ -422,7 +422,7 @@ function EmptyProximas() {
       </p>
       <Link
         href="/reservar"
-        className="mt-5 inline-block rounded-full bg-gradient-to-b from-accent-soft to-accent px-7 py-3 font-display text-sm font-bold uppercase tracking-wide text-on-accent shadow-[0_12px_26px_-10px_rgba(210,63,52,0.7)] transition hover:brightness-105"
+        className="mt-5 inline-block rounded-full bg-[linear-gradient(180deg,var(--cta-1),var(--cta-2))] px-7 py-3 font-display text-sm font-bold uppercase tracking-wide text-on-accent shadow-[0_12px_26px_-10px_rgba(210,63,52,0.7)] transition hover:brightness-105"
       >
         Reservar una cita
       </Link>

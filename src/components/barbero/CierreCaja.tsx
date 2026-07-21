@@ -35,7 +35,7 @@ const iniciales = (n: string) => {
 const fld =
   "w-full rounded-lg border border-line bg-bg px-3 py-2 text-ink placeholder:text-muted focus:border-accent focus:outline-none";
 const btn =
-  "rounded-full bg-gradient-to-b from-accent-soft to-accent px-5 py-2 text-xs font-semibold uppercase tracking-wide text-on-accent shadow-[0_10px_24px_-10px_rgba(210,63,52,0.7)] transition hover:brightness-105 disabled:opacity-50 disabled:shadow-none";
+  "rounded-full bg-[linear-gradient(180deg,var(--cta-1),var(--cta-2))] px-5 py-2 text-xs font-semibold uppercase tracking-wide text-on-accent shadow-[0_10px_24px_-10px_rgba(210,63,52,0.7)] transition hover:brightness-105 disabled:opacity-50 disabled:shadow-none";
 
 export function CierreCaja({
   caja,
