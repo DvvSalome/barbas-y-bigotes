@@ -61,3 +61,4 @@ public/workbox-*.js.map
 
 # supabase
 supabase/.temp/
+qa-out/
