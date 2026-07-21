@@ -400,7 +400,9 @@ export function BookingWizard({
     const d = new Date(now);
     const min = d.getHours() * 60 + d.getMinutes();
     if (d.getDay() === 0 || min < OPEN || min >= CLOSE) {
-      return { tipo: "cerrado", label: "Disponible para reservar" };
+      // Corto a propósito: "Disponible para reservar" no cabía en la card móvil
+      // (~161px de ancho) y partía el chip en dos líneas.
+      return { tipo: "cerrado", label: "Podés reservar" };
     }
     return { tipo: "libre", label: "Libre ahora" };
   }
@@ -679,7 +681,13 @@ export function BookingWizard({
     <div className="flex h-[100dvh] w-full flex-col overflow-hidden bg-bg">
       {/* Header */}
       <header className="flex shrink-0 items-center gap-3 border-b border-line px-4 pb-3 pt-[calc(env(safe-area-inset-top)+12px)] md:px-14">
-        <button onClick={irAtras} aria-label="Atrás" className="text-[20px] leading-none text-muted transition hover:text-ink">
+        {/* -ml-2 para que el área táctil crezca sin correr el título: el glifo medía
+            20px de alto, la mitad del mínimo cómodo con el pulgar (44px). */}
+        <button
+          onClick={irAtras}
+          aria-label="Atrás"
+          className="-ml-2 flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-[20px] leading-none text-muted transition hover:text-ink active:bg-ink/10"
+        >
           ←
         </button>
         <div className="min-w-0 flex-1">
@@ -834,61 +842,64 @@ export function BookingWizard({
                   const chipColor = ausente ? "#fbbf24" : est.tipo === "silla" ? "#e8675c" : est.tipo === "cerrado" ? "#9c958a" : "#34d399";
                   const chipBorder = ausente ? "rgba(251,191,36,.4)" : est.tipo === "silla" ? "rgba(210,63,52,.45)" : est.tipo === "cerrado" ? "rgba(242,237,228,.16)" : "rgba(52,211,153,.4)";
                   const estadoLabel = ausente ? (day ? "Ausente ese día" : "Ausente hoy") : est.label;
-                  // Misma estructura que la card de /barberos: foto arriba (B/N → color
-                  // al seleccionar/hover), barra accent y cuerpo con rating + chips.
+                  // Card del proto §6.5: una sola pieza aspect 3/3.6 con la foto
+                  // enmascarada y el texto encima. Antes acá vivía la card de
+                  // /barberos (foto + cuerpo con "Especialista en" + 4 chips): en
+                  // móvil medía ~800px de alto, así que entraban dos barberos por
+                  // pantalla y las cards quedaban de alturas distintas según cuántas
+                  // especialidades tuviera cada uno. Las especialidades siguen en
+                  // /barberos, que es donde el proto las pone.
                   return (
                     <button
                       key={b.id}
                       onClick={() => setBarbero(sel ? null : b)}
-                      className={`group flex flex-col overflow-hidden rounded-[18px] border bg-panel text-left transition duration-200 hover:-translate-y-1 ${
-                        sel ? "border-accent" : "border-line hover:border-accent/40"
+                      className={`group relative aspect-[3/3.6] overflow-hidden rounded-[14px] border-2 text-left transition duration-200 md:hover:-translate-y-1 ${
+                        sel ? "border-accent" : "border-line md:hover:border-accent/40"
                       }`}
+                      style={{
+                        background: sel
+                          ? "radial-gradient(circle at 50% 30%, rgba(210,63,52,.22), #151311 72%)"
+                          : "radial-gradient(circle at 50% 30%, #272119, #0e0d0b 76%)",
+                      }}
                     >
-                      <div className="relative aspect-[4/4.4] bg-[linear-gradient(165deg,#262019,#0b0a09)]">
-                        <Image
-                          src={b.fotoUrl || "/barberos/generico.jpg"}
-                          alt={b.nombre}
-                          fill
-                          sizes="(max-width:768px) 50vw, 33vw"
-                          className={`object-cover object-top transition-[filter] duration-500 group-hover:grayscale-0 ${sel ? "grayscale-0" : "grayscale"}`}
-                        />
-                        <div className="absolute inset-0" style={{ background: "linear-gradient(180deg,transparent 45%,rgba(0,0,0,.85))" }} />
-                        {b.destacado && (
-                          <span className="absolute left-2.5 top-2.5 rounded-full bg-accent px-2 py-0.5 text-[9.5px] font-extrabold uppercase tracking-[0.08em] text-on-accent">★ TOP</span>
+                      <Image
+                        src={b.fotoUrl || "/barberos/generico.jpg"}
+                        alt={b.nombre}
+                        fill
+                        sizes="(max-width:768px) 50vw, 240px"
+                        className={`object-cover object-top transition-[filter] duration-300 md:group-hover:grayscale-0 ${
+                          sel ? "" : "grayscale contrast-[1.05] brightness-[.88]"
+                        }`}
+                        style={{
+                          maskImage: "radial-gradient(ellipse 82% 92% at 50% 40%, black 48%, transparent 74%)",
+                          WebkitMaskImage: "radial-gradient(ellipse 82% 92% at 50% 40%, black 48%, transparent 74%)",
+                        }}
+                      />
+                      <span
+                        aria-hidden
+                        className="absolute inset-0"
+                        style={{ background: "linear-gradient(180deg, rgba(12,11,10,0) 45%, rgba(12,11,10,.82))" }}
+                      />
+                      {b.destacado && (
+                        <span className="absolute left-2 top-2 rounded-full bg-accent px-2 py-0.5 text-[9.5px] font-extrabold uppercase tracking-[0.08em] text-on-accent">★ TOP</span>
+                      )}
+                      {sel && (
+                        <span className="absolute right-2 top-2 flex h-[22px] w-[22px] items-center justify-center rounded-full bg-accent text-[11px] font-extrabold text-on-accent">✓</span>
+                      )}
+
+                      <div className="absolute inset-x-2.5 bottom-2.5">
+                        <div className="font-display text-[21px] font-extrabold uppercase leading-none text-white">{b.nombre}</div>
+                        {b.rating != null && (
+                          <div className="mt-1 text-[10px] text-[#c9c2b6]">
+                            ★ {b.rating.toFixed(1)}
+                            {b.resenas ? ` · ${b.resenas} reseñas` : ""}
+                          </div>
                         )}
-                        {sel && (
-                          <span className="absolute right-2.5 top-2.5 flex h-[22px] w-[22px] items-center justify-center rounded-full bg-accent text-[11px] font-extrabold text-on-accent">✓</span>
-                        )}
-                        <div className="absolute inset-x-3 bottom-2.5">
-                          <div className="font-display text-[21px] font-extrabold uppercase leading-none text-white">{b.nombre}</div>
-                        </div>
-                      </div>
-
-                      <div className="h-0.5 w-full bg-accent/70" />
-
-                      <div className="flex flex-1 flex-col px-3 py-3">
-                        <div className="flex items-center gap-1.5 text-[11.5px]">
-                          <span className="tracking-[1px] text-accent">★★★★★</span>
-                          {b.rating != null && <b className="text-ink">{b.rating.toFixed(1)}</b>}
-                          {b.resenas ? <span className="text-muted">· {b.resenas}</span> : null}
-                        </div>
-
-                        {b.especialidades.length > 0 && (
-                          <>
-                            <div className="mb-1.5 mt-2.5 text-[9px] uppercase tracking-[0.18em] text-muted">Especialista en</div>
-                            <div className="flex flex-wrap gap-1">
-                              {b.especialidades.slice(0, 4).map((e) => (
-                                <span key={e} className="rounded-full border border-line bg-white/[0.04] px-2 py-0.5 text-[10px] text-ink/85">{e}</span>
-                              ))}
-                            </div>
-                          </>
-                        )}
-
                         <span
-                          className="mt-2.5 inline-flex w-fit items-center gap-1.5 rounded-full border px-2 py-0.5 text-[10px] font-semibold"
-                          style={{ borderColor: chipBorder, background: "rgba(5,4,3,.35)", color: chipColor }}
+                          className="mt-1.5 inline-flex max-w-full items-center gap-1.5 truncate rounded-full border px-2 py-0.5 text-[9.5px] font-semibold"
+                          style={{ borderColor: chipBorder, background: "rgba(5,4,3,.55)", color: chipColor }}
                         >
-                          <span className="h-1.5 w-1.5 rounded-full" style={{ background: chipColor }} />
+                          <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: chipColor }} />
                           {estadoLabel}
                         </span>
                       </div>
