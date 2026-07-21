@@ -752,6 +752,15 @@ export function BookingWizard({
         {step === "servicio" && (
           <div>
             <h2 className="font-display text-[26px] font-extrabold uppercase leading-none">¿Qué servicio?</h2>
+            {/* Contexto de sede (y barbero si vino elegido). Sin esto, quien entra
+                desde "Reservar con Kevin" en /barberos aterriza acá y la pantalla
+                no nombra ni al barbero ni la sede: no sabe si su eleccion quedó,
+                ni en qué local reserva, y los precios cambian entre sedes.
+                Mismo formato que el subtítulo del paso 3. */}
+            <p className="mt-1.5 text-xs text-muted">
+              {sedeNombre}
+              {barbero ? ` · con ${barbero.nombre}` : ""}
+            </p>
             <div className="mb-2 mt-5 text-[10px] font-bold uppercase tracking-[0.24em] text-accent-soft">Categorías</div>
             {/* MÓVIL: fila que se desliza. Las 7 categorías en grilla 2x4 medían
                 200px y empujaban los servicios abajo del pliegue: en un iPhone SE
