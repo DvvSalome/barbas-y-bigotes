@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { categorias } from "@/lib/data/seed";
@@ -164,6 +164,14 @@ export function BookingWizard({
   // "Ahora" estable por montaje: evita llamar Date.now() en render (regla de pureza
   // del React Compiler). El estado en vivo del barbero se refresca con statusHoy.
   const [ahora] = useState(() => Date.now());
+  // El cuerpo scrollea por dentro (<main overflow-y-auto>), no la ventana, y es el
+  // MISMO nodo en los 5 pasos: al cambiar de paso conserva el scroll anterior.
+  // Avanzando casi no se nota (el paso siguiente suele ser más corto y el navegador
+  // lo recorta), pero al VOLVER por un error el paso 4 sí tiene alto de sobra: el
+  // aviso "Ese horario ya fue tomado" quedaba renderizado debajo del header y el
+  // cliente veía los horarios otra vez sin saber por qué. Medido: 127px de scroll
+  // heredado, aviso en y=15, header hasta y=69.
+  const cuerpoRef = useRef<HTMLElement>(null);
   // Ocupación del día elegido, por barbero (para los slots del paso 4).
   const [ocupadosDia, setOcupadosDia] = useState<Record<string, { inicio: string; fin: string }[]>>({});
   const [cargandoSlots, setCargandoSlots] = useState(false);
@@ -225,6 +233,12 @@ export function BookingWizard({
     // eslint-disable-next-line react-hooks/set-state-in-effect -- preselección de UX al entrar al paso (no cascada real)
     if (step === "horario" && !day && dias.length) setDay(dias[0]);
   }, [step, day, dias]);
+
+  // Cada paso arranca desde arriba: si no, el título y un posible aviso de error
+  // quedan por encima del scroll heredado (ver cuerpoRef).
+  useEffect(() => {
+    cuerpoRef.current?.scrollTo({ top: 0 });
+  }, [step]);
 
   // Al montar: (1) si venimos del redirect de Google, restaurar la reserva a
   // medias desde sessionStorage; (2) detectar la sesión del cliente para el
@@ -712,7 +726,7 @@ export function BookingWizard({
       {/* Cuerpo scrolleable */}
       {/* pb-10: el footer sticky del total tapaba el final del contenido al hacer
           scroll hasta abajo (se comía el cierre del resumen en mobile). */}
-      <main className="min-h-0 flex-1 overflow-y-auto px-4 pb-10 pt-5 md:px-14 md:pt-7">
+      <main ref={cuerpoRef} className="min-h-0 flex-1 overflow-y-auto px-4 pb-10 pt-5 md:px-14 md:pt-7">
         {/* ---------- Paso 1 · Sede ---------- */}
         {step === "sede" && (
           <div>
