@@ -93,7 +93,7 @@ export function Recepcion({
         </div>
         <div className="text-right">
           <div className="font-display text-[30px] font-bold leading-none tabular-nums text-ok">{cop(cobrado)}</div>
-          <div className="text-[10px] uppercase tracking-[0.14em] text-muted">cobrado hoy en la sede</div>
+          <div className="text-[11px] uppercase tracking-[0.14em] text-muted">cobrado hoy en la sede</div>
         </div>
       </div>
 
@@ -141,7 +141,7 @@ export function Recepcion({
                   <div className="font-display text-[15px] font-bold tabular-nums text-ok">
                     {cop(porBarbero[b.id] ?? 0)}
                   </div>
-                  <div className="text-[9.5px] uppercase tracking-[0.1em] text-muted">{cerradas} cerradas</div>
+                  <div className="text-[11px] uppercase tracking-[0.1em] text-muted">{cerradas} cerradas</div>
                 </div>
               </header>
 
@@ -166,7 +166,7 @@ export function Recepcion({
                         </span>
                         <span className="flex shrink-0 flex-col items-end gap-1">
                           <span
-                            className={`rounded-full px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-wide ${
+                            className={`rounded-full px-2 py-0.5 text-[10.5px] font-extrabold uppercase tracking-wide ${
                               CHIP[r.estado] ?? "bg-ink/10 text-muted"
                             }`}
                           >
@@ -176,7 +176,7 @@ export function Recepcion({
                               (una cita reservada por app; el walk-in llega en persona). */}
                           {!enCurso && r.canal !== "walkin" && (
                             <span
-                              className={`rounded-full px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-wide ${
+                              className={`rounded-full px-2 py-0.5 text-[10.5px] font-extrabold uppercase tracking-wide ${
                                 r.confirmado ? "bg-ok/15 text-ok" : "bg-warn/15 text-warn"
                               }`}
                             >
