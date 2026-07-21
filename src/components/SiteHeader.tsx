@@ -34,9 +34,12 @@ export function SiteHeader() {
         </Link>
 
         {/* Móvil: solo "Entrar" */}
+        {/* El pill mide 32px de alto (medida del proto). El ::before lo lleva a
+            ~48px de área táctil sin tocar el aspecto: sale en TODAS las páginas
+            públicas, así que era el target chico más frecuente del sitio. */}
         <Link
           href="/cuenta"
-          className="rounded-full border border-[rgba(242,237,228,0.16)] px-3.5 py-[7px] text-xs text-ink md:hidden"
+          className="relative rounded-full border border-[rgba(242,237,228,0.16)] px-3.5 py-[7px] text-xs text-ink before:absolute before:-inset-2 before:content-[''] md:hidden"
         >
           Entrar
         </Link>

@@ -120,7 +120,13 @@ export function SiteFooter({ conCtaMovil = false }: { conCtaMovil?: boolean }) {
             >
               <div className="font-display text-base font-bold uppercase">{s.nombre}</div>
               <div className="mt-0.5 text-xs text-muted">{s.direccion}</div>
-              <a href={s.telHref} className="mt-1 inline-block text-[12.5px] font-bold text-accent-soft">
+              {/* Tocar para llamar es una acción principal en una barbería, y el
+                  enlace medía 19px de alto. El ::before agranda el área táctil a
+                  ~45px SIN cambiar nada de lo que se ve (el proto queda igual). */}
+              <a
+                href={s.telHref}
+                className="relative mt-1 inline-block text-[12.5px] font-bold text-accent-soft before:absolute before:-inset-y-3 before:inset-x-0 before:content-['']"
+              >
                 {s.tel}
               </a>
             </div>
@@ -148,12 +154,20 @@ export function SiteFooter({ conCtaMovil = false }: { conCtaMovil?: boolean }) {
 
         {/* Legales: exigidas por Google (consentimiento OAuth) y por la Ley 1581.
             Visibles en mobile también: Google revisa que sean alcanzables. */}
+        {/* Mismo criterio del teléfono: el área táctil crece con ::before, el
+            tamaño visible no cambia. Google exige que estas dos sean alcanzables. */}
         <nav className="mt-4 flex items-center justify-center gap-3 text-[12px] text-muted">
-          <Link href="/privacidad" className="transition hover:text-accent-soft">
+          <Link
+            href="/privacidad"
+            className="relative transition hover:text-accent-soft before:absolute before:-inset-y-3.5 before:inset-x-0 before:content-['']"
+          >
             Privacidad
           </Link>
           <span aria-hidden className="h-[3px] w-[3px] rounded-full bg-muted/60" />
-          <Link href="/terminos" className="transition hover:text-accent-soft">
+          <Link
+            href="/terminos"
+            className="relative transition hover:text-accent-soft before:absolute before:-inset-y-3.5 before:inset-x-0 before:content-['']"
+          >
             Términos
           </Link>
         </nav>

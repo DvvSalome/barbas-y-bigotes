@@ -64,7 +64,7 @@ export function LegalLayout({
           </p>
           <Link
             href="/"
-            className="mt-4 inline-block text-[13px] font-semibold text-accent-soft transition hover:text-accent"
+            className="relative mt-4 inline-block text-[13px] font-semibold text-accent-soft transition hover:text-accent before:absolute before:-inset-y-3 before:inset-x-0 before:content-['']"
           >
             ← Volver al inicio
           </Link>
