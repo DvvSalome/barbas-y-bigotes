@@ -750,7 +750,12 @@ export function BookingWizard({
           <div>
             <h2 className="font-display text-[26px] font-extrabold uppercase leading-none">¿Qué servicio?</h2>
             <div className="mb-2 mt-5 text-[10px] font-bold uppercase tracking-[0.24em] text-accent-soft">Categorías</div>
-            <div className="grid grid-cols-2 gap-2 md:grid-cols-[repeat(auto-fit,minmax(230px,1fr))]">
+            {/* MÓVIL: fila que se desliza. Las 7 categorías en grilla 2x4 medían
+                200px y empujaban los servicios abajo del pliegue: en un iPhone SE
+                no entraba NI UNA card de servicio completa (medido). En fila son
+                ~56px. DESKTOP mantiene la grilla del proto (§6.4), donde entran
+                de sobra. Los chips no cambian de estilo, solo de acomodo. */}
+            <div className="scroll-x-limpio -mx-4 flex snap-x snap-mandatory gap-2 overflow-x-auto px-4 pb-1 md:mx-0 md:grid md:snap-none md:grid-cols-[repeat(auto-fit,minmax(230px,1fr))] md:overflow-visible md:px-0 md:pb-0">
               {cats.map((cat) => {
                 const activa = selectedCat === cat;
                 const n = serviciosSede.filter((s) => s.categoria === cat).length;
@@ -758,7 +763,7 @@ export function BookingWizard({
                   <button
                     key={cat}
                     onClick={() => setSelectedCat(cat)}
-                    className="flex min-h-[44px] items-center justify-between gap-2 rounded-[10px] px-3 py-2.5"
+                    className="flex min-h-[44px] shrink-0 snap-start items-center justify-between gap-2 rounded-[10px] px-3 py-2.5 md:shrink"
                     style={{
                       background: "linear-gradient(90deg,#211d19,#151311)",
                       border: `1px solid ${activa ? "rgba(210,63,52,.75)" : "rgba(242,237,228,.14)"}`,
