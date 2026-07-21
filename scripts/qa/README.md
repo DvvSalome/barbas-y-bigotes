@@ -14,6 +14,7 @@ npm run build && npm start          # deja el sitio en localhost:3000
 pip install playwright && playwright install chromium   # solo la primera vez
 python scripts/qa/recorrido-movil.py
 python scripts/qa/areas-tactiles.py
+python scripts/qa/vuelta-de-google.py
 ```
 
 ## Qué mide cada uno
@@ -28,6 +29,14 @@ sitio público con `elementFromPoint`, no con `getBoundingClientRect`. La
 diferencia importa: varios enlaces agrandan su zona de toque con un `::before`,
 que no cambia el rectángulo del elemento. Midiendo el rect parecerían rotos
 aunque funcionen bien. Salida esperada: los cuatro casos en `OK` (>=44px).
+
+**`vuelta-de-google.py`** — el cliente llega al paso 5, entra con Google y vuelve.
+Si el snapshot de `sessionStorage` falla, pierde sede, servicio, barbero, día y
+hora, y tiene que rehacer todo. Corta el salto a Google (interceptando la
+petición) y recarga `/reservar` para simular el regreso. Comprueba tres cosas:
+que restaure idéntico en el paso 5, que el snapshot se consuma después de usarlo
+(una segunda carga arranca limpia) y que uno de hace más de 30 minutos no
+restaure. Este no escribe nada en la base.
 
 ## Ojo con los datos
 
