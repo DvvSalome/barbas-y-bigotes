@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { cop } from "@/lib/format";
 import {
@@ -16,7 +16,6 @@ import {
 import { calcularCobro } from "@/lib/cobro";
 import { CERQUILLO_EXCLUIDOS, type BeneficioTarjeta } from "@/lib/tarjeta";
 import { categorias } from "@/lib/data/seed";
-import { faltaParaLlegar } from "@/lib/slots";
 import type { Categoria } from "@/lib/data/types";
 import { ProductoThumb } from "@/components/staff/ProductoThumb";
 import { MedioLogo } from "@/components/staff/MedioLogo";
@@ -71,14 +70,6 @@ const iniciales = (n: string) => {
   return parts.slice(0, 2).map((p) => p.charAt(0).toUpperCase()).join("");
 };
 
-// Origen de la cita, en el copy del prototipo.
-const canalLabel = (r: AgendaItem) =>
-  r.canal === "walkin"
-    ? "Sin reserva · en la barbería"
-    : r.confirmado
-      ? "Reservó por la app · confirmó"
-      : "Reservó por la app · sin confirmar";
-
 export function AgendaList({
   agenda,
   sedes,
@@ -88,9 +79,6 @@ export function AgendaList({
   productos,
   medios,
   esAdmin = false,
-  hoyLabel,
-  subtitulo,
-  cobradoHoy,
   mostrador,
 }: {
   agenda: AgendaItem[];
@@ -101,11 +89,8 @@ export function AgendaList({
   productos: Producto[];
   medios: MedioPago[];
   esAdmin?: boolean;
-  hoyLabel: string;
-  subtitulo: string;
-  cobradoHoy: number;
-  /** Datos de TODA la sede para la vista mostrador (solo sesión de barbero). */
-  mostrador?: {
+  /** La sede que se opera desde el mostrador (o las dos, para el dueño). */
+  mostrador: {
     sedeNombre: string;
     agendaSede: AgendaItem[];
     barberosSede: Barbero[];
@@ -114,24 +99,34 @@ export function AgendaList({
   };
 }) {
   const router = useRouter();
-  // Vista activa: "mia" (la del barbero) o "sede" (mostrador compartido). Vive acá
-  // para que la hoja de cobro (completeFor) sea la misma en las dos.
-  // Arranca en MOSTRADOR: el negocio se opera desde el equipo del local, con la
-  // sede entera a la vista. "Mi agenda" queda para el barbero que mira su día
-  // desde el celular, que es el caso secundario.
-  const [vista, setVista] = useState<"mia" | "sede">(mostrador ? "sede" : "mia");
   const [walkinOpen, setWalkinOpen] = useState(false);
   const [ventaOpen, setVentaOpen] = useState(false);
   const [completeFor, setCompleteFor] = useState<string | null>(null);
+  // La hoja de cobro se monta debajo de la agenda de la sede, fuera de la
+  // pantalla: sin esto, el barbero toca "Cobrar", no ve ningún cambio y vuelve
+  // a tocar. Se la lleva a la vista y se le marca el foco.
+  const hojaCobro = useRef<HTMLDivElement | null>(null);
+
+  /**
+   * Abrir el cobro de una cita. NO es un toggle a propósito: antes, volver a
+   * tocar "Cobrar" —el reflejo natural cuando parecía que no había pasado
+   * nada— CERRABA la hoja. Para cerrarla está "Cancelar".
+   */
+  const abrirCobro = (id: string) => {
+    setCompleteFor(id);
+    // Tras el render: la hoja todavía no existe en el DOM cuando esto corre.
+    // block "start" y no "center": la hoja mide ~2000px, así que centrarla deja
+    // su cabecera 460px ARRIBA del borde (medido). Alineando el inicio, el
+    // barbero ve el título y baja llenando.
+    requestAnimationFrame(() =>
+      hojaCobro.current?.scrollIntoView({ behavior: "smooth", block: "start" }),
+    );
+  };
   const [historyFor, setHistoryFor] = useState<string | null>(null);
   const [history, setHistory] = useState<HistItem[] | null>(null);
   const [busy, setBusy] = useState(false);
   const [terminadasOpen, setTerminadasOpen] = useState(false);
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
-  // Instante estable para "faltan Xh" (regla del React Compiler: nada de Date.now()
-  // en cada render). La frescura la da el router.refresh de la agenda.
-  const [ahora] = useState(() => Date.now());
-
   const freeSlots = agenda.filter((item) => ["cancelada", "no_show"].includes(item.estado));
 
   // Agenda HERO: activos primero, con el que está en la silla (en_curso) al tope;
@@ -141,10 +136,7 @@ export function AgendaList({
   const activosOrd = [...activos].sort(
     (a, b) => (b.estado === "en_curso" ? 1 : 0) - (a.estado === "en_curso" ? 1 : 0),
   );
-  const hero = activosOrd.length > 0 ? activosOrd[0] : null;
   const resto = activosOrd.slice(1);
-  const progPct = agenda.length ? Math.round((hechas.length / agenda.length) * 100) : 0;
-  const sigue = activosOrd.find((r) => r.estado !== "en_curso") ?? null;
 
   async function setEstado(id: string, patch: { estado?: string; llegada?: string }) {
     setBusy(true);
@@ -174,8 +166,6 @@ export function AgendaList({
     if (!r.servicioId) return null;
     return preciosServicios.find((s) => s.id === r.servicioId)?.preciosPorSede[r.sede] ?? null;
   };
-  const durDe = (r: AgendaItem): number | null =>
-    servicios.find((s) => s.id === r.servicioId)?.duracionMin ?? null;
 
   // Adelanto: si un cupo anterior quedó libre (no llegó / canceló), se le puede
   // ofrecer al cliente adelantar su cita. Conserva la lógica previa.
@@ -216,7 +206,7 @@ export function AgendaList({
     }
   };
 
-  // Panel de historial (mismo markup para hero y filas de "Después").
+  // Panel de historial (se abre desde una fila de "Después").
   const historialPanel = () => (
     <div className="mt-3 rounded-xl border border-line bg-bg p-3">
       <div className="mb-2 flex items-center justify-between">
@@ -245,7 +235,7 @@ export function AgendaList({
   );
 
   // Hoja de cobro (CheckoutForm): lógica de cobro/tarjeta intacta; solo cambia
-  // desde dónde se dispara (botón "Cobrar" del hero o de una fila).
+  // desde dónde se dispara (botón "Cobrar" del mostrador o de una fila).
   const cobroDe = (r: AgendaItem) => (
     <CheckoutForm
       reserva={r}
@@ -264,152 +254,6 @@ export function AgendaList({
     />
   );
 
-  // Tarjeta HERO del cliente en foco (en la silla = verde, próximo = rojo).
-  const renderHero = (r: AgendaItem) => {
-    const enCurso = r.estado === "en_curso";
-    const precio = precioDe(r);
-    const dur = durDe(r);
-    const { earliestSlot, hasPendingProposal, proposedTimeStr } = proposalInfo(r);
-    return (
-      <div
-        className={`relative overflow-hidden rounded-[22px] border bg-panel p-4 shadow-[0_24px_50px_-30px_rgba(0,0,0,0.8)] ${
-          enCurso ? "border-ok/50" : "border-accent/40"
-        }`}
-      >
-        <span
-          aria-hidden
-          className={`pointer-events-none absolute inset-0 bg-gradient-to-br via-transparent to-transparent ${
-            enCurso ? "from-ok/15" : "from-accent/15"
-          }`}
-        />
-        <span aria-hidden className={`absolute inset-y-0 left-0 w-1 ${enCurso ? "bg-ok" : "bg-accent"}`} />
-        <div className="relative">
-          <div className="flex items-center justify-between gap-2">
-            <span
-              className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[10.5px] font-extrabold uppercase tracking-[0.1em] ${
-                enCurso ? "bg-ok/15 text-ok" : chipCls(r.estado)
-              }`}
-            >
-              <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-current" />
-              {enCurso ? "En la silla ahora" : ESTADO[r.estado] ?? r.estado}
-            </span>
-            <span className="flex items-center gap-2">
-              {/* Señal de confirmación del cliente (solo citas por venir de la app). */}
-              {!enCurso && r.canal !== "walkin" && (
-                <span
-                  className={`rounded-full px-2 py-0.5 text-[9.5px] font-extrabold uppercase tracking-wide ${
-                    r.confirmado ? "bg-ok/15 text-ok" : "bg-warn/15 text-warn"
-                  }`}
-                >
-                  {r.confirmado ? "✓ confirmó" : "sin confirmar"}
-                </span>
-              )}
-              <span className="flex items-baseline gap-1.5">
-                <span className="font-display text-3xl font-bold leading-none tabular-nums">{hora(r.inicio)}</span>
-                {dur != null && <span className="text-[11px] text-muted">· {dur} min</span>}
-              </span>
-            </span>
-          </div>
-
-          <div className="mt-3.5 flex items-center gap-3.5">
-            <span
-              className={`grid h-[66px] w-[66px] shrink-0 place-items-center rounded-full font-display text-[26px] font-bold text-[#0c0b0a] ring-2 ${
-                enCurso ? "ring-ok/70" : "ring-accent/60"
-              }`}
-              style={{ background: aviTono(r.cliente) }}
-            >
-              {iniciales(r.cliente || "Walk-in")}
-            </span>
-            <div className="min-w-0">
-              <div className="truncate font-display text-[27px] font-bold uppercase leading-none">
-                {r.cliente || "Walk-in"}
-              </div>
-              <div className="mt-1 truncate text-[13.5px] text-ink/80">{r.servicio || "—"}</div>
-            </div>
-          </div>
-
-          <div className="mt-3.5 flex items-center justify-between gap-3 border-t border-line pt-3">
-            <span className="min-w-0 truncate text-[11.5px] text-muted">{canalLabel(r)}</span>
-            {precio != null && (
-              <span className="shrink-0 font-display text-2xl font-bold tabular-nums">{cop(precio)}</span>
-            )}
-          </div>
-
-          <div className="mt-3.5 flex flex-col gap-2">
-            {enCurso ? (
-              <button
-                onClick={() => setCompleteFor(completeFor === r.id ? null : r.id)}
-                className="min-h-[58px] w-full whitespace-nowrap rounded-[15px] bg-[linear-gradient(180deg,var(--cta-1),var(--cta-2))] text-base font-extrabold text-on-accent shadow-[0_12px_26px_-10px_rgba(210,63,52,0.6)] transition hover:brightness-105"
-              >
-                {precio != null ? `Cobrar ${cop(precio)} →` : "Cobrar →"}
-              </button>
-            ) : (
-              <>
-                {(() => {
-                  const temprano = faltaParaLlegar(r.inicio, ahora);
-                  return (
-                    <button
-                      onClick={() => setEstado(r.id, { estado: "en_curso", llegada: "a_tiempo" })}
-                      disabled={busy || temprano !== null}
-                      title={temprano ? "Todavía no empieza esta cita" : undefined}
-                      className="min-h-[58px] w-full rounded-[15px] bg-[linear-gradient(180deg,var(--cta-1),var(--cta-2))] text-base font-extrabold text-on-accent shadow-[0_12px_26px_-10px_rgba(210,63,52,0.6)] transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-40"
-                    >
-                      {temprano ? `Llegó · ${temprano}` : "✓ Llegó · pasá a la silla"}
-                    </button>
-                  );
-                })()}
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => setEstado(r.id, { estado: "no_show" })}
-                    disabled={busy}
-                    className="min-h-[40px] flex-1 text-[13px] text-muted transition hover:text-ink disabled:opacity-50"
-                  >
-                    No llegó · avisar a la fila
-                  </button>
-                  <button
-                    onClick={() => cancelarCita(r)}
-                    disabled={busy}
-                    className="min-h-[40px] flex-1 text-[13px] text-muted transition hover:text-accent-soft disabled:opacity-50"
-                  >
-                    Cancelar cita
-                  </button>
-                </div>
-              </>
-            )}
-            {(r.clienteRef || hasPendingProposal || earliestSlot) && (
-              <div className="flex flex-wrap justify-center gap-2 pt-0.5">
-                {r.clienteRef && (
-                  <button
-                    onClick={() => showHistory(r.clienteRef, r.id)}
-                    className="rounded-full border border-line px-3 py-1.5 text-xs text-muted transition hover:text-ink"
-                  >
-                    Ver historial
-                  </button>
-                )}
-                {hasPendingProposal && (
-                  <span className="rounded-full border border-warn/30 bg-warn/10 px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-warn">
-                    Propuesto {proposedTimeStr}
-                  </span>
-                )}
-                {earliestSlot && !hasPendingProposal && (
-                  <button
-                    onClick={() => ofrecerAdelanto(r, earliestSlot.inicio)}
-                    disabled={busy}
-                    className="rounded-full border border-accent/40 bg-accent/5 px-3 py-1.5 text-xs text-accent-soft transition hover:bg-accent/15 disabled:opacity-50"
-                  >
-                    Ofrecer adelanto ({hora(earliestSlot.inicio)})
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
-
-          {historyFor === r.id && historialPanel()}
-        </div>
-      </div>
-    );
-  };
-
   // La hoja de cobro se busca en la agenda de la sede también: desde el mostrador
   // se cobra la cita de otro barbero, que no está en `agenda` (la propia).
   const reservaEnCobro =
@@ -419,148 +263,82 @@ export function AgendaList({
 
   return (
     <div>
-      {/* Cambio de vista: mi agenda (celular) o mostrador (equipo del local) */}
-      {mostrador && (
-        <div className="mb-4 inline-flex rounded-full border border-line bg-panel p-1">
-          {(
-            [
-              { id: "mia", label: "Mi agenda" },
-              { id: "sede", label: "Mostrador" },
-            ] as const
-          ).map((o) => (
-            <button
-              key={o.id}
-              onClick={() => setVista(o.id)}
-              className={`rounded-full px-4 py-1.5 text-[12.5px] font-semibold transition ${
-                vista === o.id ? "bg-elevated text-ink shadow-[inset_0_0_0_1px_var(--line)]" : "text-muted hover:text-ink"
-              }`}
-            >
-              {o.label}
-            </button>
-          ))}
+
+      {/* UNA sola vista: el MOSTRADOR. El equipo comparte el aparato del local y
+          opera la sede entera desde acá. Antes había un selector "Mi agenda /
+          Mostrador" con una vista personal por barbero; se retiró porque el
+          modelo del producto es un único mostrador compartido, y mantener dos
+          agendas obligaba a traer dos juegos de datos en cada carga para usar
+          uno solo. */}
+      <Recepcion
+        agenda={mostrador.agendaSede}
+        barberos={mostrador.barberosSede}
+        sedeNombre={mostrador.sedeNombre}
+        cobrado={mostrador.cobradoSede}
+        porBarbero={mostrador.porBarbero}
+        onCobrar={abrirCobro}
+      />
+
+      <div className="mx-auto w-full max-w-2xl">
+    {/* Walk-in / Venta rápida (como estaban) */}
+    <div className="mb-4 space-y-3">
+      {!walkinOpen && !ventaOpen && (
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => setWalkinOpen(true)}
+            className="rounded-full bg-[linear-gradient(180deg,var(--cta-1),var(--cta-2))] px-6 py-2.5 text-sm font-semibold uppercase tracking-wide text-on-accent shadow-[0_10px_24px_-10px_rgba(210,63,52,0.7)] transition hover:brightness-105"
+          >
+            + Cliente sin reserva (walk-in)
+          </button>
+          <button
+            onClick={() => setVentaOpen(true)}
+            className="rounded-full border border-accent/50 bg-accent/[0.06] px-6 py-2.5 text-sm font-semibold uppercase tracking-wide text-accent-soft transition hover:bg-accent/15"
+          >
+            Venta rápida
+          </button>
         </div>
       )}
-
-      {mostrador && vista === "sede" ? (
-        <>
-          <Recepcion
-            agenda={mostrador.agendaSede}
-            barberos={mostrador.barberosSede}
-            sedeNombre={mostrador.sedeNombre}
-            cobrado={mostrador.cobradoSede}
-            porBarbero={mostrador.porBarbero}
-            onCobrar={(id) => setCompleteFor(completeFor === id ? null : id)}
-          />
-          {/* La hoja de cobro estaba fuera de todo límite de ancho: en el equipo
-              del mostrador se estiraba a los 1152px del contenedor y los chips
-              quedaban desparramados de punta a punta. Misma medida que la agenda. */}
-          {reservaEnCobro && <div className="mx-auto w-full max-w-2xl">{cobroDe(reservaEnCobro)}</div>}
-        </>
-      ) : (
-        <div className={mostrador ? "mx-auto w-full max-w-2xl" : ""}>
-      {/* Encabezado del día + cobrado hoy */}
-      <div className="mb-3 flex items-baseline justify-between gap-3">
-        <div className="min-w-0">
-          <h1 className="font-display text-[26px] font-bold uppercase leading-none">Hoy, {hoyLabel}</h1>
-          {subtitulo && <p className="mt-1 truncate text-xs text-muted">{subtitulo}</p>}
-        </div>
-        <div className="shrink-0 text-right">
-          <div className="font-display text-[22px] font-bold tabular-nums text-ok">{cop(cobradoHoy)}</div>
-          <div className="text-[10px] uppercase tracking-[0.12em] text-muted">cobrado hoy</div>
-        </div>
-      </div>
-
-      {/* Progreso del día */}
-      <div className="mb-3 rounded-2xl border border-line bg-panel px-3.5 py-3">
-        <div className="flex items-center justify-between text-[11px] uppercase tracking-[0.1em] text-muted">
-          <span>Tu día</span>
-          <span>
-            {hechas.length} de {agenda.length} atenciones
-          </span>
-        </div>
-        <div className="mt-1.5 h-[5px] overflow-hidden rounded-full bg-ink/10">
-          <div
-            className="h-full rounded-full"
-            style={{ width: `${progPct}%`, background: "linear-gradient(90deg, var(--bar), var(--accent))" }}
-          />
-        </div>
-        {sigue && (
-          <div className="mt-2 text-[12.5px]">
-            <span className="text-muted">Sigue:</span>{" "}
-            <b>
-              {sigue.cliente || "Walk-in"} · {hora(sigue.inicio)}
-            </b>
-          </div>
-        )}
-      </div>
-
-      {/* Walk-in / Venta rápida (como estaban) */}
-      <div className="mb-4 space-y-3">
-        {!walkinOpen && !ventaOpen && (
-          <div className="flex flex-wrap gap-2">
-            <button
-              onClick={() => setWalkinOpen(true)}
-              className="rounded-full bg-[linear-gradient(180deg,var(--cta-1),var(--cta-2))] px-6 py-2.5 text-sm font-semibold uppercase tracking-wide text-on-accent shadow-[0_10px_24px_-10px_rgba(210,63,52,0.7)] transition hover:brightness-105"
-            >
-              + Cliente sin reserva (walk-in)
-            </button>
-            <button
-              onClick={() => setVentaOpen(true)}
-              className="rounded-full border border-accent/50 bg-accent/[0.06] px-6 py-2.5 text-sm font-semibold uppercase tracking-wide text-accent-soft transition hover:bg-accent/15"
-            >
-              Venta rápida
-            </button>
-          </div>
-        )}
-        {walkinOpen && (
-          <WalkinForm
-            sedes={sedes}
-            barberos={barberos}
-            servicios={servicios}
-            onDone={() => {
-              setWalkinOpen(false);
-              router.refresh();
-            }}
-            onCancel={() => setWalkinOpen(false)}
-          />
-        )}
-        {ventaOpen && (
-          <CheckoutForm
-            reserva={null}
-            sedes={sedes}
-            barberos={barberos}
-            servicios={servicios}
-            preciosServicios={preciosServicios}
-            productos={productos}
-            medios={medios}
-            esAdmin={esAdmin}
-            onDone={() => {
-              setVentaOpen(false);
-              router.refresh();
-            }}
-            onCancel={() => setVentaOpen(false)}
-          />
-        )}
-      </div>
-
-      {/* Tarjeta HERO del cliente en foco, o silla libre */}
-      {hero ? (
-        renderHero(hero)
-      ) : (
-        <div className="rounded-[18px] border border-dashed border-ink/15 px-5 py-9 text-center">
-          <div className="font-display text-[22px] font-bold uppercase">Silla libre</div>
-          <div className="mx-auto mt-1.5 max-w-xs text-[13px] text-muted">
-            No tenés a nadie en la silla ahora. Sumá un walk-in o esperá la próxima cita.
-          </div>
-        </div>
+      {walkinOpen && (
+        <WalkinForm
+          sedes={sedes}
+          barberos={barberos}
+          servicios={servicios}
+          onDone={() => {
+            setWalkinOpen(false);
+            router.refresh();
+          }}
+          onCancel={() => setWalkinOpen(false)}
+        />
       )}
+      {ventaOpen && (
+        <CheckoutForm
+          reserva={null}
+          sedes={sedes}
+          barberos={barberos}
+          servicios={servicios}
+          preciosServicios={preciosServicios}
+          productos={productos}
+          medios={medios}
+          esAdmin={esAdmin}
+          onDone={() => {
+            setVentaOpen(false);
+            router.refresh();
+          }}
+          onCancel={() => setVentaOpen(false)}
+        />
+      )}
+    </div>
+      </div>
 
-      {/* Hoja de cobro en un punto de montaje ESTABLE (no dentro del hero/fila):
-          al cobrar, el realtime refresca y la cita salta a "Terminadas"; si el
-          form vivía dentro de la fila se desmontaba y el ¡Cobrado! (con el botón
-          de reseña) desaparecía antes de poder tocarlo (bug cazado en QA). Acá
-          sobrevive al reordenamiento hasta que el barbero toque "Listo". */}
-      {reservaEnCobro && cobroDe(reservaEnCobro)}
+      {/* La hoja de cobro vive en un punto de montaje ESTABLE (no dentro de la
+          fila): al cobrar, el realtime refresca y la cita salta a "Terminadas";
+          si el form vivía dentro de la fila se desmontaba y el "¡Cobrado!" (con
+          el botón de reseña) desaparecía antes de poder tocarlo.
+          El ancho se acota igual que la agenda: en el equipo del mostrador se
+          estiraba a 1152px y los chips quedaban desparramados. */}
+      {reservaEnCobro && (
+        <div ref={hojaCobro} className="mx-auto w-full max-w-2xl scroll-mt-4">
+          {cobroDe(reservaEnCobro)}
         </div>
       )}
 

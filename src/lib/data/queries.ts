@@ -294,18 +294,20 @@ export async function getAgendaHoy(barberoId?: string | null): Promise<AgendaIte
 // acá el alcance correcto es la sede. Quien llama DEBE haber verificado antes que
 // el staff pertenece a esa sede (staffPuedeOperarSede en actions.ts); estas
 // funciones no son un permiso, son una lectura ya autorizada.
-export async function getAgendaSedeHoy(sedeId: string): Promise<AgendaItem[]> {
+/** Agenda de hoy de una sede. `sedeId` null = las dos (mostrador del dueño). */
+export async function getAgendaSedeHoy(sedeId: string | null): Promise<AgendaItem[]> {
   const admin = supabaseAdmin();
   const { desde, hasta } = bogotaDayRange();
-  const { data } = await admin
+  let q = admin
     .from("reservas")
     .select(
       "id,inicio,estado,canal,llegada,confirmado_en,sede_id,servicio_id,barbero_id,cliente_ref,nota,servicios(nombre),barberos(nombre),clientes(nombre,telefono)",
     )
-    .eq("sede_id", sedeId)
     .gte("inicio", desde.toISOString())
     .lt("inicio", hasta.toISOString())
     .order("inicio");
+  if (sedeId) q = q.eq("sede_id", sedeId);
+  const { data } = await q;
   return ((data ?? []) as Record<string, unknown>[]).map((r) => ({
     id: r.id as string,
     inicio: r.inicio as string,
@@ -326,17 +328,23 @@ export async function getAgendaSedeHoy(sedeId: string): Promise<AgendaItem[]> {
 }
 
 /** Cobrado hoy de la sede completa, y el desglose por barbero para el mostrador. */
+/**
+ * Cobrado de hoy con el desglose por barbero. `sedeId` null = las DOS sedes,
+ * que es lo que ve el dueño cuando abre el mostrador (el barbero siempre pasa
+ * la suya). Antes solo aceptaba una sede y el admin caía en otra vista.
+ */
 export async function getCobradoSedeHoy(
-  sedeId: string,
+  sedeId: string | null,
 ): Promise<{ total: number; porBarbero: Record<string, number> }> {
   const admin = supabaseAdmin();
   const { desde, hasta } = bogotaDayRange();
-  const { data } = await admin
+  let q = admin
     .from("ventas")
     .select("total,barbero_id")
-    .eq("sede_id", sedeId)
     .gte("creado_en", desde.toISOString())
     .lt("creado_en", hasta.toISOString());
+  if (sedeId) q = q.eq("sede_id", sedeId);
+  const { data } = await q;
   const filas = (data ?? []) as { total: number; barbero_id: string | null }[];
   const porBarbero: Record<string, number> = {};
   let total = 0;

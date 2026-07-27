@@ -5,13 +5,11 @@ import {
   getServicios,
   getPreciosServiciosStaff,
   getProductos,
-  getAgendaHoy,
   getListaEspera,
   getStaffContext,
   getMedios,
   getCajaSede,
   getCajaDesglose,
-  getCobradoHoy,
   getAgendaSedeHoy,
   getCobradoSedeHoy,
 } from "@/lib/data/queries";
@@ -20,23 +18,20 @@ import { EsperaPanel } from "@/components/barbero/EsperaPanel";
 import { CierreCaja } from "@/components/barbero/CierreCaja";
 import { RealtimeRefresh } from "@/components/motion/RealtimeRefresh";
 
-export const metadata: Metadata = { title: "App del barbero" };
+export const metadata: Metadata = { title: "Mostrador" };
 
 export default async function BarberoPage() {
   const staff = await getStaffContext();
   const filtro = staff.rol === "barbero" ? staff.barberoId : null;
-  const [sedes, barberos, servicios, preciosServicios, productos, medios, agenda, espera, cobradoHoy] =
-    await Promise.all([
-      getSedes(),
-      getBarberos(),
-      getServicios(),
-      getPreciosServiciosStaff(),
-      getProductos(),
-      getMedios(),
-      getAgendaHoy(filtro),
-      getListaEspera(filtro),
-      getCobradoHoy(filtro),
-    ]);
+  const [sedes, barberos, servicios, preciosServicios, productos, medios, espera] = await Promise.all([
+    getSedes(),
+    getBarberos(),
+    getServicios(),
+    getPreciosServiciosStaff(),
+    getProductos(),
+    getMedios(),
+    getListaEspera(filtro),
+  ]);
 
   // Cierre de caja: sólo para el barbero, sobre SU sede (el admin cierra en
   // /admin/cuadre). La caja se abre sola con la primera venta del día.
@@ -46,41 +41,26 @@ export default async function BarberoPage() {
     ? await Promise.all([getCajaSede(sedeBarbero), getCajaDesglose(sedeBarbero)])
     : [null, null];
 
-  // Modo mostrador: el equipo comparte un aparato en el local, así que la sesión
-  // de un barbero puede ver y operar la agenda de TODA su sede. Lectura con
-  // service role ya autorizada acá (el barbero pertenece a esa sede por
-  // definición). El admin no lo necesita: su agenda ya viene sin filtrar.
-  const [agendaSede, cobradoSede] = sedeBarbero
-    ? await Promise.all([getAgendaSedeHoy(sedeBarbero), getCobradoSedeHoy(sedeBarbero)])
-    : [null, null];
-  const mostrador =
-    sedeBarbero && agendaSede && cobradoSede
-      ? {
-          sedeNombre: sedes.find((s) => s.id === sedeBarbero)?.nombre ?? "Mi sede",
-          agendaSede,
-          barberosSede: barberos.filter((b) => b.sede === sedeBarbero),
-          cobradoSede: cobradoSede.total,
-          porBarbero: cobradoSede.porBarbero,
-        }
-      : undefined;
+  // MOSTRADOR: la única vista. El equipo comparte un aparato en el local y opera
+  // la sede entera desde acá; la comisión igual cae en el barbero de la cita
+  // (el server la fija desde reservas.barbero_id, no desde quién está logueado).
+  // Lectura con service role ya autorizada acá: el barbero pertenece a esa sede
+  // por definición, y el dueño ve las dos.
+  const [agendaSede, cobradoSede] = await Promise.all([
+    getAgendaSedeHoy(sedeBarbero),
+    getCobradoSedeHoy(sedeBarbero),
+  ]);
+  const mostrador = {
+    sedeNombre: sedeBarbero
+      ? sedes.find((s) => s.id === sedeBarbero)?.nombre ?? "Mi sede"
+      : "Todas las sedes",
+    agendaSede,
+    // El dueño ve a todo el equipo; el barbero, solo a los de su sede.
+    barberosSede: sedeBarbero ? barberos.filter((b) => b.sede === sedeBarbero) : barberos,
+    cobradoSede: cobradoSede.total,
+    porBarbero: cobradoSede.porBarbero,
+  };
 
-  // Encabezado HERO del día: "Hoy, vie 10 jul" en el día civil de Bogotá (el
-  // server corre en UTC) + "{barbero} · {sede}" (o "Todas las sedes" para admin).
-  const partes = new Intl.DateTimeFormat("es-CO", {
-    timeZone: "America/Bogota",
-    weekday: "short",
-    day: "numeric",
-    month: "short",
-  }).formatToParts(new Date());
-  const parte = (t: string) => partes.find((p) => p.type === t)?.value ?? "";
-  const hoyLabel = `${parte("weekday")} ${parte("day")} ${parte("month")}`.replace(/\./g, "");
-  const sedeNombre = sedeBarbero ? sedes.find((s) => s.id === sedeBarbero)?.nombre ?? null : null;
-  const subtitulo =
-    staff.rol === "barbero"
-      ? [staff.nombre || barberos.find((b) => b.id === staff.barberoId)?.nombre || "Barbero", sedeNombre]
-          .filter(Boolean)
-          .join(" · ")
-      : "Todas las sedes";
 
   return (
     <main className={`mx-auto px-4 py-6 sm:px-6 ${mostrador ? "max-w-6xl" : "max-w-2xl"}`}>
@@ -94,7 +74,7 @@ export default async function BarberoPage() {
         dingOnInsertTable="reservas"
       />
       <AgendaList
-        agenda={agenda}
+        agenda={agendaSede}
         sedes={sedes}
         barberos={barberos}
         servicios={servicios}
@@ -102,9 +82,6 @@ export default async function BarberoPage() {
         productos={productos}
         medios={medios}
         esAdmin={staff.rol === "admin"}
-        hoyLabel={hoyLabel}
-        subtitulo={subtitulo}
-        cobradoHoy={cobradoHoy}
         mostrador={mostrador}
       />
 
