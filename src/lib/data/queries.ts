@@ -1621,6 +1621,7 @@ export type Metricas = {
   antes: { plata: number; servicios: number };
   porBarbero: { nombre: string; plata: number; cortes: number }[];
   porServicio: { nombre: string; veces: number; plata: number }[];
+  porProducto: { nombre: string; veces: number; plata: number }[];
   serie: { ymd: string; total: number }[];
   clientes: { total: number; repiten: number };
   dias: number;
@@ -1663,15 +1664,18 @@ export async function getMetricas(p: Periodo = "mes", sede?: SedeId | null): Pro
     porBarbero.set(nombre, acc);
   }
 
-  const porServicio = new Map<string, { nombre: string; veces: number; plata: number }>();
+  type Linea = { nombre: string; veces: number; plata: number };
+  const porServicio = new Map<string, Linea>();
+  const porProducto = new Map<string, Linea>();
   for (const it of items) {
-    if (it.tipo !== "servicio") continue;
-    const nombre = (it.descripcion as string) ?? "Servicio";
-    const acc = porServicio.get(nombre) ?? { nombre, veces: 0, plata: 0 };
+    const destino = it.tipo === "servicio" ? porServicio : it.tipo === "producto" ? porProducto : null;
+    if (!destino) continue;
+    const nombre = (it.descripcion as string) ?? "—";
+    const acc = destino.get(nombre) ?? { nombre, veces: 0, plata: 0 };
     const cant = (it.cantidad as number) ?? 1;
     acc.veces += cant;
     acc.plata += cant * (((it.precio_unitario as number) ?? 0));
-    porServicio.set(nombre, acc);
+    destino.set(nombre, acc);
   }
 
   const serie = new Map<string, number>();
@@ -1706,6 +1710,9 @@ export async function getMetricas(p: Periodo = "mes", sede?: SedeId | null): Pro
     },
     porBarbero: [...porBarbero.values()].sort((a, b) => b.plata - a.plata),
     porServicio: [...porServicio.values()].sort((a, b) => b.veces - a.veces),
+    // Los productos se ordenan por PLATA, no por unidades: importa cuánto deja el
+    // mostrador, y una cera de $32k no compite en unidades con las gaseosas.
+    porProducto: [...porProducto.values()].sort((a, b) => b.plata - a.plata),
     serie: [...serie.entries()].map(([ymd, total]) => ({ ymd, total })),
     clientes: { total: refs.length, repiten },
     dias,

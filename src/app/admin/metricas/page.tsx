@@ -149,7 +149,7 @@ export default async function MetricasPage({
             <Barras serie={m.serie} />
           </section>
 
-          <div className="mt-4 grid gap-4 lg:grid-cols-2">
+          <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
             <Ranking
               titulo="Quién produce"
               vacio="Sin cobros asignados a un barbero."
@@ -168,6 +168,16 @@ export default async function MetricasPage({
                 valor: `${s.veces}×`,
                 sub: cop(s.plata),
                 peso: s.veces,
+              }))}
+            />
+            <Ranking
+              titulo="Qué se vende"
+              vacio="Este período no se vendió ningún producto en el mostrador."
+              filas={m.porProducto.map((x) => ({
+                nombre: x.nombre,
+                valor: cop(x.plata),
+                sub: `${x.veces} ${x.veces === 1 ? "unidad" : "unidades"}`,
+                peso: x.plata,
               }))}
             />
           </div>
