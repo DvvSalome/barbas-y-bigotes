@@ -1,4 +1,5 @@
 import * as Sentry from "@sentry/nextjs";
+import { esRuidoDeExtension } from "@/lib/sentry-filtro";
 
 // Errores en el celular del cliente: lo que el CI no puede ver (navegador viejo,
 // red que se corta a mitad de la reserva, un dato inesperado de la API).
@@ -31,6 +32,18 @@ if (process.env.NEXT_PUBLIC_SENTRY_DSN) {
     beforeSend(evento) {
       // El service worker de la PWA reintenta solo; sus fallos de red no son bugs.
       if (evento.exception?.values?.some((v) => v.value?.includes("workbox"))) return null;
+
+      // Errores de EXTENSIONES del navegador. ignoreErrors solo mira el mensaje,
+      // y estos suelen traer uno perfectamente normal ("Cannot read properties
+      // of undefined") con la extensión escondida en el stack. Caso real
+      // (2026-07-27): un `ext:core/01_core.js` reventó leyendo
+      // `registration.waiting` en la home; se verificó en un navegador limpio
+      // que el sitio NO lanza ese error por su cuenta.
+      // Si hay una extensión en la pila, no hay nada que podamos arreglar, y
+      // dejarlo pasar entierra los avisos que sí importan.
+      const frames = (evento.exception?.values ?? []).flatMap((v) => v.stacktrace?.frames ?? []);
+      if (esRuidoDeExtension(frames.map((f) => f.filename ?? f.abs_path))) return null;
+
       return evento;
     },
   });
