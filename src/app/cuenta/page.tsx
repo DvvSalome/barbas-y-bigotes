@@ -235,7 +235,7 @@ async function Portal({ clienteId, nombre, avatarUrl }: { clienteId: string; nom
       {/* Tarjeta de fidelidad: réplica de la física (layout 2A del proyecto de
           Claude Design). Es la MISMA que el cliente lleva en la billetera, así
           reconoce la suya sin que haya que explicarle nada. Los sellos salen de
-          las ventas reales; el 5º corte va al 50% y el 10º es gratis. */}
+          las ventas reales; el 5º corte se lleva un regalo y el 10º va al 50%. */}
       <section className="mb-8">
         <div className="mb-3 flex items-end justify-between gap-4">
           <div>
@@ -261,13 +261,13 @@ async function Portal({ clienteId, nombre, avatarUrl }: { clienteId: string; nom
         <TarjetaFidelidad sellos={tarjeta.sellos} nombre={nombre} />
 
         <p className="mt-4 text-sm text-muted">
-          {tarjeta.proximo.tipo === "50%" ? (
+          {tarjeta.proximo.tipo === "regalo" ? (
             <>
               Faltan{" "}
               <b className="text-accent-soft">
                 {tarjeta.proximo.faltan} corte{tarjeta.proximo.faltan === 1 ? "" : "s"}
               </b>{" "}
-              para el <b className="text-ink">50%</b>. Al corte 10 es gratis.
+              para tu <b className="text-ink">regalo</b>. Al corte 10, el 50%.
             </>
           ) : (
             <>
@@ -275,7 +275,7 @@ async function Portal({ clienteId, nombre, avatarUrl }: { clienteId: string; nom
               <b className="text-accent-soft">
                 {tarjeta.proximo.faltan} corte{tarjeta.proximo.faltan === 1 ? "" : "s"}
               </b>{" "}
-              para tu <b className="text-ink">corte gratis</b>.
+              para tu <b className="text-ink">50% de descuento</b>.
             </>
           )}
         </p>

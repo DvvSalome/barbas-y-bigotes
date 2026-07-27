@@ -2,7 +2,7 @@ import { type SupabaseClient } from "@supabase/supabase-js";
 import { supabaseServer, supabaseServerAuth, supabaseAdmin } from "@/lib/supabase/server";
 import { bogotaDayRange, bogotaDayRangeDeFecha, bogotaYmd, rangoPeriodo, type Periodo } from "@/lib/slots";
 import { totalesPorMedio, snapshotDinero, type TotalesPorMedio } from "@/lib/cobro";
-import { CERQUILLO_EXCLUIDOS, estadoTarjeta, TARJETA_SIZE } from "@/lib/tarjeta";
+import { CERQUILLO_EXCLUIDOS, estadoTarjeta, TARJETA_SIZE, type BeneficioTarjeta } from "@/lib/tarjeta";
 import type { Sede, SedeId, Servicio, Barbero, Producto, Categoria } from "./types";
 
 export async function getSedes(): Promise<Sede[]> {
@@ -1487,7 +1487,7 @@ export type CuentaData = {
   pasadas: { id: string; inicio: string; estado: string; servicio: string; barbero: string }[];
   puntosBalance: number;
   puntos: { tipo: string; puntos: number; nota: string; fecha: string }[];
-  tarjeta: { cortes: number; sellos: number; proximo: { tipo: "50%" | "gratis"; faltan: number } };
+  tarjeta: { cortes: number; sellos: number; proximo: { tipo: BeneficioTarjeta; faltan: number } };
   cola: { id: string; estado: string; servicio: string; barbero: string; fotoBarbero: string | null; creadoEn: string }[];
 };
 

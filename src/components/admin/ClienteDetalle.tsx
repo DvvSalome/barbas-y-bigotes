@@ -37,7 +37,7 @@ export type TarjetaClienteView = {
   cortesTotales: number;
   sellos: number;
   tarjetasCompletas: number;
-  proximo: { tipo: "50%" | "gratis"; faltan: number };
+  proximo: { tipo: "regalo" | "50%"; faltan: number };
 };
 
 export function ClienteDetalle({

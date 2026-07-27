@@ -23,11 +23,11 @@ import { clienteIdForUser } from "@/lib/cliente-actions";
 import { bogotaDayRange, bogotaYmd, finEfectivo, MARGEN_LLEGADA_HORAS } from "@/lib/slots";
 import { errorPublico } from "@/lib/errors";
 import { calcularCobro, snapshotDinero, diferenciaCaja } from "@/lib/cobro";
-import { beneficioProximoCorte } from "@/lib/tarjeta";
+import { beneficioProximoCorte, type BeneficioTarjeta } from "@/lib/tarjeta";
 import { pushACliente } from "@/lib/push";
 import { fechaHoraBogota } from "@/lib/format";
 
-export type ActionResult = { ok: boolean; error?: string; /** Se guardó, pero con salvedades que el admin debe ver (p.ej. especialidades descartadas). */ aviso?: string; id?: string; total?: number; descuento?: number; propina?: number; puntos?: number; encolado?: boolean; esperaHasta?: string | null; tarjeta?: { cortesTotales: number; posicion: number; beneficio: "50%" | "gratis" | null }; resenaUrl?: string | null };
+export type ActionResult = { ok: boolean; error?: string; /** Se guardó, pero con salvedades que el admin debe ver (p.ej. especialidades descartadas). */ aviso?: string; id?: string; total?: number; descuento?: number; propina?: number; puntos?: number; encolado?: boolean; esperaHasta?: string | null; tarjeta?: { cortesTotales: number; posicion: number; beneficio: BeneficioTarjeta | null }; resenaUrl?: string | null };
 
 // --- Autorización (defensa en profundidad; la RLS es la barrera real) ---
 // Las server actions corren con la sesión del usuario, pero igual revalidamos el
@@ -100,7 +100,7 @@ export async function getTarjetaParaCobro(
   clienteRef: string,
   sede: string,
 ): Promise<
-  | { ok: true; cortesPrevios: number; posicion: number; tipo: "50%" | "gratis" | null; descuento: number }
+  | { ok: true; cortesPrevios: number; posicion: number; tipo: BeneficioTarjeta | null; descuento: number }
   | { ok: false }
 > {
   const sb = await supabaseServerAuth();
@@ -1029,11 +1029,12 @@ export async function completarReserva(input: {
   }
 
   // Tarjeta de cortes: si la venta incluye un corte y hay cliente, el 5º corte
-  // del ciclo va 50% y el 10º gratis (topado al precio del corte base de la sede).
+  // del ciclo se lleva un REGALO (sin descuento) y el 10º va al 50% (topado al
+  // precio del corte base de la sede).
   // El conteo se deriva de las ventas previas; se recomputa acá (fuente de verdad).
   // Cuenta con supabaseAdmin(): la RLS 0010 scopea las ventas por barbero, así que
   // la sesión del barbero undercontaría el historial del cliente entre barberos.
-  let beneficioTarjeta: "50%" | "gratis" | null = null;
+  let beneficioTarjeta: BeneficioTarjeta | null = null;
   let descuentoTarjeta = 0;
   let tarjetaPos = 0;
   let cortesPrevios = 0;

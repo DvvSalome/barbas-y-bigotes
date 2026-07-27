@@ -1,4 +1,4 @@
-import { TARJETA_SIZE, HITO_50, HITO_GRATIS } from "@/lib/tarjeta";
+import { TARJETA_SIZE, HITO_REGALO, HITO_50 } from "@/lib/tarjeta";
 
 /*
   Réplica de la tarjeta física (layout 2A del proyecto de Claude Design
@@ -157,15 +157,10 @@ export function TarjetaFidelidad({
                         className="bb-sello__peludo"
                         style={{ height: u(64), width: u(46) }}
                       />
-                      {/* Los premios llevan su marca. OJO: acá manda la regla real
-                          del negocio (tarjeta.ts, la misma que aplica el cobro):
-                          el 5º corte va al 50% y el 10º es GRATIS. */}
-                      {n === HITO_50 && (
-                        <span className="bb-sello__mitad" style={{ fontSize: u(26) }}>
-                          50<span style={{ fontSize: u(15), verticalAlign: "super" }}>%</span>
-                        </span>
-                      )}
-                      {n === HITO_GRATIS && (
+                      {/* Los premios llevan su marca, según la regla real del
+                          negocio (tarjeta.ts, la misma que aplica el cobro):
+                          el 5º corte se lleva un regalo y el 10º va al 50%. */}
+                      {n === HITO_REGALO && (
                         <svg
                           viewBox="0 0 24 24"
                           aria-hidden
@@ -182,6 +177,11 @@ export function TarjetaFidelidad({
                           <path d="M12 7.5S9.8 7.4 8.4 6.6C7 5.8 7.2 4 8.6 3.6c1.5-.4 3.4 2.3 3.4 3.9z" />
                           <path d="M12 7.5s2.2-.1 3.6-.9c1.4-.8 1.2-2.6-.2-3c-1.5-.4-3.4 2.3-3.4 3.9z" />
                         </svg>
+                      )}
+                      {n === HITO_50 && (
+                        <span className="bb-sello__mitad" style={{ fontSize: u(26) }}>
+                          50<span style={{ fontSize: u(15), verticalAlign: "super" }}>%</span>
+                        </span>
                       )}
                     </div>
                   )}

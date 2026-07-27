@@ -14,7 +14,7 @@ import {
   type ActionResult,
 } from "@/lib/actions";
 import { calcularCobro } from "@/lib/cobro";
-import { CERQUILLO_EXCLUIDOS } from "@/lib/tarjeta";
+import { CERQUILLO_EXCLUIDOS, type BeneficioTarjeta } from "@/lib/tarjeta";
 import { categorias } from "@/lib/data/seed";
 import { faltaParaLlegar } from "@/lib/slots";
 import type { Categoria } from "@/lib/data/types";
@@ -852,8 +852,9 @@ function CheckoutForm({
   } | null>(null);
   const [err, setErr] = useState<string | null>(null);
   // Estado de la tarjeta de cortes del cliente (solo cobro de reserva con cliente).
-  // Solo se setea si hay un beneficio (5º/10º); el server es la fuente de verdad.
-  const [tarjeta, setTarjeta] = useState<{ tipo: "50%" | "gratis"; descuento: number } | null>(null);
+  // Solo se setea si hay un beneficio (5º regalo / 10º 50%); el server es la
+  // fuente de verdad y lo recomputa al cobrar.
+  const [tarjeta, setTarjeta] = useState<{ tipo: BeneficioTarjeta; descuento: number } | null>(null);
   useEffect(() => {
     if (!reserva?.clienteRef) return;
     let vivo = true;
@@ -1005,10 +1006,10 @@ function CheckoutForm({
           {resumen.tarjeta && (
             <div className="text-accent-soft">
               🎫{" "}
-              {resumen.tarjeta.beneficio === "gratis"
-                ? "¡Corte gratis aplicado! Tarjeta completa, arranca una nueva."
+              {resumen.tarjeta.beneficio === "regalo"
+                ? "¡Corte #5! Entregale el regalo — el corte se cobró completo."
                 : resumen.tarjeta.beneficio === "50%"
-                  ? "50% aplicado (corte #5 de la tarjeta)."
+                  ? "50% aplicado (corte #10). Tarjeta completa, arranca una nueva."
                   : `Corte ${((resumen.tarjeta.cortesTotales - 1) % 10) + 1}/10 de su tarjeta.`}
             </div>
           )}
@@ -1332,13 +1333,19 @@ function CheckoutForm({
 
       {/* Tarjeta de cortes: aviso del canje automático (se aplica solo, el server
           recomputa). Solo cuando esta venta suma un corte y toca beneficio. */}
-      {tarjeta && descuentoTarjeta > 0 && (
+      {/* OJO: este aviso NO puede colgar de descuentoTarjeta > 0. El regalo del 5º
+          corte no descuenta plata, así que con esa condición el barbero nunca se
+          enteraría de entregarlo y el cliente se iría sin su premio. */}
+      {tarjeta && (
         <div className="flex items-center gap-2 border-t border-accent/30 bg-accent/[0.07] px-4 py-2.5 text-sm font-semibold text-accent-soft">
-          <span aria-hidden>🎫</span>
-          <span>
-            {tarjeta.tipo === "gratis" ? "Corte #10 · ¡corte gratis!" : "Corte #5 · −50% en el corte"} · −
-            {cop(descuentoTarjeta)}
-          </span>
+          <span aria-hidden>{tarjeta.tipo === "regalo" ? "🎁" : "🎫"}</span>
+          {tarjeta.tipo === "regalo" ? (
+            <span>Corte #5 · entregale el REGALO (el corte se cobra completo)</span>
+          ) : (
+            <span>
+              Corte #10 · −50% en el corte · −{cop(descuentoTarjeta)}
+            </span>
+          )}
         </div>
       )}
 
