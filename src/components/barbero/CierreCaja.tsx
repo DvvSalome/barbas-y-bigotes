@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { cerrarCajaSede } from "@/lib/actions";
+import { sanearCop } from "@/lib/admin-reglas";
 import { cop } from "@/lib/format";
 import type { CajaSedeEstado, CajaDesglose } from "@/lib/data/queries";
 
@@ -83,12 +84,34 @@ export function CierreCaja({
   }
 
   const esperado = caja.esperadoEfectivo;
-  const contadoNum = Math.max(0, Math.floor(Number(contado) || 0));
-  const diferencia = contadoNum - esperado;
+  // OJO: `Number("")` es 0, no NaN. Con el parseo anterior, confirmar el cierre
+  // con el campo VACÍO grababa "conté $0" y dejaba asentado un faltante por
+  // todo lo esperado, sin aviso y sin forma de deshacerlo. sanearCop distingue
+  // "no escribió nada" (null) de "contó cero" (0).
+  const contadoNum = sanearCop(contado);
+  const sinContar = contadoNum === null;
+  const diferencia = sinContar ? 0 : contadoNum - esperado;
   const nBarberos = desglose?.barberos.length ?? 0;
 
   async function confirmar(e: React.FormEvent) {
     e.preventDefault();
+    if (contadoNum === null) {
+      setError("Contá el efectivo antes de cerrar. Si la caja quedó en cero, escribí 0.");
+      return;
+    }
+    // Un cierre descuadrado queda asentado en la contabilidad y no se deshace:
+    // se pregunta una vez, con el número delante.
+    if (
+      diferencia !== 0 &&
+      !window.confirm(
+        `La caja no cuadra: ${diferencia > 0 ? "sobran" : "faltan"} ${cop(Math.abs(diferencia))}.
+
+` +
+          `Esperado ${cop(esperado)} · contaste ${cop(contadoNum)}.
+¿Cerrar así igual?`,
+      )
+    )
+      return;
     setError(null);
     setSaving(true);
     const res = await cerrarCajaSede({ efectivoContado: contadoNum, nota });
@@ -193,6 +216,7 @@ export function CierreCaja({
               min={0}
               value={contado}
               onChange={(e) => setContado(e.target.value)}
+              required
               placeholder="Efectivo contado (COP)"
               className={`${fld} mt-1`}
               autoFocus
@@ -206,17 +230,23 @@ export function CierreCaja({
           />
           <p className="text-sm tabular-nums">
             Diferencia:{" "}
-            <span className={diferencia === 0 ? "font-semibold text-ok" : "font-semibold text-warn"}>
-              {diferencia > 0 ? "+" : ""}
-              {cop(diferencia)}
-            </span>
-            {diferencia !== 0 && (
-              <span className="text-muted"> ({diferencia > 0 ? "sobra" : "falta"})</span>
+            {sinContar ? (
+              <span className="text-muted">contá el efectivo para verla</span>
+            ) : (
+              <>
+                <span className={diferencia === 0 ? "font-semibold text-ok" : "font-semibold text-warn"}>
+                  {diferencia > 0 ? "+" : ""}
+                  {cop(diferencia)}
+                </span>
+                {diferencia !== 0 && (
+                  <span className="text-muted"> ({diferencia > 0 ? "sobra" : "falta"})</span>
+                )}
+              </>
             )}
           </p>
           {error && <p className="text-sm text-warn">{error}</p>}
           <div className="flex items-center gap-3">
-            <button disabled={saving} className={btn}>
+            <button disabled={saving || sinContar} className={btn}>
               {saving ? "Cerrando…" : "Confirmar cierre"}
             </button>
             <button

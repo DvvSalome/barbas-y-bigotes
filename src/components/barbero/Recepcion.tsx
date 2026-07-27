@@ -67,7 +67,22 @@ export function Recepcion({
   const [ahora] = useState(() => Date.now());
 
   async function marcar(r: AgendaItem, estado: string) {
-    if (estado === "cancelada" && !window.confirm(`¿Cancelar la cita de ${r.cliente || "este cliente"} a las ${hora(r.inicio)}? Se le avisa al cliente y el cupo queda libre.`))
+    const quien = r.cliente || "este cliente";
+    if (
+      estado === "cancelada" &&
+      !window.confirm(
+        `¿Cancelar la cita de ${quien} a las ${hora(r.inicio)}? Se le avisa al cliente y el cupo queda libre.`,
+      )
+    )
+      return;
+    // "No llegó" también pregunta: desde el mostrador no hay vuelta atrás (la
+    // cita sale de la lista y no queda ningún botón para revertirla), y el botón
+    // está al lado del que se usa todo el día. Marcarlo por error a alguien que
+    // está sentado en la silla deja la venta sin registrar.
+    if (
+      estado === "no_show" &&
+      !window.confirm(`¿Marcar que ${quien} NO vino a la cita de las ${hora(r.inicio)}? No se puede deshacer.`)
+    )
       return;
     setBusy(r.id);
     await actualizarReserva(r.id, estado === "en_curso" ? { estado, llegada: "a_tiempo" } : { estado });
@@ -186,11 +201,11 @@ export function Recepcion({
                         </span>
                       </div>
 
-                      <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
+                      <div className="mt-2.5 flex flex-wrap items-center gap-2">
                         {enCurso ? (
                           <button
                             onClick={() => onCobrar(r.id)}
-                            className="rounded-lg bg-[linear-gradient(180deg,var(--cta-1),var(--cta-2))] px-3.5 py-2 text-[12.5px] font-bold text-on-accent transition hover:brightness-105"
+                            className="min-h-12 flex-1 basis-full rounded-lg bg-[linear-gradient(180deg,var(--cta-1),var(--cta-2))] px-3.5 text-[13.5px] font-bold text-on-accent transition hover:brightness-105"
                           >
                             Cobrar
                           </button>
@@ -202,29 +217,34 @@ export function Recepcion({
                                 onClick={() => marcar(r, "en_curso")}
                                 disabled={busy === r.id || temprano !== null}
                                 title={temprano ? "Todavía no empieza esta cita" : undefined}
-                                className="rounded-lg bg-[linear-gradient(180deg,var(--cta-1),var(--cta-2))] px-3.5 py-2 text-[12.5px] font-bold text-on-accent transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-40"
+                                className="min-h-12 flex-1 basis-full rounded-lg bg-[linear-gradient(180deg,var(--cta-1),var(--cta-2))] px-3.5 text-[13.5px] font-bold text-on-accent transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-40"
                               >
                                 {temprano ? `Llegó · ${temprano}` : "✓ Llegó"}
                               </button>
                             );
                           })()
                         )}
-                        <button
-                          onClick={() => marcar(r, "no_show")}
-                          disabled={busy === r.id}
-                          className="rounded-lg border border-line px-3 py-2 text-[12px] text-muted transition hover:text-ink disabled:opacity-50"
-                        >
-                          No llegó
-                        </button>
-                        {!enCurso && (
+                        {/* Destructivos en su propia fila y separados del principal:
+                            antes estaban a 6px de "Cobrar" y se tocan de pie, con
+                            una mano y el cliente enfrente. */}
+                        <div className="mt-1 flex w-full flex-wrap gap-2 border-t border-line/50 pt-2">
                           <button
-                            onClick={() => marcar(r, "cancelada")}
+                            onClick={() => marcar(r, "no_show")}
                             disabled={busy === r.id}
-                            className="rounded-lg border border-line px-3 py-2 text-[12px] text-muted transition hover:border-accent/40 hover:text-accent-soft disabled:opacity-50"
+                            className="min-h-11 rounded-lg border border-line px-3 text-[12px] text-muted transition hover:text-ink disabled:opacity-50"
                           >
-                            Cancelar
+                            No llegó
                           </button>
-                        )}
+                          {!enCurso && (
+                            <button
+                              onClick={() => marcar(r, "cancelada")}
+                              disabled={busy === r.id}
+                              className="min-h-11 rounded-lg border border-line px-3 text-[12px] text-muted transition hover:border-accent/40 hover:text-accent-soft disabled:opacity-50"
+                            >
+                              Cancelar
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </div>
                   );

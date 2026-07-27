@@ -833,8 +833,20 @@ function CheckoutForm({
   // (calcularCobro + completarReserva) es exactamente la misma de antes.
   return (
     <div className={`${rapida ? "" : "mt-3 "}rounded-2xl border border-line bg-bg`}>
-      <div className="border-b border-line/60 px-4 py-3.5 font-display text-lg font-semibold text-ink">
-        {rapida ? "Venta rápida (sin cita)" : "Cerrar y cobrar"}
+      <div className="flex items-center justify-between gap-3 border-b border-line/60 px-4 py-3.5">
+        <span className="font-display text-lg font-semibold text-ink">
+          {rapida ? "Venta rápida (sin cita)" : "Cerrar y cobrar"}
+        </span>
+        {onCancel && (
+          <button
+            type="button"
+            onClick={onCancel}
+            aria-label="Cerrar sin cobrar"
+            className="-mr-1.5 grid h-11 w-11 shrink-0 place-items-center rounded-lg text-xl text-muted transition hover:text-ink"
+          >
+            ✕
+          </button>
+        )}
       </div>
 
       <div className="flex flex-col gap-5 p-4">
@@ -1138,22 +1150,13 @@ function CheckoutForm({
               Total a cobrar · {medioNombre}
               {vivo.descuento > 0 && <span className="tabular-nums"> · −{cop(vivo.descuento)} de descuento</span>}
             </div>
-            <div className="font-display text-[26px] font-bold leading-tight text-ink tabular-nums">{cop(vivo.total)}</div>
+            <div className="truncate font-display text-[26px] font-bold leading-tight text-ink tabular-nums">{cop(vivo.total)}</div>
             {vivo.propina > 0 && (
               <div className="text-xs text-ok tabular-nums">
                 + {cop(vivo.propina)} de propina · en la mano {cop(vivo.aCobrar)}
               </div>
             )}
           </div>
-          {onCancel && (
-            <button
-              type="button"
-              onClick={onCancel}
-              className="min-h-[44px] rounded-xl border border-line px-4 text-xs font-semibold text-muted transition hover:text-ink"
-            >
-              Cancelar
-            </button>
-          )}
           <button
             onClick={submit}
             disabled={saving}
