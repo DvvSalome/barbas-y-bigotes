@@ -1,12 +1,18 @@
-<!-- Plantilla de correo · RECORDATORIO DE CITA
-     EXPORTADA DESDE n8n el 2026-07-20. La fuente de verdad en ejecución sigue
-     siendo el workflow x8B5l6NbG2supIbH (nodo "Enviar recordatorio"); esto es la copia versionada
-     para no depender de que esa instancia siga viva. Si editás una, editá la otra.
-     Asunto: Recordatorio de tu cita 🔔
-     Cron:   diario 9am (America/Bogota)
+<!-- Plantilla de correo · AVISO DE CITA (sirve para los DOS avisos)
+     La fuente de verdad en ejecución es el workflow x8B5l6NbG2supIbH (nodo
+     "Enviar recordatorio"); esto es la copia versionada para no depender de que
+     esa instancia siga viva. Si editás una, editá la otra.
+     Un solo correo para dos momentos: el del día antes y el de un rato antes.
+     Lo que cambia son cuando_titulo y cuando_label, que vienen del RPC
+     tomar_avisos_pendientes() (migración 0038). NO volver a escribir "mañana"
+     a mano acá: rompe el aviso previo.
+     Asunto: variable según el tipo de aviso (se arma en el nodo, no acá)
+     Cron:   cada 15 min (America/Bogota); el RPC filtra qué toca enviar
      Spec:   .superpowers/design/correos.md
-     Ojo: las {{ }} son expresiones de n8n. No poner llaves dobles ni en los
-     comentarios, n8n las evalúa igual y revienta el envío. -->
+     OJO n8n: el campo entero se parsea como expresión, incluidos los
+     comentarios HTML. No escribir acá llaves dobles NI un signo peso suelto
+     (una referencia a json con signo peso, aun dentro de un comentario, tira
+     "invalid syntax" y el correo no sale: pasó el 2026-07-22). -->
 <!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><meta name="color-scheme" content="dark"><meta name="supported-color-schemes" content="dark"></head><body style="margin:0;padding:0;background:#060504;background-image:linear-gradient(#060504,#060504);">
 <div style="margin:0;padding:24px 12px;background:#060504;background-image:linear-gradient(#060504,#060504);">
 <div style="max-width:600px;margin:0 auto;font-family:Arial,Helvetica,sans-serif;color:#f2ede4;">
@@ -20,11 +26,11 @@
 </div>
 <div style="padding:32px 28px;text-align:center;">
 <span style="display:inline-block;border-radius:999px;padding:6px 14px;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;background:rgba(210,63,52,.12);border:1px solid rgba(210,63,52,.35);color:#e8675c;">&#128276; Recordatorio</span>
-<h2 style="margin:16px 0 10px;font-family:'Barlow Condensed',Arial,sans-serif;font-size:32px;font-weight:800;text-transform:uppercase;line-height:1;color:#f2ede4;">Te vemos ma&ntilde;ana, {{ $json.cliente }}</h2>
-<p style="margin:0 auto 22px;max-width:42ch;font-size:14px;color:#9c958a;line-height:1.6;">Tu cita en <b style="color:#f2ede4;">Barbas &amp; Bigotes</b> es ma&ntilde;ana. Te dejamos todo a mano.</p>
+<h2 style="margin:16px 0 10px;font-family:'Barlow Condensed',Arial,sans-serif;font-size:32px;font-weight:800;text-transform:uppercase;line-height:1;color:#f2ede4;">{{ $json.cuando_titulo }}, {{ $json.cliente }}</h2>
+<p style="margin:0 auto 22px;max-width:42ch;font-size:14px;color:#9c958a;line-height:1.6;">Tu cita en <b style="color:#f2ede4;">Barbas &amp; Bigotes</b> es {{ $json.cuando_label.toLowerCase() }}. Te dejamos todo a mano.</p>
 <div style="border:1px solid rgba(210,63,52,.3);background:linear-gradient(160deg,rgba(210,63,52,.14),#12100e 60%);border-radius:18px;padding:26px 22px;text-align:center;">
-<div style="font-size:11px;text-transform:uppercase;letter-spacing:.16em;color:#9c958a;">Ma&ntilde;ana</div>
-<div style="margin-top:6px;font-family:'Barlow Condensed',Arial,sans-serif;font-size:48px;font-weight:800;line-height:1;color:#f2ede4;">{{ new Date($json.inicio).toLocaleTimeString('es-CO',{timeZone:'America/Bogota',hour:'numeric',minute:'2-digit',hour12:true}).replace('. m.','m') }}</div>
+<div style="font-size:11px;text-transform:uppercase;letter-spacing:.16em;color:#9c958a;">{{ $json.cuando_label }}</div>
+<div style="margin-top:6px;font-family:'Barlow Condensed',Arial,sans-serif;font-size:48px;font-weight:800;line-height:1;color:#f2ede4;">{{ new Date($json.inicio).toLocaleTimeString('en-US',{timeZone:'America/Bogota',hour:'numeric',minute:'2-digit',hour12:true}).toLowerCase() }}</div>
 <div style="margin-top:14px;padding-top:12px;border-top:1px solid rgba(242,237,228,.1);font-size:13.5px;color:#cfc7ba;">{{ $json.barbero_foto ? '<img src="https://barbasybigotes.com' + $json.barbero_foto + '" width="34" height="34" alt="" style="width:34px;height:34px;border-radius:50%;object-fit:cover;border:2px solid rgba(210,63,52,.6);vertical-align:middle;margin-right:8px;">' : '' }}{{ $json.servicio || 'Tu servicio' }} &middot; con <b style="color:#f2ede4;">{{ $json.barbero || 'tu barbero' }}</b></div>
 <div style="margin-top:5px;font-size:12px;color:#9c958a;">{{ $json.sede_id === 'parque-venezuela' ? 'Parque Venezuela · Cl. 88 #44-10 Loc 4' : 'Plaza de la Paz · Cra. 45 #50-168' }}</div>
 </div>

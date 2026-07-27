@@ -13,6 +13,7 @@ const ADMIN_SECTIONS = [
   { href: "/admin/equipo", label: "Equipo" },
   { href: "/admin/comisiones", label: "Comisiones" },
   { href: "/admin/cupones", label: "Cupones" },
+  { href: "/admin/avisos", label: "Avisos" },
 ] as const;
 
 const SECONDARY_SECTIONS = [{ href: "/barbero", label: "App del barbero" }] as const;

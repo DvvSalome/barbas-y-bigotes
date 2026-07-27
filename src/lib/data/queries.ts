@@ -1588,3 +1588,23 @@ export async function getCuenta(clienteRef: string): Promise<CuentaData> {
   const tarjeta = { cortes: cortesTotales, sellos: est.sellos, proximo: est.proximo };
   return { proximas, pasadas, puntosBalance, puntos, tarjeta, cola };
 }
+
+// ---------- Ajustes de avisos automáticos (/admin/avisos) ----------
+export type AjustesAvisos = { previoHoras: number; previoActivo: boolean };
+
+/** Config del aviso "tu cita es en un rato". Singleton (fila id=1, migración 0038). */
+export async function getAjustesAvisos(): Promise<AjustesAvisos> {
+  const sb = await supabaseServerAuth();
+  const { data } = await sb
+    .from("ajustes_avisos")
+    .select("previo_horas,previo_activo")
+    .eq("id", 1)
+    .maybeSingle();
+  const row = data as { previo_horas?: number | string; previo_activo?: boolean } | null;
+  // Defaults iguales a los de la tabla: la pantalla nunca queda en blanco aunque
+  // la fila no esté (p. ej. si alguien la borra a mano).
+  return {
+    previoHoras: Number(row?.previo_horas ?? 2),
+    previoActivo: row?.previo_activo ?? true,
+  };
+}

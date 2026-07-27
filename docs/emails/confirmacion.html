@@ -45,7 +45,7 @@
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
 <td valign="middle">
 <div style="font-size:10.5px;text-transform:uppercase;letter-spacing:.12em;color:#e8675c;">Fecha y hora</div>
-<div style="margin-top:3px;font-family:'Barlow Condensed',Arial,sans-serif;font-size:23px;font-weight:800;color:#f2ede4;">{{ new Date($json.inicio).toLocaleDateString('es-CO',{timeZone:'America/Bogota',weekday:'short',day:'numeric',month:'short'}) }} &middot; {{ new Date($json.inicio).toLocaleTimeString('es-CO',{timeZone:'America/Bogota',hour:'numeric',minute:'2-digit',hour12:true}).replace('. m.','m').replace(' ','&nbsp;') }}</div>
+<div style="margin-top:3px;font-family:'Barlow Condensed',Arial,sans-serif;font-size:23px;font-weight:800;color:#f2ede4;">{{ new Date($json.inicio).toLocaleDateString('es-CO',{timeZone:'America/Bogota',weekday:'short',day:'numeric',month:'short'}) }} &middot; {{ new Date($json.inicio).toLocaleTimeString('en-US',{timeZone:'America/Bogota',hour:'numeric',minute:'2-digit',hour12:true}).toLowerCase().replace(' ','&nbsp;') }}</div>
 </td>
 <td valign="middle" align="right" style="font-size:30px;">&#9986;&#65039;</td>
 </tr></table>

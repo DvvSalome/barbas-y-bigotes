@@ -1918,3 +1918,35 @@ export async function getLiveBarberStatuses(): Promise<BarberLiveStatus[]> {
   
   return result;
 }
+
+// ---------- Ajustes de avisos automáticos ----------
+/**
+ * Antelación del aviso "tu cita es en un rato" (migración 0038). El RPC
+ * tomar_avisos_pendientes lee estos valores en cada corrida, así que el cambio
+ * aplica desde el próximo envío sin tocar n8n.
+ */
+export async function actualizarAjustesAvisos(input: {
+  previoHoras: number;
+  previoActivo: boolean;
+}): Promise<ActionResult> {
+  const sb = await supabaseServerAuth();
+  const denied = await requireAdmin(sb);
+  if (denied) return { ok: false, error: denied };
+  // Mismos límites que el CHECK de la tabla: se validan acá para dar un mensaje
+  // entendible en vez de un error de constraint.
+  const horas = Math.round(input.previoHoras * 2) / 2; // a la media hora
+  if (!Number.isFinite(horas) || horas < 0.5 || horas > 12)
+    return { ok: false, error: "La antelación debe estar entre 30 minutos y 12 horas." };
+
+  const { error } = await sb
+    .from("ajustes_avisos")
+    .update({
+      previo_horas: horas,
+      previo_activo: input.previoActivo,
+      actualizado_en: new Date().toISOString(),
+    })
+    .eq("id", 1);
+  if (error) return { ok: false, error: errorPublico("actualizarAjustesAvisos", error) };
+  revalidatePath("/admin/avisos");
+  return { ok: true };
+}
