@@ -199,3 +199,59 @@ export function esDomingo(ymd: string): boolean {
   if (!y || !m || !d) return false;
   return new Date(y, m - 1, d).getDay() === 0;
 }
+
+// ---------- Redimensionado de fotos de producto ----------
+
+/**
+ * Lado máximo de la foto guardada. El thumbnail se muestra a 36-42px en toda la
+ * app; 800px deja margen de sobra para pantallas retina y para mostrarla más
+ * grande algún día, sin arrastrar los 2-5MB que pesa una foto de celular.
+ */
+export const LADO_MAX_FOTO = 800;
+
+/**
+ * Tamaño de destino conservando la proporción. Parte pura del compresor del
+ * navegador (src/lib/imagen-cliente.ts), acá para poder verificarla sin canvas.
+ */
+export function calcularDestino(
+  ancho: number,
+  alto: number,
+  ladoMax = LADO_MAX_FOTO,
+): { ancho: number; alto: number; hayQueAchicar: boolean } {
+  if (!Number.isFinite(ancho) || !Number.isFinite(alto) || ancho <= 0 || alto <= 0) {
+    return { ancho: 1, alto: 1, hayQueAchicar: false };
+  }
+  const lado = Math.max(ancho, alto);
+  if (lado <= ladoMax) return { ancho: Math.round(ancho), alto: Math.round(alto), hayQueAchicar: false };
+  const escala = ladoMax / lado;
+  // Nunca por debajo de 1px: una foto 4000x10 daría alto 0 y el canvas
+  // devolvería un blob vacío.
+  return {
+    ancho: Math.max(1, Math.round(ancho * escala)),
+    alto: Math.max(1, Math.round(alto * escala)),
+    hayQueAchicar: true,
+  };
+}
+
+/**
+ * ¿Los primeros bytes son de una imagen real? El MIME lo declara el cliente y se
+ * puede forjar: un .txt renombrado con type image/png pasaba la allowlist y
+ * quedaba servido desde el bucket público (thumbnail roto para siempre).
+ * No es un agujero de seguridad grave —el SVG, que sí ejecutaría script, ya
+ * estaba fuera de la lista— pero sí de integridad.
+ */
+export function pareceImagen(bytes: Uint8Array): boolean {
+  const b = bytes;
+  if (b.length < 12) return false;
+  // JPEG: FF D8 FF
+  if (b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff) return true;
+  // PNG: 89 50 4E 47 0D 0A 1A 0A
+  if (b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4e && b[3] === 0x47 && b[4] === 0x0d && b[5] === 0x0a && b[6] === 0x1a && b[7] === 0x0a)
+    return true;
+  const ascii = (i: number, s: string) => s.split("").every((c, k) => b[i + k] === c.charCodeAt(0));
+  // WebP: "RIFF" .... "WEBP"
+  if (ascii(0, "RIFF") && ascii(8, "WEBP")) return true;
+  // AVIF/HEIF: .... "ftyp" + marca de tipo
+  if (ascii(4, "ftyp")) return true;
+  return false;
+}

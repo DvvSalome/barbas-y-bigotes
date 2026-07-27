@@ -4,6 +4,16 @@ import { withSentryConfig } from "@sentry/nextjs";
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  experimental: {
+    serverActions: {
+      // Por defecto Next corta el body de un server action en 1MB y devuelve un
+      // 500 CRUDO antes de que corra ninguna validación nuestra: la foto moría
+      // sin llegar al mensaje de "máximo 2MB". El cliente ya achica la imagen
+      // antes de subir (imagen-cliente.ts), así que esto es solo la red por si
+      // esa compresión no corre (navegador viejo, formato que canvas no decodifica).
+      bodySizeLimit: "3mb",
+    },
+  },
   images: {
     remotePatterns: [
       { protocol: "https", hostname: "wvmdsxznujklgfezqtfy.supabase.co" },

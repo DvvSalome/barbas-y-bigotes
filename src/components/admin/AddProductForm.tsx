@@ -3,7 +3,8 @@
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { addProducto, subirFotoProducto } from "@/lib/actions";
-import { sanearCop, sanearCantidad, sanearNombre } from "@/lib/admin-reglas";
+import { sanearCop, sanearCantidad, sanearNombre, sanearComisionPct } from "@/lib/admin-reglas";
+import { achicarFoto } from "@/lib/imagen-cliente";
 import { BoxIcon, CamIcon } from "@/components/icons";
 import type { Sede } from "@/lib/data/types";
 
@@ -20,6 +21,7 @@ export function AddProductForm({ sedes }: { sedes: Sede[] }) {
   const [precio, setPrecio] = useState("");
   const [stock, setStock] = useState("");
   const [stockMin, setStockMin] = useState("");
+  const [comision, setComision] = useState("");
   const [foto, setFoto] = useState<File | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
@@ -49,6 +51,13 @@ export function AddProductForm({ sedes }: { sedes: Sede[] }) {
       setErr("El stock y el mínimo tienen que ser números enteros, cero o más.");
       return;
     }
+    // Vacío = 0 (sin comisión), que es el default del negocio para productos.
+    const comisionNum = comision.trim() === "" ? 0 : sanearComisionPct(comision);
+    if (comisionNum === null) {
+      setSaving(false);
+      setErr("La comisión tiene que estar entre 0 y 100.");
+      return;
+    }
 
     const res = await addProducto({
       nombre,
@@ -56,17 +65,21 @@ export function AddProductForm({ sedes }: { sedes: Sede[] }) {
       precio: precioNum,
       stock: stockNum,
       stockMinimo: minNum,
-      comisionPct: 0,
+      comisionPct: comisionNum,
     });
     // Foto opcional: el producto ya quedó creado; si la foto falla, se avisa
     // pero no se revierte nada (se puede subir después desde la lista).
     let fotoErr: string | null = null;
     if (res.ok && foto && res.id) {
-      const fd = new FormData();
-      fd.set("productoId", res.id);
-      fd.set("foto", foto);
-      const fres = await subirFotoProducto(fd);
-      if (!fres.ok) fotoErr = `Producto creado, pero la foto no se subió: ${fres.error}`;
+      try {
+        const fd = new FormData();
+        fd.set("productoId", res.id);
+        fd.set("foto", await achicarFoto(foto)); // fotos de celular: 2-5MB → ~100KB
+        const fres = await subirFotoProducto(fd);
+        if (!fres.ok) fotoErr = `Producto creado, pero la foto no se subió: ${fres.error}`;
+      } catch {
+        fotoErr = "Producto creado, pero la foto no se subió. Probá subirla desde la lista.";
+      }
     }
     setSaving(false);
     if (res.ok) {
@@ -74,6 +87,7 @@ export function AddProductForm({ sedes }: { sedes: Sede[] }) {
       setPrecio("");
       setStock("");
       setStockMin("");
+      setComision("");
       setFoto(null);
       if (fotoErr) setErr(fotoErr); // el form queda abierto para que se vea el aviso
       else setOpen(false);
@@ -95,7 +109,7 @@ export function AddProductForm({ sedes }: { sedes: Sede[] }) {
   }
 
   return (
-    <form onSubmit={submit} className="grid gap-3 rounded-2xl border border-line bg-panel p-5 sm:grid-cols-6">
+    <form onSubmit={submit} className="grid gap-3 rounded-2xl border border-line bg-panel p-5 sm:grid-cols-3 lg:grid-cols-6">
       <h3 className="flex items-center gap-2 font-display text-lg sm:col-span-6">
         <BoxIcon className="h-4 w-4 text-accent" /> Nuevo producto
       </h3>
@@ -108,6 +122,7 @@ export function AddProductForm({ sedes }: { sedes: Sede[] }) {
       <input required type="number" min={0} step={1} value={precio} onChange={(e) => setPrecio(e.target.value)} placeholder="Precio" className={input} />
       <input required type="number" min={0} step={1} value={stock} onChange={(e) => setStock(e.target.value)} placeholder="Stock" className={input} />
       <input type="number" min={0} step={1} value={stockMin} onChange={(e) => setStockMin(e.target.value)} placeholder="Mínimo" className={input} />
+      <input type="number" min={0} max={100} step={1} value={comision} onChange={(e) => setComision(e.target.value)} placeholder="Comisión %" title="Comisión del barbero por vender este producto (vacío = 0)" className={input} />
       <div className="flex flex-wrap items-center gap-2 sm:col-span-6">
         <button
           type="button"

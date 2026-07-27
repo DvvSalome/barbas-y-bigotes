@@ -13,6 +13,7 @@ import {
   esComboValido,
   extDeMime,
   variantesObsoletas,
+  pareceImagen,
   DURACION_MAX_MIN,
 } from "@/lib/admin-reglas";
 import { type SupabaseClient } from "@supabase/supabase-js";
@@ -306,6 +307,11 @@ export async function subirFotoProducto(formData: FormData): Promise<ActionResul
   if (!["image/jpeg", "image/png", "image/webp", "image/avif"].includes(file.type))
     return { ok: false, error: "La imagen tiene que ser JPG, PNG, WebP o AVIF." };
   if (file.size > FOTO_MAX_BYTES) return { ok: false, error: "La imagen no puede pesar más de 2MB." };
+  // El MIME lo declara el cliente: se confirma con los primeros bytes. Sin esto,
+  // un archivo de texto renombrado .png quedaba servido desde el bucket público.
+  const cabecera = new Uint8Array(await file.slice(0, 16).arrayBuffer());
+  if (!pareceImagen(cabecera))
+    return { ok: false, error: "Ese archivo no es una imagen válida." };
 
   const admin = supabaseAdmin();
   // Existencia + sanidad del id (el path del storage se arma con él).

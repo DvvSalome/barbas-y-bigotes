@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { subirFotoProducto } from "@/lib/actions";
+import { achicarFoto } from "@/lib/imagen-cliente";
 import { ProductoThumb } from "@/components/staff/ProductoThumb";
 import { CamIcon } from "@/components/icons";
 
@@ -30,13 +31,24 @@ export function FotoProducto({
     if (!file) return;
     setErr(null);
     setSubiendo(true);
-    const fd = new FormData();
-    fd.set("productoId", productoId);
-    fd.set("foto", file);
-    const res = await subirFotoProducto(fd);
-    setSubiendo(false);
-    if (res.ok) router.refresh();
-    else setErr(res.error ?? "No se pudo subir la foto.");
+    // try/finally: sin esto, cualquier excepción (típicamente el 500 de Next
+    // cuando el archivo pasa el límite de los server actions) dejaba el botón
+    // en "Subiendo…" para siempre y sin ningún mensaje.
+    try {
+      // El thumbnail se ve a 36-42px y una foto de celular pesa 2-5MB. Se achica
+      // ACÁ: sube en un segundo con datos móviles y no choca con el tope de body.
+      const liviana = await achicarFoto(file);
+      const fd = new FormData();
+      fd.set("productoId", productoId);
+      fd.set("foto", liviana);
+      const res = await subirFotoProducto(fd);
+      if (res.ok) router.refresh();
+      else setErr(res.error ?? "No se pudo subir la foto.");
+    } catch {
+      setErr("No se pudo subir la foto. Probá con otra imagen.");
+    } finally {
+      setSubiendo(false);
+    }
   }
 
   return (

@@ -22,6 +22,8 @@ import {
   sanearPrevioHoras,
   fechaLabel,
   esDomingo,
+  calcularDestino,
+  LADO_MAX_FOTO,
 } from "../src/lib/admin-reglas.ts";
 
 // ---------- (a) Dinero: addProducto no validaba NADA y productos no tiene CHECK ----------
@@ -126,4 +128,26 @@ assert.equal(esDomingo("2026-07-26"), true, "26-jul-2026 es domingo");
 assert.equal(esDomingo("2026-07-27"), false, "27-jul-2026 es lunes");
 assert.equal(esDomingo("basura"), false, "entrada inválida no explota");
 
-console.log("check-admin OK — reglas del back-office (dinero, comisión, especialidades, combos, fotos, fechas)");
+// ---------- (i) Redimensionado de fotos ----------
+// Una foto de celular (4032x3024, ~4MB) para un thumbnail de 42px chocaba con el
+// límite de 1MB de los server actions: 500 crudo y la UI colgada en "Subiendo…".
+const cel = calcularDestino(4032, 3024);
+assert.equal(cel.hayQueAchicar, true, "una foto de celular se achica");
+assert.equal(Math.max(cel.ancho, cel.alto), LADO_MAX_FOTO, "el lado mayor queda en el máximo");
+assert.equal(cel.ancho, 800, "4032 → 800");
+assert.equal(cel.alto, 600, "3024 → 600 (mantiene la proporción 4:3)");
+const vertical = calcularDestino(3024, 4032);
+assert.equal(Math.max(vertical.ancho, vertical.alto), LADO_MAX_FOTO, "vertical también");
+assert.equal(vertical.alto, 800, "en vertical el límite lo marca el alto");
+const chica = calcularDestino(200, 150);
+assert.equal(chica.hayQueAchicar, false, "una imagen chica NO se toca");
+assert.deepEqual([chica.ancho, chica.alto], [200, 150], "y conserva su tamaño");
+const justo = calcularDestino(800, 800);
+assert.equal(justo.hayQueAchicar, false, "exactamente en el límite no se achica");
+// Panorámica extrema: el lado corto no puede quedar en 0 o el canvas da un blob vacío.
+const pano = calcularDestino(4000, 10);
+assert.ok(pano.alto >= 1, "el lado corto nunca queda en 0");
+assert.deepEqual(calcularDestino(0, 0).hayQueAchicar, false, "medidas inválidas no explotan");
+assert.deepEqual(calcularDestino(NaN, 100).ancho, 1, "NaN cae a un tamaño seguro");
+
+console.log("check-admin OK — reglas del back-office (dinero, comisión, especialidades, combos, fotos, fechas, redimensionado)");
