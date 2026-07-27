@@ -272,3 +272,210 @@ body {
     transition: none;
   }
 }
+
+/* ---------------------------------------------------------------------------
+   Tarjeta de fidelidad — réplica de la física (layout 2A del proyecto de
+   Claude Design). La usa src/components/cuenta/TarjetaFidelidad.tsx.
+
+   Las medidas van en el componente (en cqw sobre un contenedor con
+   aspect-ratio 820/496); acá quedan las capas, la tipografía y las
+   animaciones, que no dependen del tamaño.
+--------------------------------------------------------------------------- */
+.bb-tarjeta__lienzo {
+  position: relative;
+  width: 100%;
+  /* Proporción de la tarjeta impresa: escala entera en cualquier ancho. */
+  aspect-ratio: 820 / 496;
+  overflow: hidden;
+  background: #100e0d;
+  box-shadow: 0 40px 90px -40px #000;
+}
+
+/* Cuero gastado: claro arriba a la izquierda, se apaga hacia el borde. */
+.bb-tarjeta__fondo {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(90% 120% at 12% 8%, #3a3532 0%, #191614 42%, #0d0b0a 100%),
+    radial-gradient(60% 80% at 88% 92%, #332e2b 0%, rgba(13, 11, 10, 0) 70%);
+}
+/* Viñeta: dos manchas oscuras que dan el aspecto de tarjeta manoseada. */
+.bb-tarjeta__vineta {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(40% 55% at 30% 78%, rgba(0, 0, 0, 0.85), rgba(0, 0, 0, 0) 70%),
+    radial-gradient(35% 40% at 72% 18%, rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0) 70%);
+}
+
+.bb-tarjeta__marca {
+  position: absolute;
+  transform: rotate(-20deg);
+  pointer-events: none;
+}
+
+.bb-tarjeta__cuerpo {
+  position: relative;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.bb-tarjeta__enc {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.bb-tarjeta__titulo {
+  font-family: var(--font-barlow), "Barlow Condensed", sans-serif;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  line-height: 1;
+  text-transform: uppercase;
+  color: #f4f1ea;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.6);
+  text-align: center;
+}
+.bb-tarjeta__sub {
+  font-family: var(--font-inter), system-ui, sans-serif;
+  font-weight: 400;
+  color: #e7e2da;
+  text-align: center;
+  line-height: 1.45;
+  text-wrap: pretty;
+}
+
+.bb-tarjeta__sellos {
+  display: grid;
+}
+.bb-tarjeta__casilla {
+  position: relative;
+}
+
+.bb-sello {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+/* Marcado: disco claro con la cara ya afeitada. */
+.bb-sello--hecho {
+  background: #f4f1ea;
+  box-shadow: 0 6px 16px -8px rgba(0, 0, 0, 0.9);
+  animation: bbsello 0.4s cubic-bezier(0.2, 1.4, 0.4, 1) both;
+}
+/* Sin marcar: círculo punteado con la cara peluda esperando el corte. */
+.bb-sello--vacio {
+  border-style: dotted;
+  border-color: rgba(244, 241, 234, 0.82);
+}
+.bb-sello__cara {
+  animation: bbcara 0.5s ease-out both;
+}
+.bb-sello__peludo {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  object-fit: contain;
+  opacity: 0.55;
+  pointer-events: none;
+}
+.bb-sello__mitad {
+  position: relative;
+  font-family: var(--font-barlow), "Barlow Condensed", sans-serif;
+  font-weight: 800;
+  color: #f4f1ea;
+  text-shadow: 0 0 8px rgba(0, 0, 0, 0.95);
+}
+.bb-sello__regalo {
+  position: relative;
+  filter: drop-shadow(0 0 6px rgba(0, 0, 0, 0.9));
+}
+
+/* El corte: la tijera cruza, el pelo se recorta y caen tres pelitos. */
+.bb-sello__pelo {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  object-fit: contain;
+  animation: bbcorte 1.05s ease-in-out 0.25s both;
+}
+.bb-sello__pelito {
+  position: absolute;
+  height: 2px;
+  border-radius: 2px;
+  background: #14110f;
+  animation: bbpelito 0.9s ease-in 0.5s both;
+}
+.bb-sello__pelito--2 { animation-duration: 1s; animation-delay: 0.65s; }
+.bb-sello__pelito--3 { animation-duration: 0.8s; animation-delay: 0.8s; }
+.bb-sello__tijera {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  animation: bbtijera 1.3s ease-in-out 0.1s both;
+  filter: drop-shadow(0 1px 2px rgba(244, 241, 234, 0.8));
+}
+
+.bb-tarjeta__pie {
+  display: flex;
+  flex-direction: column;
+}
+.bb-tarjeta__contacto {
+  display: flex;
+  align-items: center;
+}
+.bb-tarjeta__dato {
+  font-family: var(--font-barlow), "Barlow Condensed", sans-serif;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #f4f1ea;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+@keyframes bbsello {
+  0% { transform: scale(0.45) rotate(-14deg); opacity: 0; }
+  55% { transform: scale(1.14) rotate(3deg); opacity: 1; }
+  100% { transform: scale(1) rotate(0); opacity: 1; }
+}
+@keyframes bbcara {
+  0% { transform: scale(1.5) translateY(6px); opacity: 0; }
+  60% { opacity: 1; }
+  100% { transform: scale(1) translateY(0); opacity: 1; }
+}
+@keyframes bbcorte {
+  from { clip-path: inset(-12% 0 -12% 0); }
+  to { clip-path: inset(-12% 0 -12% 105%); }
+}
+@keyframes bbtijera {
+  0% { transform: translateX(-46px) rotate(-8deg); opacity: 0; }
+  10% { opacity: 1; }
+  80% { opacity: 1; }
+  100% { transform: translateX(46px) rotate(6deg); opacity: 0; }
+}
+@keyframes bbpelito {
+  0% { opacity: 1; transform: translateY(0) rotate(0); }
+  100% { opacity: 0; transform: translateY(26px) rotate(40deg); }
+}
+
+/* Quien pide menos movimiento ve la tarjeta ya marcada, sin corte ni tijeras. */
+@media (prefers-reduced-motion: reduce) {
+  .bb-sello--hecho,
+  .bb-sello__cara,
+  .bb-sello__pelo,
+  .bb-sello__pelito,
+  .bb-sello__tijera {
+    animation: none;
+  }
+  .bb-sello__pelo,
+  .bb-sello__pelito,
+  .bb-sello__tijera {
+    display: none;
+  }
+}

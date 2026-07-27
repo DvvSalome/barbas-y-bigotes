@@ -9,6 +9,7 @@ import { PushManager } from "@/components/cuenta/PushManager";
 import { CitaAcciones } from "@/components/cuenta/CitaAcciones";
 import { CalificarServicio } from "@/components/cuenta/CalificarServicio";
 import { ensureCliente } from "@/lib/cliente-actions";
+import { TarjetaFidelidad } from "@/components/cuenta/TarjetaFidelidad";
 import { getCuenta, getReservaSinCalificar } from "@/lib/data/queries";
 
 export const metadata: Metadata = { title: "Mi cuenta" };
@@ -231,13 +232,12 @@ async function Portal({ clienteId, nombre, avatarUrl }: { clienteId: string; nom
         </section>
       )}
 
-      {/* Tarjeta de cortes (reemplaza puntos): sellos reales derivados de las ventas.
-          10 casillas; el 5º corte del ciclo va 50% y el 10º gratis. */}
-      <section
-        className="mb-8 overflow-hidden rounded-2xl border border-line p-5"
-        style={{ background: "linear-gradient(155deg, #1c1714, var(--panel))" }}
-      >
-        <div className="flex items-start justify-between gap-4">
+      {/* Tarjeta de fidelidad: réplica de la física (layout 2A del proyecto de
+          Claude Design). Es la MISMA que el cliente lleva en la billetera, así
+          reconoce la suya sin que haya que explicarle nada. Los sellos salen de
+          las ventas reales; el 5º corte va al 50% y el 10º es gratis. */}
+      <section className="mb-8">
+        <div className="mb-3 flex items-end justify-between gap-4">
           <div>
             <div className="font-display text-[11px] font-bold uppercase tracking-[0.18em] text-muted">
               Tarjeta de cortes
@@ -258,39 +258,7 @@ async function Portal({ clienteId, nombre, avatarUrl }: { clienteId: string; nom
           </Link>
         </div>
 
-        <div className="mt-5 grid grid-cols-5 gap-2.5" aria-hidden>
-          {Array.from({ length: 10 }).map((_, i) => {
-            const lleno = i < tarjeta.sellos;
-            const hito = i === 4 || i === 9; // 5º (50%) y 10º (gratis)
-            const label = i === 9 ? "GRATIS" : i === 4 ? "50%" : String(i + 1);
-            return (
-              <div
-                key={i}
-                className={`relative flex aspect-square items-center justify-center rounded-xl border ${
-                  hito ? "border-accent/50" : "border-line"
-                } ${lleno ? "bg-accent/[0.07]" : "bg-elevated"}`}
-              >
-                <span
-                  className={`font-display font-bold leading-none ${i === 9 ? "text-[10px]" : "text-[15px]"} ${
-                    lleno ? "text-muted/60" : hito ? "text-accent-soft" : "text-ink"
-                  }`}
-                >
-                  {label}
-                </span>
-                {lleno && (
-                  <span
-                    className="absolute inset-0 flex items-center justify-center"
-                    style={{ animation: `bbstamp .45s cubic-bezier(.2,1.4,.4,1) ${i * 0.08}s both` }}
-                  >
-                    <span className="text-2xl font-extrabold text-accent-soft [text-shadow:0_0_12px_rgba(210,63,52,0.7)]">
-                      ✕
-                    </span>
-                  </span>
-                )}
-              </div>
-            );
-          })}
-        </div>
+        <TarjetaFidelidad sellos={tarjeta.sellos} nombre={nombre} />
 
         <p className="mt-4 text-sm text-muted">
           {tarjeta.proximo.tipo === "50%" ? (
