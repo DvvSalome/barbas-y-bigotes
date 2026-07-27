@@ -17,7 +17,8 @@ export type ActionResult = { ok: boolean; error?: string; id?: string; total?: n
 // --- Autorización (defensa en profundidad; la RLS es la barrera real) ---
 // Las server actions corren con la sesión del usuario, pero igual revalidamos el
 // rol acá: una action es un endpoint POST invocable directo, no confíes solo en la UI.
-async function requireAdmin(sb: SupabaseClient): Promise<string | null> {
+// Exportada: la usa tambien el route handler que exporta el CSV de metricas.
+export async function requireAdmin(sb: SupabaseClient): Promise<string | null> {
   const {
     data: { user },
   } = await sb.auth.getUser();

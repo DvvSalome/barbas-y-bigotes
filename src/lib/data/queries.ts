@@ -1718,3 +1718,20 @@ export async function getMetricas(p: Periodo = "mes", sede?: SedeId | null): Pro
     dias,
   };
 }
+
+/** Ventas del período en crudo, una fila por cobro. Alimenta el CSV de /admin/metricas. */
+export async function getVentasParaCsv(p: Periodo = "mes", sede?: SedeId | null) {
+  const sb = await supabaseServerAuth();
+  const { desde, hasta } = rangoPeriodo(p);
+  let q = sb
+    .from("ventas")
+    .select(
+      "creado_en,sede_id,medio,total,propina,descuento,cupon_codigo,cliente_nombre,barberos(nombre),clientes(nombre),venta_items(tipo,descripcion,cantidad,precio_unitario)",
+    )
+    .gte("creado_en", desde.toISOString())
+    .lt("creado_en", hasta.toISOString())
+    .order("creado_en");
+  if (sede) q = q.eq("sede_id", sede);
+  const { data } = await q;
+  return (data ?? []) as Record<string, unknown>[];
+}

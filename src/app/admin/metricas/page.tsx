@@ -112,7 +112,7 @@ export default async function MetricasPage({
         description="Cómo viene el negocio, no cómo viene el día. Para el día está la pantalla de inicio."
       />
 
-      <div className="mt-4 flex flex-wrap gap-2">
+      <div className="mt-4 flex flex-wrap items-center gap-2">
         {PERIODOS.map((x) => (
           <Link
             key={x.id}
@@ -124,6 +124,14 @@ export default async function MetricasPage({
             {x.label}
           </Link>
         ))}
+        {m.servicios > 0 && (
+          <a
+            href={`/admin/metricas/csv${qs(p)}`}
+            className="ml-auto flex min-h-11 items-center gap-2 rounded-xl border border-line px-4 text-[13px] font-semibold text-muted transition hover:border-ink/25 hover:text-ink"
+          >
+            ↓ Excel
+          </a>
+        )}
       </div>
 
       {m.servicios === 0 ? (

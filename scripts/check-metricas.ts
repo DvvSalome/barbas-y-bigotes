@@ -7,6 +7,7 @@
 // hasta el día 30, y el dueño tomaría decisiones con un número que miente.
 import assert from "node:assert/strict";
 import { rangoPeriodo, bogotaYmd } from "../src/lib/slots.ts";
+import { celdaCsv } from "../src/lib/format.ts";
 
 const dia = 86_400_000;
 
@@ -47,4 +48,17 @@ const madrugada = new Date("2026-08-01T02:00:00Z");
 assert.equal(bogotaYmd(madrugada), "2026-07-31", "en Bogotá todavía es julio");
 assert.equal(bogotaYmd(rangoPeriodo("mes", madrugada).desde), "2026-07-01", "el mes en curso sigue siendo julio");
 
-console.log(`check-metricas OK — rangos y comparativos por período correctos (TZ: ${process.env.TZ ?? "(sistema)"})`);
+// (e) Escapado del CSV. El separador es ";" (Excel en español), así que un nombre
+//     con ";" DEBE ir citado o el contador recibe las columnas corridas.
+assert.equal(celdaCsv("Meyer"), "Meyer", "lo normal no se toca");
+assert.equal(celdaCsv('Pérez; Juan'), '"Pérez; Juan"', "un ; obliga a citar");
+assert.equal(celdaCsv('Juan "El Mono"'), '"Juan ""El Mono"""', "las comillas se duplican dentro de comillas");
+const conSalto = "línea1" + String.fromCharCode(10) + "línea2";
+assert.equal(celdaCsv(conSalto), `"${conSalto}"`, "un salto de línea obliga a citar");
+assert.equal(celdaCsv(null), "", "null es celda vacía, no la palabra null");
+assert.equal(celdaCsv(0), "0", "el cero se escribe, no se come");
+// Una fila armada como en el route: 3 separadores = 4 columnas, pase lo que pase.
+const fila = ["Corte; barba", 'Juan "JJ"', null, 35000].map(celdaCsv).join(";");
+assert.equal(fila.split(";").length - (fila.match(/"[^"]*;[^"]*"/g)?.length ?? 0), 4, "no se corren las columnas");
+
+console.log(`check-metricas OK — rangos, comparativos y escapado del CSV correctos (TZ: ${process.env.TZ ?? "(sistema)"})`);

@@ -17,3 +17,13 @@ export const fechaHoraBogota = (d: Date) =>
     hour: "numeric",
     minute: "2-digit",
   }).format(d);
+
+/**
+ * Escapa un valor para CSV. Separador `;` porque Excel en español trata la coma
+ * como separador decimal: con `,` el archivo se abre todo apilado en una columna.
+ * Un nombre con `;`, comillas o un salto de línea rompe el archivo si no se cita.
+ */
+export const celdaCsv = (v: unknown): string => {
+  const s = String(v ?? "");
+  return /[";\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+};
