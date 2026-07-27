@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import * as Sentry from "@sentry/nextjs";
 
 // Pantalla de error con marca (client component: los error boundaries lo exigen).
 export default function Error({
@@ -13,6 +14,9 @@ export default function Error({
   useEffect(() => {
     // El detalle queda en consola/logs; al usuario nunca se le muestra el error crudo.
     console.error(error);
+    // Y se reporta: este boundary es justo donde muere una reserva a medio hacer,
+    // y el cliente se va sin avisar. Sin DSN, captureException es un no-op.
+    Sentry.captureException(error);
   }, [error]);
 
   return (
