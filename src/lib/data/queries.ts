@@ -1,6 +1,6 @@
 import { type SupabaseClient } from "@supabase/supabase-js";
 import { supabaseServer, supabaseServerAuth, supabaseAdmin } from "@/lib/supabase/server";
-import { bogotaDayRange, bogotaDayRangeDeFecha, bogotaYmd } from "@/lib/slots";
+import { bogotaDayRange, bogotaDayRangeDeFecha, bogotaYmd, rangoPeriodo, type Periodo } from "@/lib/slots";
 import { totalesPorMedio, snapshotDinero, type TotalesPorMedio } from "@/lib/cobro";
 import { CERQUILLO_EXCLUIDOS, estadoTarjeta, TARJETA_SIZE } from "@/lib/tarjeta";
 import type { Sede, SedeId, Servicio, Barbero, Producto, Categoria } from "./types";
@@ -1606,5 +1606,108 @@ export async function getAjustesAvisos(): Promise<AjustesAvisos> {
   return {
     previoHoras: Number(row?.previo_horas ?? 2),
     previoActivo: row?.previo_activo ?? true,
+  };
+}
+
+// ---------- Métricas por período (/admin/metricas) ----------
+export type { Periodo };
+export type Metricas = {
+  plata: number;
+  /** Cantidad de COBROS (no de servicios sueltos: un cobro puede llevar varios). */
+  servicios: number;
+  ticket: number;
+  propinas: number;
+  /** Mismo largo de período, inmediatamente anterior. Un número solo no dice si vas bien. */
+  antes: { plata: number; servicios: number };
+  porBarbero: { nombre: string; plata: number; cortes: number }[];
+  porServicio: { nombre: string; veces: number; plata: number }[];
+  serie: { ymd: string; total: number }[];
+  clientes: { total: number; repiten: number };
+  dias: number;
+};
+
+export async function getMetricas(p: Periodo = "mes", sede?: SedeId | null): Promise<Metricas> {
+  const sb = await supabaseServerAuth();
+  const { desde, hasta, prevDesde } = rangoPeriodo(p);
+
+  // Una sola pasada por ventas: trae el período y el anterior juntos y se parten
+  // en memoria. Son cientos de filas al mes, no miles: agregar en SQL sería un RPC
+  // más que mantener. ponytail: mover a SQL si esto pasa de ~10k ventas por período.
+  let q = sb
+    .from("ventas")
+    .select("id,total,propina,creado_en,barbero_id,cliente_ref,barberos(nombre)")
+    .gte("creado_en", prevDesde.toISOString())
+    .lt("creado_en", hasta.toISOString());
+  if (sede) q = q.eq("sede_id", sede);
+  const { data } = await q;
+  const filas = (data ?? []) as Record<string, unknown>[];
+  const enPeriodo = filas.filter((v) => new Date(v.creado_en as string) >= desde);
+  const previas = filas.filter((v) => new Date(v.creado_en as string) < desde);
+
+  const plata = enPeriodo.reduce((a, v) => a + ((v.total as number) ?? 0), 0);
+  const propinas = enPeriodo.reduce((a, v) => a + ((v.propina as number) ?? 0), 0);
+
+  // Ítems solo del período (para el ranking de servicios y contar cortes por barbero).
+  const ids = enPeriodo.map((v) => v.id as string);
+  const { data: itemsRaw } = ids.length
+    ? await sb.from("venta_items").select("venta_id,tipo,descripcion,cantidad,precio_unitario").in("venta_id", ids)
+    : { data: [] };
+  const items = (itemsRaw ?? []) as Record<string, unknown>[];
+
+  const porBarbero = new Map<string, { nombre: string; plata: number; cortes: number }>();
+  for (const v of enPeriodo) {
+    const nombre = (v.barberos as { nombre?: string } | null)?.nombre ?? "Sin barbero";
+    const acc = porBarbero.get(nombre) ?? { nombre, plata: 0, cortes: 0 };
+    acc.plata += (v.total as number) ?? 0;
+    acc.cortes += 1;
+    porBarbero.set(nombre, acc);
+  }
+
+  const porServicio = new Map<string, { nombre: string; veces: number; plata: number }>();
+  for (const it of items) {
+    if (it.tipo !== "servicio") continue;
+    const nombre = (it.descripcion as string) ?? "Servicio";
+    const acc = porServicio.get(nombre) ?? { nombre, veces: 0, plata: 0 };
+    const cant = (it.cantidad as number) ?? 1;
+    acc.veces += cant;
+    acc.plata += cant * (((it.precio_unitario as number) ?? 0));
+    porServicio.set(nombre, acc);
+  }
+
+  const serie = new Map<string, number>();
+  const dias = Math.max(1, Math.round((hasta.getTime() - desde.getTime()) / 86_400_000));
+  for (let i = dias - 1; i >= 0; i--) serie.set(bogotaYmd(new Date(hasta.getTime() - i * 86_400_000)), 0);
+  for (const v of enPeriodo) {
+    const d = bogotaYmd(new Date(v.creado_en as string));
+    if (serie.has(d)) serie.set(d, (serie.get(d) ?? 0) + ((v.total as number) ?? 0));
+  }
+
+  // "Repiten" = clientes del período que ya habían venido ANTES del período.
+  // Es la métrica que importa en una barbería: si nadie vuelve, no hay negocio.
+  const refs = [...new Set(enPeriodo.map((v) => v.cliente_ref).filter(Boolean))] as string[];
+  let repiten = 0;
+  if (refs.length) {
+    const { data: viejas } = await sb
+      .from("ventas")
+      .select("cliente_ref")
+      .in("cliente_ref", refs)
+      .lt("creado_en", desde.toISOString());
+    repiten = new Set(((viejas ?? []) as { cliente_ref: string }[]).map((r) => r.cliente_ref)).size;
+  }
+
+  return {
+    plata,
+    servicios: enPeriodo.length,
+    ticket: enPeriodo.length ? Math.round(plata / enPeriodo.length) : 0,
+    propinas,
+    antes: {
+      plata: previas.reduce((a, v) => a + ((v.total as number) ?? 0), 0),
+      servicios: previas.length,
+    },
+    porBarbero: [...porBarbero.values()].sort((a, b) => b.plata - a.plata),
+    porServicio: [...porServicio.values()].sort((a, b) => b.veces - a.veces),
+    serie: [...serie.entries()].map(([ymd, total]) => ({ ymd, total })),
+    clientes: { total: refs.length, repiten },
+    dias,
   };
 }

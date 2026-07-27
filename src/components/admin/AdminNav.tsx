@@ -6,6 +6,7 @@ import { usePathname, useSearchParams } from "next/navigation";
 // Secciones del panel (tabs horizontales bajo el topbar, según el mockup).
 const ADMIN_SECTIONS = [
   { href: "/admin", label: "Hoy" },
+  { href: "/admin/metricas", label: "Métricas" },
   { href: "/admin/cuadre", label: "Caja" },
   { href: "/admin/clientes", label: "Clientes" },
   { href: "/admin/inventario", label: "Inventario" },

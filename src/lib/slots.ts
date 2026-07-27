@@ -128,3 +128,30 @@ export function nextDays(n: number): Date[] {
   }
   return out;
 }
+
+// ---------- Rangos de período para los reportes de /admin/metricas ----------
+export type Periodo = "mes" | "30d" | "90d";
+
+/**
+ * Rango del período + el rango anterior del MISMO largo, para comparar peras con
+ * peras. Vive acá con el resto de la matemática de fechas de Bogotá (y no en
+ * queries.ts) para que sea verificable sin levantar Supabase — ver check-metricas.
+ */
+export function rangoPeriodo(p: Periodo, ahora: Date = new Date()): {
+  desde: Date;
+  hasta: Date;
+  prevDesde: Date;
+} {
+  const hasta = new Date(ahora);
+  let desde: Date;
+  if (p === "mes") {
+    // Del 1° a hoy. El comparativo son los MISMOS días del mes pasado: comparar
+    // un mes a medias contra uno completo daría siempre "vas peor".
+    const [y, m] = bogotaYmd(hasta).split("-");
+    desde = bogotaDayRangeDeFecha(`${y}-${m}-01`).desde;
+  } else {
+    desde = new Date(hasta.getTime() - (p === "30d" ? 30 : 90) * 86_400_000);
+  }
+  const largo = hasta.getTime() - desde.getTime();
+  return { desde, hasta, prevDesde: new Date(desde.getTime() - largo) };
+}
