@@ -73,6 +73,41 @@ export default function RootLayout({
       lang="es"
       className={`${barlow.variable} ${inter.variable} antialiased`}
     >
+      <head>
+        {/* Aparición al scrollear. Va inline y ANTES del bundle a propósito:
+            (1) marca <html> antes del primer pintado, así no hay parpadeo de
+            contenido que se ve y desaparece; (2) el observer es vanilla, así que
+            revela aunque React todavía no haya hidratado —en un Android de gama
+            media con datos flojos eso es la diferencia entre ver la página y ver
+            un vacío—; (3) si el JS está apagado, la clase nunca se agrega y todo
+            queda visible (los estilos que ocultan cuelgan de .js-reveal). */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){
+var d=document.documentElement;
+try{
+if((window.matchMedia&&window.matchMedia("(prefers-reduced-motion: reduce)").matches)||!("IntersectionObserver"in window))return;
+d.classList.add("js-reveal");
+var mostrar=function(el){el.classList.add("reveal-visible")};
+var io=new IntersectionObserver(function(es){for(var i=0;i<es.length;i++){if(es[i].isIntersecting){mostrar(es[i].target);io.unobserve(es[i].target)}}},
+{rootMargin:"0px 0px -12% 0px",threshold:0.01});
+var mirar=function(){
+var n=document.querySelectorAll("[data-reveal]:not([data-reveal-listo])"),h=window.innerHeight||0;
+for(var i=0;i<n.length;i++){var el=n[i];el.setAttribute("data-reveal-listo","");
+/* Lo que ya está en pantalla al cargar se muestra sin animar: hacer esperar al
+   visitante por lo que vino a leer es peor que no animar nada. */
+if(el.getBoundingClientRect().top<h*0.9){mostrar(el)}else{io.observe(el)}}};
+/* El script corre en el <head>, así que el <body> todavía no existe: hay que
+   esperar al DOM. Si el armado falla, se quita la clase y TODO queda visible —
+   nunca dejar contenido escondido por culpa de un adorno. */
+var arrancar=function(){try{mirar()}catch(e){d.classList.remove("js-reveal")}};
+if(document.readyState!=="loading"){arrancar()}else{document.addEventListener("DOMContentLoaded",arrancar)}
+/* Navegación cliente (Next no recarga la página): revisa los nodos nuevos. */
+window.addEventListener("load",arrancar);
+}catch(e){d.classList.remove("js-reveal")}})();`,
+          }}
+        />
+      </head>
       <body>
         {/* Grafo de entidad (Organization + WebSite + 2 sedes BarberShop):
             server-rendered para que los crawlers de IA lo vean sin ejecutar JS. */}

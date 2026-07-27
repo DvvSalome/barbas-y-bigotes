@@ -20,9 +20,12 @@ export function HomeStats({
 
   return (
     <div className="grid grid-cols-3 border-b border-[rgba(242,237,228,0.1)] md:mx-auto md:max-w-[1180px] md:border-t">
-      {stats.map(([n, label]) => (
+      {stats.map(([n, label], i) => (
         <div
           key={label}
+          data-reveal
+          // Escalonado: los números entran uno tras otro, no los tres de golpe.
+          style={{ "--reveal-delay": `${i * 90}ms` } as React.CSSProperties}
           className="border-r border-[rgba(242,237,228,0.08)] px-1.5 py-4 text-center md:py-[22px]"
         >
           <div className="font-display text-[26px] font-extrabold tabular-nums text-ink md:text-[34px]">

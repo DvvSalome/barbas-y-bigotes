@@ -28,7 +28,7 @@ const PASOS = [
 export function HomeApp() {
   return (
     <section id="la-app" className="mx-auto max-w-[1180px] px-6 pt-[52px] md:px-16">
-      <div className="text-center">
+      <div data-reveal className="text-center">
         <p className="font-display text-[11px] font-bold uppercase tracking-[0.34em] text-accent-soft">
           Reservas online
         </p>
@@ -44,8 +44,10 @@ export function HomeApp() {
       </div>
 
       <div className="mt-9 grid gap-3 md:grid-cols-3">
-        {PASOS.map((p) => (
+        {PASOS.map((p, i) => (
           <div
+            data-reveal
+            style={{ "--reveal-delay": `${i * 80}ms` } as React.CSSProperties}
             key={p.n}
             className="rounded-[18px] border border-line bg-panel p-6 transition hover:border-accent/40"
           >

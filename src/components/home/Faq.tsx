@@ -1,4 +1,3 @@
-import { Reveal } from "@/components/motion/Reveal";
 import { faqItems, faqPage, jsonLd } from "@/lib/schema-org";
 
 /*
@@ -14,12 +13,12 @@ export function Faq() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: jsonLd(faqPage) }}
       />
-      <Reveal>
+      <div data-reveal>
         <p className="text-xs uppercase tracking-[0.3em] text-accent">FAQ</p>
         <h2 className="font-display text-4xl font-semibold uppercase">
           Preguntas frecuentes
         </h2>
-      </Reveal>
+      </div>
       <div className="mt-7 divide-y divide-line overflow-hidden rounded-2xl border border-line bg-panel">
         {faqItems.map((f) => (
           <details key={f.pregunta} className="group px-6 py-5">

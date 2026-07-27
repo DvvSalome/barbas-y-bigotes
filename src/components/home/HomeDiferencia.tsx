@@ -28,11 +28,15 @@ const ITEMS = [
 export function HomeDiferencia() {
   return (
     <section className="mx-auto hidden max-w-[1180px] px-16 pt-[52px] md:block">
-      <p className="text-[11px] uppercase tracking-[0.3em] text-accent">Por qué nosotros</p>
-      <h2 className="font-display text-[38px] font-bold uppercase">La diferencia</h2>
+      <div data-reveal>
+        <p className="text-[11px] uppercase tracking-[0.3em] text-accent">Por qué nosotros</p>
+        <h2 className="font-display text-[38px] font-bold uppercase">La diferencia</h2>
+      </div>
       <div className="mt-8 grid grid-cols-4 gap-3">
-        {ITEMS.map((it) => (
+        {ITEMS.map((it, i) => (
           <div
+            data-reveal
+            style={{ "--reveal-delay": `${i * 80}ms` } as React.CSSProperties}
             key={it.titulo}
             className="rounded-2xl border border-[rgba(242,237,228,0.1)] bg-panel p-[22px]"
           >

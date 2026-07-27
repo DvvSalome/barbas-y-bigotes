@@ -121,7 +121,7 @@ export default async function BarberosPage() {
           return (
             <section key={s.id} className="mt-12">
               {/* Separador de sede: pill + nombre + línea */}
-              <div className="mb-6 flex items-center gap-4">
+              <div data-reveal className="mb-6 flex items-center gap-4">
                 <span className="rounded-full border border-accent/40 px-3.5 py-[5px] text-[11px] font-bold uppercase tracking-[0.3em] text-accent-soft">
                   Sede
                 </span>
@@ -134,8 +134,14 @@ export default async function BarberosPage() {
                 />
               </div>
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {list.map((b) => (
-                  <BarberoCard key={b.id} barbero={b} sedeNombre={s.nombre} />
+                {list.map((b, i) => (
+                  <div
+                    key={b.id}
+                    data-reveal
+                    style={{ "--reveal-delay": `${i * 90}ms` } as React.CSSProperties}
+                  >
+                    <BarberoCard barbero={b} sedeNombre={s.nombre} />
+                  </div>
                 ))}
               </div>
             </section>

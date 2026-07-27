@@ -28,11 +28,15 @@ export function HomeServicios({ servicios }: { servicios: Servicio[] }) {
     <>
       {/* ---------------- MÓVIL (spec §1.4) ---------------- */}
       <section className="px-[18px] pb-2 pt-[26px] md:hidden">
-        <p className="text-[11px] uppercase tracking-[0.3em] text-accent">Servicios</p>
-        <h2 className="font-display text-[28px] font-bold uppercase">Lo que más piden</h2>
+        <div data-reveal>
+          <p className="text-[11px] uppercase tracking-[0.3em] text-accent">Servicios</p>
+          <h2 className="font-display text-[28px] font-bold uppercase">Lo que más piden</h2>
+        </div>
         <div className="mt-4 overflow-hidden rounded-2xl border border-[rgba(242,237,228,0.1)] bg-panel">
-          {filas.map((f) => (
+          {filas.map((f, i) => (
             <div
+              data-reveal
+              style={{ "--reveal-delay": `${i * 80}ms` } as React.CSSProperties}
               key={f.id}
               className="flex items-center justify-between gap-3 border-b border-[rgba(242,237,228,0.07)] px-4 py-[13px]"
             >

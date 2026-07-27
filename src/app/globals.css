@@ -225,3 +225,50 @@ body {
 .scroll-x-limpio::-webkit-scrollbar {
   display: none;
 }
+
+/* ---------------------------------------------------------------------------
+   Aparición al hacer scroll (progresiva, no destructiva).
+
+   Regla de oro: SIN JavaScript todo se ve. Los estilos que ocultan cuelgan de
+   .js-reveal, una clase que pone un script inline del <head> (layout.tsx) antes
+   del primer pintado. Si el JS está apagado o el bundle no llega —Android de
+   gama media con datos flojos, que es el público real— la clase nunca aparece y
+   la página se ve completa y estática, que es infinitamente mejor que una
+   página en blanco.
+
+   Por eso NO se usa el componente Reveal (motion/react) para esto: ese emite
+   opacity:0 en el HTML del servidor, así que una hidratación lenta deja la
+   sección invisible. Acá el ocultamiento y el revelado los maneja el mismo
+   script vanilla, que corre sin esperar a React.
+--------------------------------------------------------------------------- */
+.js-reveal [data-reveal] {
+  opacity: 0;
+  /* translate3d y no translateY: fuerza capa propia en GPU y evita el repintado
+     de texto en gama media. */
+  transform: translate3d(0, 26px, 0);
+  will-change: opacity, transform;
+}
+
+.js-reveal [data-reveal].reveal-visible {
+  opacity: 1;
+  transform: none;
+  /* Curva ease-out exponencial, la misma que ya usa Reveal.tsx: entra rápido y
+     frena suave, sin rebote (una barbería no es un juguete). */
+  transition:
+    opacity 0.62s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.62s cubic-bezier(0.22, 1, 0.36, 1);
+  transition-delay: var(--reveal-delay, 0ms);
+  will-change: auto;
+}
+
+/* Accesibilidad y batería: quien pide menos movimiento ve todo quieto y ya.
+   No es solo preferencia estética — el movimiento dispara náuseas y migrañas a
+   gente con trastornos vestibulares. */
+@media (prefers-reduced-motion: reduce) {
+  .js-reveal [data-reveal],
+  .js-reveal [data-reveal].reveal-visible {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}

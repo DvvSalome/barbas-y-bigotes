@@ -22,11 +22,15 @@ export function HomeGaleria() {
     <>
       {/* ---------------- MÓVIL (spec §1.5) ---------------- */}
       <section className="px-[18px] pt-[26px] md:hidden">
-        <p className="text-[11px] uppercase tracking-[0.3em] text-accent">Galería</p>
-        <h2 className="font-display text-[28px] font-bold uppercase">Nuestros trabajos</h2>
+        <div data-reveal>
+          <p className="text-[11px] uppercase tracking-[0.3em] text-accent">Galería</p>
+          <h2 className="font-display text-[28px] font-bold uppercase">Nuestros trabajos</h2>
+        </div>
         <div className="mt-4 grid grid-cols-2 gap-2.5">
-          {[2, 3, 5].map((n) => (
+          {[2, 3, 5].map((n, i) => (
             <div
+              data-reveal
+              style={{ "--reveal-delay": `${i * 80}ms` } as React.CSSProperties}
               key={n}
               className="relative aspect-[3/4] overflow-hidden rounded-xl border border-[rgba(242,237,228,0.1)]"
             >
@@ -56,8 +60,10 @@ export function HomeGaleria() {
         <p className="text-[11px] uppercase tracking-[0.3em] text-accent">Galería</p>
         <h2 className="font-display text-[38px] font-bold uppercase">Nuestros trabajos</h2>
         <div className="mt-8 grid grid-cols-6 gap-3 [grid-auto-rows:150px]">
-          {MOSAICO.map(({ n, span }) => (
+          {MOSAICO.map(({ n, span }, i) => (
             <div
+              data-reveal
+              style={{ "--reveal-delay": `${i * 80}ms` } as React.CSSProperties}
               key={n}
               className={`relative overflow-hidden rounded-[14px] border border-[rgba(242,237,228,0.1)] ${span}`}
             >

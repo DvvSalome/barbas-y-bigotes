@@ -32,8 +32,10 @@ export function HomeSedes() {
           Dos casas, un mismo oficio
         </h2>
         <div className="mt-4 grid gap-3">
-          {SEDES.map((s) => (
+          {SEDES.map((s, i) => (
             <Link
+            data-reveal
+            style={{ "--reveal-delay": `${i * 80}ms` } as React.CSSProperties}
               key={s.id}
               href={`/reservar?sede=${s.id}`}
               className="relative block h-[150px] overflow-hidden rounded-2xl border border-[rgba(242,237,228,0.1)]"
@@ -64,7 +66,7 @@ export function HomeSedes() {
 
       {/* ---------------- DESKTOP (spec §2.7) ---------------- */}
       <section className="mx-auto hidden max-w-[1180px] px-16 pt-[52px] md:block">
-        <h2 className="font-display text-[38px] font-bold uppercase">
+        <h2 data-reveal className="font-display text-[38px] font-bold uppercase">
           Dos casas, un mismo oficio
         </h2>
         <div className="mt-8 grid grid-cols-2 gap-3.5">
