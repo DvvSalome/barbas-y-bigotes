@@ -51,6 +51,7 @@ export default async function BarberoPage() {
     getCobradoSedeHoy(sedeBarbero),
   ]);
   const mostrador = {
+    sedeId: sedeBarbero,
     sedeNombre: sedeBarbero
       ? sedes.find((s) => s.id === sedeBarbero)?.nombre ?? "Mi sede"
       : "Todas las sedes",

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { cop } from "@/lib/format";
 import { getBarberos, getSedes } from "@/lib/data/queries";
 import { SectionHeader } from "@/components/admin/SectionHeader";
 
@@ -19,12 +20,18 @@ export default async function ComisionesPage() {
             <span className="text-ink">arriendo de silla</span>.
           </>
         }
-        action={
-          <span className="rounded-full border border-line bg-elevated px-3 py-1.5 text-xs text-muted">
-            Guardar: próxima fase
-          </span>
-        }
+
       />
+
+      {/* Igual que en Precios: los controles se veían editables y descartaban todo.
+          El aviso va arriba y los valores pasan a texto. */}
+      <div className="mt-5 flex items-start gap-3 rounded-2xl border border-warn/40 bg-warn/10 px-4 py-3">
+        <span aria-hidden className="text-lg leading-none">⚠️</span>
+        <p className="text-[13px] leading-relaxed text-warn">
+          <b>Los contratos todavía no se editan desde acá.</b> Esta pantalla muestra con qué trabaja hoy
+          cada barbero, que es lo que usa el cobro para repartir la comisión. Para cambiar uno, pedímelo.
+        </p>
+      </div>
 
       {/* Mobile: cards */}
       <div className="mt-8 space-y-3 sm:hidden">
@@ -35,27 +42,18 @@ export default async function ComisionesPage() {
               <span className="shrink-0 text-xs text-muted">{sedeNombre(b.sede)}</span>
             </div>
             <div className="mt-3 grid grid-cols-2 gap-2">
-              <label className="block">
+              <div className="block">
                 <span className="text-[10px] uppercase tracking-wide text-muted">Contrato</span>
-                <select
-                  defaultValue={b.tipoContrato}
-                  className="mt-1 w-full rounded-lg border border-line bg-bg px-3 py-1.5 text-ink focus:border-accent focus:outline-none"
-                >
-                  <option value="porcentaje">Porcentaje</option>
-                  <option value="arriendo">Arriendo de silla</option>
-                </select>
-              </label>
-              <label className="block">
-                <span className="text-[10px] uppercase tracking-wide text-muted">Comisión % / Arriendo</span>
-                <div className="mt-1 flex items-center gap-1.5 rounded-lg border border-line bg-bg px-3 py-1.5">
-                  <input
-                    type="number"
-                    defaultValue={b.comisionPct ?? 50}
-                    className="w-full bg-transparent text-ink focus:outline-none"
-                  />
-                  <span className="shrink-0 text-xs text-muted">% / $</span>
+                <div className="mt-1 rounded-lg border border-line bg-elevated px-3 py-1.5 text-ink">
+                  {b.tipoContrato === "arriendo" ? "Arriendo de silla" : "Porcentaje"}
                 </div>
-              </label>
+              </div>
+              <div className="block">
+                <span className="text-[10px] uppercase tracking-wide text-muted">Comisión</span>
+                <div className="mt-1 rounded-lg border border-line bg-elevated px-3 py-1.5 tabular-nums text-ink">
+                  {b.tipoContrato === "arriendo" ? cop(b.comisionPct ?? 0) : `${b.comisionPct ?? 50}%`}
+                </div>
+              </div>
             </div>
           </div>
         ))}
@@ -77,22 +75,11 @@ export default async function ComisionesPage() {
               <tr key={b.id} className={`transition hover:bg-elevated/50 ${i % 2 ? "bg-panel" : "bg-panel/40"}`}>
                 <td className="px-4 py-3">{b.nombre}</td>
                 <td className="px-4 py-3 text-muted">{sedeNombre(b.sede)}</td>
-                <td className="px-4 py-3">
-                  <select
-                    defaultValue={b.tipoContrato}
-                    className="rounded-lg border border-line bg-bg px-3 py-1.5 text-ink focus:border-accent focus:outline-none"
-                  >
-                    <option value="porcentaje">Porcentaje</option>
-                    <option value="arriendo">Arriendo de silla</option>
-                  </select>
+                <td className="px-4 py-3 text-ink">
+                  {b.tipoContrato === "arriendo" ? "Arriendo de silla" : "Porcentaje"}
                 </td>
-                <td className="px-4 py-2 text-right">
-                  <input
-                    type="number"
-                    defaultValue={b.comisionPct ?? 50}
-                    className="w-24 rounded-lg border border-line bg-bg px-3 py-1.5 text-right text-ink focus:border-accent focus:outline-none"
-                  />
-                  <span className="ml-1.5 text-xs text-muted">% / $</span>
+                <td className="px-4 py-2 text-right tabular-nums text-ink">
+                  {b.tipoContrato === "arriendo" ? cop(b.comisionPct ?? 0) : `${b.comisionPct ?? 50}%`}
                 </td>
               </tr>
             ))}

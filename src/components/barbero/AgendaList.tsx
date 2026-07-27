@@ -47,6 +47,13 @@ function hora(iso: string) {
 
 const DONE = ["completada", "no_show", "cancelada"];
 
+/**
+ * Lo que más se vende, para ponerlo a un toque en el alta de walk-in. El
+ * catálogo tiene 47 servicios ordenados alfabéticamente y "Corte" caía en la
+ * posición 41. Si alguno no existe en la sede, simplemente no se dibuja.
+ */
+const FRECUENTES = ["corte", "corte-barba", "corte-cejas", "corte-barba-cejas"];
+
 // Chips de estado (mapa del prototipo, resuelto con tokens del staff para que el
 // tema claro/oscuro entinte solo). El punto interno hereda currentColor.
 const CHIP: Record<string, string> = {
@@ -91,6 +98,8 @@ export function AgendaList({
   esAdmin?: boolean;
   /** La sede que se opera desde el mostrador (o las dos, para el dueño). */
   mostrador: {
+    /** null = el dueño mirando las dos sedes; hay que elegir en cada alta. */
+    sedeId: string | null;
     sedeNombre: string;
     agendaSede: AgendaItem[];
     barberosSede: Barbero[];
@@ -303,6 +312,8 @@ export function AgendaList({
           sedes={sedes}
           barberos={barberos}
           servicios={servicios}
+          preciosServicios={preciosServicios}
+          sedeFija={mostrador.sedeId}
           onDone={() => {
             setWalkinOpen(false);
             router.refresh();
@@ -493,16 +504,24 @@ function WalkinForm({
   sedes,
   barberos,
   servicios,
+  preciosServicios,
+  sedeFija,
   onDone,
   onCancel,
 }: {
   sedes: Sede[];
   barberos: Barbero[];
   servicios: Servicio[];
+  preciosServicios: PrecioServicioStaff[];
+  /** Sede del mostrador. Si viene, el walk-in arranca ahí y no se elige. */
+  sedeFija?: string | null;
   onDone: () => void;
   onCancel: () => void;
 }) {
-  const [sede, setSede] = useState(sedes[0]?.id ?? "");
+  // Arrancaba SIEMPRE en sedes[0] —Parque Venezuela, por orden alfabético—, así
+  // que un barbero de Plaza de la Paz que no lo cambiaba mandaba el cliente, la
+  // venta y la comisión a la sede equivocada.
+  const [sede, setSede] = useState(sedeFija ?? sedes[0]?.id ?? "");
   const [barberoId, setBarberoId] = useState("");
   const [nombre, setNombre] = useState("");
   const [tel, setTel] = useState("");
@@ -531,11 +550,23 @@ function WalkinForm({
 
   return (
     <form onSubmit={submit} className="grid gap-3 rounded-2xl border border-line bg-panel p-5 sm:grid-cols-2">
-      <select value={sede} onChange={(e) => { setSede(e.target.value as typeof sede); setBarberoId(""); }} className={fld}>
-        {sedes.map((s) => (
-          <option key={s.id} value={s.id}>{s.nombre}</option>
-        ))}
-      </select>
+      {sedeFija ? (
+        // El barbero opera SU sede: elegirla en cada walk-in es un paso de más
+        // y una oportunidad de mandar la venta al local equivocado.
+        <div className="rounded-lg border border-line bg-elevated px-3 py-2 text-sm text-muted sm:col-span-2">
+          Sede: <b className="text-ink">{sedes.find((x) => x.id === sede)?.nombre ?? sede}</b>
+        </div>
+      ) : (
+        <select
+          value={sede}
+          onChange={(e) => { setSede(e.target.value as typeof sede); setBarberoId(""); }}
+          className={`${fld} sm:col-span-2`}
+        >
+          {sedes.map((s) => (
+            <option key={s.id} value={s.id}>{s.nombre}</option>
+          ))}
+        </select>
+      )}
       <select value={barberoId} onChange={(e) => setBarberoId(e.target.value)} className={fld}>
         <option value="">Barbero…</option>
         {sedeBarberos.map((b) => (
@@ -544,8 +575,32 @@ function WalkinForm({
       </select>
       <input value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Nombre del cliente" className={fld} />
       <input value={tel} onChange={(e) => setTel(e.target.value)} placeholder="Teléfono" inputMode="tel" className={fld} />
+      {/* Lo que más se vende, a un toque y con el precio de ESTA sede. Antes
+          "Corte" era la opción 41 de 47: varios barridos de rueda con el
+          cliente parado enfrente, varias veces al día. */}
+      <div className="flex flex-wrap gap-2 sm:col-span-2">
+        {FRECUENTES.map((id) => {
+          const sv = servicios.find((x) => x.id === id);
+          if (!sv) return null;
+          const precio = preciosServicios.find((x) => x.id === id)?.preciosPorSede[sede];
+          const activo = servicioId === id;
+          return (
+            <button
+              key={id}
+              type="button"
+              onClick={() => setServicioId(activo ? "" : id)}
+              className={`min-h-11 rounded-xl border px-3 text-[13px] font-semibold transition ${
+                activo ? "border-accent bg-accent/15 text-ink" : "border-line text-muted hover:text-ink"
+              }`}
+            >
+              {sv.nombre.split(" (")[0]}
+              {precio != null && <span className="ml-1.5 tabular-nums text-muted">{cop(precio)}</span>}
+            </button>
+          );
+        })}
+      </div>
       <select value={servicioId} onChange={(e) => setServicioId(e.target.value)} className={`${fld} sm:col-span-2`}>
-        <option value="">Servicio (opcional)…</option>
+        <option value="">Otro servicio (opcional)…</option>
         {servicios.map((s) => (
           <option key={s.id} value={s.id}>{s.nombre}</option>
         ))}

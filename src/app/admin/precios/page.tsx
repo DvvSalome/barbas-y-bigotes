@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { cop } from "@/lib/format";
 import { getServiciosCatalogoAdmin, getSedes } from "@/lib/data/queries";
 import { categorias } from "@/lib/data/seed";
 import type { Categoria, SedeId } from "@/lib/data/types";
@@ -33,8 +34,20 @@ export default async function PreciosPage({
       <SectionHeader
         eyebrow="Catálogo"
         title="Precios por sede"
-        description="Editá el precio de cada servicio en ambas sedes y armá combos por sede desde acá."
+        description="Los precios de cada servicio en las dos sedes. Desde acá se arman combos y se activa o desactiva un servicio."
       />
+
+      {/* El aviso va ARRIBA y no al pie: los campos de precio se ven editables y
+          no guardan nada, así que quien no leyera hasta el final se iba creyendo
+          que había cambiado los precios. */}
+      <div className="mt-5 flex items-start gap-3 rounded-2xl border border-warn/40 bg-warn/10 px-4 py-3">
+        <span aria-hidden className="text-lg leading-none">⚠️</span>
+        <p className="text-[13px] leading-relaxed text-warn">
+          <b>Los precios todavía no se editan desde acá.</b> Esta pantalla es de consulta: muestra lo que
+          se está cobrando hoy en cada sede. Lo que sí funciona es armar combos y activar o desactivar un
+          servicio. Para cambiar un precio, pedímelo y lo actualizo.
+        </p>
+      </div>
 
       {/* Armador de combos (proto §7.1) — atado a la sede activa del selector. */}
       <section className="mt-6">
@@ -85,13 +98,8 @@ export default async function PreciosPage({
                       {sedes.map((sd) => (
                         <label key={sd.id} className="block">
                           <span className="text-[10px] uppercase tracking-wide text-muted">{sd.nombre}</span>
-                          <div className="mt-1 flex items-center gap-1.5 rounded-lg border border-line bg-bg px-2.5 py-1.5">
-                            <span className="text-xs text-muted">$</span>
-                            <input
-                              type="number"
-                              defaultValue={s.precios[sd.id]}
-                              className="w-full bg-transparent text-right text-ink focus:outline-none"
-                            />
+                          <div className="mt-1 rounded-lg border border-line bg-elevated px-2.5 py-1.5 text-right tabular-nums text-ink">
+                            {s.precios[sd.id] != null ? cop(s.precios[sd.id]) : "—"}
                           </div>
                         </label>
                       ))}
@@ -140,13 +148,8 @@ export default async function PreciosPage({
                         </td>
                         <td className="px-4 py-3 text-muted">{s.duracionMin}m</td>
                         {sedes.map((sd) => (
-                          <td key={sd.id} className="px-4 py-2 text-right">
-                            <span className="mr-1.5 text-xs text-muted">$</span>
-                            <input
-                              type="number"
-                              defaultValue={s.precios[sd.id]}
-                              className="w-28 rounded-lg border border-line bg-bg px-3 py-1.5 text-right text-ink focus:border-accent focus:outline-none"
-                            />
+                          <td key={sd.id} className="px-4 py-2 text-right tabular-nums text-ink">
+                            {s.precios[sd.id] != null ? cop(s.precios[sd.id]) : "—"}
                           </td>
                         ))}
                         <td className="px-4 py-3 text-right">
@@ -162,15 +165,6 @@ export default async function PreciosPage({
         );
       })}
 
-      <div className="mt-8 flex items-center gap-3">
-        <button
-          disabled
-          className="cursor-not-allowed rounded-full bg-accent px-7 py-3 text-sm font-semibold uppercase tracking-wide text-on-accent opacity-60"
-        >
-          Guardar cambios
-        </button>
-        <span className="text-xs text-muted">Persistencia de edición de precios: próxima fase.</span>
-      </div>
     </div>
   );
 }
