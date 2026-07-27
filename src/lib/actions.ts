@@ -1,6 +1,20 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import {
+  sanearCop,
+  sanearCantidad,
+  sanearComisionPct,
+  sanearNombre,
+  sanearEspecialidades,
+  sanearPrevioHoras,
+  slugCombo as slugComboRegla,
+  resolverColisionSlug,
+  esComboValido,
+  extDeMime,
+  variantesObsoletas,
+  DURACION_MAX_MIN,
+} from "@/lib/admin-reglas";
 import { type SupabaseClient } from "@supabase/supabase-js";
 import { supabaseServerAuth, supabaseAdmin } from "@/lib/supabase/server";
 import { getStaffContext, getCorteIds, contarCortesCliente, precioCorteBase } from "@/lib/data/queries";
@@ -12,7 +26,7 @@ import { beneficioProximoCorte } from "@/lib/tarjeta";
 import { pushACliente } from "@/lib/push";
 import { fechaHoraBogota } from "@/lib/format";
 
-export type ActionResult = { ok: boolean; error?: string; id?: string; total?: number; descuento?: number; propina?: number; puntos?: number; encolado?: boolean; esperaHasta?: string | null; tarjeta?: { cortesTotales: number; posicion: number; beneficio: "50%" | "gratis" | null }; resenaUrl?: string | null };
+export type ActionResult = { ok: boolean; error?: string; /** Se guardó, pero con salvedades que el admin debe ver (p.ej. especialidades descartadas). */ aviso?: string; id?: string; total?: number; descuento?: number; propina?: number; puntos?: number; encolado?: boolean; esperaHasta?: string | null; tarjeta?: { cortesTotales: number; posicion: number; beneficio: "50%" | "gratis" | null }; resenaUrl?: string | null };
 
 // --- Autorización (defensa en profundidad; la RLS es la barrera real) ---
 // Las server actions corren con la sesión del usuario, pero igual revalidamos el
@@ -32,7 +46,16 @@ async function requireStaff(sb: SupabaseClient): Promise<string | null> {
   const {
     data: { user },
   } = await sb.auth.getUser();
-  return user ? null : "No autorizado";
+  if (!user) return "No autorizado";
+  // Antes alcanzaba con estar logueado: un CLIENTE con sesión de Google pasaba
+  // este gate. Para casi todas las actions la RLS lo frenaba igual, pero
+  // getTarjetaParaCobro corre con supabaseAdmin() (bypassea RLS) y le habría
+  // dejado leer los cortes de cualquier cliente sabiendo su UUID. Se pide rol,
+  // igual que requireAdmin.
+  const { data } = await sb.from("profiles").select("rol").eq("auth_id", user.id).maybeSingle();
+  const rol = (data as { rol?: string } | null)?.rol;
+  if (rol !== "admin" && rol !== "barbero") return "Requiere permiso del equipo";
+  return null;
 }
 
 export type CuponResult = {
@@ -120,15 +143,34 @@ export async function addProducto(input: {
   const sb = await supabaseServerAuth();
   const denied = await requireAdmin(sb);
   if (denied) return { ok: false, error: denied };
+
+  // La tabla productos NO tiene CHECKs, así que esta es la única barrera: sin
+  // ella entraba un precio negativo o una comisión del 250% tal cual, y el cobro
+  // los lee de la base (completarReserva). Reglas en admin-reglas.ts (probadas
+  // en scripts/check-admin.ts).
+  const nombre = sanearNombre(input.nombre);
+  if (!nombre) return { ok: false, error: "Poné el nombre del producto." };
+  const precio = sanearCop(input.precio);
+  if (precio === null) return { ok: false, error: "El precio tiene que ser un número entero de pesos, sin decimales." };
+  const stock = sanearCantidad(input.stock);
+  if (stock === null) return { ok: false, error: "El stock tiene que ser un número entero, cero o más." };
+  const stockMinimo = sanearCantidad(input.stockMinimo);
+  if (stockMinimo === null) return { ok: false, error: "El mínimo tiene que ser un número entero, cero o más." };
+  const comisionPct = sanearComisionPct(input.comisionPct);
+  if (comisionPct === null) return { ok: false, error: "La comisión tiene que estar entre 0 y 100." };
+
+  const { data: sedeRow } = await sb.from("sedes").select("id").eq("id", input.sede).maybeSingle();
+  if (!sedeRow) return { ok: false, error: "Sede inválida." };
+
   const { data, error } = await sb
     .from("productos")
     .insert({
-      nombre: input.nombre,
+      nombre,
       sede_id: input.sede,
-      precio: input.precio,
-      stock: input.stock,
-      stock_minimo: input.stockMinimo,
-      comision_pct: input.comisionPct,
+      precio,
+      stock,
+      stock_minimo: stockMinimo,
+      comision_pct: comisionPct,
     })
     .select("id")
     .single();
@@ -144,8 +186,8 @@ export async function actualizarPrecioProducto(id: string, precio: number): Prom
   const sb = await supabaseServerAuth();
   const denied = await requireAdmin(sb);
   if (denied) return { ok: false, error: denied };
-  const p = Math.floor(precio);
-  if (!Number.isFinite(p) || p < 0) return { ok: false, error: "Precio inválido" };
+  const p = sanearCop(precio);
+  if (p === null) return { ok: false, error: "El precio tiene que ser un número entero de pesos, sin decimales." };
   const { error } = await sb.from("productos").update({ precio: p }).eq("id", id);
   if (error) return { ok: false, error: errorPublico("actualizarPrecioProducto", error) };
   revalidatePath("/admin/inventario");
@@ -270,8 +312,7 @@ export async function subirFotoProducto(formData: FormData): Promise<ActionResul
   const { data: prod } = await admin.from("productos").select("id").eq("id", productoId).maybeSingle();
   if (!prod) return { ok: false, error: "Producto no encontrado." };
 
-  const ext =
-    (file.type.split("/")[1] ?? "jpg").toLowerCase().replace("jpeg", "jpg").replace(/[^a-z0-9]/g, "") || "jpg";
+  const ext = extDeMime(file.type);
   const path = `${productoId}.${ext}`;
   const { error: upErr } = await admin.storage
     .from("productos")
@@ -282,7 +323,7 @@ export async function subirFotoProducto(formData: FormData): Promise<ActionResul
   // Limpieza best-effort: re-subir en otro formato (png→webp) dejaría el archivo
   // viejo huérfano en el bucket público (el path lleva la extensión). Se borran
   // las otras variantes del mismo producto; si el remove falla, no aborta la subida.
-  const otrasVariantes = ["jpg", "png", "webp", "avif"].filter((e) => e !== ext).map((e) => `${productoId}.${e}`);
+  const otrasVariantes = variantesObsoletas(productoId, ext);
   const { error: rmErr } = await admin.storage.from("productos").remove(otrasVariantes);
   if (rmErr) errorPublico("subirFotoProducto limpieza", rmErr);
 
@@ -298,24 +339,6 @@ export async function subirFotoProducto(formData: FormData): Promise<ActionResul
 }
 
 // --- Armador de combos (F3) ---
-
-// id kebab a partir del nombre (sin acentos, solo [a-z0-9-]). El que llama
-// resuelve la colisión con sufijo -2, -3…
-function slugCombo(nombre: string): string {
-  const base = nombre
-    .toLowerCase()
-    .replace(/[áàä]/g, "a")
-    .replace(/[éèë]/g, "e")
-    .replace(/[íìï]/g, "i")
-    .replace(/[óòö]/g, "o")
-    .replace(/[úùü]/g, "u")
-    .replace(/ñ/g, "n")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 60)
-    .replace(/-+$/g, "");
-  return base || "combo";
-}
 
 // Crea un combo EN LA SEDE ACTIVA del módulo Precios (decisión del dueño): queda
 // priceado/disponible SOLO en esa sede (una fila en servicio_sede). Si el admin
@@ -338,11 +361,12 @@ export async function crearCombo(input: {
   const precio = Math.round(Number(input.precio));
   const duracionMin = Math.round(Number(input.duracionMin));
   const conBebida = !!input.conBebida;
-  if (partes.length < 2 && !(partes.length >= 1 && conBebida))
+  if (!esComboValido(partes, conBebida))
     return { ok: false, error: "Elegí al menos 2 partes (o 1 parte más la bebida)." };
   if (!nombre) return { ok: false, error: "Poné el nombre del combo." };
   if (!Number.isFinite(precio) || precio <= 0) return { ok: false, error: "Poné un precio válido." };
-  if (!Number.isFinite(duracionMin) || duracionMin <= 0) return { ok: false, error: "Poné una duración válida." };
+  if (!Number.isFinite(duracionMin) || duracionMin <= 0 || duracionMin > DURACION_MAX_MIN)
+    return { ok: false, error: `La duración tiene que estar entre 1 minuto y ${DURACION_MAX_MIN / 60} horas.` };
 
   const admin = supabaseAdmin();
 
@@ -355,11 +379,9 @@ export async function crearCombo(input: {
   const cuentaCorte = partes.some((p) => corteIds.has(p));
 
   // id único: slug del nombre, con sufijo -2, -3… si choca.
-  const baseId = slugCombo(nombre);
+  const baseId = slugComboRegla(nombre);
   const { data: existentes } = await admin.from("servicios").select("id").like("id", `${baseId}%`);
-  const tomados = new Set(((existentes ?? []) as { id: string }[]).map((r) => r.id));
-  let id = baseId;
-  for (let n = 2; tomados.has(id); n++) id = `${baseId}-${n}`;
+  const id = resolverColisionSlug(baseId, ((existentes ?? []) as { id: string }[]).map((r) => r.id));
 
   const row = {
     id,
@@ -425,17 +447,7 @@ export async function actualizarPerfilBarbero(input: {
 
   const bio = (input.bio ?? "").trim();
 
-  const vistas = new Set<string>();
-  const especialidades: string[] = [];
-  for (const raw of Array.isArray(input.especialidades) ? input.especialidades : []) {
-    const e = (typeof raw === "string" ? raw : "").trim();
-    if (!e) continue;
-    const key = e.toLowerCase();
-    if (vistas.has(key)) continue;
-    vistas.add(key);
-    especialidades.push(e);
-    if (especialidades.length >= 6) break;
-  }
+  const { especialidades, descartadas } = sanearEspecialidades(input.especialidades);
 
   const admin = supabaseAdmin();
 
@@ -458,6 +470,17 @@ export async function actualizarPerfilBarbero(input: {
   revalidatePath("/admin/equipo");
   revalidatePath("/barberos");
   revalidatePath("/reservar");
+  // Se guardó, pero puede que no todo: antes esto respondía "Perfil guardado" y
+  // el admin no se enteraba de que se le recortaron especialidades (varios
+  // barberos ya tienen 7-8 cargadas de antes del límite).
+  if (descartadas.length) {
+    const sobrantes = descartadas.filter((d) => d.motivo === "excede-maximo").length;
+    const dups = descartadas.length - sobrantes;
+    const partes: string[] = [];
+    if (sobrantes) partes.push(`${sobrantes} por el máximo de 6`);
+    if (dups) partes.push(`${dups} repetida${dups > 1 ? "s" : ""}`);
+    return { ok: true, aviso: `Se guardó, pero no se incluyeron ${partes.join(" y ")}.` };
+  }
   return { ok: true };
 }
 
@@ -1935,8 +1958,8 @@ export async function actualizarAjustesAvisos(input: {
   if (denied) return { ok: false, error: denied };
   // Mismos límites que el CHECK de la tabla: se validan acá para dar un mensaje
   // entendible en vez de un error de constraint.
-  const horas = Math.round(input.previoHoras * 2) / 2; // a la media hora
-  if (!Number.isFinite(horas) || horas < 0.5 || horas > 12)
+  const horas = sanearPrevioHoras(input.previoHoras);
+  if (horas === null)
     return { ok: false, error: "La antelación debe estar entre 30 minutos y 12 horas." };
 
   const { error } = await sb

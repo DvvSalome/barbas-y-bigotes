@@ -58,7 +58,15 @@ export function AusenciasAdmin({
   }
 
   async function quitar(id: string) {
-    await quitarAusencia(id);
+    // Si esto falla en silencio, el admin ve desaparecer la fila tras el refresh
+    // y cree que el barbero volvió a estar disponible, cuando el booking lo
+    // sigue bloqueando. Un error acá cuesta turnos que nadie puede reservar.
+    const res = await quitarAusencia(id);
+    if (!res.ok) {
+      setErr(res.error ?? "No se pudo quitar la ausencia.");
+      return;
+    }
+    setErr(null);
     router.refresh();
   }
 

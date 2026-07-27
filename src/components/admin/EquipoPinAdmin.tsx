@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { setearPinBarbero, desbloquearBarbero } from "@/lib/barbero-auth";
 import { actualizarPerfilBarbero } from "@/lib/actions";
 import type { Barbero, Sede } from "@/lib/data/types";
+import { partirEspecialidades, MAX_ESPECIALIDADES } from "@/lib/admin-reglas";
 
 type Estado = Record<string, { tienePin: boolean; bloqueado: boolean }>;
 
@@ -34,16 +35,16 @@ export function EquipoPinAdmin({ barberos, sedes, estado }: { barberos: Barbero[
   async function guardarPerfil(barberoId: string) {
     setBusy(true);
     setMsg(null);
-    // Una especialidad por línea o separadas por coma; la action vuelve a sanear.
-    const especialidades = espDraft
-      .split(/[\n,]/)
-      .map((e) => e.trim())
-      .filter(Boolean);
+    // Mismo partido que usa el server (admin-reglas): si el cliente separa
+    // distinto, el admin ve una cosa y se guarda otra.
+    const especialidades = partirEspecialidades(espDraft);
     const res = await actualizarPerfilBarbero({ barberoId, bio: bioDraft, especialidades });
     setBusy(false);
     if (res.ok) {
       setPerfilEditing(null);
-      setMsg({ id: barberoId, text: "Perfil guardado", ok: true });
+      // El server avisa si descartó algo (máximo, repetidas). Antes respondía
+      // "Perfil guardado" a secas y el recorte pasaba inadvertido.
+      setMsg({ id: barberoId, text: res.aviso ?? "Perfil guardado", ok: true });
       router.refresh();
     } else {
       setMsg({ id: barberoId, text: res.error ?? "Error", ok: false });
@@ -146,7 +147,7 @@ export function EquipoPinAdmin({ barberos, sedes, estado }: { barberos: Barbero[
                         </label>
                         <label className="block">
                           <span className="mb-1 block text-[11px] uppercase tracking-[0.2em] text-muted">
-                            Especialidades <span className="normal-case tracking-normal text-muted/70">(una por línea o separadas por coma · máx 6)</span>
+                            Especialidades <span className="normal-case tracking-normal text-muted/70">(una por línea o separadas por coma · máx {MAX_ESPECIALIDADES})</span>
                           </span>
                           <textarea
                             value={espDraft}

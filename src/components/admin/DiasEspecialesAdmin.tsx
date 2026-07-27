@@ -53,7 +53,14 @@ export function DiasEspecialesAdmin({
   }
 
   async function quitar(id: string) {
-    await quitarDiaEspecial(id);
+    // Mismo motivo que en AusenciasAdmin: tragarse el error hace creer que la
+    // sede volvió a abrir ese día cuando el booking la sigue dando por cerrada.
+    const res = await quitarDiaEspecial(id);
+    if (!res.ok) {
+      setErr(res.error ?? "No se pudo quitar la excepción.");
+      return;
+    }
+    setErr(null);
     router.refresh();
   }
 

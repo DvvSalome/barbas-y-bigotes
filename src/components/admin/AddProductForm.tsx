@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { addProducto, subirFotoProducto } from "@/lib/actions";
+import { sanearCop, sanearCantidad, sanearNombre } from "@/lib/admin-reglas";
 import { BoxIcon, CamIcon } from "@/components/icons";
 import type { Sede } from "@/lib/data/types";
 
@@ -26,12 +27,35 @@ export function AddProductForm({ sedes }: { sedes: Sede[] }) {
     e.preventDefault();
     setErr(null);
     setSaving(true);
+    // Validar ACÁ además del server, para dar el mensaje pegado al campo. El
+    // `Number(x) || 0` que había convertía "" y "abc" en 0 sin decir nada: un
+    // precio vacío entraba como producto gratis. La barrera real igual está en
+    // la action (la tabla productos no tiene CHECKs).
+    const precioNum = sanearCop(precio);
+    const stockNum = sanearCantidad(stock);
+    const minNum = sanearCantidad(stockMin);
+    if (!sanearNombre(nombre)) {
+      setSaving(false);
+      setErr("Poné el nombre del producto.");
+      return;
+    }
+    if (precioNum === null) {
+      setSaving(false);
+      setErr("El precio tiene que ser un número entero de pesos, sin decimales ni negativos.");
+      return;
+    }
+    if (stockNum === null || minNum === null) {
+      setSaving(false);
+      setErr("El stock y el mínimo tienen que ser números enteros, cero o más.");
+      return;
+    }
+
     const res = await addProducto({
       nombre,
       sede,
-      precio: Number(precio) || 0,
-      stock: Number(stock) || 0,
-      stockMinimo: Number(stockMin) || 0,
+      precio: precioNum,
+      stock: stockNum,
+      stockMinimo: minNum,
       comisionPct: 0,
     });
     // Foto opcional: el producto ya quedó creado; si la foto falla, se avisa
@@ -81,9 +105,9 @@ export function AddProductForm({ sedes }: { sedes: Sede[] }) {
           <option key={s.id} value={s.id}>{s.nombre}</option>
         ))}
       </select>
-      <input required type="number" value={precio} onChange={(e) => setPrecio(e.target.value)} placeholder="Precio" className={input} />
-      <input required type="number" value={stock} onChange={(e) => setStock(e.target.value)} placeholder="Stock" className={input} />
-      <input type="number" value={stockMin} onChange={(e) => setStockMin(e.target.value)} placeholder="Mínimo" className={input} />
+      <input required type="number" min={0} step={1} value={precio} onChange={(e) => setPrecio(e.target.value)} placeholder="Precio" className={input} />
+      <input required type="number" min={0} step={1} value={stock} onChange={(e) => setStock(e.target.value)} placeholder="Stock" className={input} />
+      <input type="number" min={0} step={1} value={stockMin} onChange={(e) => setStockMin(e.target.value)} placeholder="Mínimo" className={input} />
       <div className="flex flex-wrap items-center gap-2 sm:col-span-6">
         <button
           type="button"
