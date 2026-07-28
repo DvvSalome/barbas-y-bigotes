@@ -18,7 +18,16 @@ const eslintConfig = defineConfig([
     "public/sw.js",
     "public/workbox-*.js",
     "public/worker-*.js",
+    // "worker-*.js" NO matchea "swe-worker-*.js" (el worker de Serwist que
+    // emite next-pwa): se colaba con sus propios errores de JS compilado.
+    "public/swe-worker-*.js",
     "public/fallback-*.js",
+    // Copia vieja del proyecto que quedó dentro de la carpeta (ya está en
+    // .gitignore, no es código nuestro). En CI ni existe; localmente aportaba
+    // ~1200 errores y dejaba `npm run lint` inservible como puerta de calidad.
+    "antigravity barbas/**",
+    // Build de Next anidado en cualquier subcarpeta (".next/**" solo ancla en raíz).
+    "**/.next/**",
   ]),
   {
     // react-three-fiber muta el scene graph imperativamente cada frame
