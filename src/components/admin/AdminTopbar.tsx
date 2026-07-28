@@ -4,7 +4,7 @@ import { Suspense } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
-import { AdminTabs } from "@/components/admin/AdminNav";
+import { AdminTabs, seccionFiltraPorSede } from "@/components/admin/AdminNav";
 import { PerfilMenu } from "@/components/staff/PerfilMenu";
 import { SearchIcon } from "@/components/icons";
 import type { Sede } from "@/lib/data/types";
@@ -29,11 +29,17 @@ function horaBogota(iso: string) {
 }
 
 // Segmentado Ambas / sede A / sede B: navega con ?sede= (sin param = ambas).
+// En las secciones que no filtran (Caja, Clientes, Inventario, Equipo, Comisiones,
+// Cupones, Avisos) el selector igual se dejaba cambiar: se podía tener "Plaza de la
+// Paz" marcado y estar leyendo las dos sedes sumadas. Ahí queda en gris, marcando
+// "Ambas sedes" —que es lo que se está viendo— y con la aclaración al lado.
+// El ?sede= elegido no se borra: vuelve a mandar al entrar a Hoy o Métricas.
 function SedeSelector({ sedes }: { sedes: Sede[] }) {
   const router = useRouter();
   const pathname = usePathname();
   const search = useSearchParams();
-  const actual = search.get("sede");
+  const filtra = seccionFiltraPorSede(pathname);
+  const actual = filtra ? search.get("sede") : null;
   const opciones: { id: string | null; nombre: string }[] = [
     { id: null, nombre: "Ambas sedes" },
     ...sedes.map((s) => ({ id: s.id as string, nombre: s.nombre })),
@@ -48,23 +54,37 @@ function SedeSelector({ sedes }: { sedes: Sede[] }) {
   }
 
   return (
-    <div role="group" aria-label="Sede" className="flex gap-0.5 rounded-[9px] border border-line bg-panel p-[3px]">
-      {opciones.map((o) => {
-        const activo = actual === o.id || (!actual && o.id === null);
-        return (
-          <button
-            key={o.nombre}
-            type="button"
-            aria-pressed={activo}
-            onClick={() => ir(o.id)}
-            className={`whitespace-nowrap rounded-md px-2.5 py-1 text-xs font-semibold transition sm:px-3 ${
-              activo ? "bg-elevated text-ink shadow-[inset_0_0_0_1px_var(--line)]" : "text-muted hover:text-ink"
-            }`}
-          >
-            {o.nombre}
-          </button>
-        );
-      })}
+    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+      <div
+        role="group"
+        aria-label="Sede"
+        aria-disabled={!filtra}
+        title={filtra ? undefined : "Esta sección muestra las dos sedes"}
+        className={`flex gap-0.5 rounded-[9px] border border-line bg-panel p-[3px] ${filtra ? "" : "opacity-60"}`}
+      >
+        {opciones.map((o) => {
+          const activo = actual === o.id || (!actual && o.id === null);
+          return (
+            <button
+              key={o.nombre}
+              type="button"
+              aria-pressed={activo}
+              disabled={!filtra}
+              onClick={() => ir(o.id)}
+              className={`whitespace-nowrap rounded-md px-2.5 py-1 text-xs font-semibold transition disabled:cursor-not-allowed sm:px-3 ${
+                activo
+                  ? `bg-elevated shadow-[inset_0_0_0_1px_var(--line)] ${filtra ? "text-ink" : "text-muted"}`
+                  : `text-muted ${filtra ? "hover:text-ink" : ""}`
+              }`}
+            >
+              {o.nombre}
+            </button>
+          );
+        })}
+      </div>
+      {!filtra && (
+        <span className="text-[11px] font-medium leading-tight text-muted">Esta sección muestra las dos sedes</span>
+      )}
     </div>
   );
 }
@@ -92,11 +112,15 @@ export function AdminTopbar({ email, sedes, caja }: { email: string; sedes: Sede
         <button
           type="button"
           aria-haspopup="dialog"
+          aria-label="Buscar o hacer algo (Ctrl K)"
           onClick={() => window.dispatchEvent(new CustomEvent("bb:cmdk"))}
-          className="flex min-w-9 flex-1 items-center gap-2 rounded-[9px] border border-line bg-panel px-3 py-1.5 text-[13px] text-muted transition hover:border-ink/25 hover:text-ink/80 sm:max-w-[380px]"
+          className="flex min-w-24 flex-1 items-center gap-2 rounded-[9px] border border-line bg-panel px-3 py-1.5 text-[13px] text-muted transition hover:border-ink/25 hover:text-ink/80 sm:max-w-[380px]"
         >
           <SearchIcon className="h-3.5 w-3.5 shrink-0" />
-          <span className="hidden truncate sm:block">Buscar o hacer algo…</span>
+          {/* En mobile era una píldora vacía (solo la lupa): al menos tiene que decir "Buscar". */}
+          <span className="truncate">
+            Buscar<span className="hidden sm:inline"> o hacer algo…</span>
+          </span>
           <kbd className="ml-auto hidden rounded border border-line bg-bg px-1.5 py-0.5 font-mono text-[10px] font-semibold sm:block">
             Ctrl K
           </kbd>

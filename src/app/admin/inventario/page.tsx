@@ -26,11 +26,24 @@ export default async function InventarioPage() {
       </div>
 
       {sedes.map((s) => {
-        const list = productos.filter((p) => p.sede === s.id);
+        // Lo que hay que reponer, primero: antes había que cazar el "Bajo mínimo"
+        // leyendo toda la lista. El sort es estable, así que dentro de cada
+        // grupo se conserva el orden de la consulta y la lista no baila sola.
+        const list = productos
+          .filter((p) => p.sede === s.id)
+          .sort((a, b) => Number(b.stock <= b.stockMinimo) - Number(a.stock <= a.stockMinimo));
         if (!list.length) return null;
+        const bajos = list.filter((p) => p.stock <= p.stockMinimo).length;
         return (
           <section key={s.id} className="mt-8">
-            <h2 className="mb-4 text-xs uppercase tracking-[0.3em] text-accent">{s.nombre}</h2>
+            <h2 className="mb-4 flex flex-wrap items-center gap-2 text-xs uppercase tracking-[0.3em] text-accent">
+              {s.nombre}
+              {bajos > 0 && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-red-500/15 px-2.5 py-1 text-[11px] tracking-normal text-red-300">
+                  <AlertIcon className="h-3 w-3" /> {bajos} bajo mínimo
+                </span>
+              )}
+            </h2>
 
             {/* Mobile: cards */}
             <div className="space-y-2 sm:hidden">

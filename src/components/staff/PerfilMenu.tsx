@@ -9,6 +9,10 @@ import { LogoutIcon } from "@/components/icons";
 // Rueda de perfil del staff (admin y barbero): el avatar abre un menú con la
 // identidad, el toggle de tema Oscuro/Claro (cookie bb-tema, sin recargar) y
 // Cerrar sesión. Sin librerías: click afuera + Esc cierran, roles de menú básicos.
+//
+// Todo lo tocable acá va a 44px de alto/ancho mínimo: en el mostrador esto se
+// usa de pie, con una mano y el cliente enfrente; el avatar de 30px y los
+// botones de tema de ~24px se erraban seguido.
 
 export function PerfilMenu({
   nombre,
@@ -83,7 +87,7 @@ export function PerfilMenu({
         aria-label={`Menú de ${nombre}`}
         title={detalle ?? nombre}
         onClick={() => setOpen((v) => !v)}
-        className={`grid h-[30px] w-[30px] place-items-center overflow-hidden rounded-full border text-[11px] font-bold transition ${foco} ${
+        className={`grid h-11 w-11 place-items-center overflow-hidden rounded-full border text-[13px] font-bold transition ${foco} ${
           open ? "border-accent/60 bg-elevated text-ink" : "border-line bg-elevated text-ink hover:border-accent/40"
         }`}
       >
@@ -99,7 +103,7 @@ export function PerfilMenu({
         <div
           role="menu"
           aria-label="Perfil"
-          className="absolute right-0 top-[calc(100%+8px)] z-50 w-60 overflow-hidden rounded-xl border border-line bg-elevated shadow-[var(--shadow-pop)]"
+          className="absolute right-0 top-[calc(100%+8px)] z-50 w-64 overflow-hidden rounded-xl border border-line bg-elevated shadow-[var(--shadow-pop)]"
         >
           <div className="px-3.5 py-3">
             <div className="truncate text-[13px] font-semibold text-ink">{nombre}</div>
@@ -125,7 +129,7 @@ export function PerfilMenu({
                     role="menuitemradio"
                     aria-checked={activo}
                     onClick={() => cambiarTema(o.id)}
-                    className={`rounded-md px-2.5 py-1 text-xs font-semibold transition ${foco} ${
+                    className={`inline-flex min-h-11 min-w-[64px] items-center justify-center rounded-md px-3 text-xs font-semibold transition ${foco} ${
                       activo ? "bg-elevated text-ink shadow-[inset_0_0_0_1px_var(--line)]" : "text-muted hover:text-ink"
                     }`}
                   >
@@ -143,7 +147,7 @@ export function PerfilMenu({
             role="menuitem"
             onClick={cerrarSesion}
             disabled={saliendo}
-            className={`flex w-full items-center gap-2.5 px-3.5 py-3 text-left text-[13px] text-muted transition hover:bg-panel hover:text-ink disabled:opacity-50 ${foco}`}
+            className={`flex min-h-11 w-full items-center gap-2.5 px-3.5 py-3 text-left text-[13px] text-muted transition hover:bg-panel hover:text-ink disabled:opacity-50 ${foco}`}
           >
             <LogoutIcon className="h-3.5 w-3.5 shrink-0" />
             {saliendo ? "Cerrando sesión…" : "Cerrar sesión"}

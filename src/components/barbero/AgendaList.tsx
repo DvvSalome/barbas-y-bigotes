@@ -285,6 +285,7 @@ export function AgendaList({
         sedeNombre={mostrador.sedeNombre}
         cobrado={mostrador.cobradoSede}
         porBarbero={mostrador.porBarbero}
+        preciosServicios={preciosServicios}
         onCobrar={abrirCobro}
       />
 

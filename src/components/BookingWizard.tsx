@@ -57,6 +57,10 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 // restaura (válido 30 min).
 const RESUME_KEY = "bb-reserva-reanudar";
 
+// Marca que dejamos en history.state para saber qué paso corresponde a cada
+// entrada del historial (ver el bloque "Atrás del teléfono" más abajo).
+const HIST_MARCA = "bbPaso";
+
 const GoogleG = () => (
   <svg viewBox="0 0 48 48" className="h-[18px] w-[18px] shrink-0" aria-hidden>
     <path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9 3.6l6.7-6.7C35.6 2.6 30.2 0 24 0 14.6 0 6.5 5.4 2.6 13.3l7.8 6.1C12.3 13.3 17.6 9.5 24 9.5z" />
@@ -138,7 +142,8 @@ export function BookingWizard({
     (sedes.find((s) => s.id === "parque-venezuela")?.id ?? sedes[0]?.id ?? null);
 
   // Deep-link de sede o barbero → arranca en paso 2 (Servicio) con la sede fija (proto §12).
-  const [step, setStep] = useState<Step>(initialBarbero || initialSedeId ? "servicio" : "sede");
+  const pasoInicial: Exclude<Step, "ok"> = initialBarbero || initialSedeId ? "servicio" : "sede";
+  const [step, setStep] = useState<Step>(pasoInicial);
   const [sedeId, setSedeId] = useState<SedeId | null>(sedeDefault);
   const [servicio, setServicio] = useState<Servicio | null>(null);
   const [servicioFoto, setServicioFoto] = useState<string>(SERV_FOTOS[0]);
@@ -172,6 +177,17 @@ export function BookingWizard({
   // cliente veía los horarios otra vez sin saber por qué. Medido: 127px de scroll
   // heredado, aviso en y=15, header hasta y=69.
   const cuerpoRef = useRef<HTMLElement>(null);
+  // --- Atrás del teléfono (gesto desde el borde en Android) -------------
+  // Es la navegación más usada del celular y hasta acá sacaba al cliente de
+  // /reservar entero: perdía sede, servicio, barbero y día, y volvía a empezar.
+  // Cada paso que avanza apila UNA entrada de historial marcada con su índice,
+  // así el Atrás retrocede de a un paso y el Adelante lo rehace.
+  const pasoRef = useRef<Step>(pasoInicial);
+  // Piso: el paso de la entrada original de /reservar. Atrás desde ahí SÍ sale
+  // del wizard — si no, el cliente queda atrapado sin salida.
+  const pisoRef = useRef(ORDEN.indexOf(pasoInicial));
+  // Paso marcado en la entrada de historial actual.
+  const marcaRef = useRef(ORDEN.indexOf(pasoInicial));
   // Ocupación del día elegido, por barbero (para los slots del paso 4).
   const [ocupadosDia, setOcupadosDia] = useState<Record<string, { inicio: string; fin: string }[]>>({});
   const [cargandoSlots, setCargandoSlots] = useState(false);
@@ -239,6 +255,58 @@ export function BookingWizard({
   useEffect(() => {
     cuerpoRef.current?.scrollTo({ top: 0 });
   }, [step]);
+
+  // Mantiene la pila del navegador al día con el paso visible. Se conserva el
+  // history.state de Next (árbol interno + __NA) para que el popstate del router
+  // no dispare una recarga.
+  useEffect(() => {
+    pasoRef.current = step;
+    if (step === "ok") return; // la confirmación no participa del historial
+    const idx = ORDEN.indexOf(step);
+    if (idx === marcaRef.current) return; // ya sincronizado (llegamos por popstate)
+    if (idx > marcaRef.current) {
+      // Una entrada POR PASO, aunque el wizard salte varios de golpe (la
+      // reanudación tras el login de Google va directo al paso 5): así el Atrás
+      // sigue volviendo de a uno.
+      for (let i = marcaRef.current + 1; i <= idx; i++) {
+        window.history.pushState({ ...window.history.state, [HIST_MARCA]: i }, "");
+      }
+    } else {
+      // Retroceso que no pasó por el historial: se reemplaza la entrada actual
+      // en vez de apilar basura que obligue a tocar Atrás dos veces.
+      window.history.replaceState({ ...window.history.state, [HIST_MARCA]: idx }, "");
+      if (idx < pisoRef.current) pisoRef.current = idx;
+    }
+    marcaRef.current = idx;
+  }, [step]);
+
+  // Atrás / Adelante del navegador → un paso del wizard, sin perder lo elegido.
+  useEffect(() => {
+    const onPop = (e: PopStateEvent) => {
+      // Ya reservó: el Atrás no debe devolverlo al formulario (confirmaría dos veces).
+      if (pasoRef.current === "ok") {
+        router.replace("/");
+        return;
+      }
+      // Con una hoja abierta (upsell / nudge de Google) el Atrás la cierra y deja
+      // el paso donde estaba, como cualquier bottom sheet de Android. Reponemos
+      // la entrada que consumió el gesto. En el piso no hay nada que reponer: ahí
+      // el Atrás sale del wizard, como siempre.
+      if ((upsellMode || loginNudge) && marcaRef.current > pisoRef.current) {
+        setUpsellMode(null);
+        setLoginNudge(false);
+        window.history.pushState({ ...window.history.state, [HIST_MARCA]: marcaRef.current }, "");
+        return;
+      }
+      const marca = (e.state as Record<string, unknown> | null)?.[HIST_MARCA];
+      // Entrada sin marca = la original de /reservar (o ya salimos de la página).
+      const idx = typeof marca === "number" ? marca : pisoRef.current;
+      marcaRef.current = idx;
+      setStep(ORDEN[idx]);
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, [router, upsellMode, loginNudge]);
 
   // Al montar: (1) si venimos del redirect de Google, restaurar la reserva a
   // medias desde sessionStorage; (2) detectar la sesión del cliente para el
@@ -434,10 +502,17 @@ export function BookingWizard({
 
   const paso = (ORDEN.indexOf(step as Exclude<Step, "ok">) + 1) as number;
 
+  // Volver un paso. Si esa entrada existe en el historial se vuelve POR ÉL (el
+  // paso lo cambia el popstate): así la flecha del header y el Atrás del
+  // teléfono no se desincronizan.
   function irAtras() {
     const idx = ORDEN.indexOf(step as Exclude<Step, "ok">);
-    if (idx > 0) setStep(ORDEN[idx - 1]);
-    else router.push("/");
+    if (idx <= 0) {
+      router.push("/");
+      return;
+    }
+    if (idx > pisoRef.current) window.history.back();
+    else setStep(ORDEN[idx - 1]);
   }
 
   const puedeContinuar =
@@ -529,6 +604,15 @@ export function BookingWizard({
     setNudgeSeen(false);
   }
 
+  // Falló la confirmación → de vuelta a elegir horario. También por el historial:
+  // así no queda una entrada de más apuntando al paso 5, que sin slot ni siquiera
+  // se puede pintar.
+  function volverAHorario() {
+    setSlot(null);
+    if (marcaRef.current > pisoRef.current) window.history.back();
+    else setStep("horario");
+  }
+
   async function confirmar() {
     if (!servicio || !day || slot === null || !sedeId) return;
     // Defensa: el botón ya exige datos válidos, pero confirmar() es la puerta real.
@@ -543,8 +627,7 @@ export function BookingWizard({
       elegido = sedeBarberos.find((b) => !(ocupadosDia[b.id] ?? []).some((o) => ocupaSlot(slot, dur, o))) ?? null;
       if (!elegido) {
         setErrorMsg("Ese horario ya fue tomado. Elegí otro, por favor.");
-        setSlot(null);
-        setStep("horario");
+        volverAHorario();
         return;
       }
     }
@@ -573,8 +656,7 @@ export function BookingWizard({
       return;
     }
     setErrorMsg(res.error ?? "No se pudo reservar");
-    setSlot(null);
-    setStep("horario");
+    volverAHorario();
   }
 
   // ---------------------------------------------------------------

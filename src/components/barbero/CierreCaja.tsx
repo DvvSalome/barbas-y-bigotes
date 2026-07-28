@@ -33,10 +33,12 @@ const iniciales = (n: string) => {
   return parts.slice(0, 2).map((p) => p.charAt(0).toUpperCase()).join("");
 };
 
+// El cierre se hace de pie, en el aparato compartido del mostrador: nada tocable
+// por debajo de 44px (el botón de cerrar caja medía 32).
 const fld =
-  "w-full rounded-lg border border-line bg-bg px-3 py-2 text-ink placeholder:text-muted focus:border-accent focus:outline-none";
+  "w-full min-h-11 rounded-lg border border-line bg-bg px-3 py-2 text-ink placeholder:text-muted focus:border-accent focus:outline-none";
 const btn =
-  "rounded-full bg-[linear-gradient(180deg,var(--cta-1),var(--cta-2))] px-5 py-2 text-xs font-semibold uppercase tracking-wide text-on-accent shadow-[0_10px_24px_-10px_rgba(210,63,52,0.7)] transition hover:brightness-105 disabled:opacity-50 disabled:shadow-none";
+  "inline-flex min-h-11 items-center justify-center rounded-full bg-[linear-gradient(180deg,var(--cta-1),var(--cta-2))] px-5 text-xs font-semibold uppercase tracking-wide text-on-accent shadow-[0_10px_24px_-10px_rgba(210,63,52,0.7)] transition hover:brightness-105 disabled:opacity-50 disabled:shadow-none";
 
 export function CierreCaja({
   caja,
@@ -252,7 +254,7 @@ export function CierreCaja({
             <button
               type="button"
               onClick={() => setAbierto(false)}
-              className="text-xs font-semibold uppercase tracking-wide text-muted transition hover:text-ink"
+              className="inline-flex min-h-11 items-center px-2 text-xs font-semibold uppercase tracking-wide text-muted transition hover:text-ink"
             >
               Cancelar
             </button>

@@ -7,7 +7,13 @@ import type { Sede, Barbero, Servicio } from "@/lib/data/types";
 import type { EsperaItem } from "@/lib/data/queries";
 
 const fld =
-  "w-full rounded-lg border border-line bg-bg px-3 py-2 text-ink focus:border-accent focus:outline-none";
+  "w-full min-h-11 rounded-lg border border-line bg-bg px-3 py-2 text-ink focus:border-accent focus:outline-none";
+
+// La lista de espera se toca de pie, con el cliente enfrente y en el aparato
+// compartido del mostrador: 44px de alto mínimo (antes eran ~28px, del tamaño
+// de una etiqueta) y sin apretujar los botones entre sí.
+const btnEspera =
+  "inline-flex min-h-11 items-center justify-center rounded-full px-4 text-[13px] font-semibold transition disabled:opacity-50";
 
 function desde(iso: string) {
   const mins = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
@@ -59,7 +65,7 @@ export function EsperaPanel({
         {!open && (
           <button
             onClick={() => setOpen(true)}
-            className="shrink-0 rounded-full border border-line px-4 py-2 text-sm transition hover:border-accent/50"
+            className={`shrink-0 ${btnEspera} border border-line hover:border-accent/50`}
           >
             + Agregar
           </button>
@@ -105,12 +111,12 @@ export function EsperaPanel({
                   </div>
                 </div>
               </div>
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-2.5">
                 {e.estado !== "notificado" && (
                   <button
                     onClick={() => setEstado(e.id, "notificado")}
                     disabled={busy}
-                    className="rounded-full border border-line px-3 py-1.5 text-xs transition hover:border-accent/50 disabled:opacity-50"
+                    className={`${btnEspera} border border-line hover:border-accent/50`}
                   >
                     Avisar
                   </button>
@@ -118,14 +124,14 @@ export function EsperaPanel({
                 <button
                   onClick={() => atender(e.id)}
                   disabled={busy}
-                  className="rounded-full bg-[linear-gradient(180deg,var(--cta-1),var(--cta-2))] px-3 py-1.5 text-xs font-semibold uppercase text-on-accent shadow-[0_8px_20px_-10px_rgba(210,63,52,0.7)] transition hover:brightness-105 disabled:opacity-50"
+                  className={`${btnEspera} bg-[linear-gradient(180deg,var(--cta-1),var(--cta-2))] uppercase text-on-accent shadow-[0_8px_20px_-10px_rgba(210,63,52,0.7)] hover:brightness-105`}
                 >
                   Atender ahora
                 </button>
                 <button
                   onClick={() => setEstado(e.id, "cancelado")}
                   disabled={busy}
-                  className="rounded-full border border-line px-3 py-1.5 text-xs text-muted transition hover:text-ink disabled:opacity-50"
+                  className={`${btnEspera} border border-line text-muted hover:text-ink`}
                 >
                   Quitar
                 </button>
@@ -237,14 +243,14 @@ function EsperaForm({
       <div className="flex gap-2 sm:col-span-2">
         <button
           disabled={saving}
-          className="rounded-full bg-[linear-gradient(180deg,var(--cta-1),var(--cta-2))] px-6 py-2.5 text-sm font-semibold uppercase tracking-wide text-on-accent shadow-[0_10px_24px_-10px_rgba(210,63,52,0.7)] transition hover:brightness-105 disabled:opacity-50"
+          className="inline-flex min-h-11 items-center justify-center rounded-full bg-[linear-gradient(180deg,var(--cta-1),var(--cta-2))] px-6 text-sm font-semibold uppercase tracking-wide text-on-accent shadow-[0_10px_24px_-10px_rgba(210,63,52,0.7)] transition hover:brightness-105 disabled:opacity-50"
         >
           {saving ? "Agregando…" : "Agregar a la espera"}
         </button>
         <button
           type="button"
           onClick={onCancel}
-          className="rounded-full border border-line px-6 py-2.5 text-sm text-muted transition hover:text-ink"
+          className="inline-flex min-h-11 items-center justify-center rounded-full border border-line px-6 text-sm text-muted transition hover:text-ink"
         >
           Cancelar
         </button>

@@ -7,7 +7,7 @@ import { cop } from "@/lib/format";
 import { actualizarReserva } from "@/lib/actions";
 import { faltaParaLlegar } from "@/lib/slots";
 import type { Barbero } from "@/lib/data/types";
-import type { AgendaItem } from "@/lib/data/queries";
+import type { AgendaItem, PrecioServicioStaff } from "@/lib/data/queries";
 
 // Vista MOSTRADOR: una sola pantalla compartida en el local, con una columna por
 // barbero. Cualquiera del equipo marca llegadas y abre el cobro sin cambiar de
@@ -15,22 +15,29 @@ import type { AgendaItem } from "@/lib/data/queries";
 // desde reservas.barbero_id, no desde quién está logueado).
 const DONE = ["completada", "no_show", "cancelada"];
 
-const CHIP: Record<string, string> = {
-  pendiente: "bg-ink/10 text-muted",
-  confirmada: "bg-accent/15 text-accent-soft",
-  en_curso: "bg-ok/15 text-ok",
-  completada: "bg-ok/15 text-ok",
-  no_show: "bg-warn/15 text-warn",
-  cancelada: "bg-ink/10 text-muted",
+// Estados que ya no dependen de si el cliente avisó: se muestran tal cual.
+const CHIP_FIJO: Record<string, { txt: string; cls: string }> = {
+  en_curso: { txt: "En silla", cls: "bg-ok/15 text-ok" },
+  completada: { txt: "Cobrada", cls: "bg-ok/15 text-ok" },
+  no_show: { txt: "No llegó", cls: "bg-warn/15 text-warn" },
+  cancelada: { txt: "Cancelada", cls: "bg-ink/10 text-muted" },
 };
-const ESTADO: Record<string, string> = {
-  pendiente: "Pendiente",
-  confirmada: "Confirmada",
-  en_curso: "En silla",
-  completada: "Cobrada",
-  no_show: "No llegó",
-  cancelada: "Cancelada",
-};
+
+// UN solo chip por fila. Antes convivían dos: el estado de la reserva
+// ("CONFIRMADA") y si el cliente respondió que viene ("SIN CONFIRMAR"). Son
+// cosas distintas, pero pegados uno debajo del otro se leen como un error del
+// sistema. En el mostrador lo único que cambia la conducta de una cita que
+// todavía no empezó es si el cliente avisó o no, así que ese es el chip; el
+// estado de la reserva ya se ve en el botón de la fila.
+function chipDe(r: AgendaItem) {
+  const fijo = CHIP_FIJO[r.estado];
+  if (fijo) return fijo;
+  // El walk-in está parado enfrente: preguntar si "confirmó" no tiene sentido.
+  if (r.canal === "walkin") return { txt: "Walk-in", cls: "bg-ink/10 text-muted" };
+  return r.confirmado
+    ? { txt: "✓ Confirmó", cls: "bg-ok/15 text-ok" }
+    : { txt: "Sin confirmar", cls: "bg-warn/15 text-warn" };
+}
 
 function hora(iso: string) {
   const d = new Date(iso);
@@ -50,6 +57,7 @@ export function Recepcion({
   sedeNombre,
   cobrado,
   porBarbero,
+  preciosServicios = [],
   onCobrar,
 }: {
   agenda: AgendaItem[];
@@ -57,6 +65,12 @@ export function Recepcion({
   sedeNombre: string;
   cobrado: number;
   porBarbero: Record<string, number>;
+  /**
+   * Precios por sede (los MISMOS que usa la hoja de cobro). Van en la fila para
+   * que el barbero sepa cuánto va a cobrar sin abrir la hoja. Opcional: sin la
+   * lista la fila simplemente no muestra precio.
+   */
+  preciosServicios?: PrecioServicioStaff[];
   /** Abre la hoja de cobro de la agenda normal (misma lógica de plata). */
   onCobrar: (reservaId: string) => void;
 }) {
@@ -89,6 +103,13 @@ export function Recepcion({
     setBusy(null);
     router.refresh();
   }
+
+  // Precio del servicio de la cita en SU sede (misma resolución que la hoja de
+  // cobro). null en el walk-in sin servicio o si esa sede no tiene precio.
+  const precioDe = (r: AgendaItem): number | null => {
+    if (!r.servicioId) return null;
+    return preciosServicios.find((s) => s.id === r.servicioId)?.preciosPorSede[r.sede] ?? null;
+  };
 
   const totalCitas = agenda.length;
   const hechas = agenda.filter((r) => DONE.includes(r.estado)).length;
@@ -169,6 +190,8 @@ export function Recepcion({
                 )}
                 {activas.map((r) => {
                   const enCurso = r.estado === "en_curso";
+                  const chip = chipDe(r);
+                  const precio = precioDe(r);
                   return (
                     <div key={r.id} className={`px-3.5 py-3 ${enCurso ? "bg-ok/[0.05]" : ""}`}>
                       <div className="flex items-center gap-2.5">
@@ -180,24 +203,17 @@ export function Recepcion({
                           <span className="block truncate text-[11.5px] text-muted">{r.servicio || "—"}</span>
                         </span>
                         <span className="flex shrink-0 flex-col items-end gap-1">
-                          <span
-                            className={`rounded-full px-2 py-0.5 text-[10.5px] font-extrabold uppercase tracking-wide ${
-                              CHIP[r.estado] ?? "bg-ink/10 text-muted"
-                            }`}
-                          >
-                            {ESTADO[r.estado] ?? r.estado}
-                          </span>
-                          {/* Señal de confirmación: solo relevante en citas por venir
-                              (una cita reservada por app; el walk-in llega en persona). */}
-                          {!enCurso && r.canal !== "walkin" && (
-                            <span
-                              className={`rounded-full px-2 py-0.5 text-[10.5px] font-extrabold uppercase tracking-wide ${
-                                r.confirmado ? "bg-ok/15 text-ok" : "bg-warn/15 text-warn"
-                              }`}
-                            >
-                              {r.confirmado ? "✓ confirmó" : "sin confirmar"}
+                          {/* Cuánto vale la cita, sin abrir la hoja de cobro. */}
+                          {precio !== null && (
+                            <span className="font-display text-[14px] font-bold leading-none tabular-nums text-ink">
+                              {cop(precio)}
                             </span>
                           )}
+                          <span
+                            className={`rounded-full px-2 py-0.5 text-[10.5px] font-extrabold uppercase tracking-wide ${chip.cls}`}
+                          >
+                            {chip.txt}
+                          </span>
                         </span>
                       </div>
 
@@ -207,6 +223,9 @@ export function Recepcion({
                             onClick={() => onCobrar(r.id)}
                             className="min-h-12 flex-1 basis-full rounded-lg bg-[linear-gradient(180deg,var(--cta-1),var(--cta-2))] px-3.5 text-[13.5px] font-bold text-on-accent transition hover:brightness-105"
                           >
+                            {/* Sin el monto: el precio de la fila es el del
+                                servicio, y el cobro real puede sumar productos,
+                                propina o descuento. */}
                             Cobrar
                           </button>
                         ) : (

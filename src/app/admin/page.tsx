@@ -5,6 +5,8 @@ import {
   ventasHoyPorMedio,
   equipoAhora,
   citasSiguientes,
+  citasVencidasHoy,
+  atendidasSinCobrar,
   paraHacer,
   serie7Dias,
   getPostventaResumen,
@@ -48,6 +50,14 @@ function fechaCorta(iso: string) {
   return new Date(iso).toLocaleDateString("es-CO", { timeZone: "America/Bogota", day: "numeric", month: "short" });
 }
 
+// Cuánto se pasó de su hora, en la unidad más corta que quepa en un chip.
+function atraso(desdeIso: string, ahora: number) {
+  const min = Math.round((ahora - new Date(desdeIso).getTime()) / 60_000);
+  if (min < 60) return `${min} min`;
+  const h = Math.floor(min / 60);
+  return min % 60 === 0 ? `${h} h` : `${h} h ${min % 60} min`;
+}
+
 // "$6,4M" para la semana del sparkline; montos chicos van completos.
 function compacto(n: number) {
   if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(1).replace(".", ",")}M`;
@@ -68,10 +78,12 @@ export default async function AdminHoy({
   const sedeParam = typeof sp.sede === "string" ? sp.sede : undefined;
   const sede = sedeParam && sedeParam in NOMBRE_SEDE ? (sedeParam as SedeId) : null;
 
-  const [plata, equipo, citas, tareas, serie, postventa, caja] = await Promise.all([
+  const [plata, equipo, citas, vencidas, sinCobrar, tareas, serie, postventa, caja] = await Promise.all([
     ventasHoyPorMedio(sede),
     equipoAhora(sede),
     citasSiguientes(sede),
+    citasVencidasHoy(sede),
+    atendidasSinCobrar(sede),
     paraHacer(sede),
     serie7Dias(sede),
     getPostventaResumen(sede ?? undefined),
@@ -85,6 +97,9 @@ export default async function AdminHoy({
     month: "long",
   });
   const maxMedio = Math.max(1, ...plata.medios.map((m) => m.total));
+  const ahora = new Date().getTime();
+  // Precio de lista de lo atendido sin cobrar (una reserva sin servicio no suma).
+  const montoSinCobrar = sinCobrar.reduce((a, c) => a + (c.precio ?? 0), 0);
   const sinTareas =
     tareas.bajoMinimo.length === 0 && tareas.malasResenas.length === 0 && tareas.cuponesPorVencer.length === 0;
 
@@ -108,8 +123,60 @@ export default async function AdminHoy({
         </span>
       </div>
 
-      {/* Móvil: pila única. Desktop (§2): grid 2 columnas con 4 cards; "Para
-          hacer", "Postventa" y el sparkline quedan solo en móvil. */}
+      {/* ── Atendidas sin cobrar ───────────────────────────────
+          Va pegado al encabezado a propósito: es plata que ya se fue y no
+          aparece en ninguna otra lista (sin venta, la cita se vuelve invisible).
+          Solo se muestra si hay alguna. */}
+      {sinCobrar.length > 0 && (
+        <section
+          aria-label="Atendidas sin cobrar"
+          className="mt-4 overflow-hidden rounded-2xl border border-accent/45 bg-accent/[0.06]"
+        >
+          <div className="px-4 pb-3 pt-3.5">
+            <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+              <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-accent-soft">
+                Atendidas sin cobrar
+              </span>
+              <Link href="/admin/cuadre" className={SEC_ACTION}>
+                Ver cuadre
+              </Link>
+            </div>
+            <div className="mt-1 flex flex-wrap items-baseline gap-x-2.5 gap-y-0.5">
+              <span className="font-display text-[26px] font-extrabold leading-none tracking-tight text-ink tabular-nums lg:text-[30px]">
+                {cop(montoSinCobrar)}
+              </span>
+              <span className="text-[12.5px] text-muted">
+                {sinCobrar.length === 1 ? "1 cita se cerró" : `${sinCobrar.length} citas se cerraron`} sin pasar por
+                caja
+              </span>
+            </div>
+          </div>
+          <div className="border-t border-accent/25">
+            {sinCobrar.map((c) => (
+              <div
+                key={c.id}
+                className="grid grid-cols-[56px_1fr_auto] items-center gap-3 border-b border-accent/15 px-4 py-2.5 last:border-b-0 lg:grid-cols-[64px_1fr_auto]"
+              >
+                <span className="font-display text-[15px] font-extrabold tracking-tight text-ink tabular-nums lg:text-base">
+                  {horaBogota(c.inicio)}
+                </span>
+                <span className="min-w-0">
+                  <span className="block truncate text-[13.5px] font-semibold text-ink">{c.cliente}</span>
+                  <span className="block truncate text-[11.5px] text-muted">
+                    {c.servicio} · {c.barbero} · {TAG_SEDE[c.sede] ?? c.sede}
+                  </span>
+                </span>
+                <span className="text-right font-display text-[15px] font-extrabold text-ink tabular-nums lg:text-base">
+                  {c.precio !== null ? cop(c.precio) : "—"}
+                </span>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Móvil: pila única. Desktop (§2): grid 2 columnas con 4 cards;
+          "Postventa" y el sparkline quedan solo en móvil. */}
       <div className="mt-5 flex flex-col gap-7 lg:grid lg:grid-cols-2 lg:items-start lg:gap-3.5">
         {/* ── Cobrado hoy (con desglose por medio en barras) ── */}
         <section
@@ -222,59 +289,74 @@ export default async function AdminHoy({
             {equipo.length === 0 ? (
               <p className="px-4 py-5 text-sm text-muted">No hay barberos activos{sede ? " en esta sede" : ""}.</p>
             ) : (
-              equipo.map((b) => (
-                <div
-                  key={b.id}
-                  className="grid grid-cols-[38px_1fr_auto] items-center gap-3 border-b border-line/60 px-4 py-2.5 transition last:border-b-0 hover:bg-elevated"
-                >
-                  <span className="relative grid h-[34px] w-[34px] place-items-center overflow-visible rounded-full border border-line bg-elevated text-xs font-bold text-ink lg:h-9 lg:w-9">
-                    {b.fotoUrl ? (
-                      <Image
-                        src={b.fotoUrl}
-                        alt={b.nombre}
-                        width={36}
-                        height={36}
-                        className="h-full w-full rounded-full object-cover"
+              equipo.map((b) => {
+                // Sigue "en silla" con la hora de salida pasada: o el cliente se
+                // fue sin cobrar o el barbero no cerró la cita.
+                const pasadoDeHora = !!b.enSilla && new Date(b.enSilla.fin).getTime() < ahora;
+                return (
+                  <div
+                    key={b.id}
+                    className={`grid grid-cols-[38px_1fr_auto] items-center gap-3 border-b border-line/60 px-4 py-2.5 transition last:border-b-0 hover:bg-elevated ${
+                      pasadoDeHora ? "bg-accent/[0.06]" : ""
+                    }`}
+                  >
+                    <span className="relative grid h-[34px] w-[34px] place-items-center overflow-visible rounded-full border border-line bg-elevated text-xs font-bold text-ink lg:h-9 lg:w-9">
+                      {b.fotoUrl ? (
+                        <Image
+                          src={b.fotoUrl}
+                          alt={b.nombre}
+                          width={36}
+                          height={36}
+                          className="h-full w-full rounded-full object-cover"
+                        />
+                      ) : (
+                        b.nombre
+                          .split(" ")
+                          .map((x) => x[0])
+                          .join("")
+                          .slice(0, 2)
+                          .toUpperCase()
+                      )}
+                      <span
+                        className={`absolute -bottom-px -right-px h-[9px] w-[9px] rounded-full border-2 border-panel ${
+                          pasadoDeHora ? "bg-accent" : b.enSilla ? "bg-accent-soft" : "bg-ok"
+                        }`}
                       />
-                    ) : (
-                      b.nombre
-                        .split(" ")
-                        .map((x) => x[0])
-                        .join("")
-                        .slice(0, 2)
-                        .toUpperCase()
-                    )}
-                    <span
-                      className={`absolute -bottom-px -right-px h-[9px] w-[9px] rounded-full border-2 border-panel ${
-                        b.enSilla ? "bg-accent-soft" : "bg-ok"
-                      }`}
-                    />
-                  </span>
-                  <span className="min-w-0">
-                    <span className="block truncate text-[13.5px] font-semibold text-ink">{b.nombre}</span>
-                    <span className="block truncate text-[11.5px] text-muted">
-                      {b.enSilla ? `${b.enSilla.servicio} · ${b.enSilla.cliente}` : NOMBRE_SEDE[b.sede] ?? b.sede}
                     </span>
-                  </span>
-                  <span className="flex items-center gap-2">
-                    {b.pinBloqueado && (
-                      <>
-                        <span className="whitespace-nowrap rounded-full border border-warn/40 px-2.5 py-[3px] text-[10.5px] font-bold text-warn">
-                          PIN bloqueado
-                        </span>
-                        <DesbloquearPinBtn barberoId={b.id} />
-                      </>
-                    )}
-                    <span
-                      className={`whitespace-nowrap rounded-full border px-2.5 py-[3px] text-[10.5px] font-bold ${
-                        b.enSilla ? "border-accent/40 text-accent-soft" : "border-ok/35 text-ok"
-                      }`}
-                    >
-                      {b.enSilla ? `En silla · sale ${horaBogota(b.enSilla.fin)}` : "Libre"}
+                    <span className="min-w-0">
+                      <span className="block truncate text-[13.5px] font-semibold text-ink">{b.nombre}</span>
+                      <span className="block truncate text-[11.5px] text-muted">
+                        {b.enSilla ? `${b.enSilla.servicio} · ${b.enSilla.cliente}` : NOMBRE_SEDE[b.sede] ?? b.sede}
+                      </span>
                     </span>
-                  </span>
-                </div>
-              ))
+                    <span className="flex items-center gap-2">
+                      {b.pinBloqueado && (
+                        <>
+                          <span className="whitespace-nowrap rounded-full border border-warn/40 px-2.5 py-[3px] text-[10.5px] font-bold text-warn">
+                            PIN bloqueado
+                          </span>
+                          <DesbloquearPinBtn barberoId={b.id} />
+                        </>
+                      )}
+                      <span
+                        className={`whitespace-nowrap rounded-full border px-2.5 py-[3px] text-[10.5px] font-bold ${
+                          pasadoDeHora
+                            ? "border-accent bg-accent/15 text-accent-soft"
+                            : b.enSilla
+                              ? "border-accent/40 text-accent-soft"
+                              : "border-ok/35 text-ok"
+                        }`}
+                      >
+                        {b.enSilla
+                          ? pasadoDeHora
+                            ? `Sin cerrar · +${atraso(b.enSilla.fin, ahora)}`
+                            : `En silla · sale ${horaBogota(b.enSilla.fin)}`
+                          : "Libre"}
+                      </span>
+                    </span>
+                  </div>
+                );
+              })
             )}
           </section>
         </div>
@@ -288,10 +370,36 @@ export default async function AdminHoy({
             </Link>
           </h2>
           <section className="overflow-hidden rounded-2xl border border-line bg-panel">
-            {citas.length === 0 ? (
+            {citas.length === 0 && vencidas.length === 0 && (
               <p className="px-4 py-5 text-sm text-muted">No quedan citas agendadas para hoy.</p>
-            ) : (
-              citas.map((c) => (
+            )}
+
+            {/* Vencidas primero: pasó su hora y nadie las tocó. Antes se caían de
+                la lista y la tarde se veía vacía. */}
+            {vencidas.map((c) => (
+              <div
+                key={c.id}
+                className="grid grid-cols-[56px_1fr_auto] items-center gap-3 border-b border-line/60 bg-accent/[0.06] px-4 py-2.5 last:border-b-0 lg:grid-cols-[64px_1fr_auto]"
+              >
+                <span className="font-display text-[15px] font-extrabold tracking-tight text-accent-soft tabular-nums lg:text-base">
+                  {horaBogota(c.inicio)}
+                </span>
+                <span className="min-w-0">
+                  <span className="block truncate text-[13.5px] font-semibold text-ink">{c.cliente}</span>
+                  <span className="block truncate text-[11.5px] text-muted">
+                    {c.servicio} · {c.barbero}
+                  </span>
+                  <span className="mt-1 inline-block rounded-full border border-accent/45 bg-accent/15 px-2 py-[2px] text-[10.5px] font-bold text-accent-soft">
+                    Debía entrar {horaBogota(c.inicio)} · sin registrar
+                  </span>
+                </span>
+                <span className="text-[10px] font-extrabold tracking-[0.06em] text-muted">
+                  {TAG_SEDE[c.sede] ?? c.sede}
+                </span>
+              </div>
+            ))}
+
+            {citas.map((c) => (
                 <div
                   key={c.id}
                   className="grid grid-cols-[56px_1fr_auto] items-center gap-3 border-b border-line/60 px-4 py-2.5 transition last:border-b-0 hover:bg-elevated lg:grid-cols-[64px_1fr_auto]"
@@ -309,13 +417,12 @@ export default async function AdminHoy({
                     {TAG_SEDE[c.sede] ?? c.sede}
                   </span>
                 </div>
-              ))
-            )}
+              ))}
           </section>
         </div>
 
-        {/* ── Para hacer (solo móvil, §2) ───────────────────── */}
-        <div className="min-w-0 lg:hidden">
+        {/* ── Para hacer (móvil y escritorio) ───────────────── */}
+        <div className="min-w-0">
           <h2 className={`${SEC} mb-2.5`}>
             <span>Para hacer</span>
           </h2>

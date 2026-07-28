@@ -55,14 +55,19 @@ export default async function Home() {
         <HomeGaleria />
         <HomeSedes />
 
-        {/* Secciones solo-desktop del prototipo (spec §2.8-2.10). El contenido
-            queda en el HTML para los crawlers de IA aunque se oculte en móvil. */}
+        {/* Los testimonios siguen siendo solo-desktop (spec §2.8): alargan la home
+            en móvil sin ayudar a reservar. El contenido queda en el HTML para los
+            crawlers de IA aunque se oculte. */}
         <div className="hidden md:block">
           <Testimonios />
-          <Ubicacion />
-          <div className="pt-[52px]">
-            <Faq />
-          </div>
+        </div>
+
+        {/* Ubicación y FAQ SÍ van en móvil: la mayoría entra desde el celular y
+            "¿dónde queda?", "¿puedo cancelar?" y "¿atienden sin reserva?" son las
+            preguntas que hoy terminan en WhatsApp mientras alguien corta. */}
+        <Ubicacion />
+        <div className="pt-[52px]">
+          <Faq />
         </div>
       </main>
       <SiteFooter conCtaMovil />

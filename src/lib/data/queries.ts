@@ -942,13 +942,15 @@ export type ClienteRow = {
   ultima: string | null;
 };
 
-export async function getClientes(search = ""): Promise<ClienteRow[]> {
+// La lista sale ordenada por ÚLTIMA VISITA (lo más reciente arriba): alfabético
+// entierra a los pocos clientes que dejan plata entre filas de "0 visitas · $0",
+// y ver quién estuvo esta semana es la razón por la que el dueño abre el CRM.
+// El buscador y los filtros viven en el cliente (ClientesLista) para que filtren
+// mientras se escribe.
+export async function getClientes(): Promise<ClienteRow[]> {
   const sb = await supabaseServerAuth();
-  let q = sb.from("clientes").select("id,nombre,telefono,email,creado_en");
-  const s = search.trim();
-  if (s) q = q.or(`nombre.ilike.%${s}%,telefono.ilike.%${s}%,email.ilike.%${s}%`);
   const [clientesRes, ventasRes] = await Promise.all([
-    q.order("nombre"),
+    sb.from("clientes").select("id,nombre,telefono,email,creado_en").order("nombre"),
     sb.from("ventas").select("cliente_ref,total,creado_en"),
   ]);
   const agg = new Map<string, { visitas: number; facturado: number; ultima: string | null }>();
@@ -960,18 +962,21 @@ export async function getClientes(search = ""): Promise<ClienteRow[]> {
     if (!a.ultima || v.creado_en > a.ultima) a.ultima = v.creado_en;
     agg.set(v.cliente_ref, a);
   }
-  return ((clientesRes.data ?? []) as Record<string, unknown>[]).map((c) => {
-    const a = agg.get(c.id as string) ?? { visitas: 0, facturado: 0, ultima: null };
-    return {
-      id: c.id as string,
-      nombre: (c.nombre as string) ?? "Cliente",
-      telefono: (c.telefono as string) ?? "",
-      email: (c.email as string) ?? "",
-      visitas: a.visitas,
-      facturado: a.facturado,
-      ultima: a.ultima,
-    };
-  });
+  return ((clientesRes.data ?? []) as Record<string, unknown>[])
+    .map((c) => {
+      const a = agg.get(c.id as string) ?? { visitas: 0, facturado: 0, ultima: null };
+      return {
+        id: c.id as string,
+        nombre: (c.nombre as string) ?? "Cliente",
+        telefono: (c.telefono as string) ?? "",
+        email: (c.email as string) ?? "",
+        visitas: a.visitas,
+        facturado: a.facturado,
+        ultima: a.ultima,
+      };
+    })
+    // Los que nunca compraron van al final, entre ellos por nombre (el .order de arriba).
+    .sort((a, b) => (b.ultima ?? "").localeCompare(a.ultima ?? ""));
 }
 
 export type ClienteDetalle = {
@@ -1301,6 +1306,102 @@ export async function citasSiguientes(sede?: SedeId | null, limit = 6): Promise<
     servicio: (r.servicios as { nombre?: string } | null)?.nombre ?? "—",
     barbero: (r.barberos as { nombre?: string } | null)?.nombre ?? "—",
     sede: r.sede_id as SedeId,
+  }));
+}
+
+// Citas de hoy que ya pasaron su hora y siguen sin registrar (nadie las inició
+// ni las cerró). Antes se caían del panel — citasSiguientes solo mira de ahora en
+// adelante — y el dueño veía la tarde vacía sin saber si el cliente no llegó o si
+// al barbero se le olvidó cerrarla.
+export async function citasVencidasHoy(sede?: SedeId | null, limit = 6): Promise<CitaSiguiente[]> {
+  const sb = await supabaseServerAuth();
+  const { desde } = bogotaDayRange();
+  let q = sb
+    .from("reservas")
+    .select("id,inicio,sede_id,servicios(nombre),barberos(nombre),clientes(nombre)")
+    .in("estado", ["pendiente", "confirmada"])
+    .gte("inicio", desde.toISOString())
+    .lt("inicio", new Date().toISOString())
+    // Descendente + limit deja las más cercanas a ahora; se reordena abajo.
+    .order("inicio", { ascending: false })
+    .limit(limit);
+  if (sede) q = q.eq("sede_id", sede);
+  const { data } = await q;
+  return ((data ?? []) as Record<string, unknown>[])
+    .map((r) => ({
+      id: r.id as string,
+      inicio: r.inicio as string,
+      cliente: (r.clientes as { nombre?: string } | null)?.nombre ?? "Walk-in",
+      servicio: (r.servicios as { nombre?: string } | null)?.nombre ?? "—",
+      barbero: (r.barberos as { nombre?: string } | null)?.nombre ?? "—",
+      sede: r.sede_id as SedeId,
+    }))
+    .reverse();
+}
+
+export type AtendidaSinCobrar = {
+  id: string;
+  inicio: string;
+  cliente: string;
+  servicio: string;
+  barbero: string;
+  sede: SedeId;
+  /** Precio de lista del servicio en esa sede; null si la reserva no tiene servicio. */
+  precio: number | null;
+};
+
+// Plata que se va sin rastro: citas de HOY marcadas 'completada' que nunca
+// pasaron por caja. Como no hay venta, no salen en ningún listado del panel: la
+// atención desaparece y nadie la reclama. Es el error típico de cerrar con prisa.
+export async function atendidasSinCobrar(sede?: SedeId | null): Promise<AtendidaSinCobrar[]> {
+  const sb = await supabaseServerAuth();
+  const { desde, hasta } = bogotaDayRange();
+  let q = sb
+    .from("reservas")
+    .select("id,inicio,sede_id,servicio_id,servicios(nombre),barberos(nombre),clientes(nombre)")
+    .eq("estado", "completada")
+    .gte("inicio", desde.toISOString())
+    .lt("inicio", hasta.toISOString())
+    .order("inicio");
+  if (sede) q = q.eq("sede_id", sede);
+  const { data } = await q;
+  const reservas = (data ?? []) as Record<string, unknown>[];
+  if (reservas.length === 0) return [];
+
+  // El cruce va por reserva_id y no por fecha de la venta: una cita de hoy que se
+  // cobre mañana igual está cobrada, no hay que gritarla.
+  const { data: ventasData } = await sb
+    .from("ventas")
+    .select("reserva_id")
+    .in("reserva_id", reservas.map((r) => r.id as string));
+  const cobradas = new Set(
+    ((ventasData ?? []) as { reserva_id: string | null }[]).map((v) => v.reserva_id).filter(Boolean),
+  );
+
+  const sinCobrar = reservas.filter((r) => !cobradas.has(r.id as string));
+  if (sinCobrar.length === 0) return [];
+
+  const servicioIds = [
+    ...new Set(sinCobrar.map((r) => r.servicio_id as string | null).filter((s): s is string => !!s)),
+  ];
+  const { data: preciosData } = servicioIds.length
+    ? await sb.from("servicio_sede").select("servicio_id,sede_id,precio").in("servicio_id", servicioIds)
+    : { data: [] };
+  const precios = new Map(
+    ((preciosData ?? []) as { servicio_id: string; sede_id: string; precio: number }[]).map((p) => [
+      `${p.servicio_id}|${p.sede_id}`,
+      p.precio,
+    ]),
+  );
+
+  return sinCobrar.map((r) => ({
+    id: r.id as string,
+    inicio: r.inicio as string,
+    cliente: (r.clientes as { nombre?: string } | null)?.nombre ?? "Walk-in",
+    servicio: (r.servicios as { nombre?: string } | null)?.nombre ?? "Sin servicio",
+    barbero: (r.barberos as { nombre?: string } | null)?.nombre ?? "Sin barbero",
+    sede: r.sede_id as SedeId,
+    precio: precios.get(`${r.servicio_id as string}|${r.sede_id as string}`) ?? null,
   }));
 }
 

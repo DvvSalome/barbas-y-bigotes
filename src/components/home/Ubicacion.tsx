@@ -38,6 +38,11 @@ const locales: Local[] = [
   },
 ];
 
+// Ruta hacia la sede en la app de Maps. En móvil reemplaza al mapa embebido.
+function comoLlegar(l: Local) {
+  return `https://www.google.com/maps/dir/?api=1&destination=${l.lat},${l.lng}`;
+}
+
 export function Ubicacion() {
   const [activeLoc, setActiveLoc] = useState<"parque-venezuela" | "plaza-de-la-paz">("parque-venezuela");
   const [viewType, setViewType] = useState<"map" | "satellite" | "streetview">("map");
@@ -89,7 +94,15 @@ export function Ubicacion() {
             <p className="mt-3 text-sm text-ink/80 leading-relaxed">
               <strong>Dirección:</strong> {l.direccion}
               <br />
-              <strong>Teléfono:</strong> {l.telefono}
+              {/* Enlace tel:, no texto suelto: desde el celular se llama de un toque. */}
+              <strong>Teléfono:</strong>{" "}
+              <a
+                href={`tel:${l.telefono.replace(/\s/g, "")}`}
+                onClick={(e) => e.stopPropagation()}
+                className="transition hover:text-accent-soft"
+              >
+                {l.telefono}
+              </a>
             </p>
             <p className="mt-3 text-xs text-muted">
               Lun – Sáb · 9:00 am – 8:00 pm
@@ -98,7 +111,19 @@ export function Ubicacion() {
             </p>
 
             <div className="mt-5 flex items-center justify-between">
-              <span className="text-[11.5px] font-bold uppercase tracking-[0.1em] text-accent-soft">
+              {/* Móvil: sin iframe. Dos mapas de Google embebidos son mucho peso en
+                  un Android de gama media, y el que llega desde el celular lo que
+                  quiere es que se le abra la app de Maps ya con la ruta. */}
+              <a
+                href={comoLlegar(l)}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className="flex min-h-[48px] w-full items-center justify-center gap-2 rounded-xl border border-accent/40 bg-accent/[0.06] px-4 text-[12.5px] font-bold uppercase tracking-[0.1em] text-accent-soft md:hidden"
+              >
+                Cómo llegar ↗
+              </a>
+              <span className="hidden text-[11.5px] font-bold uppercase tracking-[0.1em] text-accent-soft md:inline">
                 {activeLoc === l.id
                   ? "Seleccionada · mirá el mapa abajo"
                   : "Seleccionar para ver el mapa"}
@@ -108,8 +133,8 @@ export function Ubicacion() {
         ))}
       </div>
 
-      {/* Mapa interactivo */}
-      <div className="mt-8 rounded-2xl border border-line bg-panel overflow-hidden">
+      {/* Mapa interactivo — solo desktop (en móvil manda el botón "Cómo llegar") */}
+      <div className="mt-8 hidden rounded-2xl border border-line bg-panel overflow-hidden md:block">
         {/* Header */}
         <div className="flex flex-col gap-4 border-b border-line bg-bg/50 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
