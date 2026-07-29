@@ -5,8 +5,9 @@
      Asunto: ¡Se liberó un cupo! 🎉
      Cron:   cada 10 min
      Spec:   .superpowers/design/correos.md
-     Ojo: las {{ }} son expresiones de n8n. No poner llaves dobles ni en los
-     comentarios, n8n las evalúa igual y revienta el envío. -->
+     Ojo: n8n parsea el campo ENTERO como expresión, comentarios incluidos.
+     Nada de llaves dobles ni referencias a json acá: hasta un par de llaves
+     vacías en este comentario revienta el envío con "invalid syntax". -->
 <!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><meta name="color-scheme" content="dark"><meta name="supported-color-schemes" content="dark"></head><body style="margin:0;padding:0;background:#060504;background-image:linear-gradient(#060504,#060504);">
 <div style="margin:0;padding:24px 12px;background:#060504;background-image:linear-gradient(#060504,#060504);">
 <div style="max-width:600px;margin:0 auto;font-family:Arial,Helvetica,sans-serif;color:#f2ede4;">
