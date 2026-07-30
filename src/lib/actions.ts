@@ -20,7 +20,7 @@ import { type SupabaseClient } from "@supabase/supabase-js";
 import { supabaseServerAuth, supabaseAdmin } from "@/lib/supabase/server";
 import { getStaffContext, getCorteIds, contarCortesCliente, precioCorteBase } from "@/lib/data/queries";
 import { clienteIdForUser } from "@/lib/cliente-actions";
-import { bogotaDayRange, bogotaYmd, finEfectivo, MARGEN_LLEGADA_HORAS } from "@/lib/slots";
+import { bogotaDayRange, bogotaYmd, finEfectivo, MARGEN_LLEGADA_HORAS, OPEN, CLOSE, STEP } from "@/lib/slots";
 import { errorPublico } from "@/lib/errors";
 import { calcularCobro, snapshotDinero, diferenciaCaja } from "@/lib/cobro";
 import { beneficioProximoCorte, type BeneficioTarjeta } from "@/lib/tarjeta";
@@ -291,6 +291,22 @@ const FOTO_MAX_BYTES = 2 * 1024 * 1024;
 // Margen para marcar "Llegó" (regla en slots.ts, compartida con la UI).
 const MARGEN_LLEGADA_MS = MARGEN_LLEGADA_HORAS * 3600_000;
 
+// Minuto-del-día (0..1439) EN BOGOTÁ de un instante. El server corre en UTC, así
+// que la hora civil se deriva con Intl y no depende del TZ del proceso. Se usa
+// para validar server-side que un inicio caiga en el horario de atención
+// (OPEN/CLOSE/STEP de slots.ts), sin re-derivar las horas.
+function minutoDelDiaBogota(d: Date): number {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "America/Bogota",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(d);
+  const hh = Number(parts.find((p) => p.type === "hour")?.value ?? "0");
+  const mm = Number(parts.find((p) => p.type === "minute")?.value ?? "0");
+  return hh * 60 + mm;
+}
+
 // Foto del producto → Supabase Storage (bucket público "productos", migración 0019).
 // service role para el storage: la escritura del bucket no se expone por RLS,
 // el gate real es requireAdmin acá.
@@ -503,6 +519,10 @@ export async function createReserva(input: {
 }): Promise<ActionResult> {
   const sb = supabaseAdmin();
   const inicio = new Date(input.inicioISO);
+  // inicioISO inválido (NaN) → error claro, no dejar que reviente con 500 al hacer
+  // toISOString() más abajo. Y la cita tiene que ser a futuro (nada de fechas pasadas).
+  if (Number.isNaN(inicio.getTime())) return { ok: false, error: "La fecha de la cita no es válida." };
+  if (inicio.getTime() <= Date.now()) return { ok: false, error: "Esa hora ya pasó. Elegí un horario a futuro." };
   const { data: serv } = await sb
     .from("servicios")
     .select("nombre,duracion_min")
@@ -512,11 +532,39 @@ export async function createReserva(input: {
   const servicioNombre = (serv as { nombre?: string } | null)?.nombre ?? "Tu cita";
   const fin = new Date(inicio.getTime() + dur * 60000);
 
+  // Horario de atención (autoritativo): el inicio tiene que estar alineado al paso
+  // y caber dentro de [OPEN, CLOSE] en Bogotá. El wizard ya lo respeta; esto blinda
+  // el POST directo y el path del asistente IA (se reservaba a las 3am). Horas de
+  // slots.ts, sin re-derivar.
+  const minDia = minutoDelDiaBogota(inicio);
+  if (minDia < OPEN || minDia + dur > CLOSE || (minDia - OPEN) % STEP !== 0) {
+    return { ok: false, error: "Ese horario está fuera del horario de atención." };
+  }
+
   // Sin barbero no hay reserva: el EXCLUDE constraint no cubre barbero_id NULL,
   // así que N reservas caerían en el mismo slot, invisibles para todos los barberos.
   // (El wizard normal siempre manda barbero; solo el path del asistente IA lo omitía.)
   if (!input.barberoId) return { ok: false, error: "Elegí un barbero para reservar." };
   const barberoId = input.barberoId;
+  // El barbero tiene que existir, estar activo y ser DE la sede elegida: sin este
+  // chequeo se podía reservar un barbero de la otra sede (o inactivo) por POST directo.
+  const { data: barb } = await sb
+    .from("barberos")
+    .select("sede_id,activo")
+    .eq("id", barberoId)
+    .maybeSingle();
+  const barbRow = barb as { sede_id?: string; activo?: boolean } | null;
+  if (!barbRow || barbRow.activo === false || barbRow.sede_id !== input.sede)
+    return { ok: false, error: "Ese barbero no está disponible en esa sede." };
+  // El servicio tiene que tener precio en la sede (fila en servicio_sede): un
+  // servicio de otra sede o sin precio no debe generar una cita fantasma.
+  const { data: ss } = await sb
+    .from("servicio_sede")
+    .select("servicio_id")
+    .eq("sede_id", input.sede)
+    .eq("servicio_id", input.servicioId)
+    .maybeSingle();
+  if (!ss) return { ok: false, error: "Ese servicio no está disponible en esa sede." };
   // Guard de ausencia (autoritativo): el admin marcó que el barbero no atiende esa
   // fecha. Se bloquea acá aunque la UI se saltara (endpoint POST directo).
   const { data: aus } = await sb
@@ -556,6 +604,10 @@ export async function createReserva(input: {
     .limit(1);
   if (clash && clash.length) return { ok: false, error: "Ese horario ya fue tomado. Elegí otro, por favor." };
 
+  // Recorte de largo sano en los campos de texto libres (POST directo sin la UI):
+  // evita fichas de cliente y notas con payloads gigantes.
+  const clienteNombre = (input.clienteNombre ?? "").trim().slice(0, 120);
+  const telefono = (input.telefono ?? "").trim().slice(0, 40);
   // Si reserva un cliente logueado, atamos la cita a SU ficha (auth_id verificado) para
   // que aparezca en su portal; si es anónimo, dedup por teléfono.
   let clienteRef: string | null = null;
@@ -565,16 +617,16 @@ export async function createReserva(input: {
   if (user) {
     const email = (user.email ?? "").trim().toLowerCase();
     const meta = (user.user_metadata ?? {}) as Record<string, unknown>;
-    const nombre = (meta.full_name as string) || (meta.name as string) || input.clienteNombre;
+    const nombre = (meta.full_name as string) || (meta.name as string) || clienteNombre;
     clienteRef = await clienteIdForUser(sb, user.id, email, nombre);
   }
   if (!clienteRef) {
-    clienteRef = await upsertClienteId(sb, input.clienteNombre, input.telefono, input.email ?? "", "app");
+    clienteRef = await upsertClienteId(sb, clienteNombre, telefono, input.email ?? "", "app");
   }
   // La nota (ej. "Bebida: Gaseosa" del upsell) viaja al barbero en su agenda.
   // ponytail: si el barbero propone adelanto después, sobrescribe esta nota (raro;
   // igual el barbero cobra la bebida en consumos).
-  const nota = (input.nota ?? "").trim() || null;
+  const nota = (input.nota ?? "").trim().slice(0, 500) || null;
   const { error } = await sb.from("reservas").insert({
     sede_id: input.sede,
     barbero_id: barberoId,
@@ -663,6 +715,12 @@ export async function registrarWalkin(input: {
   if (!barberoId) return { ok: false, error: "No se pudo determinar el barbero" };
   if (!(await staffPuedeOperarBarbero(staff, barberoId)))
     return { ok: false, error: "Ese barbero es de otra sede." };
+  // Mostrador compartido: una vez validada la sede/barbero acá, el INSERT va con
+  // service_role. La RLS de reservas (0010) exige barbero_id = current_barbero_id(),
+  // así que un barbero anotando el walk-in de un COLEGA de su sede chocaba 42501.
+  // El gate staffPuedeOperarBarbero de arriba es el control real (mismo patrón que
+  // actualizarReserva/completarReserva). NO usar admin antes de esa validación.
+  const admin = supabaseAdmin();
   const clienteRef = await upsertClienteId(sb, input.clienteNombre, input.telefono, "", "walkin", input.fidelizar ?? true);
   const now = new Date();
   let dur = 30;
@@ -675,7 +733,7 @@ export async function registrarWalkin(input: {
     dur = (serv as { duracion_min?: number } | null)?.duracion_min ?? 30;
   }
   const fin = new Date(now.getTime() + dur * 60000);
-  const { error } = await sb.from("reservas").insert({
+  const { error } = await admin.from("reservas").insert({
     sede_id: input.sede,
     barbero_id: barberoId,
     servicio_id: input.servicioId || null,
@@ -688,7 +746,7 @@ export async function registrarWalkin(input: {
   if (error) {
     // Barbero ocupado (solape detectado por el constraint EXCLUDE) → a la cola, no rechazo.
     if (error.code === "23P01") {
-      const { data: busy } = await sb
+      const { data: busy } = await admin
         .from("reservas")
         .select("fin")
         .eq("barbero_id", barberoId)
@@ -698,7 +756,10 @@ export async function registrarWalkin(input: {
         .order("fin")
         .limit(1);
       const esperaHasta = (busy?.[0] as { fin?: string } | undefined)?.fin ?? null;
-      const { error: eErr } = await sb.from("lista_espera").insert({
+      // Mismo servicio_sede: la fila de espera va a la MISMA sede del walk-in, con
+      // service_role (la policy staff_all_lista_espera es is_staff(), funciona con
+      // cualquier cliente).
+      const { error: eErr } = await admin.from("lista_espera").insert({
         sede_id: input.sede,
         barbero_id: barberoId,
         servicio_id: input.servicioId || null,
@@ -889,22 +950,37 @@ export async function completarReserva(input: {
   // los ítems y los puntos.
   const admin = supabaseAdmin();
 
+  // Cuando la venta cierra una CITA, la sede / el servicio principal / el cliente
+  // se DERIVAN de la reserva, no de lo que mande el form: así nadie puede "cobrar
+  // combo, registrar barato" ni asignarle los sellos/puntos a una ficha ajena
+  // (AUD-A-001 / AUD-A-002). En venta rápida (sin cita) sí mandan los input.*.
+  // Los servicios ADICIONALES siguen siendo input-driven, priceados en la sede de
+  // la cita (sedeEfectiva).
   let barberoId: string | null;
+  let sedeEfectiva: string;
+  let servicioEfectivo: string | null;
+  let clienteEfectivo: string | null;
   if (input.reservaId) {
     const { data: rsv } = await admin
       .from("reservas")
-      .select("barbero_id,sede_id")
+      .select("barbero_id,sede_id,servicio_id,cliente_ref")
       .eq("id", input.reservaId)
       .maybeSingle();
     if (!rsv) return { ok: false, error: "Cita no encontrada" };
-    const r = rsv as { barbero_id: string | null; sede_id: string };
+    const r = rsv as { barbero_id: string | null; sede_id: string; servicio_id: string | null; cliente_ref: string | null };
     if (!(await staffPuedeOperarSede(staff, r.sede_id)))
       return { ok: false, error: "Esa cita es de otra sede." };
     barberoId = r.barbero_id;
+    sedeEfectiva = r.sede_id;
+    servicioEfectivo = r.servicio_id;
+    clienteEfectivo = r.cliente_ref;
   } else {
     barberoId = input.barberoId || staff.barberoId;
     if (barberoId && !(await staffPuedeOperarBarbero(staff, barberoId)))
       return { ok: false, error: "Ese barbero es de otra sede." };
+    sedeEfectiva = input.sede;
+    servicioEfectivo = input.servicioId;
+    clienteEfectivo = input.clienteRef;
   }
 
   // Medio de pago: validación autoritativa contra la tabla administrable
@@ -924,7 +1000,7 @@ export async function completarReserva(input: {
   // Comisión del barbero para los servicios (principal + adicionales).
   const extras = [...new Set((input.serviciosExtra ?? []).filter(Boolean))];
   let barberComision = 0;
-  if (barberoId && (input.servicioId || extras.length)) {
+  if (barberoId && (servicioEfectivo || extras.length)) {
     const { data: barb } = await sb
       .from("barberos")
       .select("tipo_contrato,comision_pct")
@@ -936,12 +1012,12 @@ export async function completarReserva(input: {
     }
   }
 
-  if (input.servicioId) {
+  if (servicioEfectivo) {
     const { data: p } = await sb
       .from("servicio_sede")
       .select("precio,servicios(nombre)")
-      .eq("sede_id", input.sede)
-      .eq("servicio_id", input.servicioId)
+      .eq("sede_id", sedeEfectiva)
+      .eq("servicio_id", servicioEfectivo)
       .maybeSingle();
     // Igual que los adicionales: sin precio en la sede se rechaza, no se
     // completa una venta cobrando $0 por el servicio en silencio.
@@ -949,7 +1025,7 @@ export async function completarReserva(input: {
     const row = p as Record<string, unknown>;
     items.push({
       tipo: "servicio",
-      ref_id: input.servicioId,
+      ref_id: servicioEfectivo,
       descripcion: (row.servicios as { nombre?: string } | null)?.nombre ?? "Servicio",
       cantidad: 1,
       precio_unitario: row.precio,
@@ -963,7 +1039,7 @@ export async function completarReserva(input: {
     const { data: extRows, error: extErr } = await sb
       .from("servicio_sede")
       .select("servicio_id,precio,servicios(nombre)")
-      .eq("sede_id", input.sede)
+      .eq("sede_id", sedeEfectiva)
       .in("servicio_id", extras);
     if (extErr) return { ok: false, error: errorPublico("completarReserva extras", extErr) };
     const porId = new Map(
@@ -1038,15 +1114,15 @@ export async function completarReserva(input: {
   let descuentoTarjeta = 0;
   let tarjetaPos = 0;
   let cortesPrevios = 0;
-  if (input.clienteRef) {
+  if (clienteEfectivo) {
     const admin = supabaseAdmin();
     const corteIds = await getCorteIds(admin);
     const corteItem = items
       .filter((it) => it.tipo === "servicio" && corteIds.includes(it.ref_id as string))
       .sort((a, b) => (b.precio_unitario as number) - (a.precio_unitario as number))[0];
     if (corteItem) {
-      cortesPrevios = await contarCortesCliente(admin, input.clienteRef);
-      const base = await precioCorteBase(admin, input.sede);
+      cortesPrevios = await contarCortesCliente(admin, clienteEfectivo);
+      const base = await precioCorteBase(admin, sedeEfectiva);
       const b = beneficioProximoCorte(cortesPrevios, base);
       beneficioTarjeta = b.tipo;
       tarjetaPos = b.posicion;
@@ -1125,7 +1201,7 @@ export async function completarReserva(input: {
   //    en QA 2026-07-17). Best-effort: jamás tumba el cobro; si la venta luego falla,
   //    queda una caja auto-abierta vacía (inofensivo).
   try {
-    await asegurarCajaAbierta(supabaseAdmin(), input.sede);
+    await asegurarCajaAbierta(supabaseAdmin(), sedeEfectiva);
   } catch (e) {
     errorPublico("completarReserva auto-open caja", e as { message?: string });
   }
@@ -1135,10 +1211,10 @@ export async function completarReserva(input: {
   const { data: venta, error } = await admin
     .from("ventas")
     .insert({
-      sede_id: input.sede,
+      sede_id: sedeEfectiva,
       barbero_id: barberoId,
-      cliente_ref: input.clienteRef,
-      cliente_nombre: !input.clienteRef ? (input.clienteNombre ?? "").trim() || null : null,
+      cliente_ref: clienteEfectivo,
+      cliente_nombre: !clienteEfectivo ? (input.clienteNombre ?? "").trim() || null : null,
       reserva_id: input.reservaId,
       idem_token: idemToken,
       medio,
@@ -1184,13 +1260,13 @@ export async function completarReserva(input: {
     if (stockErr) errorPublico("completarReserva decrement_stock", stockErr);
   }
   // Fidelidad: puntos por el neto cobrado (sin propina), solo si el cliente está inscrito.
-  let puntos = input.clienteRef ? cobro.puntos : 0;
-  if (input.clienteRef && puntos > 0) {
-    const { data: cli } = await admin.from("clientes").select("fidelizado").eq("id", input.clienteRef).maybeSingle();
+  let puntos = clienteEfectivo ? cobro.puntos : 0;
+  if (clienteEfectivo && puntos > 0) {
+    const { data: cli } = await admin.from("clientes").select("fidelizado").eq("id", clienteEfectivo).maybeSingle();
     if ((cli as { fidelizado?: boolean } | null)?.fidelizado === false) puntos = 0;
     if (puntos > 0) {
       const { error: ptsErr } = await admin.from("puntos_mov").insert({
-        cliente_ref: input.clienteRef,
+        cliente_ref: clienteEfectivo,
         tipo: "ganado",
         puntos,
         venta_id: ventaId,
@@ -1206,8 +1282,8 @@ export async function completarReserva(input: {
   // Push post-servicio: invita a calificar la visita en /cuenta. Solo para citas
   // reales (con reserva y cliente vinculado); la venta rápida no tiene qué calificar.
   // Fire-and-forget DESPUÉS del éxito del cobro: pushACliente jamás lanza.
-  if (input.reservaId && input.clienteRef) {
-    await pushACliente(input.clienteRef, {
+  if (input.reservaId && clienteEfectivo) {
+    await pushACliente(clienteEfectivo, {
       title: "¿Cómo estuvo tu corte? ✂️",
       body: "Contanos con una calificación. Te toma 10 segundos.",
       url: "/cuenta",
@@ -1222,7 +1298,7 @@ export async function completarReserva(input: {
     const { data: sedeRow } = await supabaseAdmin()
       .from("sedes")
       .select("google_review_url")
-      .eq("id", input.sede)
+      .eq("id", sedeEfectiva)
       .maybeSingle();
     resenaUrl = (sedeRow as { google_review_url?: string | null } | null)?.google_review_url ?? null;
   }
@@ -1832,16 +1908,23 @@ export async function proponerAdelanto(input: {
   const sb = await supabaseServerAuth();
   const denied = await requireStaff(sb);
   if (denied) return { ok: false, error: denied };
+  const staff = await getStaffContext();
 
   const admin = supabaseAdmin();
   // cliente_ref apunta a `clientes` (cliente_id era la columna legacy de profiles, siempre null).
   const { data: res, error: getErr } = await admin
     .from("reservas")
-    .select("id, nota, cliente_ref, servicio_id")
+    .select("id, nota, cliente_ref, servicio_id, sede_id, inicio")
     .eq("id", input.reservaId)
     .maybeSingle();
 
   if (getErr || !res) return { ok: false, error: "Reserva no encontrada." };
+  const rRow = res as { sede_id: string; inicio: string };
+  // Gate de sede (igual que actualizarReserva/completarReserva): un barbero solo
+  // propone adelantos sobre citas de SU sede; el admin sobre cualquiera. Antes no
+  // había chequeo alguno y cualquier staff pisaba la nota de CUALQUIER reserva.
+  if (!(await staffPuedeOperarSede(staff, rRow.sede_id)))
+    return { ok: false, error: "Esa cita es de otra sede." };
 
   // Fetch service duration
   let dur = 30;
@@ -1853,7 +1936,20 @@ export async function proponerAdelanto(input: {
       .maybeSingle();
     dur = (serv as { duracion_min?: number } | null)?.duracion_min ?? 30;
   }
-  const fin = new Date(new Date(input.inicioISO).getTime() + dur * 60000);
+
+  // Validación de la hora propuesta (antes se escribía a ojos cerrados): a futuro,
+  // dentro del horario de atención de Bogotá (OPEN/CLOSE/STEP de slots.ts) y ANTES
+  // de la hora actual de la cita (es un ADELANTO). El cliente re-valida al aceptar.
+  const nuevo = new Date(input.inicioISO);
+  if (Number.isNaN(nuevo.getTime())) return { ok: false, error: "La hora propuesta no es válida." };
+  if (nuevo.getTime() <= Date.now()) return { ok: false, error: "Esa hora ya pasó. Proponé un horario a futuro." };
+  if (nuevo.getTime() >= new Date(rRow.inicio).getTime())
+    return { ok: false, error: "El adelanto tiene que ser antes de la hora actual de la cita." };
+  const minDiaAdel = minutoDelDiaBogota(nuevo);
+  if (minDiaAdel < OPEN || minDiaAdel + dur > CLOSE || (minDiaAdel - OPEN) % STEP !== 0)
+    return { ok: false, error: "Ese horario está fuera del horario de atención." };
+
+  const fin = new Date(nuevo.getTime() + dur * 60000);
 
   let notaObj: Record<string, unknown> = {};
   try {
