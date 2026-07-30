@@ -54,8 +54,11 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 // El OAuth de Google recarga la página y el estado del wizard vive en React:
 // antes del redirect se guarda un snapshot en sessionStorage y al volver se
-// restaura (válido 30 min).
+// restaura. El MISMO snapshot se reescribe en cada cambio de paso, así un F5 o
+// el Atrás del navegador a mitad del wizard tampoco pierden lo elegido.
 const RESUME_KEY = "bb-reserva-reanudar";
+// Vale 30 min: cubre el redirect de Google y un refresco/Atrás a mitad del wizard.
+const RESUME_TTL_MS = 30 * 60000;
 
 // Marca que dejamos en history.state para saber qué paso corresponde a cada
 // entrada del historial (ver el bloque "Atrás del teléfono" más abajo).
@@ -315,32 +318,51 @@ export function BookingWizard({
     try {
       const raw = sessionStorage.getItem(RESUME_KEY);
       if (raw) {
-        sessionStorage.removeItem(RESUME_KEY);
         const s = JSON.parse(raw) as {
           t?: number;
-          sedeId?: SedeId;
+          step?: Step;
+          sedeId?: SedeId | null;
           servicioId?: string;
           barberoId?: string | null;
-          dayISO?: string;
-          slot?: number;
+          dayISO?: string | null;
+          slot?: number | null;
           bebida?: Bebida | null;
           bebidaIncluida?: boolean;
           servicioFoto?: string;
         };
         const sv = servicios.find((x) => x.id === s.servicioId) ?? null;
         const d = s.dayISO ? new Date(s.dayISO) : null;
-        if (s.t && Date.now() - s.t < 30 * 60000 && s.sedeId && sv && d && !isNaN(d.getTime()) && s.slot != null) {
-          // eslint-disable-next-line react-hooks/set-state-in-effect -- hidratación al montar desde sessionStorage (redirect de Google)
-          setSedeId(s.sedeId);
-          setServicio(sv);
-          if (s.servicioFoto) setServicioFoto(s.servicioFoto);
+        const diaOk = d != null && !isNaN(d.getTime());
+        const fresco = !!s.t && Date.now() - s.t < RESUME_TTL_MS;
+        // Restauramos si el snapshot está vivo y tenía alguna selección real
+        // (sede o servicio). El día/slot pueden faltar si se guardó en un paso
+        // temprano: rehidratamos lo que haya.
+        if (fresco && (sv || s.sedeId)) {
+          // Paso a restaurar, RECORTADO a lo que los datos permiten pintar: nunca
+          // caer en "horario" sin servicio ni en "datos" sin slot (main en blanco).
+          let destino: Step = s.step && ORDEN.includes(s.step) ? s.step : "servicio";
+          if ((destino === "horario" || destino === "datos") && !sv) destino = "servicio";
+          if (destino === "datos" && (!diaOk || s.slot == null)) destino = sv ? "horario" : "servicio";
+          // eslint-disable-next-line react-hooks/set-state-in-effect -- hidratación al montar desde sessionStorage (F5/Atrás o redirect de Google)
+          if (s.sedeId) setSedeId(s.sedeId);
+          if (sv) {
+            setServicio(sv);
+            if (s.servicioFoto) setServicioFoto(s.servicioFoto);
+          }
           setBarbero(barberos.find((x) => x.id === s.barberoId) ?? null);
-          setDay(d);
-          setSlot(s.slot);
+          if (diaOk) setDay(d);
+          if (s.slot != null) setSlot(s.slot);
           setBebida(s.bebida ?? null);
           setBebidaIncluida(!!s.bebidaIncluida);
-          setUpsellSeen(true);
-          setStep("datos");
+          // El upsell de bebida ya se ofreció si estábamos más allá de elegir servicio.
+          if (ORDEN.indexOf(destino) >= ORDEN.indexOf("barbero")) setUpsellSeen(true);
+          // Alinear la marca del historial con la entrada actual SOLO si sobrevivió
+          // al F5 (tiene marca): así el efecto de historial no apila duplicados.
+          // Sin marca (navegación fresca / vuelta de Google) se deja el ref inicial
+          // para que el efecto reponga las entradas y el Atrás siga funcionando.
+          const marcaActual = (window.history.state as Record<string, unknown> | null)?.[HIST_MARCA];
+          if (typeof marcaActual === "number") marcaRef.current = marcaActual;
+          setStep(destino);
         }
       }
     } catch {
@@ -368,6 +390,48 @@ export function BookingWizard({
       vivo = false;
     };
   }, [servicios, barberos]);
+
+  // Persistimos la reserva a medio armar en CADA cambio (paso + selección), no
+  // solo antes del login de Google: así un F5 o el Atrás del navegador no borran
+  // lo elegido (se rehidrata al montar). No guardamos nombre/correo (datos
+  // sensibles y opcionales): el paso datos se vuelve a completar. Se limpia al
+  // confirmar. Progressive enhancement: si sessionStorage falla, el wizard sigue.
+  const primerRenderRef = useRef(true);
+  useEffect(() => {
+    // El primer disparo es el montaje: no pisar el snapshot ANTES de rehidratarlo.
+    if (primerRenderRef.current) {
+      primerRenderRef.current = false;
+      return;
+    }
+    try {
+      if (step === "ok") {
+        sessionStorage.removeItem(RESUME_KEY);
+        return;
+      }
+      const hayAlgo = !!servicio || !!barbero || !!day || slot !== null || step !== pasoInicial;
+      if (!hayAlgo) {
+        sessionStorage.removeItem(RESUME_KEY);
+        return;
+      }
+      sessionStorage.setItem(
+        RESUME_KEY,
+        JSON.stringify({
+          t: Date.now(),
+          step,
+          sedeId,
+          servicioId: servicio?.id,
+          barberoId: barbero?.id ?? null,
+          dayISO: day ? day.toISOString() : null,
+          slot,
+          bebida,
+          bebidaIncluida,
+          servicioFoto,
+        }),
+      );
+    } catch {
+      // sessionStorage lleno/bloqueado: seguimos sin persistencia.
+    }
+  }, [step, sedeId, servicio, barbero, day, slot, bebida, bebidaIncluida, servicioFoto, pasoInicial]);
 
   // Disponibilidad del día elegido: barbero fijo o todos los de la sede (para "cualquier barbero").
   useEffect(() => {
@@ -572,6 +636,7 @@ export function BookingWizard({
     if (!sedeId || !servicio || slot === null || !day) return;
     const snap = {
       t: Date.now(),
+      step: "datos" as Step,
       sedeId,
       servicioId: servicio.id,
       barberoId: barbero?.id ?? null,
@@ -1250,6 +1315,11 @@ export function BookingWizard({
           </div>
         )}
 
+        {/* Escape: si el historial nos trajo al paso "Día y hora" sin servicio
+            (snapshot vencido tras un F5, o entrada de historial suelta), no dejar
+            el cuerpo en blanco — invitamos a reiniciar en vez de una pantalla rota. */}
+        {step === "horario" && !servicio && <SeleccionPerdida onReiniciar={() => setStep("servicio")} />}
+
         {/* ---------- Paso 5 · Datos ---------- */}
         {step === "datos" && servicio && day && slot !== null && (
           // Ancho tope + centrado: a pantalla completa los campos se estiraban a
@@ -1464,6 +1534,11 @@ export function BookingWizard({
             </div>
           </div>
         )}
+
+        {/* Mismo escape para "Tus datos" si falta servicio, día o slot. */}
+        {step === "datos" && (!servicio || !day || slot === null) && (
+          <SeleccionPerdida onReiniciar={() => setStep(servicio ? "horario" : "servicio")} />
+        )}
       </main>
 
       {/* Footer sticky de resumen/total */}
@@ -1575,6 +1650,27 @@ export function BookingWizard({
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// Estado de escape cuando el historial deja el wizard en un paso que no puede
+// pintar (p. ej. "Día y hora" sin servicio tras un F5 con snapshot vencido).
+// Evita el <main> en blanco del que se quejaba la auditoría (AUD-E-002).
+function SeleccionPerdida({ onReiniciar }: { onReiniciar: () => void }) {
+  return (
+    <div className="mx-auto mt-6 max-w-md rounded-2xl border border-line bg-panel px-5 py-8 text-center">
+      <h2 className="font-display text-[22px] font-extrabold uppercase leading-tight">Se perdió tu selección</h2>
+      <p className="mx-auto mt-2 max-w-[34ch] text-[13px] leading-relaxed text-muted">
+        Pasó un rato y no pudimos recuperar lo que habías elegido. Arranquemos de nuevo, es rápido.
+      </p>
+      <button
+        type="button"
+        onClick={onReiniciar}
+        className="mt-5 rounded-full bg-accent px-6 py-2.5 text-[12.5px] font-bold uppercase tracking-[0.08em] text-on-accent transition hover:bg-accent-soft"
+      >
+        Empezar de nuevo
+      </button>
     </div>
   );
 }
