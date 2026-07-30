@@ -27,11 +27,15 @@ export function EsperaPanel({
   sedes,
   barberos,
   servicios,
+  sedeFija,
 }: {
   espera: EsperaItem[];
   sedes: Sede[];
   barberos: Barbero[];
   servicios: Servicio[];
+  /** Sede del mostrador (la del barbero logueado). Si viene, la espera se anota
+   *  ahí y no se elige; null = el dueño mirando las dos sedes. */
+  sedeFija?: string | null;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -77,6 +81,7 @@ export function EsperaPanel({
           sedes={sedes}
           barberos={barberos}
           servicios={servicios}
+          sedeFija={sedeFija}
           onDone={() => {
             setOpen(false);
             router.refresh();
@@ -148,16 +153,22 @@ function EsperaForm({
   sedes,
   barberos,
   servicios,
+  sedeFija,
   onDone,
   onCancel,
 }: {
   sedes: Sede[];
   barberos: Barbero[];
   servicios: Servicio[];
+  /** Sede del mostrador. Si viene, arranca ahí y no se elige (patrón WalkinForm). */
+  sedeFija?: string | null;
   onDone: () => void;
   onCancel: () => void;
 }) {
-  const [sede, setSede] = useState(sedes[0]?.id ?? "");
+  // Arrancaba SIEMPRE en sedes[0] y con un <select> de TODAS las sedes: desde el
+  // mostrador se encolaba gente en la fila de la OTRA sede, donde quedaba
+  // invisible. El mostrador opera SU sede, así que se fija, no se elige.
+  const [sede, setSede] = useState(sedeFija ?? sedes[0]?.id ?? "");
   const [barberoId, setBarberoId] = useState("");
   const [servicioId, setServicioId] = useState("");
   const [nombre, setNombre] = useState("");
@@ -193,20 +204,26 @@ function EsperaForm({
           {err}
         </div>
       )}
-      <select
-        value={sede}
-        onChange={(e) => {
-          setSede(e.target.value as typeof sede);
-          setBarberoId("");
-        }}
-        className={fld}
-      >
-        {sedes.map((s) => (
-          <option key={s.id} value={s.id}>
-            {s.nombre}
-          </option>
-        ))}
-      </select>
+      {sedeFija ? (
+        <div className="rounded-lg border border-line bg-elevated px-3 py-2 text-sm text-muted sm:col-span-2">
+          Sede: <b className="text-ink">{sedes.find((x) => x.id === sede)?.nombre ?? sede}</b>
+        </div>
+      ) : (
+        <select
+          value={sede}
+          onChange={(e) => {
+            setSede(e.target.value as typeof sede);
+            setBarberoId("");
+          }}
+          className={fld}
+        >
+          {sedes.map((s) => (
+            <option key={s.id} value={s.id}>
+              {s.nombre}
+            </option>
+          ))}
+        </select>
+      )}
       <select value={barberoId} onChange={(e) => setBarberoId(e.target.value)} className={fld}>
         <option value="">Cualquier barbero</option>
         {sedeBarberos.map((b) => (

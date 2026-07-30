@@ -21,6 +21,32 @@ function horaBogota(iso: string) {
   return `${((h + 11) % 12) + 1}:${m.toString().padStart(2, "0")} ${h < 12 ? "am" : "pm"}`;
 }
 
+// Fecha civil (YYYY-MM-DD) en Bogotá, para comparar días sin depender del TZ del proceso.
+function fechaBogota(d: Date) {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Bogota",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(d);
+}
+
+// "lun 20 jul" — fecha corta en español para el rótulo de apertura.
+function fechaCortaBogota(iso: string) {
+  return new Intl.DateTimeFormat("es-CO", {
+    timeZone: "America/Bogota",
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+  }).format(new Date(iso));
+}
+
+// Días civiles (Bogotá) entre la apertura y hoy: 0 = se abrió hoy.
+function diasDesde(iso: string) {
+  const ms = Date.parse(fechaBogota(new Date())) - Date.parse(fechaBogota(new Date(iso)));
+  return Math.max(0, Math.round(ms / 86400000));
+}
+
 // Avatar del barbero en el desglose: foto de la ficha si existe; si no, iniciales
 // sobre un tono cálido derivado del nombre (mismos tonos del prototipo que la
 // agenda). Son decorativos y estables por nombre; no hay token para ellos, por
@@ -94,6 +120,10 @@ export function CierreCaja({
   const sinContar = contadoNum === null;
   const diferencia = sinContar ? 0 : contadoNum - esperado;
   const nBarberos = desglose?.barberos.length ?? 0;
+  // La caja se abre sola con la 1ra venta y nada la cierra de noche: puede llevar
+  // días abierta y el "efectivo esperado" acumula todo ese tiempo, no solo hoy.
+  const dias = diasDesde(caja.abiertaEn);
+  const aperturaHoy = dias === 0;
 
   async function confirmar(e: React.FormEvent) {
     e.preventDefault();
@@ -131,13 +161,22 @@ export function CierreCaja({
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h3 className="font-display text-xl font-bold uppercase text-ink">Caja de la sede</h3>
         <span className="rounded-full bg-ok/10 px-2.5 py-0.5 font-display text-[10px] font-bold uppercase tracking-wide text-ok">
-          Abierta desde {horaBogota(caja.abiertaEn)}
+          {aperturaHoy
+            ? `Abierta desde ${horaBogota(caja.abiertaEn)}`
+            : `Abierta el ${fechaCortaBogota(caja.abiertaEn)}, ${horaBogota(caja.abiertaEn)}`}
         </span>
       </div>
       <p className="mt-1 text-xs leading-relaxed text-muted">
-        La caja es de la sede: suma lo de {nBarberos === 1 ? "el barbero" : `los ${nBarberos} barberos`}. Se
-        abrió sola con la primera venta.
+        La caja es de la sede: suma lo de {nBarberos === 1 ? "el barbero" : `los ${nBarberos} barberos`}{" "}
+        desde que se abrió (sola, con la primera venta).
       </p>
+      {!aperturaHoy && (
+        <p className="mt-3 rounded-lg border border-warn/40 bg-warn/10 px-3 py-2 text-xs font-semibold leading-relaxed text-warn">
+          Ojo: esta caja lleva {dias} {dias === 1 ? "día" : "días"} sin cerrar (abierta el{" "}
+          {fechaCortaBogota(caja.abiertaEn)}). Los totales de abajo suman TODO desde esa fecha, no
+          solo lo de hoy.
+        </p>
+      )}
 
       {/* Desglose por barbero (con foto/iniciales, badge "vos" y "Mi comisión" en el logueado). */}
       {desglose && desglose.barberos.length > 0 && (

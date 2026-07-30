@@ -87,7 +87,13 @@ export default async function BarberoPage() {
       />
 
       <div className="mx-auto mt-12 w-full max-w-2xl border-t border-line pt-8">
-        <EsperaPanel espera={espera} sedes={sedes} barberos={barberos} servicios={servicios} />
+        <EsperaPanel
+          espera={espera}
+          sedes={sedes}
+          barberos={barberos}
+          servicios={servicios}
+          sedeFija={sedeBarbero}
+        />
       </div>
 
       {sedeBarbero && (
