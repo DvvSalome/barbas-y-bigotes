@@ -3,7 +3,7 @@
 import { type SupabaseClient } from "@supabase/supabase-js";
 import { supabaseServerAuth, supabaseAdmin } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
-import { CANCELACION_MIN_HORAS } from "@/lib/slots";
+import { CANCELACION_MIN_HORAS, OPEN, CLOSE, STEP, bogotaYmd } from "@/lib/slots";
 import { errorPublico } from "@/lib/errors";
 import { pushACliente } from "@/lib/push";
 import { fechaHoraBogota } from "@/lib/format";
@@ -303,13 +303,13 @@ export async function reagendarReservaCliente(
   const admin = supabaseAdmin();
   const { data: res } = await admin
     .from("reservas")
-    .select("id, cliente_ref, estado, inicio, barbero_id, servicio_id")
+    .select("id, cliente_ref, estado, inicio, barbero_id, servicio_id, sede_id")
     .eq("id", reservaId)
     .maybeSingle();
   if (!res) return { ok: false, error: "Reserva no encontrada" };
   const r = res as {
     cliente_ref: string | null; estado: string; inicio: string;
-    barbero_id: string | null; servicio_id: string | null;
+    barbero_id: string | null; servicio_id: string | null; sede_id: string;
   };
 
   if (r.cliente_ref !== ctx.clienteId) return { ok: false, error: "Reserva no encontrada" };
@@ -322,7 +322,11 @@ export async function reagendarReservaCliente(
 
   const nuevoInicio = new Date(inicioISO);
   if (isNaN(nuevoInicio.getTime())) return { ok: false, error: "Horario inválido." };
-  if (nuevoInicio.getTime() <= Date.now()) return { ok: false, error: "Elegí un horario futuro." };
+  // Ventana de 2h también sobre la hora NUEVA (simétrica a la vieja): sin esto el
+  // cliente podía mover la cita a 15 min vista y quedar en la puerta de un solo
+  // sentido (ya no la puede cancelar online). Misma regla que cancelar/reagendar.
+  if (nuevoInicio.getTime() <= Date.now() + CANCELACION_MIN_HORAS * 3600_000)
+    return { ok: false, error: `Elegí un horario con al menos ${CANCELACION_MIN_HORAS} horas de anticipación.` };
 
   let dur = 30;
   if (r.servicio_id) {
@@ -330,6 +334,52 @@ export async function reagendarReservaCliente(
     dur = (serv as { duracion_min?: number } | null)?.duracion_min ?? 30;
   }
   const nuevoFin = new Date(nuevoInicio.getTime() + dur * 60000);
+
+  // Guard de calendario/horario (F-001): reagendar nació como camino paralelo a
+  // createReserva y NO copió estos guards, así que aceptaba domingos y horas fuera
+  // de rango (madrugada). Se validan las MISMAS reglas de negocio de slots.ts.
+  // Minuto-del-día en Bogotá (UTC-5 fijo): el instante viene en UTC, hay que anclar
+  // a Bogotá para no correrse contra OPEN/CLOSE. No re-derivamos las horas: OPEN/
+  // CLOSE/STEP salen de slots.ts.
+  const hm = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "America/Bogota",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(nuevoInicio);
+  const minDia =
+    Number(hm.find((p) => p.type === "hour")?.value) * 60 +
+    Number(hm.find((p) => p.type === "minute")?.value);
+  // Dentro del horario de atención y alineado a la grilla de STEP; y que el servicio
+  // completo entre antes del cierre (mismo criterio que buildSlots).
+  if (minDia < OPEN || minDia + dur > CLOSE || (minDia - OPEN) % STEP !== 0)
+    return { ok: false, error: "Ese horario no está disponible. Elegí uno dentro del horario de atención." };
+
+  // Día abierto: la sede cierra los domingos salvo excepción del dueño, y puede
+  // cerrar un día hábil por festivo; el barbero puede tener el día marcado ausente.
+  // Mismos guards que createReserva (actions.ts) para blindar el reagendar directo.
+  const fechaYmd = bogotaYmd(nuevoInicio);
+  if (r.barbero_id) {
+    const { data: aus } = await admin
+      .from("barbero_ausencias")
+      .select("id")
+      .eq("barbero_id", r.barbero_id)
+      .eq("fecha", fechaYmd)
+      .limit(1);
+    if (aus && aus.length)
+      return { ok: false, error: "Ese barbero no atiende ese día. Elegí otra fecha." };
+  }
+  const { data: diaEsp } = await admin
+    .from("sede_dias_especiales")
+    .select("abierta")
+    .eq("sede_id", r.sede_id)
+    .eq("fecha", fechaYmd)
+    .maybeSingle();
+  const excepcion = (diaEsp as { abierta?: boolean } | null)?.abierta;
+  // getUTCDay() sobre el YMD de Bogotá a mediodía, para no cruzar husos.
+  const esDomingo = new Date(`${fechaYmd}T12:00:00Z`).getUTCDay() === 0;
+  const abre = excepcion !== undefined ? excepcion : !esDomingo;
+  if (!abre) return { ok: false, error: "Ese día la barbería no atiende. Elegí otra fecha." };
 
   // Pre-chequeo de solape del barbero, excluyendo la propia reserva.
   if (r.barbero_id) {
@@ -422,6 +472,10 @@ export async function confirmarCitaPorToken(token: string): Promise<ConfirmarRes
     .is("confirmado_en", null);
   if (error) return { estado: "invalida" };
 
-  revalidatePath("/barbero");
+  // OJO: NO llamar revalidatePath acá. Esta action se invoca DIRECTO en el render
+  // del Server Component /confirmar/[token] (page.tsx), y Next prohíbe revalidatePath
+  // durante el render → lanzaba y la 1ª visita daba HTTP 500 (el UPDATE ya había
+  // ocurrido, por eso el dato persistía pero la pantalla reventaba). La agenda del
+  // mostrador (/barbero) se refresca por realtime sobre reservas, no necesita esto.
   return { estado: "ok", ...detalle };
 }
