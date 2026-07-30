@@ -268,7 +268,8 @@ export async function getAgendaHoy(barberoId?: string | null): Promise<AgendaIte
     .gte("inicio", desde.toISOString())
     .lt("inicio", hasta.toISOString());
   if (barberoId) q = q.eq("barbero_id", barberoId);
-  const { data } = await q.order("inicio");
+  const { data, error } = await q.order("inicio");
+  if (error) console.error("getAgendaHoy:", error.message);
   return ((data ?? []) as Record<string, unknown>[]).map((r) => ({
     id: r.id as string,
     inicio: r.inicio as string,
@@ -307,7 +308,8 @@ export async function getAgendaSedeHoy(sedeId: string | null): Promise<AgendaIte
     .lt("inicio", hasta.toISOString())
     .order("inicio");
   if (sedeId) q = q.eq("sede_id", sedeId);
-  const { data } = await q;
+  const { data, error } = await q;
+  if (error) console.error("getAgendaSedeHoy:", error.message);
   return ((data ?? []) as Record<string, unknown>[]).map((r) => ({
     id: r.id as string,
     inicio: r.inicio as string,
@@ -344,7 +346,8 @@ export async function getCobradoSedeHoy(
     .gte("creado_en", desde.toISOString())
     .lt("creado_en", hasta.toISOString());
   if (sedeId) q = q.eq("sede_id", sedeId);
-  const { data } = await q;
+  const { data, error } = await q;
+  if (error) console.error("getCobradoSedeHoy:", error.message);
   const filas = (data ?? []) as { total: number; barbero_id: string | null }[];
   const porBarbero: Record<string, number> = {};
   let total = 0;
@@ -368,7 +371,8 @@ export async function getCobradoHoy(barberoId?: string | null): Promise<number> 
     .gte("creado_en", desde.toISOString())
     .lt("creado_en", hasta.toISOString());
   if (barberoId) q = q.eq("barbero_id", barberoId);
-  const { data } = await q;
+  const { data, error } = await q;
+  if (error) console.error("getCobradoHoy:", error.message);
   return ((data ?? []) as { total: number }[]).reduce((a, v) => a + v.total, 0);
 }
 
@@ -489,12 +493,17 @@ export async function getListaEspera(barberoId?: string | null): Promise<EsperaI
   let q = sb
     .from("lista_espera")
     .select(
-      "id,sede_id,barbero_id,estado,creado_en,cliente_nombre,telefono,servicios(nombre),barberos(nombre)",
+      // lista_espera tiene DOS FKs a barberos (barbero_id y cupo_barbero_id, ver 0033):
+      // hay que desambiguar el embed a la FK correcta o PostgREST tira PGRST201 y la fila
+      // queda muerta. La clave del embed sigue siendo "barberos" para el map de abajo.
+      "id,sede_id,barbero_id,estado,creado_en,cliente_nombre,telefono,servicios(nombre),barberos!lista_espera_barbero_id_fkey(nombre)",
     )
     .in("estado", ["esperando", "notificado"]);
   // Un barbero ve los suyos + los que esperan a "cualquiera"; el admin (sin filtro) ve todo.
   if (barberoId) q = q.or(`barbero_id.eq.${barberoId},barbero_id.is.null`);
-  const { data } = await q.order("creado_en");
+  const { data, error } = await q.order("creado_en");
+  // No tragarse el error: un fallo de esquema/RLS no debe leerse como "nadie en espera".
+  if (error) console.error("getListaEspera:", error.message);
   return ((data ?? []) as Record<string, unknown>[]).map((r) => ({
     id: r.id as string,
     sede: r.sede_id as string,
@@ -1298,7 +1307,8 @@ export async function citasSiguientes(sede?: SedeId | null, limit = 6): Promise<
     .order("inicio")
     .limit(limit);
   if (sede) q = q.eq("sede_id", sede);
-  const { data } = await q;
+  const { data, error } = await q;
+  if (error) console.error("citasSiguientes:", error.message);
   return ((data ?? []) as Record<string, unknown>[]).map((r) => ({
     id: r.id as string,
     inicio: r.inicio as string,
@@ -1326,7 +1336,8 @@ export async function citasVencidasHoy(sede?: SedeId | null, limit = 6): Promise
     .order("inicio", { ascending: false })
     .limit(limit);
   if (sede) q = q.eq("sede_id", sede);
-  const { data } = await q;
+  const { data, error } = await q;
+  if (error) console.error("citasVencidasHoy:", error.message);
   return ((data ?? []) as Record<string, unknown>[])
     .map((r) => ({
       id: r.id as string,
@@ -1364,7 +1375,8 @@ export async function atendidasSinCobrar(sede?: SedeId | null): Promise<Atendida
     .lt("inicio", hasta.toISOString())
     .order("inicio");
   if (sede) q = q.eq("sede_id", sede);
-  const { data } = await q;
+  const { data, error } = await q;
+  if (error) console.error("atendidasSinCobrar:", error.message);
   const reservas = (data ?? []) as Record<string, unknown>[];
   if (reservas.length === 0) return [];
 
@@ -1483,7 +1495,8 @@ export async function serie7Dias(sede?: SedeId | null): Promise<Serie7Dias> {
     .gte("creado_en", desde14.toISOString())
     .lt("creado_en", hasta.toISOString());
   if (sede) q = q.eq("sede_id", sede);
-  const { data } = await q;
+  const { data, error } = await q;
+  if (error) console.error("serie7Dias:", error.message);
   const dias: { ymd: string; total: number }[] = [];
   for (let i = 6; i >= 0; i--) dias.push({ ymd: bogotaYmd(new Date(Date.now() - i * 86_400_000)), total: 0 });
   const idx = new Map(dias.map((d, i) => [d.ymd, i]));
@@ -1749,7 +1762,8 @@ export async function getMetricas(p: Periodo = "mes", sede?: SedeId | null): Pro
     .gte("creado_en", prevDesde.toISOString())
     .lt("creado_en", hasta.toISOString());
   if (sede) q = q.eq("sede_id", sede);
-  const { data } = await q;
+  const { data, error } = await q;
+  if (error) console.error("getMetricas:", error.message);
   const filas = (data ?? []) as Record<string, unknown>[];
   const enPeriodo = filas.filter((v) => new Date(v.creado_en as string) >= desde);
   const previas = filas.filter((v) => new Date(v.creado_en as string) < desde);
@@ -1841,6 +1855,7 @@ export async function getVentasParaCsv(p: Periodo = "mes", sede?: SedeId | null)
     .lt("creado_en", hasta.toISOString())
     .order("creado_en");
   if (sede) q = q.eq("sede_id", sede);
-  const { data } = await q;
+  const { data, error } = await q;
+  if (error) console.error("getVentasParaCsv:", error.message);
   return (data ?? []) as Record<string, unknown>[];
 }
