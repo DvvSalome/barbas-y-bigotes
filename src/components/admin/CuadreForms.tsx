@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { registrarGasto, registrarAdelanto } from "@/lib/actions";
+import { sanearCop } from "@/lib/admin-reglas";
 import { TagIcon, PercentIcon } from "@/components/icons";
 import type { Sede, Barbero } from "@/lib/data/types";
 
@@ -19,39 +20,56 @@ export function CuadreForms({ sedes, barberos }: { sedes: Sede[]; barberos: Barb
   const [gMonto, setGMonto] = useState("");
   const [gDesc, setGDesc] = useState("");
   const [gSaving, setGSaving] = useState(false);
+  const [gError, setGError] = useState("");
 
   const [aBarbero, setABarbero] = useState("");
   const [aMonto, setAMonto] = useState("");
   const [aNota, setANota] = useState("");
   const [aSaving, setASaving] = useState(false);
+  const [aError, setAError] = useState("");
 
   async function submitGasto(e: React.FormEvent) {
     e.preventDefault();
+    // El monto tiene que ser un entero en pesos > 0: vacío o negativo guardaba
+    // un gasto de $0 (o restaba plata) sin avisar. sanearCop ya rechaza vacío,
+    // negativo, decimal y no-numérico; acá sólo falta exigir > 0.
+    const monto = sanearCop(gMonto);
+    if (monto === null || monto <= 0) {
+      setGError("Poné un monto válido en pesos (mayor a $0, sin decimales).");
+      return;
+    }
+    setGError("");
     setGSaving(true);
-    const res = await registrarGasto({ sede: gSede, categoria: gCat || "Otro", monto: Number(gMonto) || 0, descripcion: gDesc });
+    const res = await registrarGasto({ sede: gSede, categoria: gCat || "Otro", monto, descripcion: gDesc });
     setGSaving(false);
     if (res.ok) {
       setGCat("");
       setGMonto("");
       setGDesc("");
       router.refresh();
-    } else alert(res.error);
+    } else setGError(res.error ?? "No se pudo guardar el gasto.");
   }
 
   async function submitAdelanto(e: React.FormEvent) {
     e.preventDefault();
     if (!aBarbero) {
-      alert("Elegí el barbero");
+      setAError("Elegí el barbero.");
       return;
     }
+    const monto = sanearCop(aMonto);
+    if (monto === null || monto <= 0) {
+      setAError("Poné un monto válido en pesos (mayor a $0, sin decimales).");
+      return;
+    }
+    setAError("");
     setASaving(true);
-    const res = await registrarAdelanto({ barberoId: aBarbero, monto: Number(aMonto) || 0, nota: aNota });
+    const res = await registrarAdelanto({ barberoId: aBarbero, monto, nota: aNota });
     setASaving(false);
     if (res.ok) {
       setAMonto("");
       setANota("");
       router.refresh();
-    } else alert(res.error);
+    } else setAError(res.error ?? "No se pudo guardar el adelanto.");
   }
 
   return (
@@ -66,8 +84,9 @@ export function CuadreForms({ sedes, barberos }: { sedes: Sede[]; barberos: Barb
           ))}
         </select>
         <input value={gCat} onChange={(e) => setGCat(e.target.value)} placeholder="Categoría (ej. papelería, insumos)" className={fld} />
-        <input type="number" value={gMonto} onChange={(e) => setGMonto(e.target.value)} placeholder="Monto" className={fld} />
+        <input type="number" inputMode="numeric" min={1} step={1} value={gMonto} onChange={(e) => { setGMonto(e.target.value); if (gError) setGError(""); }} placeholder="Monto" className={fld} />
         <input value={gDesc} onChange={(e) => setGDesc(e.target.value)} placeholder="Descripción (opcional)" className={fld} />
+        {gError && <p className="text-xs text-red-500">{gError}</p>}
         <button disabled={gSaving} className={btn}>{gSaving ? "Guardando…" : "Agregar gasto"}</button>
       </form>
 
@@ -81,8 +100,9 @@ export function CuadreForms({ sedes, barberos }: { sedes: Sede[]; barberos: Barb
             <option key={b.id} value={b.id}>{b.nombre}</option>
           ))}
         </select>
-        <input type="number" value={aMonto} onChange={(e) => setAMonto(e.target.value)} placeholder="Monto del adelanto" className={fld} />
+        <input type="number" inputMode="numeric" min={1} step={1} value={aMonto} onChange={(e) => { setAMonto(e.target.value); if (aError) setAError(""); }} placeholder="Monto del adelanto" className={fld} />
         <input value={aNota} onChange={(e) => setANota(e.target.value)} placeholder="Nota (opcional)" className={fld} />
+        {aError && <p className="text-xs text-red-500">{aError}</p>}
         <button disabled={aSaving} className={btn}>{aSaving ? "Guardando…" : "Agregar adelanto"}</button>
       </form>
     </div>

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { actualizarPrecioProducto } from "@/lib/actions";
+import { sanearCop } from "@/lib/admin-reglas";
 import { cop } from "@/lib/format";
 
 // Precio con edición inline: tap sobre el monto → input numérico → Enter o ✓
@@ -12,10 +13,20 @@ export function PrecioEditable({ productoId, precio }: { productoId: string; pre
   const [editing, setEditing] = useState(false);
   const [val, setVal] = useState(String(precio));
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(false);
 
   async function guardar() {
-    const n = Math.floor(Number(val));
-    if (!Number.isFinite(n) || n < 0) return;
+    // Borrar el campo dejaba Number("")=0 → se guardaba el producto GRATIS;
+    // un decimal se truncaba en silencio. sanearCop rechaza vacío, negativo,
+    // decimal y no-numérico; además exigimos > 0 (un producto no vale $0).
+    const n = sanearCop(val);
+    if (n === null || n <= 0) {
+      // Input inválido: no guardamos y restauramos el valor previo a la vista.
+      setVal(String(precio));
+      setError(true);
+      return;
+    }
+    setError(false);
     if (n === precio) {
       setEditing(false);
       return;
@@ -37,6 +48,7 @@ export function PrecioEditable({ productoId, precio }: { productoId: string; pre
         type="button"
         onClick={() => {
           setVal(String(precio));
+          setError(false);
           setEditing(true);
         }}
         title="Tocá para editar el precio"
@@ -52,15 +64,18 @@ export function PrecioEditable({ productoId, precio }: { productoId: string; pre
     <span className="inline-flex items-center gap-1">
       <input
         type="number"
-        min={0}
+        min={1}
+        step={1}
         autoFocus
         value={val}
-        onChange={(e) => setVal(e.target.value)}
+        onChange={(e) => { setVal(e.target.value); if (error) setError(false); }}
         onKeyDown={(e) => {
           if (e.key === "Enter") guardar();
           if (e.key === "Escape") setEditing(false);
         }}
-        className="w-24 rounded-lg border border-accent bg-bg px-2 py-1 text-sm text-ink tabular-nums focus:outline-none"
+        aria-invalid={error}
+        title={error ? "Poné un precio válido en pesos (mayor a $0, sin decimales)." : undefined}
+        className={`w-24 rounded-lg border bg-bg px-2 py-1 text-sm text-ink tabular-nums focus:outline-none ${error ? "border-red-500" : "border-accent"}`}
       />
       <button
         type="button"
