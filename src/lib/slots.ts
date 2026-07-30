@@ -67,7 +67,36 @@ export function buildSlots(duracionMin: number): number[] {
   return out;
 }
 
+// Minuto-del-día (0..1439) de un instante EN Bogotá, sin depender del TZ del
+// proceso/dispositivo. En Vercel (UTC) o en un teléfono con otra TZ, getHours()
+// devolvía la hora local y corría toda la disponibilidad; Intl con timeZone fijo
+// lo ancla a Colombia (UTC-5, sin DST). hourCycle 'h23' evita el "24:00".
+function minutoBogota(instante: Date): number {
+  const p = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "America/Bogota",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(instante);
+  const h = Number(p.find((x) => x.type === "hour")?.value);
+  const m = Number(p.find((x) => x.type === "minute")?.value);
+  return h * 60 + m;
+}
+
+// Fecha civil YYYY-MM-DD de un Date tomando sus componentes LOCALES (el mismo
+// criterio con que nextDays arma los chips y con que la UI los rotula). Así el
+// "¿es hoy?" no corre el DÍA respecto a lo que ve el usuario.
+function ymdLocal(d: Date): string {
+  const y = d.getFullYear();
+  const m = (d.getMonth() + 1).toString().padStart(2, "0");
+  const dd = d.getDate().toString().padStart(2, "0");
+  return `${y}-${m}-${dd}`;
+}
+
 // Slots ocupados: solapan un rango ocupado, o ya pasaron si `day` es hoy.
+// Toda la matemática de hora se fija a America/Bogota (ver minutoBogota): con la
+// TZ del dispositivo la disponibilidad salía corrida y las ausencias/OPEN/CLOSE
+// no matcheaban en el server (UTC) ni en teléfonos fuera de Colombia.
 export function computeTaken(params: {
   slots: number[];
   ocupados: { inicio: string; fin: string }[];
@@ -77,17 +106,15 @@ export function computeTaken(params: {
   const { slots, ocupados, day, duracionMin } = params;
   const s = new Set<number>();
   for (const o of ocupados) {
-    const oi = new Date(o.inicio);
-    const of = new Date(o.fin);
-    const startMin = oi.getHours() * 60 + oi.getMinutes();
-    const endMin = of.getHours() * 60 + of.getMinutes();
+    const startMin = minutoBogota(new Date(o.inicio));
+    const endMin = minutoBogota(new Date(o.fin));
     for (const t of slots) {
       if (t < endMin && t + duracionMin > startMin) s.add(t);
     }
   }
   const now = new Date();
-  if (day.toDateString() === now.toDateString()) {
-    const nowMin = now.getHours() * 60 + now.getMinutes();
+  if (ymdLocal(day) === bogotaYmd(now)) {
+    const nowMin = minutoBogota(now);
     for (const t of slots) if (t <= nowMin) s.add(t);
   }
   return s;

@@ -1,7 +1,83 @@
-// Self-check de finEfectivo (disponibilidad guiada por la silla real).
+// Self-check de slots: finEfectivo (disponibilidad guiada por la silla real),
+// buildSlots/computeTaken (grilla y ocupación anclada a Bogotá) y faltaParaLlegar.
 //   node scripts/check-slots.ts
 import assert from "node:assert/strict";
-import { finEfectivo, EN_CURSO_GRACIA_MIN, faltaParaLlegar, MARGEN_LLEGADA_HORAS } from "../src/lib/slots.ts";
+import { spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
+import {
+  finEfectivo,
+  EN_CURSO_GRACIA_MIN,
+  faltaParaLlegar,
+  MARGEN_LLEGADA_HORAS,
+  buildSlots,
+  computeTaken,
+  OPEN,
+  CLOSE,
+  STEP,
+} from "../src/lib/slots.ts";
+
+// ---- buildSlots: grilla de inicios válidos, respeta el cierre (AUD-D-007) ----
+function checkBuildSlots() {
+  const s30 = buildSlots(30);
+  assert.equal(s30[0], OPEN, "buildSlots(30) arranca en OPEN (9:00)");
+  assert.equal(s30[s30.length - 1], CLOSE - 30, "buildSlots(30) termina 19:30");
+  assert.ok(!s30.includes(CLOSE), "buildSlots nunca ofrece un inicio en/después de CLOSE");
+  // Paso constante = STEP.
+  for (let i = 1; i < s30.length; i++) assert.equal(s30[i] - s30[i - 1], STEP);
+  // Duraciones más largas respetan el cierre (el último inicio + dur <= CLOSE).
+  for (const dur of [45, 60, 90]) {
+    const s = buildSlots(dur);
+    assert.ok(s[s.length - 1] + dur <= CLOSE, `buildSlots(${dur}) respeta CLOSE`);
+    assert.ok(s[0] === OPEN);
+  }
+}
+
+// ---- computeTaken: ocupación anclada a Bogotá (AUD-D-001 + AUD-D-007) ----
+// Estos casos usan instantes ABSOLUTOS (…Z) y esperan minutos-de-Bogotá (UTC-5).
+// Si computeTaken volviera a usar la hora del dispositivo (getHours), fallan bajo
+// cualquier TZ != Bogotá — por eso además se re-corren en un hijo con otra TZ.
+function checkComputeTakenBogota() {
+  const slots = buildSlots(30);
+  // `day` deliberadamente NO es hoy, para que la rama "slots pasados de hoy" no
+  // entre y los casos queden deterministas (solo prueba el solape).
+  const day = new Date(2020, 0, 15); // 15-ene-2020, local
+
+  // 14:30Z–15:00Z = 09:30–10:00 en Bogotá → 570..600. Borde exacto: el slot 9:00
+  // (termina 9:30 == inicio ocupado) NO se tacha; solo se tacha 9:30.
+  const t1 = computeTaken({
+    slots,
+    ocupados: [{ inicio: "2026-07-11T14:30:00Z", fin: "2026-07-11T15:00:00Z" }],
+    day,
+    duracionMin: 30,
+  });
+  assert.ok(!t1.has(9 * 60), "9:00 libre: fin del slot == inicio ocupado, no solapa");
+  assert.ok(t1.has(9 * 60 + 30), "9:30 ocupado");
+  assert.ok(!t1.has(10 * 60), "10:00 libre: inicio del slot == fin ocupado");
+
+  // Solape PARCIAL: 14:15Z–14:45Z = 09:15–09:45 Bogotá → tacha 9:00 y 9:30.
+  const t2 = computeTaken({
+    slots,
+    ocupados: [{ inicio: "2026-07-11T14:15:00Z", fin: "2026-07-11T14:45:00Z" }],
+    day,
+    duracionMin: 30,
+  });
+  assert.ok(t2.has(9 * 60), "9:00 ocupado por solape parcial");
+  assert.ok(t2.has(9 * 60 + 30), "9:30 ocupado por solape parcial");
+  assert.ok(!t2.has(10 * 60), "10:00 libre");
+
+  // Sin ocupados y día que no es hoy: nada tachado.
+  const t3 = computeTaken({ slots, ocupados: [], day, duracionMin: 30 });
+  assert.equal(t3.size, 0, "sin ocupados y no-hoy: grilla libre");
+}
+
+
+// Hijo re-lanzado con TZ forzada: corre SOLO la matemática sensible a huso y sale.
+// Si computeTaken usara la TZ del dispositivo, acá (TZ != Bogotá) reventaría.
+if (process.env.SLOTS_TZ_CHILD) {
+  checkBuildSlots();
+  checkComputeTakenBogota();
+  process.exit(0);
+}
 
 const MIN = 60000;
 // Fin estimado de una cita: 10:00:00Z. (Instantes absolutos; la TZ no importa.)
@@ -55,5 +131,20 @@ assert.equal(faltaParaLlegar(citaISO, cita + 45 * 60000), null);
 
 // 6) Entre 2h y 2h59 se muestra en minutos redondeados a horas; más de 2h → "Xh".
 assert.equal(faltaParaLlegar(citaISO, cita - 3 * 3600_000), "faltan 3h");
+
+// Grilla + ocupación anclada a Bogotá, en la TZ actual del proceso.
+checkBuildSlots();
+checkComputeTakenBogota();
+
+// Y lo mismo re-corrido en un proceso hijo con una TZ bien distinta a Bogotá:
+// caza cualquier regresión a la hora del dispositivo aunque la máquina de dev
+// esté configurada en Colombia.
+for (const tz of ["America/New_York", "Asia/Tokyo", "UTC"]) {
+  const r = spawnSync(process.execPath, [fileURLToPath(import.meta.url)], {
+    env: { ...process.env, TZ: tz, SLOTS_TZ_CHILD: "1" },
+    encoding: "utf8",
+  });
+  assert.equal(r.status, 0, `computeTaken debe dar lo mismo bajo TZ=${tz}\n${r.stderr ?? ""}`);
+}
 
 console.log("check-slots OK");
