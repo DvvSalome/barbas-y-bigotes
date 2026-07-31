@@ -64,7 +64,7 @@ Per-barber 6-digit PIN in `barbero_pin` (RLS deny-all + `revoke all … from ano
 
 ### Migrations (`supabase/migrations`)
 
-Applied **manually by the user** in the Supabase SQL Editor — Claude cannot run prod DDL. Numbered `0001`–`0015`; note there are **two `0002_*`** files (`live_sync` and `push_subscriptions`). Demo seed: `supabase/seed/demo.sql` (idempotent, rows tagged `origen='demo'`). The `notify_client` Edge Function (`supabase/functions/`) is currently broken and unwired — don't assume it fires.
+Applied **manually by the user** in the Supabase SQL Editor — Claude cannot run prod DDL. Numbered `0001`–`0039`; note there are **two `0002_*`** files (`live_sync` and `push_subscriptions`). Demo seed: `supabase/seed/demo.sql` (idempotent, rows tagged `origen='demo'`). Email/push avisos (recordatorio, cupo libre, confirmación) run through Supabase views + n8n, which hit the `src/lib/push.ts` web-push emitter via `POST /api/push` — there is **no** Edge Function (`supabase/functions/` no longer exists).
 
 ## Conventions
 
