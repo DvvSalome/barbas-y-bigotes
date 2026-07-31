@@ -12,6 +12,18 @@ import { errorPublico } from "@/lib/errors";
 
 export type PushPayload = { title: string; body: string; url?: string; tag?: string };
 
+// Resumen honesto de un intento de envío. Sirve para que /api/push (y el cron
+// de n8n detrás) sepan si REALMENTE se mandó algo y no den por hecho un 200:
+//   · configurado — había llaves VAPID válidas (si no, el push está apagado).
+//   · enviadas / fallidas — cuántas suscripciones aceptaron/rechazaron el push.
+//   · muertas — suscripciones 404/410 que se borraron (subconjunto de fallidas).
+export type PushResumen = {
+  configurado: boolean;
+  enviadas: number;
+  fallidas: number;
+  muertas: number;
+};
+
 // null = todavía no se intentó configurar; true = listo; false = sin llaves (no-op).
 let vapidListo: boolean | null = null;
 
@@ -42,9 +54,14 @@ function configurarVapid(): boolean {
 // Notifica a TODAS las suscripciones del cliente (un cliente puede tener el
 // celular y el compu suscritos). Las suscripciones muertas (404/410: el
 // navegador las revocó) se borran de la tabla como housekeeping.
-export async function pushACliente(clienteRef: string, payload: PushPayload): Promise<void> {
+export async function pushACliente(clienteRef: string, payload: PushPayload): Promise<PushResumen> {
+  const configurado = configurarVapid();
+  // Estado base: nada enviado. Se devuelve tal cual si el push está apagado,
+  // no hay clienteRef o no hay suscripciones — así el caller distingue "no se
+  // mandó" de "se mandó bien" en vez de asumir un 200.
+  const resumen: PushResumen = { configurado, enviadas: 0, fallidas: 0, muertas: 0 };
   try {
-    if (!clienteRef || !configurarVapid()) return;
+    if (!clienteRef || !configurado) return resumen;
 
     const sb = supabaseAdmin();
     const { data, error } = await sb
@@ -53,10 +70,10 @@ export async function pushACliente(clienteRef: string, payload: PushPayload): Pr
       .eq("cliente_ref", clienteRef);
     if (error) {
       errorPublico("pushACliente select", error);
-      return;
+      return resumen;
     }
     const subs = (data ?? []) as { endpoint: string; p256dh: string; auth: string }[];
-    if (!subs.length) return;
+    if (!subs.length) return resumen;
 
     const cuerpo = JSON.stringify(payload);
     const resultados = await Promise.allSettled(
@@ -70,11 +87,16 @@ export async function pushACliente(clienteRef: string, payload: PushPayload): Pr
 
     const muertas: string[] = [];
     resultados.forEach((r, i) => {
-      if (r.status !== "rejected") return;
+      if (r.status !== "rejected") {
+        resumen.enviadas++;
+        return;
+      }
+      resumen.fallidas++;
       const status = (r.reason as { statusCode?: number } | null)?.statusCode;
       if (status === 404 || status === 410) muertas.push(subs[i].endpoint);
       else console.error(`[pushACliente] fallo enviando a ${subs[i].endpoint}:`, r.reason);
     });
+    resumen.muertas = muertas.length;
     if (muertas.length) {
       const { error: delErr } = await sb
         .from("push_subscriptions")
@@ -86,4 +108,5 @@ export async function pushACliente(clienteRef: string, payload: PushPayload): Pr
     // Red de seguridad final: acá no se lanza nada, pase lo que pase.
     console.error("[pushACliente]", e);
   }
+  return resumen;
 }

@@ -7,9 +7,30 @@ export type ChatMessage = {
   content: string;
 };
 
+// Topes anti-abuso: es un proxy a un LLM (quema tokens/plata). El asistente es
+// publico por diseno (ayuda a reservar sin login), asi que en vez de exigir
+// sesion acotamos la entrada del cliente: cuantos mensajes y que tan largos.
+const MAX_MENSAJES = 20;
+const MAX_LARGO_MENSAJE = 2000;
+
+// El rol 'system' lo pone SOLO el servidor (el system prompt de abajo). Nunca
+// dejamos que el cliente inyecte un 'system' propio para no reescribir las reglas.
+function sanearMensajes(messages: ChatMessage[]): ChatMessage[] {
+  if (!Array.isArray(messages)) return [];
+  return messages
+    .filter(m => m && typeof m.content === "string" && m.content.trim().length > 0)
+    .slice(-MAX_MENSAJES)
+    .map(m => ({
+      role: m.role === "assistant" ? "assistant" : "user",
+      content: m.content.slice(0, MAX_LARGO_MENSAJE)
+    }));
+}
+
 export async function chatConAsistente(messages: ChatMessage[]): Promise<{ text: string }> {
   const nvidiaKey = process.env.NVIDIA_API_KEY || process.env.NVAPI_KEY;
   const geminiKey = process.env.GEMINI_API_KEY;
+
+  const mensajesSaneados = sanearMensajes(messages);
 
   const servicesContext = servicios.map(s => ({
     id: s.id,
@@ -56,7 +77,7 @@ Habla en español colombiano caribeño.`;
 
   const fullMessages: ChatMessage[] = [
     { role: "system", content: systemPrompt },
-    ...messages
+    ...mensajesSaneados
   ];
 
   try {

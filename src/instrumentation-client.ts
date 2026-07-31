@@ -17,15 +17,17 @@ if (process.env.NEXT_PUBLIC_SENTRY_DSN) {
     // Nombre, teléfono y correo del cliente NO se mandan a un tercero.
     sendDefaultPii: false,
     // Ruido que no es de la app y que en móvil de gama baja abunda: extensiones
-    // del navegador, scripts de terceros y el "error" de red de un túnel que se
-    // cae. Si esto llega a Sentry, el aviso que sí importa queda enterrado.
+    // del navegador y scripts de terceros. Si esto llega a Sentry, el aviso que
+    // sí importa queda enterrado.
+    // OJO: los errores de red ("Failed to fetch" / "NetworkError" / "Load
+    // failed") NO se filtran acá por mensaje — un ignoreErrors global se tragaría
+    // también un OUTAGE de NUESTRA API visto desde el navegador, que es
+    // justamente lo que queremos ver. Ese caso se afina en beforeSend según de
+    // dónde salió la petición (ver `esErrorDeRed` + `tocaNuestroCodigo`).
     ignoreErrors: [
       "ResizeObserver loop limit exceeded",
       "ResizeObserver loop completed with undelivered notifications",
       "Non-Error promise rejection captured",
-      /^Failed to fetch$/,
-      /^NetworkError/,
-      /^Load failed$/,
       /chrome-extension:/,
       /moz-extension:/,
     ],
@@ -43,6 +45,22 @@ if (process.env.NEXT_PUBLIC_SENTRY_DSN) {
       // dejarlo pasar entierra los avisos que sí importan.
       const frames = (evento.exception?.values ?? []).flatMap((v) => v.stacktrace?.frames ?? []);
       if (esRuidoDeExtension(frames.map((f) => f.filename ?? f.abs_path))) return null;
+
+      // Errores de RED. En vez de tragárselos todos por mensaje (lo que ocultaba
+      // un outage propio de la API), se descarta solo el ruido de terceros: un
+      // fetch que falló SIN pasar por nuestro bundle no es algo que podamos
+      // arreglar. Si la pila toca nuestro código (`/_next/` o nuestro origen),
+      // puede ser la API caída vista desde el celular → tiene que llegar.
+      const RED_RE = /^(Failed to fetch|NetworkError|Load failed)/;
+      const esErrorDeRed = (evento.exception?.values ?? []).some((v) => RED_RE.test(v.value ?? ""));
+      if (esErrorDeRed) {
+        const origen = typeof location !== "undefined" ? location.origin : "";
+        const tocaNuestroCodigo = frames.some((f) => {
+          const fn = f.filename ?? f.abs_path ?? "";
+          return fn.includes("/_next/") || (origen !== "" && fn.startsWith(origen));
+        });
+        if (!tocaNuestroCodigo) return null;
+      }
 
       return evento;
     },

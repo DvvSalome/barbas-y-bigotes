@@ -60,6 +60,18 @@ export async function POST(request: Request) {
   }
 
   // pushACliente jamás lanza (y borra las suscripciones muertas por su cuenta).
-  await pushACliente(p.clienteRef, { title: p.title, body: p.body, url: p.url, tag: p.tag });
-  return Response.json({ ok: true });
+  const r = await pushACliente(p.clienteRef, { title: p.title, body: p.body, url: p.url, tag: p.tag });
+
+  // Respuesta honesta: n8n manda el email igual, pero acá NO mentimos con un 200
+  // fijo. Si el push está apagado (sin VAPID) o todos los envíos fallaron, se
+  // devuelve ok:false + motivo + conteos para que el cron pueda detectar la
+  // degradación. "Sin suscripciones" es un 200 legítimo (el cliente no activó
+  // push), pero queda visible en el body (enviadas:0).
+  if (!r.configurado) {
+    return Response.json({ ok: false, motivo: "push_deshabilitado", ...r }, { status: 503 });
+  }
+  if (r.enviadas === 0 && r.fallidas > 0) {
+    return Response.json({ ok: false, motivo: "envio_fallido", ...r }, { status: 502 });
+  }
+  return Response.json({ ok: true, ...r });
 }

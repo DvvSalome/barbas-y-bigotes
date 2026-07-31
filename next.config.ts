@@ -44,6 +44,12 @@ const withPWA = withPWAInit({
   aggressiveFrontEndNavCaching: true,
   reloadOnOnline: true,
   disable: process.env.NODE_ENV === "development",
+  // No precachear la media pesada del hero/scroll 3D: son ~10MB (hero.mp4 +
+  // ~180 frames webp + scene.js) que ninguna página viva referencia, y sin
+  // esto @ducanh2912/next-pwa se los traga en la PRIMERA visita — medio disco
+  // de datos móviles a un Android de gama media que nunca los ve. Cada patrón
+  // lleva "!" (exclusión); se conserva el noprecache/ por defecto del plugin.
+  publicExcludes: ["!noprecache/**/*", "!video/**", "!scroll/**", "!scene.js"],
   // Sin conexión y ruta no cacheada → página offline con marca.
   fallbacks: {
     document: "/~offline",
