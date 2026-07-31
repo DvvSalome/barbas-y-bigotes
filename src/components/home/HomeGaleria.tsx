@@ -32,7 +32,7 @@ export function HomeGaleria() {
               data-reveal
               style={{ "--reveal-delay": `${i * 80}ms` } as React.CSSProperties}
               key={n}
-              className="relative aspect-[3/4] overflow-hidden rounded-xl border border-[rgba(242,237,228,0.1)]"
+              className="bb-foto-skeleton relative aspect-[3/4] overflow-hidden rounded-xl border border-[rgba(242,237,228,0.1)]"
             >
               <Image
                 src={`/cortes/corte-${n}.jpg`}
@@ -65,7 +65,7 @@ export function HomeGaleria() {
               data-reveal
               style={{ "--reveal-delay": `${i * 80}ms` } as React.CSSProperties}
               key={n}
-              className={`relative overflow-hidden rounded-[14px] border border-[rgba(242,237,228,0.1)] ${span}`}
+              className={`bb-foto-skeleton relative overflow-hidden rounded-[14px] border border-[rgba(242,237,228,0.1)] ${span}`}
             >
               <Image
                 src={`/cortes/corte-${n}.jpg`}

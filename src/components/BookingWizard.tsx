@@ -890,7 +890,7 @@ export function BookingWizard({
                       setSedeId(s.id);
                       setBarbero(null);
                     }}
-                    className="relative h-[130px] w-full overflow-hidden rounded-2xl text-left md:h-[300px]"
+                    className="bb-foto-skeleton relative h-[130px] w-full overflow-hidden rounded-2xl text-left md:h-[300px]"
                     style={{ border: `2px solid ${sel ? "#d23f34" : "rgba(242,237,228,.12)"}` }}
                   >
                     <Image src={info.frente} alt={s.nombre} fill sizes="(max-width:768px) 100vw, 50vw" className="object-cover" />
@@ -978,7 +978,7 @@ export function BookingWizard({
                       className="flex flex-col overflow-hidden rounded-xl text-left"
                       style={{ border: `2px solid ${sel ? "#d23f34" : "rgba(242,237,228,.1)"}` }}
                     >
-                      <div className="relative aspect-[4/3] w-full overflow-hidden bg-elevated md:aspect-[3/2]">
+                      <div className="bb-foto-skeleton relative aspect-[4/3] w-full overflow-hidden md:aspect-[3/2]">
                         <Image src={foto} alt="" fill sizes="(max-width:768px) 50vw, 240px" className="object-cover" />
                         <span
                           className="absolute bottom-1.5 left-1.5 flex items-center gap-1 rounded-[5px] px-2 py-0.5 font-display text-[11px] font-extrabold text-white"

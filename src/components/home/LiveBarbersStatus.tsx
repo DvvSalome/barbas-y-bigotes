@@ -131,7 +131,7 @@ export function LiveBarbersStatus() {
                       </span>
                     </div>
 
-                    <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-ink/40 border border-line">
+                    <div className="bb-foto-skeleton relative h-14 w-14 shrink-0 overflow-hidden rounded-xl border border-line">
                       <img
                         src={b.fotoUrl || "/cortes/corte-3.jpg"}
                         alt={b.nombre}

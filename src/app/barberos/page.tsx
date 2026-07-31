@@ -26,7 +26,7 @@ function BarberoCard({ barbero: b, sedeNombre }: { barbero: Barbero; sedeNombre:
   return (
     <div className="bb-card overflow-hidden rounded-[18px] border border-[rgba(242,237,228,0.1)] bg-panel transition duration-200 hover:-translate-y-1.5 hover:border-accent/40">
       {/* Foto B/N → color al hover de la card */}
-      <div className="relative aspect-[4/4.4] bg-[linear-gradient(165deg,#262019,#0b0a09)]">
+      <div className="bb-foto-skeleton relative aspect-[4/4.4]">
         <span
           className="bb-foto absolute inset-0 grayscale transition-[filter] duration-700 ease-out"
           style={{

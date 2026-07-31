@@ -81,7 +81,7 @@ export function HomeHero() {
       </h1>
 
       {/* ---------------- MÓVIL (spec §1.2) ---------------- */}
-      <div className="relative h-[380px] overflow-hidden md:hidden">
+      <div className="bb-foto-skeleton relative h-[380px] overflow-hidden md:hidden">
         <div className={`absolute inset-[-4%] ${kbClass}`}>
           <Image
             src="/sedes/parque-venezuela-interior.jpg"
@@ -127,7 +127,7 @@ export function HomeHero() {
       {/* ---------------- DESKTOP (spec §2.2) ---------------- */}
       <div className="hidden md:block">
         <div className="mx-auto max-w-[1180px] px-6 pt-6">
-          <div className="relative h-[600px] overflow-hidden rounded-[30px] border border-[rgba(242,237,228,0.07)] shadow-[0_45px_120px_-50px_rgba(0,0,0,0.9)]">
+          <div className="bb-foto-skeleton relative h-[600px] overflow-hidden rounded-[30px] border border-[rgba(242,237,228,0.07)] shadow-[0_45px_120px_-50px_rgba(0,0,0,0.9)]">
             <div className={`absolute inset-[-4%] ${kbClass}`}>
               <Image
                 src="/sedes/parque-venezuela-interior.jpg"

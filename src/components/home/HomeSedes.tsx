@@ -38,7 +38,7 @@ export function HomeSedes() {
             style={{ "--reveal-delay": `${i * 80}ms` } as React.CSSProperties}
               key={s.id}
               href={`/reservar?sede=${s.id}`}
-              className="relative block h-[150px] overflow-hidden rounded-2xl border border-[rgba(242,237,228,0.1)]"
+              className="bb-foto-skeleton relative block h-[150px] overflow-hidden rounded-2xl border border-[rgba(242,237,228,0.1)]"
             >
               <Image
                 src={s.foto}
@@ -74,7 +74,7 @@ export function HomeSedes() {
             <Link
               key={s.id}
               href={`/reservar?sede=${s.id}`}
-              className="group relative block h-[230px] overflow-hidden rounded-[18px] border border-[rgba(242,237,228,0.1)]"
+              className="bb-foto-skeleton group relative block h-[230px] overflow-hidden rounded-[18px] border border-[rgba(242,237,228,0.1)]"
             >
               <Image
                 src={s.foto}

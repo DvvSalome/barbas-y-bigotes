@@ -211,6 +211,31 @@ body {
   50%, 100% { opacity: 0; }
 }
 
+/* Esqueleto de foto: brillo que recorre mientras la imagen carga (internet
+   lento / Android de gama media). Va en el CONTENEDOR relativo; cuando la foto
+   (next/image o <img>, opaca) termina de cargar, la tapa. Cero JS. */
+@keyframes bbshimmer {
+  0% { background-position: 180% 0; }
+  100% { background-position: -180% 0; }
+}
+.bb-foto-skeleton {
+  background-color: var(--panel);
+  background-image: linear-gradient(
+    100deg,
+    transparent 20%,
+    rgba(242, 237, 228, 0.05) 38%,
+    rgba(242, 237, 228, 0.11) 50%,
+    rgba(242, 237, 228, 0.05) 62%,
+    transparent 80%
+  );
+  background-size: 200% 100%;
+  background-repeat: no-repeat;
+  animation: bbshimmer 1.5s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .bb-foto-skeleton { animation: none; }
+}
+
 /* Fotos de barberos: B/N por defecto y a color al hover de la card (proto §0). */
 .bb-card:hover .bb-foto {
   filter: grayscale(0) !important;
