@@ -801,6 +801,15 @@ export async function actualizarReserva(
   if (!(await staffPuedeOperarSede(staff, rsvRow.sede_id)))
     return { ok: false, error: "Esa cita es de otra sede." };
 
+  // Whitelist de las transiciones del mostrador: solo estas tres. A 'completada'
+  // se llega EXCLUSIVAMENTE por completarReserva (cierra con venta); aceptar
+  // cualquier valor del enum acá dejaba marcar una cita 'completada'/'pendiente'
+  // por POST directo y volverla no cobrable (el claim de completarReserva solo
+  // reclama pendiente/confirmada/en_curso).
+  const ESTADOS_MOSTRADOR = ["en_curso", "cancelada", "no_show"];
+  if (patch.estado !== undefined && !ESTADOS_MOSTRADOR.includes(patch.estado))
+    return { ok: false, error: "Estado inválido." };
+
   // Guard de "Llegó": no se puede pasar a la silla una cita que arranca dentro de
   // más de 2 horas. En el mostrador hay varias tarjetas juntas y un clic en la del
   // turno de la tarde la cerraba como venta de ahora. El que llega temprano igual
@@ -812,9 +821,21 @@ export async function actualizarReserva(
     }
   }
 
+  // Armado del update campo por campo (no pasar el patch crudo): así ningún
+  // campo inesperado del POST llega a la tabla. La llegada es una etiqueta de
+  // texto que la UI manda como 'a_tiempo'; se acota a los valores conocidos.
+  const cambios: { estado?: string; llegada?: string } = {};
+  if (patch.estado !== undefined) cambios.estado = patch.estado;
+  if (patch.llegada !== undefined) {
+    if (!["a_tiempo", "tarde"].includes(patch.llegada))
+      return { ok: false, error: "Llegada inválida." };
+    cambios.llegada = patch.llegada;
+  }
+  if (Object.keys(cambios).length === 0) return { ok: false, error: "Nada para actualizar." };
+
   const { data, error } = await admin
     .from("reservas")
-    .update(patch)
+    .update(cambios)
     .eq("id", reservaId)
     .select("id,cliente_ref");
   if (error) return { ok: false, error: errorPublico("actualizarReserva", error) };
@@ -1377,6 +1398,11 @@ export async function crearCupon(input: {
   if (!code) return { ok: false, error: "Código requerido" };
   if (!input.valor || input.valor <= 0) return { ok: false, error: "Valor inválido" };
   if (input.tipo === "porcentaje" && input.valor > 100) return { ok: false, error: "El porcentaje no puede superar 100" };
+  // Vencimiento en el pasado: se rechaza (si no, el cupón se creaba y se listaba
+  // como ACTIVO pero validarCupon lo rebota como "vencido" al cobrar). Se compara
+  // contra HOY en Bogotá —no el UTC del server— para no rechazar el día vigente.
+  if (input.venceEn && input.venceEn < bogotaYmd())
+    return { ok: false, error: "Esa fecha de vencimiento ya pasó. Elegí hoy o una fecha futura." };
   const { error } = await sb.from("cupones").insert({
     codigo: code,
     descripcion: input.descripcion || null,
@@ -1407,18 +1433,20 @@ export async function canjearPuntos(input: { clienteRef: string; puntos: number;
   const sb = await supabaseServerAuth();
   const denied = await requireAdmin(sb);
   if (denied) return { ok: false, error: denied };
-  if (!input.puntos || input.puntos <= 0) return { ok: false, error: "Puntos inválidos" };
+  // Puntos: entero mayor a cero (antes solo chequeaba >0, dejaba pasar decimales/gigantes).
+  const puntos = sanearCantidad(input.puntos);
+  if (puntos === null || puntos <= 0) return { ok: false, error: "Puntos inválidos" };
   // Verifica saldo disponible.
   const { data } = await sb.from("puntos_mov").select("tipo,puntos").eq("cliente_ref", input.clienteRef);
   const saldo = ((data ?? []) as { tipo: string; puntos: number }[]).reduce(
     (a, m) => a + (m.tipo === "ganado" ? m.puntos : -m.puntos),
     0,
   );
-  if (input.puntos > saldo) return { ok: false, error: `Saldo insuficiente (${saldo} pts)` };
+  if (puntos > saldo) return { ok: false, error: `Saldo insuficiente (${saldo} pts)` };
   const { error } = await sb.from("puntos_mov").insert({
     cliente_ref: input.clienteRef,
     tipo: "canjeado",
-    puntos: input.puntos,
+    puntos,
     nota: input.nota || "Canje",
   });
   if (error) return { ok: false, error: errorPublico("canjearPuntos", error) };
@@ -1440,10 +1468,16 @@ export async function registrarGasto(input: {
   const sb = await supabaseServerAuth();
   const denied = await requireAdmin(sb);
   if (denied) return { ok: false, error: denied };
+  // Saneo del monto (misma barrera que addProducto): entero de pesos, sin negativos
+  // ni decimales raros, y mayor a cero (un gasto de $0 no cuadra). Sin esto un
+  // negativo inflaba el esperado del cierre y daba un faltante inventado.
+  const monto = sanearCop(input.monto);
+  if (monto === null || monto <= 0)
+    return { ok: false, error: "El monto tiene que ser un número entero de pesos, mayor a cero." };
   const { error } = await sb.from("gastos").insert({
     sede_id: input.sede,
     categoria: input.categoria,
-    monto: input.monto,
+    monto,
     descripcion: input.descripcion || null,
   });
   if (error) return { ok: false, error: errorPublico("registrarGasto", error) };
@@ -1460,10 +1494,15 @@ export async function registrarAdelanto(input: {
   const sb = await supabaseServerAuth();
   const denied = await requireAdmin(sb);
   if (denied) return { ok: false, error: denied };
+  // Saneo del monto: entero de pesos, mayor a cero. Un negativo dejaba un saldo
+  // negativo que se resta mal en la liquidación del barbero.
+  const monto = sanearCop(input.monto);
+  if (monto === null || monto <= 0)
+    return { ok: false, error: "El monto tiene que ser un número entero de pesos, mayor a cero." };
   const { error } = await sb.from("adelantos").insert({
     barbero_id: input.barberoId,
-    monto: input.monto,
-    saldo: input.monto,
+    monto,
+    saldo: monto,
     nota: input.nota || null,
   });
   if (error) return { ok: false, error: errorPublico("registrarAdelanto", error) };
@@ -1493,11 +1532,13 @@ export async function agregarMovWallet(input: {
   const sb = await supabaseServerAuth();
   const denied = await requireAdmin(sb);
   if (denied) return { ok: false, error: denied };
-  if (!input.monto || input.monto <= 0) return { ok: false, error: "Monto inválido" };
+  // Monto de la wallet: entero de pesos, mayor a cero.
+  const monto = sanearCop(input.monto);
+  if (monto === null || monto <= 0) return { ok: false, error: "Monto inválido" };
   const { error } = await sb.from("cliente_wallet_mov").insert({
     cliente_ref: input.clienteRef,
     tipo: input.tipo,
-    monto: input.monto,
+    monto,
     nota: input.nota || null,
   });
   if (error) return { ok: false, error: errorPublico("agregarMovWallet", error) };
@@ -1535,10 +1576,17 @@ export async function abrirCaja(input: {
   const sb = await supabaseServerAuth();
   const denied = await requireAdmin(sb);
   if (denied) return { ok: false, error: denied };
+  // Meta y fondo de apertura: enteros de pesos, cero o más (el fondo puede ser 0).
+  const metaDia = sanearCantidad(input.metaDia);
+  if (metaDia === null)
+    return { ok: false, error: "La meta del día tiene que ser un número entero de pesos, cero o más." };
+  const montoApertura = sanearCantidad(input.montoApertura);
+  if (montoApertura === null)
+    return { ok: false, error: "El fondo de apertura tiene que ser un número entero de pesos, cero o más." };
   const { error } = await sb.from("caja_sesiones").insert({
     sede_id: input.sede,
-    meta_dia: input.metaDia,
-    monto_apertura: input.montoApertura,
+    meta_dia: metaDia,
+    monto_apertura: montoApertura,
     estado: "abierta",
   });
   if (error) {
@@ -1818,6 +1866,14 @@ export async function agregarListaEspera(input: {
   const sb = await supabaseServerAuth();
   const denied = await requireStaff(sb);
   if (denied) return { ok: false, error: denied };
+  // Alcance por sede: la RLS de lista_espera es is_staff() sin scoping, así que el
+  // candado real vive acá. Un barbero solo encola en SU sede y para barberos de su
+  // sede; el admin puede en cualquiera.
+  const staff = await getStaffContext();
+  if (!(await staffPuedeOperarSede(staff, input.sede)))
+    return { ok: false, error: "Esa sede no es la tuya." };
+  if (input.barberoId && !(await staffPuedeOperarBarbero(staff, input.barberoId)))
+    return { ok: false, error: "Ese barbero es de otra sede." };
   const clienteRef = await upsertClienteId(sb, input.clienteNombre, input.telefono, "", "walkin");
   const { error } = await sb.from("lista_espera").insert({
     sede_id: input.sede,
@@ -1857,8 +1913,18 @@ export async function servirEspera(id: string): Promise<ActionResult> {
     await sb.from("lista_espera").update({ estado: "esperando" }).eq("id", id);
   }
 
-  // El barbero se atiende a sí mismo; el admin usa el barbero asignado en la espera.
-  const barberoId = staff.rol === "barbero" ? staff.barberoId : ent.barbero_id;
+  // Alcance por sede: la RLS de lista_espera/reservas no ata la sede de la espera,
+  // así que un barbero podía reclamar una espera de la OTRA sede. Se valida acá y
+  // se revierte el claim si no corresponde.
+  if (!(await staffPuedeOperarSede(staff, ent.sede_id))) {
+    await revertir();
+    return { ok: false, error: "Esa espera es de otra sede." };
+  }
+
+  // La cita es de quien FIGURA en la espera (define su comisión, igual que
+  // completarReserva deriva de reservas.barbero_id); solo si la espera no tiene
+  // barbero asignado cae en quien opera el mostrador.
+  const barberoId = ent.barbero_id ?? staff.barberoId;
   if (!barberoId) {
     await revertir();
     return { ok: false, error: "Asigná un barbero a esta espera primero" };
@@ -1895,6 +1961,20 @@ export async function actualizarListaEspera(id: string, estado: string): Promise
   const sb = await supabaseServerAuth();
   const denied = await requireStaff(sb);
   if (denied) return { ok: false, error: denied };
+  // Whitelist contra el enum estado_espera (defensa en profundidad).
+  const ESTADOS_ESPERA = ["esperando", "notificado", "asignado", "vencido", "cancelado"];
+  if (!ESTADOS_ESPERA.includes(estado)) return { ok: false, error: "Estado inválido." };
+  // Alcance por sede: leer la sede de la fila y validar antes de tocarla (la RLS
+  // de lista_espera es is_staff() sin scoping por sede).
+  const staff = await getStaffContext();
+  const { data: fila } = await supabaseAdmin()
+    .from("lista_espera")
+    .select("sede_id")
+    .eq("id", id)
+    .maybeSingle();
+  if (!fila) return { ok: false, error: "Esa espera no existe." };
+  if (!(await staffPuedeOperarSede(staff, (fila as { sede_id: string }).sede_id)))
+    return { ok: false, error: "Esa espera es de otra sede." };
   const { error } = await sb.from("lista_espera").update({ estado }).eq("id", id);
   if (error) return { ok: false, error: errorPublico("actualizarListaEspera", error) };
   revalidatePath("/barbero");
