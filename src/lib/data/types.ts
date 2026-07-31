@@ -20,8 +20,10 @@ export interface Servicio {
   nombre: string;
   categoria: Categoria;
   duracionMin: number;
-  /** Precio por sede en COP. */
-  precios: Record<SedeId, number>;
+  /** Precio por sede en COP. Parcial a propósito: un servicio puede no tener
+   *  fila en servicio_sede para todas las sedes, así que la sede ausente es
+   *  `undefined` (no 0). Los consumidores deben guardar con `!= null` o `?? 0`. */
+  precios: Partial<Record<SedeId, number>>;
   /** Precio "desde $X". */
   desde?: boolean;
   esCombo?: boolean;

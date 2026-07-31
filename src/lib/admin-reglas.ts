@@ -34,6 +34,11 @@ export const sanearCantidad = sanearCop;
  * Un 250% no es un typo inofensivo: se multiplica por cada venta del barbero.
  */
 export function sanearComisionPct(valor: unknown): number | null {
+  // Mismo guard que sanearCop: sin esto Number('')/Number('  ')/Number(null) dan 0
+  // y Number(true) da 1 — todos finitos y en [0,100], así que un campo vacío o un
+  // booleano se guardaba como 0%/1% en vez de rechazarse.
+  if (typeof valor === "string" && valor.trim() === "") return null;
+  if (valor === null || valor === undefined || typeof valor === "boolean") return null;
   const n = typeof valor === "number" ? valor : Number(valor);
   if (!Number.isFinite(n) || n < 0 || n > 100) return null;
   return Math.round(n * 100) / 100;

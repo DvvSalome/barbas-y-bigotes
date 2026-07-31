@@ -48,6 +48,10 @@ assert.equal(sanearComisionPct(100), 100, "100% es el tope");
 assert.equal(sanearComisionPct(250), null, "más de 100% se rechaza");
 assert.equal(sanearComisionPct(-10), null, "comisión negativa se rechaza");
 assert.equal(sanearComisionPct(33.333), 33.33, "se redondea a 2 decimales (numeric(5,2))");
+assert.equal(sanearComisionPct(""), null, "vacío no es 0% (Number('') es 0: el mismo bug que sanearCop)");
+assert.equal(sanearComisionPct("  "), null, "solo espacios tampoco es 0%");
+assert.equal(sanearComisionPct(null), null, "null se rechaza, no pasa como 0%");
+assert.equal(sanearComisionPct(true), null, "un booleano se rechaza (Number(true) es 1)");
 
 // ---------- (c) Nombre ----------
 assert.equal(sanearNombre("  Cera mate  "), "Cera mate", "recorta");

@@ -30,7 +30,14 @@ export function beneficioProximoCorte(
 ): { tipo: BeneficioTarjeta | null; descuento: number; posicion: number } {
   const posicion = (cortesPrevios % TARJETA_SIZE) + 1; // 1..10
   if (posicion === HITO_REGALO) return { tipo: "regalo", descuento: 0, posicion };
-  if (posicion === HITO_50) return { tipo: "50%", descuento: Math.floor(baseCorte / 2), posicion };
+  if (posicion === HITO_50) {
+    // Si la sede no tiene precio de 'corte' (base 0/ausente/NaN, p.ej. precioCorteBase
+    // saturando a 0), no hay sobre qué aplicar el 50%: devolvemos descuento 0 explícito
+    // en vez de Math.floor(NaN)=NaN, que ensuciaría el total. El hito igual se anuncia
+    // como "50%" (tipo/posición intactos para la UI) y el caller topa al precio real.
+    const descuento = baseCorte > 0 ? Math.floor(baseCorte / 2) : 0;
+    return { tipo: "50%", descuento, posicion };
+  }
   return { tipo: null, descuento: 0, posicion };
 }
 

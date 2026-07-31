@@ -30,6 +30,13 @@ assert.deepEqual(beneficioProximoCorte(9, BASE), { tipo: "50%", descuento: 15000
 // floor: un precio impar no puede dejar centavos (el negocio cobra en pesos enteros).
 assert.equal(beneficioProximoCorte(9, 25001).descuento, 12500, "el 50% redondea hacia abajo");
 
+// --- 10º corte con base ausente: la sede sin precio de 'corte' no debe dar plata rara ---
+// precioCorteBase satura a 0 cuando no hay fila servicio_sede: el 50% no puede
+// aplicarse sobre 0 (ni sobre NaN). Sigue anunciándose como "50%" pero descuento 0.
+assert.deepEqual(beneficioProximoCorte(9, 0), { tipo: "50%", descuento: 0, posicion: 10 }, "base 0 → descuento 0, no plata regalada");
+assert.equal(beneficioProximoCorte(9, NaN).descuento, 0, "base NaN → descuento 0, no Math.floor(NaN)");
+assert.equal(beneficioProximoCorte(9, -5000).descuento, 0, "base negativa → descuento 0");
+
 // --- El ciclo se reinicia a los 10 ---
 assert.equal(beneficioProximoCorte(10, BASE).tipo, null, "el 11º arranca ciclo nuevo, sin premio");
 assert.equal(beneficioProximoCorte(14, BASE).tipo, "regalo", "el 15º es el 5º del 2º ciclo: regalo");

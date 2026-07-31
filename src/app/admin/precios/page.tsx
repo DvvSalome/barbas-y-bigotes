@@ -99,7 +99,7 @@ export default async function PreciosPage({
                         <label key={sd.id} className="block">
                           <span className="text-[10px] uppercase tracking-wide text-muted">{sd.nombre}</span>
                           <div className="mt-1 rounded-lg border border-line bg-elevated px-2.5 py-1.5 text-right tabular-nums text-ink">
-                            {s.precios[sd.id] != null ? cop(s.precios[sd.id]) : "—"}
+                            {s.precios[sd.id] != null ? cop(s.precios[sd.id]!) : "—"}
                           </div>
                         </label>
                       ))}
@@ -149,7 +149,7 @@ export default async function PreciosPage({
                         <td className="px-4 py-3 text-muted">{s.duracionMin}m</td>
                         {sedes.map((sd) => (
                           <td key={sd.id} className="px-4 py-2 text-right tabular-nums text-ink">
-                            {s.precios[sd.id] != null ? cop(s.precios[sd.id]) : "—"}
+                            {s.precios[sd.id] != null ? cop(s.precios[sd.id]!) : "—"}
                           </td>
                         ))}
                         <td className="px-4 py-3 text-right">

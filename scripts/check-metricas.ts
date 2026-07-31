@@ -57,6 +57,14 @@ const conSalto = "línea1" + String.fromCharCode(10) + "línea2";
 assert.equal(celdaCsv(conSalto), `"${conSalto}"`, "un salto de línea obliga a citar");
 assert.equal(celdaCsv(null), "", "null es celda vacía, no la palabra null");
 assert.equal(celdaCsv(0), "0", "el cero se escribe, no se come");
+// Inyección de fórmulas: una celda que arranca con = + - @ (o tab/retorno) la
+// ejecuta Excel al abrir el CSV. Se prefija con apóstrofo (fuerza texto) y se cita.
+assert.equal(celdaCsv("=1+2"), "\"'=1+2\"", "una fórmula = se neutraliza con apóstrofo y se cita");
+assert.equal(celdaCsv("+1"), "\"'+1\"", "el + también arranca fórmula");
+assert.equal(celdaCsv("-1+1"), "\"'-1+1\"", "el - también arranca fórmula");
+assert.equal(celdaCsv("@SUM(A1)"), "\"'@SUM(A1)\"", "el @ también arranca fórmula");
+assert.equal(celdaCsv('=HYPERLINK("http://x","hola")'), '"\'=HYPERLINK(""http://x"",""hola"")"', "fórmula con comillas: se neutraliza y se duplican las comillas");
+assert.equal(celdaCsv("Meyer=1"), "Meyer=1", "el = en medio NO es fórmula, no se toca");
 // Una fila armada como en el route: 3 separadores = 4 columnas, pase lo que pase.
 const fila = ["Corte; barba", 'Juan "JJ"', null, 35000].map(celdaCsv).join(";");
 assert.equal(fila.split(";").length - (fila.match(/"[^"]*;[^"]*"/g)?.length ?? 0), 4, "no se corren las columnas");
