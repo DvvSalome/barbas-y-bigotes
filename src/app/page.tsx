@@ -8,6 +8,7 @@ import { HomeDiferencia } from "@/components/home/HomeDiferencia";
 import { HomeServicios } from "@/components/home/HomeServicios";
 import { HomeGaleria } from "@/components/home/HomeGaleria";
 import { HomeSedes } from "@/components/home/HomeSedes";
+import { LiveBarbersStatus } from "@/components/home/LiveBarbersStatus";
 import { HomeApp } from "@/components/home/HomeApp";
 import { Testimonios } from "@/components/home/Testimonios";
 import { Ubicacion } from "@/components/home/Ubicacion";
@@ -54,6 +55,10 @@ export default async function Home() {
         <HomeServicios servicios={destacados} />
         <HomeGaleria />
         <HomeSedes />
+
+        {/* Barberos en vivo: tras elegir sede, "quién está atendiendo ahora".
+            Client component: la data vive fuera del ISR y se refresca sola. */}
+        <LiveBarbersStatus />
 
         {/* Los testimonios siguen siendo solo-desktop (spec §2.8): alargan la home
             en móvil sin ayudar a reservar. El contenido queda en el HTML para los

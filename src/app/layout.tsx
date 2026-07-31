@@ -71,16 +71,25 @@ export default function RootLayout({
   return (
     <html
       lang="es"
+      // El script inline del <head> agrega la clase `js-reveal` a <html> ANTES
+      // de que React hidrate (anti-flash de la aparición al scrollear). Eso hace
+      // que el className del servidor y el del DOM difieran y React tira un aviso
+      // rojo de hidratación en toda ruta pública. suppressHydrationWarning
+      // silencia ESE aviso puntual del nodo raíz — patrón canónico, el mismo que
+      // usan los theme-switchers — sin tapar mismatches reales de otros nodos.
+      suppressHydrationWarning
       className={`${barlow.variable} ${inter.variable} antialiased`}
     >
       <head>
         {/* Aparición al scrollear. Va inline y ANTES del bundle a propósito:
-            (1) marca <html> antes del primer pintado, así no hay parpadeo de
-            contenido que se ve y desaparece; (2) el observer es vanilla, así que
-            revela aunque React todavía no haya hidratado —en un Android de gama
-            media con datos flojos eso es la diferencia entre ver la página y ver
-            un vacío—; (3) si el JS está apagado, la clase nunca se agrega y todo
-            queda visible (los estilos que ocultan cuelgan de .js-reveal). */}
+            (1) marca <html> con .js-reveal antes del primer pintado, así no hay
+            parpadeo de contenido que se ve y desaparece; (2) el revelado espera a
+            que React hidrate (ver más abajo) para no ensuciar la consola con un
+            aviso de hidratación, con un tope de 4 s por si la hidratación nunca
+            llega —en un Android de gama media con datos flojos ese tope es la
+            diferencia entre ver la página y ver un vacío—; (3) si el JS está
+            apagado, la clase nunca se agrega y todo queda visible (los estilos
+            que ocultan cuelgan de .js-reveal). */}
         <script
           dangerouslySetInnerHTML={{
             __html: `(function(){
@@ -100,10 +109,25 @@ if(el.getBoundingClientRect().top<h*0.9){mostrar(el)}else{io.observe(el)}}};
 /* El script corre en el <head>, así que el <body> todavía no existe: hay que
    esperar al DOM. Si el armado falla, se quita la clase y TODO queda visible —
    nunca dejar contenido escondido por culpa de un adorno. */
-var arrancar=function(){try{mirar()}catch(e){d.classList.remove("js-reveal")}};
-if(document.readyState!=="loading"){arrancar()}else{document.addEventListener("DOMContentLoaded",arrancar)}
-/* Navegación cliente (Next no recarga la página): revisa los nodos nuevos. */
-window.addEventListener("load",arrancar);
+var correr=function(){try{mirar()}catch(e){d.classList.remove("js-reveal")}};
+/* Marcar los [data-reveal] (setAttribute + reveal-visible) DESPUÉS de que React
+   hidrate. Si el DOM se muta antes, su className/atributos dejan de matchear el
+   vdom y React tira un aviso rojo de hidratación en TODA ruta pública. Ningún
+   proxy temporal sirve —DOMContentLoaded/load/rAF/idle caen ANTES de la
+   hidratación en dev (webpack) y en gama baja—, así que detectamos el hecho
+   directo: React cuelga sus claves internas (__reactFiber$…/__reactProps$…) en
+   cada nodo al hidratarlo. La hidratación es top-down, con lo que si el ÚLTIMO
+   [data-reveal] ya las tiene, todos los anteriores también. Fallback por timeout
+   para no dejar nada oculto si la detección fallara. El anti-flash NO se pierde:
+   js-reveal ya se agregó arriba (sincrónico); esto solo pospone el revelado. */
+var hidratado=function(){
+var n=document.querySelectorAll("[data-reveal]"),el=n.length?n[n.length-1]:document.body;
+if(!el)return false;
+for(var k in el){if(k.lastIndexOf("__react",0)===0)return true}
+return false;};
+var t0=Date.now();
+var esperar=function(){if(hidratado()||Date.now()-t0>4000){correr()}else{requestAnimationFrame(esperar)}};
+requestAnimationFrame(esperar);
 }catch(e){d.classList.remove("js-reveal")}})();`,
           }}
         />
