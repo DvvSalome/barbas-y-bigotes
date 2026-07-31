@@ -13,6 +13,16 @@ export function ServicioActivoToggle({ id, activo }: { id: string; activo: boole
   const [err, setErr] = useState<string | null>(null);
 
   async function toggle() {
+    // Desactivar saca el servicio de la reserva pública al instante: se pregunta
+    // una vez antes de hacerlo, para no tumbar el catálogo por un toque accidental.
+    // Reactivar no tiene fricción (un solo clic).
+    if (
+      activo &&
+      !window.confirm(
+        "Este servicio deja de aparecer en la reserva pública. ¿Lo sacamos del catálogo?",
+      )
+    )
+      return;
     setErr(null);
     setSaving(true);
     const res = await setServicioActivo(id, !activo);

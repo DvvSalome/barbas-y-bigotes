@@ -237,7 +237,7 @@ export function CierreCaja({
             <span className="shrink-0 font-bold tabular-nums text-ink">{cop(desglose.efectivo)}</span>
           </div>
           <div className="flex items-center justify-between gap-2 border-t border-line/60 px-3.5 py-2.5 text-sm">
-            <span className="min-w-0 text-muted">Digital (Nequi + Daviplata)</span>
+            <span className="min-w-0 text-muted">No efectivo (Nequi, datáfono, transf.)</span>
             <span className="shrink-0 font-bold tabular-nums text-ink">{cop(desglose.digital)}</span>
           </div>
         </div>

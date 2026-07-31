@@ -6,7 +6,6 @@ import { cop } from "@/lib/format";
 import {
   registrarWalkin,
   completarReserva,
-  actualizarReserva,
   historialCliente,
   validarCupon,
   proponerAdelanto,
@@ -146,20 +145,6 @@ export function AgendaList({
     (a, b) => (b.estado === "en_curso" ? 1 : 0) - (a.estado === "en_curso" ? 1 : 0),
   );
   const resto = activosOrd.slice(1);
-
-  async function setEstado(id: string, patch: { estado?: string; llegada?: string }) {
-    setBusy(true);
-    await actualizarReserva(id, patch);
-    setBusy(false);
-    router.refresh();
-  }
-
-  // Cancelar por la barbería: confirmación nativa, libera el cupo (constraint y
-  // disponibilidad excluyen canceladas) y le llega push al cliente.
-  function cancelarCita(r: AgendaItem) {
-    if (!window.confirm(`¿Cancelar la cita de ${r.cliente || "este cliente"} a las ${hora(r.inicio)}? Se le avisa al cliente y el cupo queda libre.`)) return;
-    setEstado(r.id, { estado: "cancelada" });
-  }
 
   async function showHistory(ref: string | null, id: string) {
     if (!ref) return;
@@ -419,36 +404,17 @@ export function AgendaList({
                             Ofrecer adelanto ({hora(earliestSlot.inicio)})
                           </button>
                         )}
-                        {enCurso ? (
+                        {/* Cobrar sigue acá para la cita en la silla (usa abrirCobro:
+                            lleva la hoja a la vista, no togglea). Marcar llegada /
+                            no-show / cancelar se hace SOLO en la columna del barbero
+                            (Recepcion): tenerlos también acá duplicaba la cita en
+                            pantalla y arriesgaba el doble-marcado. */}
+                        {enCurso && (
                           <button
-                            onClick={() => setCompleteFor(completeFor === r.id ? null : r.id)}
+                            onClick={() => abrirCobro(r.id)}
                             className="rounded-full bg-accent px-3 py-1.5 text-xs font-semibold uppercase text-on-accent transition hover:bg-accent-soft"
                           >
                             Cobrar
-                          </button>
-                        ) : (
-                          <button
-                            onClick={() => setEstado(r.id, { estado: "en_curso", llegada: "a_tiempo" })}
-                            disabled={busy}
-                            className="rounded-full border border-line px-3 py-1.5 text-xs transition hover:border-accent/50 disabled:opacity-50"
-                          >
-                            Llegó · a la silla
-                          </button>
-                        )}
-                        <button
-                          onClick={() => setEstado(r.id, { estado: "no_show" })}
-                          disabled={busy}
-                          className="rounded-full border border-line px-3 py-1.5 text-xs text-muted transition hover:text-ink disabled:opacity-50"
-                        >
-                          No llegó
-                        </button>
-                        {!enCurso && (
-                          <button
-                            onClick={() => cancelarCita(r)}
-                            disabled={busy}
-                            className="rounded-full border border-line px-3 py-1.5 text-xs text-muted transition hover:border-accent/40 hover:text-accent-soft disabled:opacity-50"
-                          >
-                            Cancelar cita
                           </button>
                         )}
                       </div>

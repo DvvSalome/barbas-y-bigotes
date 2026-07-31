@@ -51,7 +51,7 @@ export function CuponesAdmin({ cupones }: { cupones: Cupon[] }) {
           <TicketIcon className="h-4 w-4 text-accent" /> Nuevo cupón
         </h3>
         {err && <div className="rounded-lg border border-accent/40 bg-accent/10 px-3 py-2 text-sm text-accent-soft">{err}</div>}
-        <input value={codigo} onChange={(e) => setCodigo(e.target.value.toUpperCase())} placeholder="CÓDIGO (ej. BIENVENIDA)" className={`${fld} uppercase`} />
+        <input value={codigo} onChange={(e) => setCodigo(e.target.value.toUpperCase())} placeholder="CÓDIGO (ej. BIENVENIDA)" maxLength={24} className={`${fld} uppercase`} />
         <input value={descripcion} onChange={(e) => setDescripcion(e.target.value)} placeholder="Descripción (opcional)" className={fld} />
         <div className="flex gap-2">
           {(["porcentaje", "monto"] as const).map((t) => (
