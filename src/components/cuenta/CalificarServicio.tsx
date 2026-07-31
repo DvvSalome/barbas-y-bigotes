@@ -69,14 +69,14 @@ export function CalificarServicio({ pendiente }: { pendiente: VisitaPendiente | 
         comentario: comentario.trim() || undefined,
       });
       if (!res.ok) {
-        setErr(res.error ?? "No se pudo enviar. Intentá de nuevo.");
+        setErr(res.error ?? "No se pudo enviar. Intenta de nuevo.");
         return;
       }
       setGoogleUrl(res.googleReviewUrl ?? null);
       setEnviado(true);
     } catch {
       // Falla de red: no dejar el botón colgado en "Enviando…".
-      setErr("No se pudo enviar. Revisá tu conexión e intentá de nuevo.");
+      setErr("No se pudo enviar. Revisa tu conexión e intenta de nuevo.");
     } finally {
       setBusy(false);
     }

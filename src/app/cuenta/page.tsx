@@ -59,13 +59,13 @@ export default async function CuentaPage() {
               Tu barbería,<br />en tu bolsillo
             </h1>
             <p className="mx-auto mt-4 max-w-[30ch] text-muted">
-              Entrá con tu Gmail y mirá tus citas, tu lugar en la fila y tus puntos de fidelidad.
+              Entra con tu Gmail y mira tus citas, tu lugar en la fila y tus puntos de fidelidad.
             </p>
             <div className="mt-9 flex justify-center">
               <ClienteLoginButton />
             </div>
             <p className="mt-6 text-xs text-muted">
-              ¿Primera vez? También podés{" "}
+              ¿Primera vez? También puedes{" "}
               <Link href="/reservar" className="text-accent-soft transition hover:text-accent">
                 reservar sin cuenta →
               </Link>
@@ -196,7 +196,7 @@ async function Portal({ clienteId, nombre, avatarUrl }: { clienteId: string; nom
             ¡Es tu <span className="text-accent-soft">turno</span>!
           </h2>
           <p className="mx-auto mt-3 max-w-[26ch] text-sm text-muted">
-            Pasá a la silla con {turno.barbero}. Te está esperando.
+            Pasa a la silla con {turno.barbero}. Te está esperando.
           </p>
           <div className="mt-5 inline-flex items-center gap-2 rounded-full bg-[linear-gradient(180deg,var(--cta-1),var(--cta-2))] px-5 py-2.5 font-display text-sm font-bold uppercase tracking-wide text-on-accent shadow-[0_12px_30px_-10px_rgba(210,63,52,0.8)]">
             <span className="relative flex h-2 w-2">
@@ -371,9 +371,9 @@ async function Portal({ clienteId, nombre, avatarUrl }: { clienteId: string; nom
 // Estado vacío con intención: onboarding en vez de una lista en blanco.
 function EmptyProximas() {
   const pasos = [
-    { n: 1, t: "Elegí sede, barbero y hora.", s: "Ves la disponibilidad real, sin llamar." },
+    { n: 1, t: "Elige sede, barbero y hora.", s: "Ves la disponibilidad real, sin llamar." },
     { n: 2, t: "Recibí recordatorios.", s: "Te avisamos por email y notificación." },
-    { n: 3, t: "Sumá puntos en cada visita.", s: "Se acumulan desde la primera vez." },
+    { n: 3, t: "Suma puntos en cada visita.", s: "Se acumulan desde la primera vez." },
   ];
   return (
     <div className="rounded-2xl border border-line bg-panel p-6 text-center">
@@ -384,9 +384,9 @@ function EmptyProximas() {
           <path d="M8.1 8.1 20 20M8.1 15.9 20 4M12 12l3 3" />
         </svg>
       </span>
-      <h3 className="mt-4 font-display text-xl font-bold uppercase">Todavía no tenés citas</h3>
+      <h3 className="mt-4 font-display text-xl font-bold uppercase">Todavía no tienes citas</h3>
       <p className="mx-auto mt-2 max-w-[26ch] text-sm text-muted">
-        Reservá tu próximo corte y empezá a sumar puntos desde la primera visita.
+        Reserva tu próximo corte y empieza a sumar puntos desde la primera visita.
       </p>
       <Link
         href="/reservar"

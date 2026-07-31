@@ -186,7 +186,7 @@ function ReagendarPanel({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Tocar una hora confirma de una (proto §2.7): "Tocá una hora y queda confirmada".
+  // Tocar una hora confirma de una (proto §2.7): "Toca una hora y queda confirmada".
   async function confirmar(t: number) {
     if (!day) return;
     const nuevo = new Date(day);
@@ -207,7 +207,7 @@ function ReagendarPanel({
     return (
       <div className="mt-3 rounded-xl border border-accent/35 bg-accent/[0.05] p-3">
         <p className="text-sm text-muted">
-          Esta cita no tiene barbero asignado; escribinos por WhatsApp para reagendarla.
+          Esta cita no tiene barbero asignado; escríbenos por WhatsApp para reagendarla.
         </p>
       </div>
     );
@@ -217,7 +217,7 @@ function ReagendarPanel({
 
   return (
     <div className="mt-3 rounded-xl border border-accent/35 bg-accent/[0.05] p-3">
-      <div className="mb-2 text-[12.5px] font-bold">Elegí el nuevo horario</div>
+      <div className="mb-2 text-[12.5px] font-bold">Elige el nuevo horario</div>
 
       {/* Chips de día (pill, selección roja) */}
       <div className="flex gap-2 overflow-x-auto pb-1">
@@ -243,7 +243,7 @@ function ReagendarPanel({
       {/* Grid de horas (4 columnas, cabe a 390px sin scroll horizontal) */}
       <div className="mt-3">
         {!day ? (
-          <p className="text-sm text-muted">Elegí un día para ver horarios.</p>
+          <p className="text-sm text-muted">Elige un día para ver horarios.</p>
         ) : cargando ? (
           <div className="grid grid-cols-4 gap-2">
             {Array.from({ length: 8 }).map((_, i) => (
@@ -283,7 +283,7 @@ function ReagendarPanel({
       )}
 
       <p className="mt-2 text-[11px] text-muted">
-        Tocá una hora y queda confirmada · te llega el correo con el cambio.
+        Toca una hora y queda confirmada · te llega el correo con el cambio.
       </p>
     </div>
   );

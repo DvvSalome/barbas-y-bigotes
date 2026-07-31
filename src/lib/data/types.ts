@@ -60,7 +60,7 @@ export interface Producto {
   stock: number;
   stockMinimo: number;
   comisionPct: number;
-  /** Aparece en el paso "¿le sumás una bebida?" del wizard (config por sede). */
+  /** Aparece en el paso "¿le sumas una bebida?" del wizard (config por sede). */
   enUpsell: boolean;
   /** Foto subida por el admin (Supabase Storage); null mientras no haya. */
   fotoUrl?: string | null;

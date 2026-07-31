@@ -15,7 +15,7 @@ import { useReducedMotion } from "motion/react";
 // Frases del typewriter — LITERAL del prototipo (spec §1.2, L3755).
 const HERO_FRASES = [
   "Tu mejor versión sale de la silla",
-  "Degradados que hablan por vos",
+  "Degradados que hablan por ti",
   "Barba perfilada, actitud renovada",
   "El ritual clásico, hecho arte",
 ];
@@ -113,7 +113,7 @@ export function HomeHero() {
             <Caret />
           </div>
           <p className="max-w-[30ch] text-sm text-muted">
-            Reservá online, sin filas y con el barbero que te conoce.
+            Reserva online, sin filas y con el barbero que te conoce.
           </p>
           <Link
             href="/reservar"
@@ -179,7 +179,7 @@ export function HomeHero() {
                     href="/barberos"
                     className="rounded-full border border-[rgba(242,237,228,0.3)] bg-black/30 px-[30px] py-4 text-[13px] text-ink backdrop-blur-[6px] transition hover:border-accent-soft"
                   >
-                    Conocé a los barberos
+                    Conoce a los barberos
                   </Link>
                 </div>
               </div>

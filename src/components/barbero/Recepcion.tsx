@@ -185,7 +185,7 @@ export function Recepcion({
               <div className="flex-1 divide-y divide-line/60">
                 {activas.length === 0 && (
                   <p className="px-3.5 py-6 text-center text-[12.5px] text-muted">
-                    Sin citas pendientes. Sumá un walk-in desde la agenda.
+                    Sin citas pendientes. Suma un walk-in desde la agenda.
                   </p>
                 )}
                 {activas.map((r) => {

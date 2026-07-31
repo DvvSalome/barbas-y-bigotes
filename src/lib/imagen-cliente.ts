@@ -50,7 +50,7 @@ export async function achicarFoto(file: File): Promise<File> {
       ? "image/webp"
       : "image/jpeg";
     const blob = await new Promise<Blob | null>((res) => canvas.toBlob(res, tipo, CALIDAD));
-    if (!blob || blob.size >= file.size) return file; // no mejoró: dejá el original
+    if (!blob || blob.size >= file.size) return file; // no mejoró: deja el original
 
     const ext = tipo === "image/webp" ? "webp" : "jpg";
     const base = file.name.replace(/\.[^.]+$/, "") || "foto";

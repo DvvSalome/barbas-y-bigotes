@@ -29,7 +29,7 @@ export default async function ComisionesPage() {
         <span aria-hidden className="text-lg leading-none">⚠️</span>
         <p className="text-[13px] leading-relaxed text-warn">
           <b>Los contratos todavía no se editan desde acá.</b> Esta pantalla muestra con qué trabaja hoy
-          cada barbero, que es lo que usa el cobro para repartir la comisión. Para cambiar uno, pedímelo.
+          cada barbero, que es lo que usa el cobro para repartir la comisión. Para cambiar uno, pídemelo.
         </p>
       </div>
 

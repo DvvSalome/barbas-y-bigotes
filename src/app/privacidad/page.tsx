@@ -36,7 +36,7 @@ export default function PrivacidadPage() {
             sirve para contactarte si pasa algo con tu cita.
           </li>
           <li>
-            <strong>Si entrás con Google:</strong> tu nombre, tu correo y tu foto de perfil,
+            <strong>Si entras con Google:</strong> tu nombre, tu correo y tu foto de perfil,
             tal como Google nos los entrega. <strong>Nunca vemos tu contraseña de Google</strong>,
             y no accedemos a tu Gmail, contactos ni ningún otro dato de tu cuenta.
           </li>
@@ -62,7 +62,7 @@ export default function PrivacidadPage() {
           <li>Avisarte por correo o notificación: confirmación, recordatorio del día anterior y cuando se libera un cupo si estás en la lista de espera.</li>
           <li>Llevar tu tarjeta de cortes (el 5º con 50% y el 10º gratis).</li>
           <li>Que el barbero sepa a quién atiende y qué le gustó la última vez.</li>
-          <li>Invitarte a dejar una reseña después de tu visita, si querés.</li>
+          <li>Invitarte a dejar una reseña después de tu visita, si quieres.</li>
         </ul>
         <p>
           <strong>No vendemos tus datos a nadie</strong>, ni los usamos para publicidad de terceros.
@@ -77,7 +77,7 @@ export default function PrivacidadPage() {
         <ul>
           <li><strong>Supabase</strong> — guarda la base de datos y maneja el inicio de sesión.</li>
           <li><strong>Vercel</strong> — sirve el sitio web.</li>
-          <li><strong>Google</strong> — solo si elegís entrar con tu cuenta de Google.</li>
+          <li><strong>Google</strong> — solo si eliges entrar con tu cuenta de Google.</li>
           <li><strong>Hostinger</strong> — envía los correos desde nuestro dominio.</li>
         </ul>
         <p>
@@ -90,7 +90,7 @@ export default function PrivacidadPage() {
       <section>
         <h2>Cuánto tiempo los guardamos</h2>
         <p>
-          Mientras seas cliente y mantengas tu cuenta o tu historial con nosotros. Si nos pedís
+          Mientras seas cliente y mantengas tu cuenta o tu historial con nosotros. Si nos pides
           que borremos tus datos, lo hacemos; conservamos únicamente los registros de ventas que
           la ley colombiana nos obliga a mantener por temas contables y tributarios.
         </p>
@@ -99,7 +99,7 @@ export default function PrivacidadPage() {
       <section>
         <h2>Tus derechos</h2>
         <p>
-          Según la <strong>Ley 1581 de 2012</strong> y el Decreto 1377 de 2013, en cualquier momento podés:
+          Según la <strong>Ley 1581 de 2012</strong> y el Decreto 1377 de 2013, en cualquier momento puedes:
         </p>
         <ul>
           <li>Saber qué datos tuyos tenemos.</li>
@@ -108,9 +108,9 @@ export default function PrivacidadPage() {
           <li>Revocar el permiso que nos diste para tratarlos.</li>
         </ul>
         <p>
-          Para cualquiera de estas, escribinos a{" "}
+          Para cualquiera de estas, escríbenos a{" "}
           <a href="mailto:hola@barbasybigotes.com">hola@barbasybigotes.com</a>. Respondemos en
-          un máximo de 15 días hábiles. Si entraste con Google, también podés quitarle el acceso
+          un máximo de 15 días hábiles. Si entraste con Google, también puedes quitarle el acceso
           a esta aplicación desde{" "}
           <a href="https://myaccount.google.com/permissions" target="_blank" rel="noopener noreferrer">
             la configuración de tu cuenta de Google
@@ -132,7 +132,7 @@ export default function PrivacidadPage() {
         <h2>Cambios</h2>
         <p>
           Si actualizamos esta política, cambiamos la fecha de arriba. Si el cambio es importante,
-          te avisamos por correo. Podés ver también nuestros{" "}
+          te avisamos por correo. Puedes ver también nuestros{" "}
           <Link href="/terminos">términos y condiciones</Link>.
         </p>
       </section>

@@ -13,7 +13,7 @@ export default async function ClientesPage() {
       <SectionHeader
         eyebrow="Base de datos"
         title="Clientes"
-        description={`${clientes.length} clientes, del que vino hoy al que hace rato no aparece · abrí una ficha para ver historial, notas, wallet y reseñas.`}
+        description={`${clientes.length} clientes, del que vino hoy al que hace rato no aparece · abre una ficha para ver historial, notas, wallet y reseñas.`}
       />
 
       <ClientesLista clientes={clientes} />

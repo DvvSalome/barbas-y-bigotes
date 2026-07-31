@@ -125,7 +125,7 @@ export function Ubicacion() {
               </a>
               <span className="hidden text-[11.5px] font-bold uppercase tracking-[0.1em] text-accent-soft md:inline">
                 {activeLoc === l.id
-                  ? "Seleccionada · mirá el mapa abajo"
+                  ? "Seleccionada · mira el mapa abajo"
                   : "Seleccionar para ver el mapa"}
               </span>
             </div>

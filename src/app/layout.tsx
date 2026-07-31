@@ -26,7 +26,7 @@ export const viewport: Viewport = {
 };
 
 const DESCRIPTION =
-  "Barbería en Barranquilla con dos sedes: Parque Venezuela y Plaza de la Paz. Cortes, barba, faciales, keratina y combos. Reservá tu cita online.";
+  "Barbería en Barranquilla con dos sedes: Parque Venezuela y Plaza de la Paz. Cortes, barba, faciales, keratina y combos. Reserva tu cita online.";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://barbasybigotes.com"),

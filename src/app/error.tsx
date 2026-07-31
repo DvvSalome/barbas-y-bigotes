@@ -24,7 +24,7 @@ export default function Error({
       <p className="text-xs uppercase tracking-[0.4em] text-accent">Error</p>
       <h1 className="mt-3 font-display text-5xl font-semibold uppercase">Algo salió mal</h1>
       <p className="mt-4 max-w-md text-muted">
-        Tuvimos un problema cargando esta página. Probá de nuevo y, si sigue fallando, escribinos.
+        Tuvimos un problema cargando esta página. Prueba de nuevo y, si sigue fallando, escríbenos.
       </p>
       <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
         <button

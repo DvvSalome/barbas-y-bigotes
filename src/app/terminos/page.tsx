@@ -30,10 +30,10 @@ export default function TerminosPage() {
       <section>
         <h2>Tu cita</h2>
         <ul>
-          <li>Podés reservar como invitado (con nombre y correo) o entrando con tu cuenta de Google.</li>
+          <li>Puedes reservar como invitado (con nombre y correo) o entrando con tu cuenta de Google.</li>
           <li>La cita queda confirmada al instante y te llega un correo con los detalles.</li>
           <li>Los horarios que ves disponibles son reales y se actualizan en vivo. Si dos personas eligen el mismo horario, se queda quien confirme primero.</li>
-          <li>Te pedimos llegar unos minutos antes. Si llegás tarde, hacemos lo posible por atenderte, pero puede que el turno se corra o se reasigne.</li>
+          <li>Te pedimos llegar unos minutos antes. Si llegas tarde, hacemos lo posible por atenderte, pero puede que el turno se corra o se reasigne.</li>
         </ul>
       </section>
 
@@ -41,20 +41,20 @@ export default function TerminosPage() {
         <h2>Cancelar o reagendar</h2>
         <ul>
           <li>
-            Podés cancelar o cambiar tu cita vos mismo desde <Link href="/cuenta">Mi cuenta</Link>{" "}
+            Puedes cancelar o cambiar tu cita tú mismo desde <Link href="/cuenta">Mi cuenta</Link>{" "}
             hasta <strong>2 horas antes</strong> de la hora reservada.
           </li>
           <li>
-            Dentro de esas 2 horas, escribinos por{" "}
+            Dentro de esas 2 horas, escríbenos por{" "}
             <a href="https://wa.me/573006734799" target="_blank" rel="noopener noreferrer">WhatsApp</a>{" "}
             y lo resolvemos.
           </li>
           <li>
-            Cuando cancelás a tiempo, tu cupo se le ofrece automáticamente a quien esté en la lista
+            Cuando cancelas a tiempo, tu cupo se le ofrece automáticamente a quien esté en la lista
             de espera. Cancelar a tiempo nos ayuda un montón.
           </li>
           <li>
-            Si no llegás y no avisás, la cita queda registrada como <strong>no asistida</strong>.
+            Si no llegas y no avisas, la cita queda registrada como <strong>no asistida</strong>.
             Si se vuelve costumbre, podemos pedirte confirmar por teléfono antes de agendarte de nuevo.
           </li>
         </ul>
@@ -67,8 +67,8 @@ export default function TerminosPage() {
       <section>
         <h2>Tarjeta de cortes</h2>
         <ul>
-          <li>Cada corte que te hacés suma un sello. Son <strong>10 sellos</strong> por tarjeta.</li>
-          <li>En el <strong>5º corte</strong> tenés <strong>50% de descuento</strong>.</li>
+          <li>Cada corte que te haces suma un sello. Son <strong>10 sellos</strong> por tarjeta.</li>
+          <li>En el <strong>5º corte</strong> tienes <strong>50% de descuento</strong>.</li>
           <li>En el <strong>10º corte</strong>, el corte va <strong>por la casa</strong>.</li>
           <li>Al completarla, la tarjeta arranca de nuevo.</li>
           <li>
@@ -101,7 +101,7 @@ export default function TerminosPage() {
         <p>
           Ponemos todo para que la aplicación esté siempre disponible, pero puede tener
           interrupciones por mantenimiento o fallas de terceros. Si el sistema llegara a fallar,
-          tu cita sigue valiendo: acercate a la sede o escribinos por WhatsApp y te atendemos igual.
+          tu cita sigue valiendo: acércate a la sede o escríbenos por WhatsApp y te atendemos igual.
         </p>
       </section>
 

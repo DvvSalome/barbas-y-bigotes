@@ -42,7 +42,7 @@ export default async function EquipoPage() {
         <SectionHeader
           eyebrow="Calendario"
           title="Días especiales"
-          description="Abrí un domingo o un festivo, o cerrá un día hábil. Por defecto se atiende de lunes a sábado."
+          description="Abre un domingo o un festivo, o cierra un día hábil. Por defecto se atiende de lunes a sábado."
         />
         <div className="mt-5">
           <DiasEspecialesAdmin sedes={sedes} dias={diasEspeciales} />

@@ -6,7 +6,7 @@
 export function errorPublico(
   contexto: string,
   error: { message?: string } | null | undefined,
-  publico = "No se pudo completar la operación. Intentá de nuevo.",
+  publico = "No se pudo completar la operación. Intenta de nuevo.",
 ): string {
   console.error(`[${contexto}]`, error?.message ?? error);
   return publico;

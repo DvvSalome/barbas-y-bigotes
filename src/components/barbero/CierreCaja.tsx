@@ -128,7 +128,7 @@ export function CierreCaja({
   async function confirmar(e: React.FormEvent) {
     e.preventDefault();
     if (contadoNum === null) {
-      setError("Contá el efectivo antes de cerrar. Si la caja quedó en cero, escribí 0.");
+      setError("Cuenta el efectivo antes de cerrar. Si la caja quedó en cero, escribe 0.");
       return;
     }
     // Un cierre descuadrado queda asentado en la contabilidad y no se deshace:
@@ -178,7 +178,7 @@ export function CierreCaja({
         </p>
       )}
 
-      {/* Desglose por barbero (con foto/iniciales, badge "vos" y "Mi comisión" en el logueado). */}
+      {/* Desglose por barbero (con foto/iniciales, badge "tú" y "Mi comisión" en el logueado). */}
       {desglose && desglose.barberos.length > 0 && (
         <>
           <div className="mt-4 font-display text-[11px] font-bold uppercase tracking-[0.14em] text-muted">
@@ -206,7 +206,7 @@ export function CierreCaja({
                     <span className="min-w-0 flex-1 truncate text-sm font-bold text-ink">{b.nombre}</span>
                     {esMi && (
                       <span className="shrink-0 rounded-full bg-accent/15 px-2 py-0.5 text-[9.5px] font-bold uppercase tracking-wide text-accent-soft">
-                        vos
+                        tú
                       </span>
                     )}
                     <span className="shrink-0 text-sm font-bold tabular-nums text-ink">{cop(b.ventas)}</span>
@@ -272,7 +272,7 @@ export function CierreCaja({
           <p className="text-sm tabular-nums">
             Diferencia:{" "}
             {sinContar ? (
-              <span className="text-muted">contá el efectivo para verla</span>
+              <span className="text-muted">cuenta el efectivo para verla</span>
             ) : (
               <>
                 <span className={diferencia === 0 ? "font-semibold text-ok" : "font-semibold text-warn"}>

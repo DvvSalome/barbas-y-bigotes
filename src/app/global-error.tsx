@@ -27,7 +27,7 @@ export default function GlobalError({ error }: { error: Error & { digest?: strin
             Se nos cayó la página
           </h1>
           <p className="mt-4 max-w-md text-muted">
-            Ya nos llegó el aviso y lo estamos revisando. Podés recargar o escribirnos y te
+            Ya nos llegó el aviso y lo estamos revisando. Puedes recargar o escribirnos y te
             agendamos la cita por WhatsApp.
           </p>
           <div className="mt-9 flex flex-wrap items-center justify-center gap-3">

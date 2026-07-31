@@ -16,7 +16,7 @@ const ITEMS = [
   {
     glyph: "✓",
     titulo: "Reserva sin filas",
-    texto: "Agendá online y, si te atrasás, le avisamos al siguiente de la lista.",
+    texto: "Agenda online y, si te atrasas, le avisamos al siguiente de la lista.",
   },
   {
     glyph: "★",

@@ -272,7 +272,7 @@ export async function quitarAusencia(id: string): Promise<ActionResult> {
   return { ok: true };
 }
 
-// Marca/desmarca un producto para el paso "¿le sumás una bebida?" del wizard.
+// Marca/desmarca un producto para el paso "¿le sumas una bebida?" del wizard.
 // Config por sede: cada fila de productos es de una sede, así el dueño decide
 // qué bebidas ofrece en cada una (migración 0028).
 export async function toggleProductoUpsell(id: string, value: boolean): Promise<ActionResult> {
@@ -318,7 +318,7 @@ export async function subirFotoProducto(formData: FormData): Promise<ActionResul
   const productoId = String(formData.get("productoId") ?? "").trim();
   const file = formData.get("foto");
   if (!productoId || !(file instanceof File) || file.size === 0)
-    return { ok: false, error: "Elegí una imagen." };
+    return { ok: false, error: "Elige una imagen." };
   // Allowlist (nada de SVG: un <script> embebido quedaría servido desde el bucket público).
   if (!["image/jpeg", "image/png", "image/webp", "image/avif"].includes(file.type))
     return { ok: false, error: "La imagen tiene que ser JPG, PNG, WebP o AVIF." };
@@ -340,7 +340,7 @@ export async function subirFotoProducto(formData: FormData): Promise<ActionResul
     .from("productos")
     .upload(path, file, { upsert: true, contentType: file.type });
   if (upErr)
-    return { ok: false, error: errorPublico("subirFotoProducto upload", upErr, "No se pudo subir la foto. Intentá de nuevo.") };
+    return { ok: false, error: errorPublico("subirFotoProducto upload", upErr, "No se pudo subir la foto. Intenta de nuevo.") };
 
   // Limpieza best-effort: re-subir en otro formato (png→webp) dejaría el archivo
   // viejo huérfano en el bucket público (el path lleva la extensión). Se borran
@@ -384,7 +384,7 @@ export async function crearCombo(input: {
   const duracionMin = Math.round(Number(input.duracionMin));
   const conBebida = !!input.conBebida;
   if (!esComboValido(partes, conBebida))
-    return { ok: false, error: "Elegí al menos 2 partes (o 1 parte más la bebida)." };
+    return { ok: false, error: "Elige al menos 2 partes (o 1 parte más la bebida)." };
   if (!nombre) return { ok: false, error: "Poné el nombre del combo." };
   if (!Number.isFinite(precio) || precio <= 0) return { ok: false, error: "Poné un precio válido." };
   if (!Number.isFinite(duracionMin) || duracionMin <= 0 || duracionMin > DURACION_MAX_MIN)
@@ -413,7 +413,7 @@ export async function crearCombo(input: {
     duracion_min: duracionMin,
     activo: true,
   };
-  // Intentá con cuenta_corte (0027); si la columna aún no existe, reintentá sin ella
+  // Intenta con cuenta_corte (0027); si la columna aún no existe, reintentá sin ella
   // (mismo espíritu tolerante que getCorteIds: no explotar si el orden se invierte).
   let { error: insErr } = await admin.from("servicios").insert({ ...row, cuenta_corte: cuentaCorte });
   if (insErr && /cuenta_corte/i.test(insErr.message ?? "")) {
@@ -522,7 +522,7 @@ export async function createReserva(input: {
   // inicioISO inválido (NaN) → error claro, no dejar que reviente con 500 al hacer
   // toISOString() más abajo. Y la cita tiene que ser a futuro (nada de fechas pasadas).
   if (Number.isNaN(inicio.getTime())) return { ok: false, error: "La fecha de la cita no es válida." };
-  if (inicio.getTime() <= Date.now()) return { ok: false, error: "Esa hora ya pasó. Elegí un horario a futuro." };
+  if (inicio.getTime() <= Date.now()) return { ok: false, error: "Esa hora ya pasó. Elige un horario a futuro." };
   const { data: serv } = await sb
     .from("servicios")
     .select("nombre,duracion_min")
@@ -544,7 +544,7 @@ export async function createReserva(input: {
   // Sin barbero no hay reserva: el EXCLUDE constraint no cubre barbero_id NULL,
   // así que N reservas caerían en el mismo slot, invisibles para todos los barberos.
   // (El wizard normal siempre manda barbero; solo el path del asistente IA lo omitía.)
-  if (!input.barberoId) return { ok: false, error: "Elegí un barbero para reservar." };
+  if (!input.barberoId) return { ok: false, error: "Elige un barbero para reservar." };
   const barberoId = input.barberoId;
   // El barbero tiene que existir, estar activo y ser DE la sede elegida: sin este
   // chequeo se podía reservar un barbero de la otra sede (o inactivo) por POST directo.
@@ -573,7 +573,7 @@ export async function createReserva(input: {
     .eq("barbero_id", barberoId)
     .eq("fecha", bogotaYmd(inicio))
     .limit(1);
-  if (aus && aus.length) return { ok: false, error: "Ese barbero no atiende ese día. Elegí otra fecha u otro barbero." };
+  if (aus && aus.length) return { ok: false, error: "Ese barbero no atiende ese día. Elige otra fecha u otro barbero." };
 
   // Guard de calendario: la sede cierra los domingos salvo que el dueño haya
   // marcado ese día como abierto, y puede cerrar un día hábil por festivo. El
@@ -590,7 +590,7 @@ export async function createReserva(input: {
   // de Bogotá ya calculado, a mediodía para no cruzar husos.
   const esDomingo = new Date(`${fechaYmd}T12:00:00Z`).getUTCDay() === 0;
   const abre = excepcion !== undefined ? excepcion : !esDomingo;
-  if (!abre) return { ok: false, error: "Ese día la barbería no atiende. Elegí otra fecha." };
+  if (!abre) return { ok: false, error: "Ese día la barbería no atiende. Elige otra fecha." };
 
   // Pre-chequeo de solape (UX: evita crear el cliente si el cupo ya está tomado).
   // El EXCLUDE constraint en la DB es la garantía real contra carreras concurrentes.
@@ -602,7 +602,7 @@ export async function createReserva(input: {
     .lt("inicio", fin.toISOString())
     .gt("fin", inicio.toISOString())
     .limit(1);
-  if (clash && clash.length) return { ok: false, error: "Ese horario ya fue tomado. Elegí otro, por favor." };
+  if (clash && clash.length) return { ok: false, error: "Ese horario ya fue tomado. Elige otro, por favor." };
 
   // Recorte de largo sano en los campos de texto libres (POST directo sin la UI):
   // evita fichas de cliente y notas con payloads gigantes.
@@ -639,7 +639,7 @@ export async function createReserva(input: {
     nota,
   });
   if (error) {
-    if (error.code === "23P01") return { ok: false, error: "Ese horario ya fue tomado. Elegí otro, por favor." };
+    if (error.code === "23P01") return { ok: false, error: "Ese horario ya fue tomado. Elige otro, por favor." };
     return { ok: false, error: errorPublico("createReserva", error) };
   }
   // Push DESPUÉS del éxito, nunca bloqueante: pushACliente jamás lanza.
@@ -858,7 +858,7 @@ export async function actualizarReserva(
   if (patch.estado === "cancelada" && clienteRef) {
     await pushACliente(clienteRef, {
       title: "Tu cita fue cancelada",
-      body: "La barbería tuvo que cancelar tu cita. Podés reservar de nuevo cuando quieras.",
+      body: "La barbería tuvo que cancelar tu cita. Puedes reservar de nuevo cuando quieras.",
       url: "/reservar",
       tag: "cancelacion",
     });
@@ -1112,7 +1112,7 @@ export async function completarReserva(input: {
   // la carrera: la 2da inserción choca 23505 y se rechaza sin doble cobro.
   const idemToken = (input.idemToken ?? "").trim() || null;
   if (!input.reservaId && !idemToken) {
-    return { ok: false, error: "No se pudo asegurar la venta. Actualizá la página e intentá de nuevo." };
+    return { ok: false, error: "No se pudo asegurar la venta. Actualizá la página e intenta de nuevo." };
   }
 
   // Cupón (opcional): valida y descuenta (sobre servicios + productos, tope el bruto).
@@ -1208,7 +1208,7 @@ export async function completarReserva(input: {
     const { data: bumped, error: cupErr } = await sb.rpc("bump_cupon_uso", { p_codigo: cuponCodigo });
     if (cupErr) {
       await revertirClaim();
-      return { ok: false, error: errorPublico("completarReserva bump_cupon_uso", cupErr, "No se pudo aplicar el cupón. Intentá de nuevo.") };
+      return { ok: false, error: errorPublico("completarReserva bump_cupon_uso", cupErr, "No se pudo aplicar el cupón. Intenta de nuevo.") };
     }
     if (bumped === false) {
       await revertirClaim();
@@ -1256,7 +1256,7 @@ export async function completarReserva(input: {
       return { ok: false, error: errorPublico("completarReserva", error, yaMsg) };
     }
     await revertirClaim();
-    return { ok: false, error: errorPublico("completarReserva", error, "No se pudo completar el cobro. Intentá de nuevo.") };
+    return { ok: false, error: errorPublico("completarReserva", error, "No se pudo completar el cobro. Intenta de nuevo.") };
   }
   const ventaId = (venta as { id: string }).id;
 
@@ -1268,7 +1268,7 @@ export async function completarReserva(input: {
       const { error: delErr } = await admin.from("ventas").delete().eq("id", ventaId);
       if (delErr) errorPublico("completarReserva borrar venta", delErr);
       await revertirClaim();
-      return { ok: false, error: errorPublico("completarReserva items", itemsErr, "No se pudieron registrar los consumos de la venta. Intentá de nuevo.") };
+      return { ok: false, error: errorPublico("completarReserva items", itemsErr, "No se pudieron registrar los consumos de la venta. Intenta de nuevo.") };
     }
   }
 
@@ -1402,7 +1402,7 @@ export async function crearCupon(input: {
   // como ACTIVO pero validarCupon lo rebota como "vencido" al cobrar). Se compara
   // contra HOY en Bogotá —no el UTC del server— para no rechazar el día vigente.
   if (input.venceEn && input.venceEn < bogotaYmd())
-    return { ok: false, error: "Esa fecha de vencimiento ya pasó. Elegí hoy o una fecha futura." };
+    return { ok: false, error: "Esa fecha de vencimiento ya pasó. Elige hoy o una fecha futura." };
   const { error } = await sb.from("cupones").insert({
     codigo: code,
     descripcion: input.descripcion || null,
@@ -1516,7 +1516,7 @@ export async function agregarNotaCliente(input: { clienteRef: string; nota: stri
   const sb = await supabaseServerAuth();
   const denied = await requireAdmin(sb);
   if (denied) return { ok: false, error: denied };
-  if (!input.nota.trim()) return { ok: false, error: "Escribí la nota" };
+  if (!input.nota.trim()) return { ok: false, error: "Escribe la nota" };
   const { error } = await sb.from("cliente_notas").insert({ cliente_ref: input.clienteRef, nota: input.nota.trim() });
   if (error) return { ok: false, error: errorPublico("agregarNotaCliente", error) };
   revalidatePath(`/admin/clientes/${input.clienteRef}`);
@@ -1755,7 +1755,7 @@ export async function cerrarCajaSede(input: {
     if (!sede) return { ok: false, error: "No se pudo determinar tu sede." };
   } else {
     sede = (input.sede ?? "").trim() || null;
-    if (!sede) return { ok: false, error: "Elegí una sede." };
+    if (!sede) return { ok: false, error: "Elige una sede." };
   }
 
   // Efectivo contado: entero COP ≥ 0.
@@ -1824,7 +1824,7 @@ export async function crearMedioPago(nombre: string): Promise<ActionResult> {
   if (denied) return { ok: false, error: denied };
   const nom = (nombre ?? "").trim();
   const slug = slugDeMedio(nom);
-  if (!nom || !slug) return { ok: false, error: "Escribí el nombre del medio de pago" };
+  if (!nom || !slug) return { ok: false, error: "Escribe el nombre del medio de pago" };
   // Va al final de la lista: orden = max + 1.
   const { data: last } = await sb
     .from("medios_pago")
@@ -2058,7 +2058,7 @@ export async function proponerAdelanto(input: {
   if (res.cliente_ref) {
     await pushACliente(res.cliente_ref, {
       title: "Te ofrecemos adelantar tu cita",
-      body: `Hay un cupo más temprano: ${fechaHoraBogota(new Date(input.inicioISO))}. Entrá para aceptar o rechazar.`,
+      body: `Hay un cupo más temprano: ${fechaHoraBogota(new Date(input.inicioISO))}. Entra para aceptar o rechazar.`,
       url: "/cuenta",
     });
   }

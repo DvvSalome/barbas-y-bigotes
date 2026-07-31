@@ -145,7 +145,7 @@ export function PushManager() {
       }
     } catch (error) {
       console.error("Error subscribing to push:", error);
-      alert("Hubo un error al activar las notificaciones. Intentá de nuevo.");
+      alert("Hubo un error al activar las notificaciones. Intenta de nuevo.");
     } finally {
       setLoading(false);
     }
@@ -158,8 +158,8 @@ export function PushManager() {
       <h3 className="font-display text-xl uppercase">Notificaciones</h3>
       {estado === "ios-instalar" ? (
         <p className="mt-2 text-sm text-muted">
-          Para recibir avisos en tu iPhone: tocá Compartir → Agregar a pantalla de inicio y
-          abrí la app desde ahí.
+          Para recibir avisos en tu iPhone: toca Compartir → Agregar a pantalla de inicio y
+          abre la app desde ahí.
         </p>
       ) : estado === "sin-sw" ? (
         <p className="mt-2 text-sm text-muted">

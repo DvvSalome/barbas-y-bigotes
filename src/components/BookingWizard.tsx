@@ -40,8 +40,8 @@ const SEDE_INFO: Record<string, { detalle: string; frente: string }> = {
 const SERV_FOTOS = ["/cortes/corte-2.jpg", "/cortes/corte-3.jpg", "/cortes/corte-5.jpg", "/cortes/corte-1.jpg"];
 
 // Copy default del upsell (proto §6.9; sin fuente admin, usamos el del prototipo).
-const UPSELL_EXTRA = { titulo: "¿Le sumás una bebida a tu corte?", sub: "Te la sirven apenas te sentás en la silla.", rechazo: "No, gracias" };
-const UPSELL_COMBO = { titulo: "Tu combo incluye bebida. ¿Cuál querés?", sub: "Va incluida en el precio del combo.", rechazo: "Sin bebida" };
+const UPSELL_EXTRA = { titulo: "¿Le sumas una bebida a tu corte?", sub: "Te la sirven apenas te sientas en la silla.", rechazo: "No, gracias" };
+const UPSELL_COMBO = { titulo: "Tu combo incluye bebida. ¿Cuál quieres?", sub: "Va incluida en el precio del combo.", rechazo: "Sin bebida" };
 // Reglas admin (upsellOn/comboOn) — no hay tabla de config; ambos activos por defecto.
 const UPSELL_ON = true;
 const COMBO_ON = true;
@@ -548,7 +548,7 @@ export function BookingWizard({
     if (d.getDay() === 0 || min < OPEN || min >= CLOSE) {
       // Corto a propósito: "Disponible para reservar" no cabía en la card móvil
       // (~161px de ancho) y partía el chip en dos líneas.
-      return { tipo: "cerrado", label: "Podés reservar" };
+      return { tipo: "cerrado", label: "Puedes reservar" };
     }
     return { tipo: "libre", label: "Libre ahora" };
   }
@@ -660,7 +660,7 @@ export function BookingWizard({
     });
   }
 
-  // "¿No sos vos?": cierra la sesión y vuelve al formulario de invitado. Desde ahí
+  // "¿No eres tú?": cierra la sesión y vuelve al formulario de invitado. Desde ahí
   // se puede entrar con OTRA cuenta de Google (el botón fuerza el selector) o seguir
   // como invitado. Reseteo el nudge para que vuelva a ofrecer login si sigue de invitado.
   async function cambiarCuenta() {
@@ -691,7 +691,7 @@ export function BookingWizard({
     if (!elegido) {
       elegido = sedeBarberos.find((b) => !(ocupadosDia[b.id] ?? []).some((o) => ocupaSlot(slot, dur, o))) ?? null;
       if (!elegido) {
-        setErrorMsg("Ese horario ya fue tomado. Elegí otro, por favor.");
+        setErrorMsg("Ese horario ya fue tomado. Elige otro, por favor.");
         volverAHorario();
         return;
       }
@@ -855,7 +855,7 @@ export function BookingWizard({
           ←
         </button>
         <div className="min-w-0 flex-1">
-          <div className="font-display text-[22px] font-extrabold uppercase leading-none">Reservá tu turno</div>
+          <div className="font-display text-[22px] font-extrabold uppercase leading-none">Reserva tu turno</div>
           <div className="mt-0.5 text-[11.5px] text-muted">
             Paso {paso} de 5 · {TITULOS[step as Exclude<Step, "ok">]}
           </div>
@@ -969,7 +969,7 @@ export function BookingWizard({
                         setServicioFoto(foto);
                         setSlot(null);
                         // Reset del upsell: si venías de un combo con bebida incluida y
-                        // cambiás a otro servicio, no arrastres la bebida (se regalaba
+                        // cambias a otro servicio, no arrastres la bebida (se regalaba
                         // gratis) y re-evaluá el upsell con el servicio nuevo.
                         setBebida(null);
                         setBebidaIncluida(false);
@@ -1008,8 +1008,8 @@ export function BookingWizard({
         {/* ---------- Paso 3 · Barbero ---------- */}
         {step === "barbero" && (
           <div>
-            <h2 className="font-display text-[26px] font-extrabold uppercase leading-none">Elegí tu barbero</h2>
-            <p className="mt-1.5 text-xs text-muted">{sedeNombre} · o seguí sin elegir y te asignamos uno.</p>
+            <h2 className="font-display text-[26px] font-extrabold uppercase leading-none">Elige tu barbero</h2>
+            <p className="mt-1.5 text-xs text-muted">{sedeNombre} · o sigue sin escoger y te asignamos uno.</p>
             {sedeBarberos.length ? (
               <div className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-[repeat(auto-fit,minmax(190px,240px))] md:justify-center">
                 {sedeBarberos.map((b) => {
@@ -1094,7 +1094,7 @@ export function BookingWizard({
         {/* ---------- Paso 4 · Día y hora ---------- */}
         {step === "horario" && servicio && (
           <div>
-            <h2 className="font-display text-[26px] font-extrabold uppercase leading-none">¿Cuándo pasás?</h2>
+            <h2 className="font-display text-[26px] font-extrabold uppercase leading-none">¿Cuándo pasas?</h2>
 
             {errorMsg && (
               <div className="mt-4 rounded-xl border border-accent/40 bg-accent/10 px-4 py-3 text-sm text-accent-soft">{errorMsg}</div>
@@ -1103,7 +1103,7 @@ export function BookingWizard({
             <div className="mt-5 md:grid md:grid-cols-[320px_1fr] md:gap-6">
               {/* Selector de día */}
               <div className="md:rounded-2xl md:border md:border-line md:bg-panel md:p-4">
-                <div className="mb-2 hidden text-[10px] font-bold uppercase tracking-[0.24em] text-accent-soft md:block">Elegí el día</div>
+                <div className="mb-2 hidden text-[10px] font-bold uppercase tracking-[0.24em] text-accent-soft md:block">Elige el día</div>
                 <div className="grid grid-cols-3 gap-2 md:grid-cols-1">
                   {dias.map((d) => {
                     const activa = day ? mismoDia(day, d) : false;
@@ -1152,7 +1152,7 @@ export function BookingWizard({
               {/* Slots */}
               <div className="mt-6 md:mt-0">
                 {!day ? (
-                  <p className="text-sm text-muted">Elegí un día para ver los horarios.</p>
+                  <p className="text-sm text-muted">Elige un día para ver los horarios.</p>
                 ) : cargandoSlots ? (
                   <div className="grid grid-cols-3 gap-2 md:grid-cols-[repeat(auto-fill,minmax(110px,1fr))]">
                     {Array.from({ length: 9 }).map((_, i) => (
@@ -1162,7 +1162,7 @@ export function BookingWizard({
                 ) : sinCupos ? (
                   // Dos motivos distintos para quedarse sin horarios, y conviene
                   // decirlos distinto: el día ya cerró (nadie puede reservar más
-                  // hoy) o el barbero se llenó (sí hay demanda, probá otro día).
+                  // hoy) o el barbero se llenó (sí hay demanda, prueba otro día).
                   <div className="rounded-2xl border border-line bg-panel px-5 py-6 text-center">
                     <span
                       aria-hidden
@@ -1176,8 +1176,8 @@ export function BookingWizard({
                     </p>
                     <p className="mx-auto mt-1.5 max-w-[34ch] text-[13px] leading-relaxed text-muted">
                       {diaCerrado
-                        ? "Ya pasó el horario de atención. Elegí otro día y te guardamos el turno."
-                        : `${barbero ? barbero.nombre : "El equipo"} ya tiene todos los turnos tomados. Probá con otra fecha${barbero ? " u otro barbero" : ""}.`}
+                        ? "Ya pasó el horario de atención. Elige otro día y te guardamos el turno."
+                        : `${barbero ? barbero.nombre : "El equipo"} ya tiene todos los turnos tomados. Prueba con otra fecha${barbero ? " u otro barbero" : ""}.`}
                     </p>
                     {dias.length > 1 && (
                       <button
@@ -1365,7 +1365,7 @@ export function BookingWizard({
                           onClick={cambiarCuenta}
                           className="shrink-0 whitespace-nowrap text-xs font-semibold text-accent-soft underline decoration-line underline-offset-4 transition hover:text-accent"
                         >
-                          ¿No sos vos?
+                          ¿No eres tú?
                         </button>
                       </div>
                     </div>
@@ -1377,7 +1377,7 @@ export function BookingWizard({
                         <input
                           value={nombre}
                           onChange={(e) => setNombre(e.target.value)}
-                          placeholder="Como querés que te llamemos"
+                          placeholder="Como quieres que te digamos"
                           className="w-full rounded-xl border border-line bg-panel px-3.5 py-3 text-sm text-ink placeholder:text-muted/70 focus:border-accent focus:outline-none"
                         />
                       </label>
@@ -1392,7 +1392,7 @@ export function BookingWizard({
                       <input
                         value={nombre}
                         onChange={(e) => setNombre(e.target.value)}
-                        placeholder="Como querés que te llamemos"
+                        placeholder="Como quieres que te digamos"
                         className="w-full rounded-xl border border-line bg-panel px-3.5 py-3 text-sm text-ink placeholder:text-muted/70 focus:border-accent focus:outline-none"
                       />
                     </label>
@@ -1415,8 +1415,8 @@ export function BookingWizard({
                       />
                       <span className="mt-1.5 block text-[11px] text-muted">
                         {email.trim().length > 0 && !emailValido
-                          ? "Revisá el correo: falta el @ o el dominio."
-                          : "Ahí te mandamos la confirmación y el recordatorio."}
+                          ? "Revisa el correo: falta el @ o el dominio."
+                          : "Ya mismo te mandamos la confirmación y el recordatorio."}
                       </span>
                     </label>
 
@@ -1429,7 +1429,7 @@ export function BookingWizard({
                         onClick={loginGoogle}
                         className="py-1 text-center text-[11.5px] text-muted underline decoration-line underline-offset-4 transition hover:text-ink"
                       >
-                        ¿Preferís continuar con Google? Queda en tu cuenta y sumás tarjeta
+                        ¿Prefieres continuar con Google? Queda en tu cuenta y sumas tarjeta
                       </button>
                     ) : (
                       <>
@@ -1448,7 +1448,7 @@ export function BookingWizard({
                           <GoogleG /> Continuar con Google
                         </button>
                         <p className="text-center text-[11px] leading-relaxed text-muted">
-                          Con tu cuenta la reserva queda en Mi cuenta y sumás en tu tarjeta de cortes.
+                          Con tu cuenta la reserva queda en Mi cuenta y sumas en tu tarjeta de cortes.
                         </p>
                       </>
                     )}
@@ -1528,7 +1528,7 @@ export function BookingWizard({
                 )}
 
                 <p className="px-4 pb-4 pt-3 text-[11px] leading-relaxed text-muted">
-                  Se paga en la barbería. Podés cancelar o reagendar hasta 2 horas antes.
+                  Se paga en la barbería. Puedes cancelar o reagendar hasta 2 horas antes.
                 </p>
               </aside>
             </div>
@@ -1561,7 +1561,7 @@ export function BookingWizard({
                 ]
                   .filter(Boolean)
                   .join(" · ")
-              : "Elegí un servicio y una hora"}
+              : "Elige un servicio y una hora"}
           </div>
           <div className="font-display text-[24px] font-extrabold tabular-nums leading-none text-ink">{total !== null ? cop(total) : "—"}</div>
         </div>
@@ -1581,9 +1581,9 @@ export function BookingWizard({
           <div className="w-full px-0" onClick={(e) => e.stopPropagation()}>
             <div className="rounded-t-[22px] border-t border-line px-5 pb-[calc(env(safe-area-inset-bottom)+28px)] pt-5 md:mx-auto md:max-w-md md:rounded-[22px] md:border" style={{ background: "#0c0b0a" }}>
               <div className="mx-auto mb-4 h-1 w-[38px] rounded-full md:hidden" style={{ background: "rgba(242,237,228,.18)" }} />
-              <h3 className="text-center font-display text-[23px] font-extrabold uppercase leading-tight">¿Querés seguirle el rastro a tu cita?</h3>
+              <h3 className="text-center font-display text-[23px] font-extrabold uppercase leading-tight">¿Quieres seguirle el rastro a tu cita?</h3>
               <p className="mx-auto mt-2 max-w-[34ch] text-center text-[13px] leading-relaxed text-muted">
-                Si entrás con Google, la reserva queda en <b className="text-ink">Mi cuenta</b>: ves tu lugar en la fila, te avisamos si se libera un cupo antes y sumás en tu <b className="text-ink">tarjeta de cortes</b>. Como invitado no hay forma de hacer seguimiento.
+                Si entras con Google, la reserva queda en <b className="text-ink">Mi cuenta</b>: ves tu lugar en la fila, te avisamos si se libera un cupo antes y sumas en tu <b className="text-ink">tarjeta de cortes</b>. Como invitado no hay forma de hacer seguimiento.
               </p>
               <button
                 type="button"

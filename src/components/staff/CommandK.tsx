@@ -216,7 +216,7 @@ export function CommandK() {
           value={q}
           onChange={(e) => cambiarQ(e.target.value)}
           onKeyDown={onInputKey}
-          placeholder="Escribí para buscar acciones, clientes, productos…"
+          placeholder="Escribe para buscar acciones, clientes, productos…"
           autoComplete="off"
           className="w-full border-b border-line bg-transparent px-4.5 py-4 text-[15px] text-ink placeholder:text-muted focus:outline-none"
         />

@@ -45,7 +45,7 @@ export default async function PreciosPage({
         <p className="text-[13px] leading-relaxed text-warn">
           <b>Los precios todavía no se editan desde acá.</b> Esta pantalla es de consulta: muestra lo que
           se está cobrando hoy en cada sede. Lo que sí funciona es armar combos y activar o desactivar un
-          servicio. Para cambiar un precio, pedímelo y lo actualizo.
+          servicio. Para cambiar un precio, pídemelo y lo actualizo.
         </p>
       </div>
 
@@ -58,7 +58,7 @@ export default async function PreciosPage({
           <ComboBuilder partesDisponibles={partesDisponibles} sedeActiva={sedeActiva} sedeNombre={sedeNombre} />
         ) : (
           <div className="rounded-2xl border border-warn/40 bg-warn/10 px-4 py-3 text-sm text-warn">
-            Elegí una sede arriba (Parque Venezuela o Plaza de la Paz) para armar un combo. El combo queda disponible
+            Elige una sede arriba (Parque Venezuela o Plaza de la Paz) para armar un combo. El combo queda disponible
             solo en esa sede.
           </div>
         )}

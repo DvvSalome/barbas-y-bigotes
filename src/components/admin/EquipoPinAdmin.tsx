@@ -141,7 +141,7 @@ export function EquipoPinAdmin({ barberos, sedes, estado }: { barberos: Barbero[
                             value={bioDraft}
                             onChange={(ev) => setBioDraft(ev.target.value)}
                             rows={3}
-                            placeholder="Contá quién es este barbero (opcional)."
+                            placeholder="Cuenta quién es este barbero (opcional)."
                             className="w-full resize-y rounded-lg border border-line bg-bg px-3 py-2 text-sm text-ink placeholder:text-muted focus:border-accent focus:outline-none"
                           />
                         </label>

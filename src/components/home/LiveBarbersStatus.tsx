@@ -89,7 +89,7 @@ export function LiveBarbersStatus() {
       <div className="mb-8">
         <p className="text-[11px] uppercase tracking-[0.3em] text-accent">Monitoreo en vivo</p>
         <h2 className="font-display text-[28px] font-bold uppercase sm:text-4xl">Barbería en tiempo real</h2>
-        <p className="mt-2 text-sm text-muted">Mirá quién está atendiendo ahora mismo antes de reservar tu turno.</p>
+        <p className="mt-2 text-sm text-muted">Mira quién está atendiendo ahora mismo antes de reservar tu turno.</p>
       </div>
 
       {loading ? (
@@ -113,7 +113,7 @@ export function LiveBarbersStatus() {
                 href="/reservar"
                 className="rounded-full bg-accent px-8 py-3.5 text-center text-[13px] font-bold uppercase tracking-[0.1em] text-on-accent transition hover:bg-accent-soft"
               >
-                Agendá tu cita
+                Agenda tu cita
               </Link>
             </div>
           ) : (

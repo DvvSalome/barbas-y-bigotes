@@ -40,8 +40,8 @@ export function StaffLogin({ barberos, sedes }: { barberos: Barbero[]; sedes: Se
         />
       </Link>
       <div className="mt-2 text-[10px] font-bold uppercase tracking-[0.3em] text-muted">Panel · Staff</div>
-      <h1 className="mt-6 font-display text-3xl font-semibold uppercase">¿Cómo entrás?</h1>
-      <p className="mt-2 text-sm text-muted">Elegí tu perfil.</p>
+      <h1 className="mt-6 font-display text-3xl font-semibold uppercase">¿Cómo entras?</h1>
+      <p className="mt-2 text-sm text-muted">Elige tu perfil.</p>
 
       <div className="mt-7 space-y-3">
         <button

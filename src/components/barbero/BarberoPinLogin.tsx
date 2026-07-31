@@ -58,7 +58,7 @@ export function BarberoPinLogin({
           </button>
         )}
         <div className="text-center text-[10px] uppercase tracking-[0.3em] text-accent">App del barbero</div>
-        <h1 className="mt-2 text-center font-display text-3xl font-semibold uppercase">¿Quién sos?</h1>
+        <h1 className="mt-2 text-center font-display text-3xl font-semibold uppercase">¿Quién eres?</h1>
         {sedes.map((s) => {
           const list = barberos.filter((b) => b.sede === s.id);
           if (!list.length) return null;

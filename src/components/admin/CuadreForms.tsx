@@ -53,7 +53,7 @@ export function CuadreForms({ sedes, barberos }: { sedes: Sede[]; barberos: Barb
   async function submitAdelanto(e: React.FormEvent) {
     e.preventDefault();
     if (!aBarbero) {
-      setAError("Elegí el barbero.");
+      setAError("Elige el barbero.");
       return;
     }
     const monto = sanearCop(aMonto);

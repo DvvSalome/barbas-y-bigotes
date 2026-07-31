@@ -64,7 +64,7 @@ export function EsperaPanel({
       <div className="mb-6 flex items-center justify-between gap-3">
         <div>
           <h2 className="font-display text-2xl uppercase">Lista de espera</h2>
-          <p className="text-sm text-muted">Si alguien no llega o cancela, avisás al siguiente.</p>
+          <p className="text-sm text-muted">Si alguien no llega o cancela, avisas al siguiente.</p>
         </div>
         {!open && (
           <button

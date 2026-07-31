@@ -326,7 +326,7 @@ export async function reagendarReservaCliente(
   // cliente podía mover la cita a 15 min vista y quedar en la puerta de un solo
   // sentido (ya no la puede cancelar online). Misma regla que cancelar/reagendar.
   if (nuevoInicio.getTime() <= Date.now() + CANCELACION_MIN_HORAS * 3600_000)
-    return { ok: false, error: `Elegí un horario con al menos ${CANCELACION_MIN_HORAS} horas de anticipación.` };
+    return { ok: false, error: `Elige un horario con al menos ${CANCELACION_MIN_HORAS} horas de anticipación.` };
 
   let dur = 30;
   if (r.servicio_id) {
@@ -353,7 +353,7 @@ export async function reagendarReservaCliente(
   // Dentro del horario de atención y alineado a la grilla de STEP; y que el servicio
   // completo entre antes del cierre (mismo criterio que buildSlots).
   if (minDia < OPEN || minDia + dur > CLOSE || (minDia - OPEN) % STEP !== 0)
-    return { ok: false, error: "Ese horario no está disponible. Elegí uno dentro del horario de atención." };
+    return { ok: false, error: "Ese horario no está disponible. Elige uno dentro del horario de atención." };
 
   // Día abierto: la sede cierra los domingos salvo excepción del dueño, y puede
   // cerrar un día hábil por festivo; el barbero puede tener el día marcado ausente.
@@ -367,7 +367,7 @@ export async function reagendarReservaCliente(
       .eq("fecha", fechaYmd)
       .limit(1);
     if (aus && aus.length)
-      return { ok: false, error: "Ese barbero no atiende ese día. Elegí otra fecha." };
+      return { ok: false, error: "Ese barbero no atiende ese día. Elige otra fecha." };
   }
   const { data: diaEsp } = await admin
     .from("sede_dias_especiales")
@@ -379,7 +379,7 @@ export async function reagendarReservaCliente(
   // getUTCDay() sobre el YMD de Bogotá a mediodía, para no cruzar husos.
   const esDomingo = new Date(`${fechaYmd}T12:00:00Z`).getUTCDay() === 0;
   const abre = excepcion !== undefined ? excepcion : !esDomingo;
-  if (!abre) return { ok: false, error: "Ese día la barbería no atiende. Elegí otra fecha." };
+  if (!abre) return { ok: false, error: "Ese día la barbería no atiende. Elige otra fecha." };
 
   // Pre-chequeo de solape del barbero, excluyendo la propia reserva.
   if (r.barbero_id) {
@@ -392,7 +392,7 @@ export async function reagendarReservaCliente(
       .lt("inicio", nuevoFin.toISOString())
       .gt("fin", nuevoInicio.toISOString())
       .limit(1);
-    if (clash && clash.length) return { ok: false, error: "Ese horario ya fue tomado. Elegí otro, por favor." };
+    if (clash && clash.length) return { ok: false, error: "Ese horario ya fue tomado. Elige otro, por favor." };
   }
 
   const { data: upd, error } = await admin
@@ -407,7 +407,7 @@ export async function reagendarReservaCliente(
     .in("estado", ["pendiente", "confirmada"])
     .select("id");
   if (error) {
-    if (error.code === "23P01") return { ok: false, error: "Ese horario ya fue tomado. Elegí otro, por favor." };
+    if (error.code === "23P01") return { ok: false, error: "Ese horario ya fue tomado. Elige otro, por favor." };
     return { ok: false, error: errorPublico("reagendarReservaCliente", error) };
   }
   if (!upd || upd.length === 0) return { ok: false, error: "Esta cita ya no se puede reagendar." };

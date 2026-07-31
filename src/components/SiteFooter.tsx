@@ -36,7 +36,7 @@ export function SiteFooter({ conCtaMovil = false }: { conCtaMovil?: boolean }) {
             ¿Listo para tu <span className="text-accent-soft">mejor versión</span>?
           </h2>
           <p className="mt-2 text-sm text-muted">
-            Reservá en menos de un minuto · confirmación directa a tu correo.
+            Reserva en menos de un minuto · confirmación directa a tu correo.
           </p>
           <Link
             href="/reservar"

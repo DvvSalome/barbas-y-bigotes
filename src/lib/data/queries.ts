@@ -195,7 +195,7 @@ export async function getAusencias(): Promise<Ausencia[]> {
 
 export type BebidaUpsell = { id: string; nombre: string; precio: number; sede: SedeId };
 
-// Bebidas del paso "¿le sumás una bebida?" del wizard: productos activos marcados
+// Bebidas del paso "¿le sumas una bebida?" del wizard: productos activos marcados
 // en_upsell, por sede. El wizard filtra por la sede activa. Orden por precio para
 // que el menú quede ascendente (Agua, Gaseosa, Cerveza, Energizante).
 export async function getBebidasUpsell(): Promise<BebidaUpsell[]> {

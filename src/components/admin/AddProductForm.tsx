@@ -78,7 +78,7 @@ export function AddProductForm({ sedes }: { sedes: Sede[] }) {
         const fres = await subirFotoProducto(fd);
         if (!fres.ok) fotoErr = `Producto creado, pero la foto no se subió: ${fres.error}`;
       } catch {
-        fotoErr = "Producto creado, pero la foto no se subió. Probá subirla desde la lista.";
+        fotoErr = "Producto creado, pero la foto no se subió. Prueba subirla desde la lista.";
       }
     }
     setSaving(false);

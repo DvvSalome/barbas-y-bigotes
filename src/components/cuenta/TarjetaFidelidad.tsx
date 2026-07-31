@@ -27,7 +27,7 @@ const u = (px: number) => `${((px / BASE) * 100).toFixed(3)}cqw`;
 export function TarjetaFidelidad({
   sellos,
   nombre,
-  subtitulo = "Se llena sola con cada corte. Acá no tenés que presentar nada.",
+  subtitulo = "Se llena sola con cada corte. Aquí no tienes que presentar nada.",
   codigo,
 }: {
   /** Sellos llenos, 0..9 (cortesTotales % 10). */

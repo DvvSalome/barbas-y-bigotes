@@ -37,26 +37,26 @@ export async function loginBarberoPin(
     .eq("rol", "barbero")
     .maybeSingle();
   const authId = (prof as { auth_id?: string } | null)?.auth_id;
-  if (!authId) return { ok: false, error: "Este barbero no tiene acceso configurado. Avisá al admin." };
+  if (!authId) return { ok: false, error: "Este barbero no tiene acceso configurado. Avisa al admin." };
 
   const { data: userData } = await admin.auth.admin.getUserById(authId);
   const email = userData?.user?.email;
-  if (!email) return { ok: false, error: "Este barbero no tiene acceso configurado. Avisá al admin." };
+  if (!email) return { ok: false, error: "Este barbero no tiene acceso configurado. Avisa al admin." };
 
   const { data: link, error: lErr } = await admin.auth.admin.generateLink({ type: "magiclink", email });
   const tokenHash = (link as { properties?: { hashed_token?: string } } | null)?.properties?.hashed_token;
-  if (lErr || !tokenHash) return { ok: false, error: "No se pudo iniciar sesión. Intentá de nuevo." };
+  if (lErr || !tokenHash) return { ok: false, error: "No se pudo iniciar sesión. Intenta de nuevo." };
 
   const sb = await supabaseServerAuth();
   const { error: oErr } = await sb.auth.verifyOtp({ type: "magiclink", token_hash: tokenHash });
-  if (oErr) return { ok: false, error: "No se pudo iniciar sesión. Intentá de nuevo." };
+  if (oErr) return { ok: false, error: "No se pudo iniciar sesión. Intenta de nuevo." };
 
   // Defensa: la sesión minada debe ser exactamente la de este barbero (no dependemos
   // de la unicidad de email de Supabase; lo verificamos contra el auth_id resuelto).
   const { data: { user } } = await sb.auth.getUser();
   if (!user || user.id !== authId) {
     await sb.auth.signOut();
-    return { ok: false, error: "No se pudo iniciar sesión. Intentá de nuevo." };
+    return { ok: false, error: "No se pudo iniciar sesión. Intenta de nuevo." };
   }
 
   return { ok: true };
@@ -75,7 +75,7 @@ export async function setearPinBarbero(
   if (!esPinValido(pin)) return { ok: false, error: "PIN inválido (6 dígitos, no triviales como 123456 o 000000)." };
   const admin = supabaseAdmin();
   const { error } = await admin.rpc("set_pin_barbero", { p_barbero_id: barberoId, p_pin: pin });
-  if (error) return { ok: false, error: errorPublico("setearPinBarbero", error, "No se pudo guardar el PIN. Intentá de nuevo.") };
+  if (error) return { ok: false, error: errorPublico("setearPinBarbero", error, "No se pudo guardar el PIN. Intenta de nuevo.") };
   return { ok: true };
 }
 
@@ -83,7 +83,7 @@ export async function desbloquearBarbero(barberoId: string): Promise<{ ok: boole
   if (!(await esAdmin())) return { ok: false, error: "Requiere permiso de administrador" };
   const admin = supabaseAdmin();
   const { error } = await admin.rpc("desbloquear_barbero", { p_barbero_id: barberoId });
-  if (error) return { ok: false, error: errorPublico("desbloquearBarbero", error, "No se pudo desbloquear. Intentá de nuevo.") };
+  if (error) return { ok: false, error: errorPublico("desbloquearBarbero", error, "No se pudo desbloquear. Intenta de nuevo.") };
   return { ok: true };
 }
 

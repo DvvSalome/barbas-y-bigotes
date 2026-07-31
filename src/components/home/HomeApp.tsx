@@ -7,13 +7,13 @@ import Link from "next/link";
 const PASOS = [
   {
     n: "01",
-    titulo: "Reservá en 30 segundos",
+    titulo: "Reserva en 30 segundos",
     texto:
-      "Elegí sede, servicio, barbero y hora. Ves los horarios libres en tiempo real y tu cupo queda confirmado al instante.",
+      "Elige sede, servicio, barbero y hora. Ves los horarios libres en tiempo real y tu cupo queda confirmado al instante.",
   },
   {
     n: "02",
-    titulo: "Entrá con tu cuenta de Google",
+    titulo: "Entra con tu cuenta de Google",
     texto:
       "Opcional, pero te deja todo a mano: tus citas guardadas, tu lugar en la fila y tu tarjeta de cortes. Solo usamos tu nombre, tu correo y tu foto de perfil.",
   },
@@ -21,7 +21,7 @@ const PASOS = [
     n: "03",
     titulo: "Te avisamos nosotros",
     texto:
-      "Confirmación al reservar, recordatorio el día antes y aviso si se libera un cupo más temprano. Cancelás o reagendás vos mismo hasta 2 horas antes.",
+      "Confirmación al reservar, recordatorio el día antes y aviso si se libera un cupo más temprano. Cancelas o reagendas tú mismo hasta 2 horas antes.",
   },
 ];
 
@@ -37,8 +37,8 @@ export function HomeApp() {
         </h2>
         <p className="mx-auto mt-4 max-w-[58ch] text-[15px] leading-[1.7] text-muted">
           Esta aplicación se llama <strong className="text-ink">Barbas &amp; Bigotes</strong> y es
-          el sistema de reservas de nuestra barbería en Barranquilla, Colombia. Con ella agendás tu
-          cita por internet, mirás tu historial de visitas y seguís tu tarjeta de cortes, sin llamar
+          el sistema de reservas de nuestra barbería en Barranquilla, Colombia. Con ella agendas tu
+          cita por internet, miras tu historial de visitas y sigues tu tarjeta de cortes, sin llamar
           ni esperar en el local. La desarrolla y opera Barbas &amp; Bigotes Barbershop.
         </p>
       </div>
@@ -78,7 +78,7 @@ export function HomeApp() {
       </div>
 
       <p className="mx-auto mt-5 max-w-[60ch] text-center text-[12.5px] leading-relaxed text-muted">
-        Usar la app es gratis. Mirá cómo tratamos tu información en la{" "}
+        Usar la app es gratis. Mira cómo tratamos tu información en la{" "}
         <Link href="/privacidad" className="text-accent-soft underline decoration-line underline-offset-4">
           política de privacidad
         </Link>{" "}

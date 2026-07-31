@@ -9,7 +9,7 @@ import type { Barbero } from "@/lib/data/types";
 export const metadata: Metadata = {
   title: "Nuestros barberos",
   description:
-    "Conocé a los 6 barberos de Barbas & Bigotes en Barranquilla: especialistas en degradados, barba, color y diseño en las sedes Parque Venezuela y Plaza de la Paz.",
+    "Conoce a los 6 barberos de Barbas & Bigotes en Barranquilla: especialistas en degradados, barba, color y diseño en las sedes Parque Venezuela y Plaza de la Paz.",
 };
 
 // Precios/estado no dependen del build, pero el roster sí sale de la DB.
@@ -110,8 +110,8 @@ export default async function BarberosPage() {
             Los barberos
           </h1>
           <p className="mx-auto mt-4 max-w-[52ch] text-[15px] leading-[1.6] text-muted">
-            Seis especialistas entre las dos sedes. Pasá el mouse por una carta para
-            conocerlo y reservá directo con él.
+            Seis especialistas entre las dos sedes. Pásale el cursor a una carta para
+            conocerlo y reserva directo con él.
           </p>
         </div>
 

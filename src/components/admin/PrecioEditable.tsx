@@ -51,7 +51,7 @@ export function PrecioEditable({ productoId, precio }: { productoId: string; pre
           setError(false);
           setEditing(true);
         }}
-        title="Tocá para editar el precio"
+        title="Toca para editar el precio"
         className="group inline-flex items-center gap-1 tabular-nums underline decoration-dotted decoration-line underline-offset-4 transition hover:decoration-accent"
       >
         {cop(precio)}

@@ -43,7 +43,7 @@ export function AusenciasAdmin({
     e.preventDefault();
     setErr(null);
     if (!barberoId) {
-      setErr("Elegí el barbero.");
+      setErr("Elige el barbero.");
       return;
     }
     setSaving(true);

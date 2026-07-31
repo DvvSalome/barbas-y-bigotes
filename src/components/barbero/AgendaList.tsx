@@ -500,7 +500,7 @@ function WalkinForm({
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!barberoId) {
-      alert("Elegí el barbero");
+      alert("Elige el barbero");
       return;
     }
     setSaving(true);
@@ -758,7 +758,7 @@ function CheckoutForm({
       return;
     }
     if (!medio) {
-      setErr("Elegí el medio de pago.");
+      setErr("Elige el medio de pago.");
       return;
     }
     setSaving(true);

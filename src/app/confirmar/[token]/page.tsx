@@ -40,8 +40,8 @@ export default async function ConfirmarPage({
             </h1>
             <p className="mt-4 text-muted">
               {res.estado === "ya"
-                ? "Esta cita ya la habías confirmado. No tenés que hacer nada más."
-                : "Gracias por avisarnos. Tu barbero ya sabe que venís."}
+                ? "Esta cita ya la habías confirmado. No tienes que hacer nada más."
+                : "Gracias por avisarnos. Tu barbero ya sabe que vienes."}
             </p>
 
             <div className="mt-8 w-full rounded-2xl border border-line bg-panel p-5 text-left">
@@ -59,7 +59,7 @@ export default async function ConfirmarPage({
             </div>
 
             <p className="mt-6 text-xs text-muted">
-              ¿Te surgió algo? Podés reagendar o cancelar hasta 2 horas antes desde{" "}
+              ¿Te surgió algo? Puedes reagendar o cancelar hasta 2 horas antes desde{" "}
               <Link href="/cuenta" className="text-accent-soft underline">
                 Mi cuenta
               </Link>
@@ -74,8 +74,8 @@ export default async function ConfirmarPage({
             </h1>
             <p className="mt-4 text-muted">
               {res.estado === "cancelada"
-                ? "La cita fue cancelada o ya pasó. Si querés otro turno, reservá de nuevo cuando quieras."
-                : "El enlace no es válido o ya venció. Si tenés una cita, reservá o revisá tu cuenta."}
+                ? "La cita fue cancelada o ya pasó. Si quieres otro turno, reserva de nuevo cuando quieras."
+                : "El enlace no es válido o ya venció. Si tienes una cita, reserva o revisa tu cuenta."}
             </p>
             <Link
               href="/reservar"

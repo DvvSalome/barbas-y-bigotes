@@ -47,8 +47,8 @@ export default async function ReservarPage({
       {/* Política de cancelación server-rendered (crawlable para IAs/buscadores),
           fuera del app-shell del wizard para no romper el layout mobile. */}
       <p className="sr-only">
-        Podés cancelar o reagendar tu cita online hasta 2 horas antes desde Mi
-        cuenta (/cuenta). Con menos tiempo, escribinos por WhatsApp al +57 300
+        Puedes cancelar o reagendar tu cita online hasta 2 horas antes desde Mi
+        cuenta (/cuenta). Con menos tiempo, escríbenos por WhatsApp al +57 300
         673 4799.
       </p>
     </>

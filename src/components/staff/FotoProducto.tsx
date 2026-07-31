@@ -45,7 +45,7 @@ export function FotoProducto({
       if (res.ok) router.refresh();
       else setErr(res.error ?? "No se pudo subir la foto.");
     } catch {
-      setErr("No se pudo subir la foto. Probá con otra imagen.");
+      setErr("No se pudo subir la foto. Prueba con otra imagen.");
     } finally {
       setSubiendo(false);
     }

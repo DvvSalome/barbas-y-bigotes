@@ -231,7 +231,7 @@ export const faqItems = [
   {
     pregunta: "¿Cómo reservo una cita?",
     respuesta:
-      "Online en menos de un minuto: elegís sede, servicio, barbero y hora. Te llega la confirmación al correo y el recordatorio antes de la cita.",
+      "Online en menos de un minuto: eliges sede, servicio, barbero y hora. Te llega la confirmación al correo y el recordatorio antes de la cita.",
   },
   {
     pregunta: "¿Puedo cancelar o reagendar?",
@@ -241,7 +241,7 @@ export const faqItems = [
   {
     pregunta: "¿Atienden sin reserva?",
     respuesta:
-      "Sí, los walk-ins son bienvenidos. Si el barbero está ocupado, entrás a la lista de espera y te avisamos cuando sea tu turno.",
+      "Sí, los walk-ins son bienvenidos. Si el barbero está ocupado, entras a la lista de espera y te avisamos cuando sea tu turno.",
   },
   {
     pregunta: "¿Los precios cambian por sede?",

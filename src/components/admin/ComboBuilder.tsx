@@ -146,7 +146,7 @@ export function ComboBuilder({
   return (
     <div className="rounded-2xl border border-accent/30 bg-accent/5 p-4 sm:p-5">
       <div className="text-[11px] font-bold uppercase tracking-[0.14em] text-accent-soft">
-        Armá el combo · tocá lo que incluye
+        Arma el combo · toca lo que incluye
       </div>
       <p className="mt-1 text-xs text-muted">
         Se crea en <span className="font-semibold text-ink">{sedeNombre}</span> · queda disponible solo en esta sede.
@@ -195,7 +195,7 @@ export function ComboBuilder({
             Suelto vale <span className="tabular-nums text-ink">{cop(suelto)}</span> · {durSugerida} min · precio de
             combo sugerido <span className="font-bold tabular-nums text-ok">{cop(sugerido)}</span> (10% menos)
           </p>
-          <p className="mt-1 text-[11px] text-muted">Nombre, precio y duración quedaron abajo — ajustalos si querés.</p>
+          <p className="mt-1 text-[11px] text-muted">Nombre, precio y duración quedaron abajo — ajústalos si quieres.</p>
         </div>
       )}
 
