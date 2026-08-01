@@ -236,6 +236,15 @@ body {
   .bb-foto-skeleton { animation: none; }
 }
 
+/* Señal "pasando ahora" (caja abierta en /admin): anillo que se expande detrás
+   de un punto sólido, así el punto nunca desaparece. Estado, no decoración. */
+.bb-live-ring {
+  animation: bbping 1.8s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .bb-live-ring { animation: none; }
+}
+
 /* Fotos de barberos: B/N por defecto y a color al hover de la card (proto §0). */
 .bb-card:hover .bb-foto {
   filter: grayscale(0) !important;
