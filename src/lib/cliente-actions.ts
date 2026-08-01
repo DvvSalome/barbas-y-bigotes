@@ -63,6 +63,31 @@ export async function clienteIdForUser(
   if (prof) return null; // es staff, no cliente
   const { data: byAuth } = await admin.from("clientes").select("id").eq("auth_id", userId).maybeSingle();
   if (byAuth) return (byAuth as { id: string }).id;
+
+  // Reservó como INVITADO y ahora entra con Google: su ficha ya existe con ese
+  // correo (upsert_cliente dedup por correo, 0025). Sin este paso se creaba una
+  // ficha nueva y sus citas de invitado quedaban huérfanas: no las veía en
+  // /cuenta y la tarjeta de cortes se partía en dos.
+  // Solo se reclama una ficha SIN dueño (auth_id null): una ya atada a otra
+  // cuenta no se toca ni aunque comparta el correo.
+  const mail = email.trim().toLowerCase();
+  if (mail) {
+    const { data: huerfana } = await admin
+      .from("clientes")
+      .select("id")
+      .ilike("email", mail)
+      .is("auth_id", null)
+      .order("creado_en", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+    if (huerfana) {
+      const id = (huerfana as { id: string }).id;
+      const { error } = await admin.from("clientes").update({ auth_id: userId }).eq("id", id).is("auth_id", null);
+      if (!error) return id;
+      // Carrera (otro request la reclamó primero): seguimos al insert de abajo.
+    }
+  }
+
   const { data: created } = await admin
     .from("clientes")
     .insert({ nombre: nombre || "Cliente", email: email || null, auth_id: userId, origen: "app" })
