@@ -60,7 +60,7 @@ export default function PrivacidadPage() {
         <ul>
           <li>Agendar, recordar y gestionar tus citas.</li>
           <li>Avisarte por correo o notificación: confirmación, recordatorio del día anterior y cuando se libera un cupo si estás en la lista de espera.</li>
-          <li>Llevar tu tarjeta de cortes (el 5º con 50% y el 10º gratis).</li>
+          <li>Llevar tu tarjeta de cortes (un regalo en el 5º corte y 50% en el 10º).</li>
           <li>Que el barbero sepa a quién atiende y qué le gustó la última vez.</li>
           <li>Invitarte a dejar una reseña después de tu visita, si quieres.</li>
         </ul>

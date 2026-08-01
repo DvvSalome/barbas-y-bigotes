@@ -68,8 +68,8 @@ export default function TerminosPage() {
         <h2>Tarjeta de cortes</h2>
         <ul>
           <li>Cada corte que te haces suma un sello. Son <strong>10 sellos</strong> por tarjeta.</li>
-          <li>En el <strong>5º corte</strong> tienes <strong>50% de descuento</strong>.</li>
-          <li>En el <strong>10º corte</strong>, el corte va <strong>por la casa</strong>.</li>
+          <li>En el <strong>5º corte</strong> te llevas <strong>un regalo de la casa</strong> (el corte lo pagas normal).</li>
+          <li>En el <strong>10º corte</strong> tienes <strong>50% de descuento</strong> sobre el corte.</li>
           <li>Al completarla, la tarjeta arranca de nuevo.</li>
           <li>
             El beneficio aplica solo sobre el corte, es personal, no se transfiere y no se cambia
