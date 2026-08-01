@@ -128,16 +128,36 @@ export function HomeHero() {
       <div className="hidden md:block">
         <div className="mx-auto max-w-[1180px] px-6 pt-6">
           <div className="bb-foto-skeleton relative h-[600px] overflow-hidden rounded-[30px] border border-[rgba(242,237,228,0.07)] shadow-[0_45px_120px_-50px_rgba(0,0,0,0.9)]">
-            <div className={`absolute inset-[-4%] ${kbClass}`}>
-              <Image
-                src="/sedes/parque-venezuela-interior.jpg"
-                alt="Interior de la sede Parque Venezuela"
-                fill
-                priority
-                sizes="100vw"
-                className="object-cover [filter:brightness(1.25)_contrast(1.05)_saturate(1.1)]"
-              />
-            </div>
+            {/* Video ambiente del local (autoplay silenciado, en loop). El poster
+                es la foto fija: pinta al instante mientras baja el mp4, y con
+                reduce-motion (o si el navegador bloquea autoplay) queda esa foto.
+                Solo desktop: este bloque es hidden md:block, así el mp4 (~5MB) no
+                se descarga en móvil. */}
+            {reduce ? (
+              <div className={`absolute inset-[-4%] ${kbClass}`}>
+                <Image
+                  src="/sedes/parque-venezuela-interior.jpg"
+                  alt="Interior de la sede Parque Venezuela"
+                  fill
+                  priority
+                  sizes="100vw"
+                  className="object-cover [filter:brightness(1.25)_contrast(1.05)_saturate(1.1)]"
+                />
+              </div>
+            ) : (
+              <video
+                className="absolute inset-0 h-full w-full object-cover [filter:brightness(1.25)_contrast(1.05)_saturate(1.1)]"
+                autoPlay
+                muted
+                loop
+                playsInline
+                preload="auto"
+                poster="/sedes/parque-venezuela-interior.jpg"
+                aria-label="Video ambiente de la sede Parque Venezuela"
+              >
+                <source src="/video/hero.mp4" type="video/mp4" />
+              </video>
+            )}
             <div className="absolute inset-0 bg-[radial-gradient(120%_120%_at_50%_28%,rgba(12,11,10,0.08)_0%,rgba(8,7,6,0.35)_62%,rgba(4,3,3,0.68)_100%)]" />
 
             {/* Badge arriba-derecha */}
