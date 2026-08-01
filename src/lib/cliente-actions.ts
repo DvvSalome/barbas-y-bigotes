@@ -8,6 +8,38 @@ import { errorPublico } from "@/lib/errors";
 import { pushACliente } from "@/lib/push";
 import { fechaHoraBogota } from "@/lib/format";
 
+// Ventana de "deshacer" (minutos): desde la pantalla de confirmación del wizard,
+// el cliente puede cancelar la reserva que ACABA de hacer si puso un dato mal.
+const DESHACER_MIN = 60;
+
+// Cancela una reserva recién creada usando su confirm_token como credencial
+// (quien lo tiene acaba de reservar). Es un POST (server action), no un GET, así
+// que un prefetch no la dispara. Acotada a lo recién creado para que no sea un
+// atajo al límite de 2h del portal. Al pasar a 'cancelada', la vista
+// v_confirmaciones_pendientes la excluye → el correo de confirmación no sale.
+export async function cancelarReservaReciente(
+  token: string,
+): Promise<{ ok: boolean; error?: string }> {
+  if (!/^[0-9a-fA-F-]{36}$/.test(token)) return { ok: false, error: "Enlace inválido." };
+  const sb = supabaseAdmin();
+  const { data: r } = await sb
+    .from("reservas")
+    .select("id, estado, creado_en")
+    .eq("confirm_token", token)
+    .maybeSingle();
+  if (!r) return { ok: false, error: "No encontramos esa reserva." };
+  const row = r as { id: string; estado: string; creado_en: string };
+  if (row.estado === "cancelada") return { ok: true }; // idempotente
+  if (row.estado !== "confirmada" && row.estado !== "pendiente")
+    return { ok: false, error: "Esta cita ya no se puede deshacer acá. Escríbenos por WhatsApp." };
+  if (Date.now() - new Date(row.creado_en).getTime() > DESHACER_MIN * 60_000)
+    return { ok: false, error: "Para cancelar esta cita entra a Mi cuenta o escríbenos por WhatsApp." };
+  const { error } = await sb.from("reservas").update({ estado: "cancelada" }).eq("id", row.id);
+  if (error) return { ok: false, error: errorPublico("cancelarReservaReciente", error, "No se pudo cancelar. Intenta de nuevo.") };
+  revalidatePath("/barbero");
+  return { ok: true };
+}
+
 export type CuentaContext = {
   estado: "anon" | "staff" | "cliente";
   clienteId?: string;

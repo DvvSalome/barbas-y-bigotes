@@ -27,7 +27,7 @@ import { beneficioProximoCorte, type BeneficioTarjeta } from "@/lib/tarjeta";
 import { pushACliente } from "@/lib/push";
 import { fechaHoraBogota } from "@/lib/format";
 
-export type ActionResult = { ok: boolean; error?: string; /** Se guardó, pero con salvedades que el admin debe ver (p.ej. especialidades descartadas). */ aviso?: string; id?: string; total?: number; descuento?: number; propina?: number; puntos?: number; encolado?: boolean; esperaHasta?: string | null; tarjeta?: { cortesTotales: number; posicion: number; beneficio: BeneficioTarjeta | null }; resenaUrl?: string | null };
+export type ActionResult = { ok: boolean; error?: string; /** Se guardó, pero con salvedades que el admin debe ver (p.ej. especialidades descartadas). */ aviso?: string; id?: string; total?: number; descuento?: number; propina?: number; puntos?: number; encolado?: boolean; esperaHasta?: string | null; tarjeta?: { cortesTotales: number; posicion: number; beneficio: BeneficioTarjeta | null }; resenaUrl?: string | null; /** confirm_token de la reserva recién creada: credencial para deshacerla desde la confirmación del wizard. */ token?: string | null };
 
 // --- Autorización (defensa en profundidad; la RLS es la barrera real) ---
 // Las server actions corren con la sesión del usuario, pero igual revalidamos el
@@ -627,17 +627,24 @@ export async function createReserva(input: {
   // ponytail: si el barbero propone adelanto después, sobrescribe esta nota (raro;
   // igual el barbero cobra la bebida en consumos).
   const nota = (input.nota ?? "").trim().slice(0, 500) || null;
-  const { error } = await sb.from("reservas").insert({
-    sede_id: input.sede,
-    barbero_id: barberoId,
-    servicio_id: input.servicioId,
-    cliente_ref: clienteRef,
-    inicio: inicio.toISOString(),
-    fin: fin.toISOString(),
-    estado: "confirmada",
-    canal: "app",
-    nota,
-  });
+  const { data: creada, error } = await sb
+    .from("reservas")
+    .insert({
+      sede_id: input.sede,
+      barbero_id: barberoId,
+      servicio_id: input.servicioId,
+      cliente_ref: clienteRef,
+      inicio: inicio.toISOString(),
+      fin: fin.toISOString(),
+      estado: "confirmada",
+      canal: "app",
+      nota,
+    })
+    // Devolvemos el confirm_token: es la credencial con la que la pantalla de
+    // confirmación del wizard deja DESHACER la reserva recién hecha (por si el
+    // cliente puso un dato mal), sin exigir login.
+    .select("confirm_token")
+    .single();
   if (error) {
     if (error.code === "23P01") return { ok: false, error: "Ese horario ya fue tomado. Elige otro, por favor." };
     return { ok: false, error: errorPublico("createReserva", error) };
@@ -651,7 +658,7 @@ export async function createReserva(input: {
     });
   }
   revalidatePath("/barbero");
-  return { ok: true };
+  return { ok: true, token: (creada as { confirm_token?: string } | null)?.confirm_token ?? null };
 }
 
 // Rangos ocupados de un barbero en un día (solo inicio/fin, sin datos del cliente).

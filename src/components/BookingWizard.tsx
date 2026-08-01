@@ -5,6 +5,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { categorias } from "@/lib/data/seed";
 import { createReserva, getDisponibilidad } from "@/lib/actions";
+import { cancelarReservaReciente } from "@/lib/cliente-actions";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import type { Sede, SedeId, Servicio, Barbero, Categoria } from "@/lib/data/types";
 import type { BebidaUpsell, Ausencia, DiaEspecial } from "@/lib/data/queries";
@@ -147,6 +148,12 @@ export function BookingWizard({
   // Deep-link de sede o barbero → arranca en paso 2 (Servicio) con la sede fija (proto §12).
   const pasoInicial: Exclude<Step, "ok"> = initialBarbero || initialSedeId ? "servicio" : "sede";
   const [step, setStep] = useState<Step>(pasoInicial);
+  // Deshacer desde la confirmación: el confirm_token que devuelve createReserva es
+  // la credencial para cancelar la reserva recién hecha (dato mal cargado).
+  const [reservaToken, setReservaToken] = useState<string | null>(null);
+  const [cancelada, setCancelada] = useState(false);
+  const [cancelando, setCancelando] = useState(false);
+  const [cancelError, setCancelError] = useState<string | null>(null);
   const [sedeId, setSedeId] = useState<SedeId | null>(sedeDefault);
   const [servicio, setServicio] = useState<Servicio | null>(null);
   const [servicioFoto, setServicioFoto] = useState<string>(SERV_FOTOS[0]);
@@ -716,12 +723,44 @@ export function BookingWizard({
     });
     setSaving(false);
     if (res.ok) {
+      setReservaToken(res.token ?? null);
       setBarbero(elegido);
       setStep("ok");
       return;
     }
     setErrorMsg(res.error ?? "No se pudo reservar");
     volverAHorario();
+  }
+
+  // Deshecha desde la confirmación: el cliente notó un dato mal y canceló. No sale
+  // el correo de confirmación (la vista v_confirmaciones_pendientes excluye las
+  // 'cancelada'); acá le ofrecemos reservar de nuevo con la info correcta.
+  if (step === "ok" && cancelada) {
+    return (
+      <div className="flex min-h-dvh flex-col items-center justify-center gap-5 px-6 py-12 text-center">
+        <span className="inline-block rounded-full border border-line px-4 py-1.5 font-display text-xs font-extrabold uppercase tracking-[0.1em] text-muted">
+          Reserva cancelada
+        </span>
+        <h2 className="max-w-[20ch] font-display text-[32px] font-extrabold uppercase leading-[0.95]">
+          Listo, la cancelamos
+        </h2>
+        <p className="max-w-[32ch] text-sm text-muted">
+          No te mandamos confirmación. Si había un dato mal, reserva de nuevo con la info correcta.
+        </p>
+        <button
+          onClick={() => {
+            window.location.href = "/reservar";
+          }}
+          className="mt-2 flex min-h-[50px] items-center justify-center rounded-2xl px-8 font-display text-[15px] font-extrabold uppercase tracking-wide text-on-accent"
+          style={{ background: GRAD_CTA }}
+        >
+          Reservar de nuevo
+        </button>
+        <button onClick={() => router.push("/")} className="text-[13px] text-muted underline underline-offset-2">
+          Volver al inicio
+        </button>
+      </div>
+    );
   }
 
   // ---------------------------------------------------------------
@@ -809,7 +848,7 @@ export function BookingWizard({
             <div className="flex items-end justify-between p-3.5">
               <div>
                 <div className="text-[10.5px] font-bold uppercase tracking-[0.12em] text-muted">Total</div>
-                <div className="text-[11px] text-muted">Lo pagás en la barbería.</div>
+                <div className="text-[11px] text-muted">Lo pagas en la barbería.</div>
               </div>
               {total !== null && <div className="font-display text-[22px] font-extrabold tabular-nums text-accent-soft">{cop(total)}</div>}
             </div>
@@ -830,6 +869,28 @@ export function BookingWizard({
               Volver al inicio
             </button>
           </div>
+
+          {/* Deshacer: por si puso un dato mal. Sin cuenta regresiva; cancela con
+              el confirm_token y no se manda la confirmación por correo. */}
+          {reservaToken && (
+            <div className="mt-4" style={{ animation: "bbrise .5s ease-out .65s both" }}>
+              <button
+                onClick={async () => {
+                  setCancelError(null);
+                  setCancelando(true);
+                  const r = await cancelarReservaReciente(reservaToken);
+                  setCancelando(false);
+                  if (r.ok) setCancelada(true);
+                  else setCancelError(r.error ?? "No se pudo cancelar. Intenta de nuevo.");
+                }}
+                disabled={cancelando}
+                className="text-[12.5px] text-muted underline underline-offset-2 transition hover:text-ink disabled:opacity-50"
+              >
+                {cancelando ? "Cancelando…" : "¿Algún dato mal? Cancelar esta reserva"}
+              </button>
+              {cancelError && <p className="mt-1.5 text-[12px] text-accent-soft">{cancelError}</p>}
+            </div>
+          )}
         </div>
       </div>
     );
