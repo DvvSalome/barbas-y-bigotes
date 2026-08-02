@@ -10,14 +10,25 @@ import type { Sede } from "@/lib/data/types";
 
 const input =
   "rounded-lg border border-line bg-bg px-3 py-2 text-ink placeholder:text-muted focus:border-accent focus:outline-none";
+const lbl = "mb-1 block text-[11.5px] font-semibold text-ink";
+const ayuda = "mt-1 block text-[11px] leading-snug text-muted";
 
-export function AddProductForm({ sedes }: { sedes: Sede[] }) {
+export function AddProductForm({
+  sedes,
+  sedeInicial,
+  onListo,
+}: {
+  sedes: Sede[];
+  /** Sede de la pestaña abierta: el producto se crea donde el dueño está mirando. */
+  sedeInicial?: string;
+  /** Lo llama el panel para cerrarse cuando el alta salió bien. */
+  onListo?: () => void;
+}) {
   const router = useRouter();
   const fotoRef = useRef<HTMLInputElement>(null);
-  const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [nombre, setNombre] = useState("");
-  const [sede, setSede] = useState(sedes[0]?.id ?? "");
+  const [sede, setSede] = useState(sedeInicial ?? sedes[0]?.id ?? "");
   const [precio, setPrecio] = useState("");
   const [stock, setStock] = useState("");
   const [stockMin, setStockMin] = useState("");
@@ -89,23 +100,12 @@ export function AddProductForm({ sedes }: { sedes: Sede[] }) {
       setStockMin("");
       setComision("");
       setFoto(null);
-      if (fotoErr) setErr(fotoErr); // el form queda abierto para que se vea el aviso
-      else setOpen(false);
+      if (fotoErr) setErr(fotoErr); // queda abierto para que se vea el aviso
+      else onListo?.();
       router.refresh();
     } else {
       setErr(res.error ?? "No se pudo guardar.");
     }
-  }
-
-  if (!open) {
-    return (
-      <button
-        onClick={() => setOpen(true)}
-        className="flex items-center gap-2 rounded-full bg-accent px-6 py-2.5 text-sm font-semibold uppercase tracking-wide text-on-accent transition hover:bg-accent-soft"
-      >
-        <BoxIcon className="h-4 w-4" /> Agregar producto
-      </button>
-    );
   }
 
   return (
@@ -113,16 +113,40 @@ export function AddProductForm({ sedes }: { sedes: Sede[] }) {
       <h3 className="flex items-center gap-2 font-display text-lg sm:col-span-6">
         <BoxIcon className="h-4 w-4 text-accent" /> Nuevo producto
       </h3>
-      <input required value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Producto" className={`${input} sm:col-span-2`} />
-      <select value={sede} onChange={(e) => setSede(e.target.value as typeof sede)} className={input}>
-        {sedes.map((s) => (
-          <option key={s.id} value={s.id}>{s.nombre}</option>
-        ))}
-      </select>
-      <input required type="number" min={0} step={1} value={precio} onChange={(e) => setPrecio(e.target.value)} placeholder="Precio" className={input} />
-      <input required type="number" min={0} step={1} value={stock} onChange={(e) => setStock(e.target.value)} placeholder="Stock" className={input} />
-      <input type="number" min={0} step={1} value={stockMin} onChange={(e) => setStockMin(e.target.value)} placeholder="Mínimo" className={input} />
-      <input type="number" min={0} max={100} step={1} value={comision} onChange={(e) => setComision(e.target.value)} placeholder="Comisión %" title="Comisión del barbero por vender este producto (vacío = 0)" className={input} />
+      <label className="sm:col-span-3">
+        <span className={lbl}>Nombre del producto</span>
+        <input required value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Ej: Cera mate fijación fuerte" className={`${input} w-full`} />
+      </label>
+      <label className="sm:col-span-3">
+        <span className={lbl}>¿En qué sede se vende?</span>
+        <select value={sede} onChange={(e) => setSede(e.target.value as typeof sede)} className={`${input} w-full`}>
+          {sedes.map((s) => (
+            <option key={s.id} value={s.id}>{s.nombre}</option>
+          ))}
+        </select>
+      </label>
+
+      <label className="sm:col-span-3">
+        <span className={lbl}>Precio de venta</span>
+        <input required type="number" min={0} step={1} value={precio} onChange={(e) => setPrecio(e.target.value)} placeholder="25000" className={`${input} w-full`} />
+        <span className={ayuda}>Lo que paga el cliente, en pesos.</span>
+      </label>
+      <label className="sm:col-span-3">
+        <span className={lbl}>Comisión del barbero</span>
+        <input type="number" min={0} max={100} step={1} value={comision} onChange={(e) => setComision(e.target.value)} placeholder="0" className={`${input} w-full`} />
+        <span className={ayuda}>Qué % se lleva por venderlo. Vacío = no lleva nada.</span>
+      </label>
+
+      <label className="sm:col-span-3">
+        <span className={lbl}>¿Cuántas hay ahora?</span>
+        <input required type="number" min={0} step={1} value={stock} onChange={(e) => setStock(e.target.value)} placeholder="12" className={`${input} w-full`} />
+        <span className={ayuda}>Las unidades que tenés hoy en la sede.</span>
+      </label>
+      <label className="sm:col-span-3">
+        <span className={lbl}>Avisarme cuando queden</span>
+        <input type="number" min={0} step={1} value={stockMin} onChange={(e) => setStockMin(e.target.value)} placeholder="5" className={`${input} w-full`} />
+        <span className={ayuda}>Bajo ese número aparece en “Para hacer” del panel.</span>
+      </label>
       <div className="flex flex-wrap items-center gap-2 sm:col-span-6">
         <button
           type="button"
@@ -152,7 +176,7 @@ export function AddProductForm({ sedes }: { sedes: Sede[] }) {
         <button disabled={saving} className="rounded-full bg-accent px-6 py-2.5 text-sm font-semibold uppercase tracking-wide text-on-accent transition hover:bg-accent-soft disabled:opacity-50">
           {saving ? "Guardando…" : "Guardar"}
         </button>
-        <button type="button" onClick={() => setOpen(false)} className="rounded-full border border-line px-6 py-2.5 text-sm text-muted transition hover:text-ink">
+        <button type="button" onClick={() => onListo?.()} className="rounded-full border border-line px-6 py-2.5 text-sm text-muted transition hover:text-ink">
           Cancelar
         </button>
       </div>

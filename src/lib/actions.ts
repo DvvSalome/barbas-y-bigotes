@@ -196,6 +196,63 @@ export async function actualizarPrecioProducto(id: string, precio: number): Prom
   return { ok: true };
 }
 
+// Entrada de mercancía: SUMA al stock y deja el rastro (quién, cuándo, cuánto).
+// Se suma en la base (RPC) y no se pisa el número: en el local venden mientras
+// el dueño registra el pedido que acaba de llegar.
+export async function ingresarStock(input: {
+  productoId: string;
+  cantidad: number;
+  motivo?: "entrada" | "ajuste" | "merma";
+  nota?: string;
+}): Promise<ActionResult> {
+  const sb = await supabaseServerAuth();
+  const denied = await requireAdmin(sb);
+  if (denied) return { ok: false, error: denied };
+  const n = sanearCantidad(input.cantidad);
+  if (n === null || n === 0) return { ok: false, error: "Poné cuántas unidades entraron (un número entero)." };
+
+  const { data, error } = await supabaseAdmin().rpc("ingresar_stock", {
+    p_producto_id: input.productoId,
+    p_cantidad: n,
+    p_motivo: input.motivo ?? "entrada",
+    p_nota: input.nota ?? null,
+    p_barbero_id: null,
+  });
+  if (error) return { ok: false, error: errorPublico("ingresarStock", error) };
+  revalidatePath("/admin/inventario");
+  revalidatePath("/barbero");
+  return { ok: true, total: data as number };
+}
+
+// Corrección de inventario: el dueño contó y hay otra cantidad. Se traduce a un
+// movimiento por la DIFERENCIA para que el historial siga cuadrando.
+export async function ajustarStock(productoId: string, stockReal: number): Promise<ActionResult> {
+  const sb = await supabaseServerAuth();
+  const denied = await requireAdmin(sb);
+  if (denied) return { ok: false, error: denied };
+  const real = sanearCantidad(stockReal);
+  if (real === null || real < 0) return { ok: false, error: "El stock tiene que ser un número entero, 0 o más." };
+
+  const admin = supabaseAdmin();
+  const { data: p } = await admin.from("productos").select("stock").eq("id", productoId).maybeSingle();
+  if (!p) return { ok: false, error: "No encontramos ese producto." };
+  const actual = (p as { stock: number }).stock ?? 0;
+  const delta = real - actual;
+  if (delta === 0) return { ok: true, total: real };
+
+  const { error } = await admin.rpc("ingresar_stock", {
+    p_producto_id: productoId,
+    p_cantidad: delta,
+    p_motivo: "ajuste",
+    p_nota: `Conteo: quedó en ${real}`,
+    p_barbero_id: null,
+  });
+  if (error) return { ok: false, error: errorPublico("ajustarStock", error) };
+  revalidatePath("/admin/inventario");
+  revalidatePath("/barbero");
+  return { ok: true, total: real };
+}
+
 // Precio de un servicio EN UNA SEDE. Cada sede cobra distinto, así que la fila
 // vive en servicio_sede; si la sede todavía no tenía precio para ese servicio se
 // crea (upsert), que es como se habilita un servicio en una sede.
