@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
-import { cop } from "@/lib/format";
+
 import { getServiciosCatalogoAdmin, getSedes } from "@/lib/data/queries";
 import { categorias } from "@/lib/data/seed";
 import type { Categoria, SedeId } from "@/lib/data/types";
 import { SectionHeader } from "@/components/admin/SectionHeader";
+import { PrecioSedeEditable } from "@/components/admin/PrecioSedeEditable";
 import { ComboBuilder } from "@/components/admin/ComboBuilder";
 import { ServicioActivoToggle } from "@/components/admin/ServicioActivoToggle";
 
@@ -37,17 +38,10 @@ export default async function PreciosPage({
         description="Los precios de cada servicio en las dos sedes. Desde acá se arman combos y se activa o desactiva un servicio."
       />
 
-      {/* El aviso va ARRIBA y no al pie: los campos de precio se ven editables y
-          no guardan nada, así que quien no leyera hasta el final se iba creyendo
-          que había cambiado los precios. */}
-      <div className="mt-5 flex items-start gap-3 rounded-2xl border border-warn/40 bg-warn/10 px-4 py-3">
-        <span aria-hidden className="text-lg leading-none">⚠️</span>
-        <p className="text-[13px] leading-relaxed text-warn">
-          <b>Los precios todavía no se editan desde acá.</b> Esta pantalla es de consulta: muestra lo que
-          se está cobrando hoy en cada sede. Lo que sí funciona es armar combos y activar o desactivar un
-          servicio. Para cambiar un precio, pídemelo y lo actualizo.
-        </p>
-      </div>
+      <p className="mt-4 text-[13px] text-muted">
+        Toca cualquier precio para cambiarlo. Se guarda al instante y queda vigente en el sitio, en la
+        reserva y en el cobro del mostrador.
+      </p>
 
       {/* Armador de combos (proto §7.1) — atado a la sede activa del selector. */}
       <section className="mt-6">
@@ -96,12 +90,17 @@ export default async function PreciosPage({
                     </div>
                     <div className="mt-3 grid grid-cols-2 gap-2">
                       {sedes.map((sd) => (
-                        <label key={sd.id} className="block">
-                          <span className="text-[10px] uppercase tracking-wide text-muted">{sd.nombre}</span>
-                          <div className="mt-1 rounded-lg border border-line bg-elevated px-2.5 py-1.5 text-right tabular-nums text-ink">
-                            {s.precios[sd.id] != null ? cop(s.precios[sd.id]!) : "—"}
+                        <div key={sd.id} className="rounded-lg border border-line bg-elevated px-2.5 py-2">
+                          <div className="text-[10px] uppercase tracking-wide text-muted">{sd.nombre}</div>
+                          <div className="mt-0.5 text-right">
+                            <PrecioSedeEditable
+                              servicioId={s.id}
+                              sedeId={sd.id}
+                              precio={s.precios[sd.id] ?? null}
+                              etiqueta={sd.nombre}
+                            />
                           </div>
-                        </label>
+                        </div>
                       ))}
                     </div>
                     <div className="mt-3 flex justify-end">
@@ -128,12 +127,12 @@ export default async function PreciosPage({
                   </tr>
                 </thead>
                 <tbody>
-                  {list.map((s, i) => {
+                  {list.map((s) => {
                     const inactivo = s.activo === false;
                     return (
                       <tr
                         key={s.id}
-                        className={`transition hover:bg-elevated/50 ${i % 2 ? "bg-panel" : "bg-panel/40"} ${
+                        className={`border-t border-line/60 transition hover:bg-elevated/50 ${
                           inactivo ? "opacity-60" : ""
                         }`}
                       >
@@ -149,7 +148,12 @@ export default async function PreciosPage({
                         <td className="px-4 py-3 text-muted">{s.duracionMin}m</td>
                         {sedes.map((sd) => (
                           <td key={sd.id} className="px-4 py-2 text-right tabular-nums text-ink">
-                            {s.precios[sd.id] != null ? cop(s.precios[sd.id]!) : "—"}
+                            <PrecioSedeEditable
+                              servicioId={s.id}
+                              sedeId={sd.id}
+                              precio={s.precios[sd.id] ?? null}
+                              etiqueta={sd.nombre}
+                            />
                           </td>
                         ))}
                         <td className="px-4 py-3 text-right">

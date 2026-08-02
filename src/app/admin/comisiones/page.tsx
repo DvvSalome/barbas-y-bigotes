@@ -1,13 +1,21 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import { cop } from "@/lib/format";
 import { getBarberos, getSedes } from "@/lib/data/queries";
 import { SectionHeader } from "@/components/admin/SectionHeader";
+import { ContratoEditable } from "@/components/admin/ContratoEditable";
 
 export const metadata: Metadata = { title: "Comisiones · Admin" };
 
 export default async function ComisionesPage() {
   const [barberos, sedes] = await Promise.all([getBarberos(), getSedes()]);
   const sedeNombre = (id: string) => sedes.find((s) => s.id === id)?.nombre ?? id;
+
+  // Un vistazo al reparto antes del detalle: cuántos van por comisión y cuántos
+  // pagan silla, y cuánto arriendo entra fijo al mes.
+  const porComision = barberos.filter((b) => b.tipoContrato !== "arriendo");
+  const porArriendo = barberos.filter((b) => b.tipoContrato === "arriendo");
+  const arriendoTotal = porArriendo.reduce((a, b) => a + (b.arriendoMensual ?? 0), 0);
 
   return (
     <div className="max-w-4xl">
@@ -16,75 +24,67 @@ export default async function ComisionesPage() {
         title="Comisiones y contratos"
         description={
           <>
-            Definí qué barbero trabaja por <span className="text-ink">porcentaje</span> y cuál por{" "}
-            <span className="text-ink">arriendo de silla</span>.
+            Con qué trabaja cada barbero: <span className="text-ink">porcentaje</span> de lo que cobra o{" "}
+            <span className="text-ink">arriendo de silla</span>. Es lo que usa el cobro para repartir.
           </>
         }
-
       />
 
-      {/* Igual que en Precios: los controles se veían editables y descartaban todo.
-          El aviso va arriba y los valores pasan a texto. */}
-      <div className="mt-5 flex items-start gap-3 rounded-2xl border border-warn/40 bg-warn/10 px-4 py-3">
-        <span aria-hidden className="text-lg leading-none">⚠️</span>
-        <p className="text-[13px] leading-relaxed text-warn">
-          <b>Los contratos todavía no se editan desde acá.</b> Esta pantalla muestra con qué trabaja hoy
-          cada barbero, que es lo que usa el cobro para repartir la comisión. Para cambiar uno, pídemelo.
-        </p>
+      <p className="mt-4 text-[13px] text-muted">
+        Toca el contrato de un barbero para cambiarlo. Aplica desde el próximo cobro; lo ya cobrado no se
+        recalcula.
+      </p>
+
+      {/* Resumen del reparto */}
+      <div className="mt-5 flex flex-wrap gap-x-6 gap-y-2 rounded-2xl border border-line bg-panel px-4 py-3 text-[13px]">
+        <span className="text-muted">
+          <span className="font-semibold text-ink tabular-nums">{porComision.length}</span> por comisión
+        </span>
+        <span className="text-muted">
+          <span className="font-semibold text-ink tabular-nums">{porArriendo.length}</span> por arriendo
+        </span>
+        {arriendoTotal > 0 && (
+          <span className="text-muted">
+            <span className="font-semibold text-ink tabular-nums">{cop(arriendoTotal)}</span> de arriendo al mes
+          </span>
+        )}
       </div>
 
-      {/* Mobile: cards */}
-      <div className="mt-8 space-y-3 sm:hidden">
+      {/* Una sola lista para móvil y escritorio: la fila ya es legible en 390px,
+          no hacía falta duplicar el marcado en cards + tabla. */}
+      <div className="mt-6 overflow-hidden rounded-2xl border border-line bg-panel">
         {barberos.map((b) => (
-          <div key={b.id} className="rounded-2xl border border-line bg-panel p-4">
-            <div className="flex items-baseline justify-between gap-2">
-              <span className="font-display text-lg">{b.nombre}</span>
-              <span className="shrink-0 text-xs text-muted">{sedeNombre(b.sede)}</span>
+          <div
+            key={b.id}
+            className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3 border-b border-line/60 px-4 py-3 last:border-b-0"
+          >
+            <div className="flex min-w-0 items-center gap-3">
+              <span className="relative grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-full bg-elevated text-xs font-bold text-ink">
+                {b.fotoUrl ? (
+                  <Image src={b.fotoUrl} alt={b.nombre} width={36} height={36} className="h-full w-full object-cover" />
+                ) : (
+                  b.nombre
+                    .split(" ")
+                    .map((x) => x[0])
+                    .join("")
+                    .slice(0, 2)
+                    .toUpperCase()
+                )}
+              </span>
+              <span className="min-w-0">
+                <span className="block truncate text-[13.5px] font-semibold text-ink">{b.nombre}</span>
+                <span className="block truncate text-[11.5px] text-muted">{sedeNombre(b.sede)}</span>
+              </span>
             </div>
-            <div className="mt-3 grid grid-cols-2 gap-2">
-              <div className="block">
-                <span className="text-[10px] uppercase tracking-wide text-muted">Contrato</span>
-                <div className="mt-1 rounded-lg border border-line bg-elevated px-3 py-1.5 text-ink">
-                  {b.tipoContrato === "arriendo" ? "Arriendo de silla" : "Porcentaje"}
-                </div>
-              </div>
-              <div className="block">
-                <span className="text-[10px] uppercase tracking-wide text-muted">Comisión</span>
-                <div className="mt-1 rounded-lg border border-line bg-elevated px-3 py-1.5 tabular-nums text-ink">
-                  {b.tipoContrato === "arriendo" ? cop(b.comisionPct ?? 0) : `${b.comisionPct ?? 50}%`}
-                </div>
-              </div>
-            </div>
+            <ContratoEditable
+              barberoId={b.id}
+              nombre={b.nombre}
+              tipo={b.tipoContrato}
+              comisionPct={b.comisionPct}
+              arriendoMensual={b.arriendoMensual}
+            />
           </div>
         ))}
-      </div>
-
-      {/* sm+: tabla */}
-      <div className="mt-8 hidden overflow-x-auto rounded-2xl border border-line sm:block">
-        <table className="w-full text-sm">
-          <thead className="bg-elevated text-xs uppercase tracking-wide text-muted">
-            <tr>
-              <th className="px-4 py-3 text-left font-medium">Barbero</th>
-              <th className="px-4 py-3 text-left font-medium">Sede</th>
-              <th className="px-4 py-3 text-left font-medium">Contrato</th>
-              <th className="px-4 py-3 text-right font-medium">Comisión % / Arriendo</th>
-            </tr>
-          </thead>
-          <tbody>
-            {barberos.map((b, i) => (
-              <tr key={b.id} className={`transition hover:bg-elevated/50 ${i % 2 ? "bg-panel" : "bg-panel/40"}`}>
-                <td className="px-4 py-3">{b.nombre}</td>
-                <td className="px-4 py-3 text-muted">{sedeNombre(b.sede)}</td>
-                <td className="px-4 py-3 text-ink">
-                  {b.tipoContrato === "arriendo" ? "Arriendo de silla" : "Porcentaje"}
-                </td>
-                <td className="px-4 py-2 text-right tabular-nums text-ink">
-                  {b.tipoContrato === "arriendo" ? cop(b.comisionPct ?? 0) : `${b.comisionPct ?? 50}%`}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
       </div>
     </div>
   );

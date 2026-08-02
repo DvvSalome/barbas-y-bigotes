@@ -196,6 +196,85 @@ export async function actualizarPrecioProducto(id: string, precio: number): Prom
   return { ok: true };
 }
 
+// Precio de un servicio EN UNA SEDE. Cada sede cobra distinto, así que la fila
+// vive en servicio_sede; si la sede todavía no tenía precio para ese servicio se
+// crea (upsert), que es como se habilita un servicio en una sede.
+export async function actualizarPrecioServicioSede(
+  servicioId: string,
+  sedeId: string,
+  precio: number,
+): Promise<ActionResult> {
+  const sb = await supabaseServerAuth();
+  const denied = await requireAdmin(sb);
+  if (denied) return { ok: false, error: denied };
+  const p = sanearCop(precio);
+  if (p === null || p <= 0) {
+    return { ok: false, error: "El precio tiene que ser un número entero de pesos, mayor a $0." };
+  }
+  // .select() a propósito: si RLS bloquea la escritura, Postgres NO devuelve
+  // error, devuelve 0 filas. Sin este chequeo la UI mostraba "guardado" y el
+  // precio seguía igual (era justo lo que pasaba antes de la policy de 0045).
+  const { data, error } = await sb
+    .from("servicio_sede")
+    .upsert({ servicio_id: servicioId, sede_id: sedeId, precio: p }, { onConflict: "servicio_id,sede_id" })
+    .select("servicio_id");
+  if (error) return { ok: false, error: errorPublico("actualizarPrecioServicioSede", error) };
+  if (!data || data.length === 0) {
+    return { ok: false, error: "No se guardó el precio: tu usuario no tiene permiso para editar el catálogo." };
+  }
+  // El precio se ve en el wizard público y en el cobro del mostrador.
+  revalidatePath("/admin/precios");
+  revalidatePath("/reservar");
+  revalidatePath("/barbero");
+  revalidatePath("/");
+  return { ok: true };
+}
+
+// Contrato del barbero: con qué trabaja (porcentaje de comisión o arriendo de
+// silla). Es lo que usa el cobro para repartir, así que se sanea acá también.
+export async function actualizarContratoBarbero(input: {
+  barberoId: string;
+  tipo: "porcentaje" | "arriendo";
+  comisionPct?: number | null;
+  arriendoMensual?: number | null;
+}): Promise<ActionResult> {
+  const sb = await supabaseServerAuth();
+  const denied = await requireAdmin(sb);
+  if (denied) return { ok: false, error: denied };
+
+  // Igual que en el precio: .select() para distinguir "guardado" de "RLS lo
+  // bloqueó y afectó 0 filas".
+  const campos =
+    input.tipo === "porcentaje"
+      ? (() => {
+          const pct = sanearComisionPct(input.comisionPct);
+          return pct === null ? null : { tipo_contrato: "porcentaje", comision_pct: pct, arriendo_mensual: null };
+        })()
+      : (() => {
+          const monto = sanearCop(input.arriendoMensual ?? null);
+          return monto === null || monto <= 0
+            ? null
+            : { tipo_contrato: "arriendo", arriendo_mensual: monto, comision_pct: null };
+        })();
+  if (!campos) {
+    return {
+      ok: false,
+      error:
+        input.tipo === "porcentaje"
+          ? "La comisión tiene que ir entre 0 y 100."
+          : "El arriendo tiene que ser un monto en pesos mayor a $0.",
+    };
+  }
+  const { data, error } = await sb.from("barberos").update(campos).eq("id", input.barberoId).select("id");
+  if (error) return { ok: false, error: errorPublico("actualizarContratoBarbero", error) };
+  if (!data || data.length === 0) {
+    return { ok: false, error: "No se guardó el contrato: tu usuario no tiene permiso para editar el equipo." };
+  }
+  revalidatePath("/admin/comisiones");
+  revalidatePath("/barbero");
+  return { ok: true };
+}
+
 // Días especiales de la sede: abrir un domingo/festivo o cerrar un día hábil.
 // El default (lun-sáb 9-20) sigue en el código; esto son las excepciones.
 export async function marcarDiaEspecial(input: {
