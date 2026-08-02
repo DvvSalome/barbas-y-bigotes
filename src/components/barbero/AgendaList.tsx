@@ -19,6 +19,7 @@ import type { Categoria } from "@/lib/data/types";
 import { ProductoThumb } from "@/components/staff/ProductoThumb";
 import { MedioLogo } from "@/components/staff/MedioLogo";
 import { Recepcion } from "@/components/barbero/Recepcion";
+import { ElegirBarbero, ElegirServicio } from "@/components/staff/Elegir";
 import type { Sede, SedeId, Barbero, Servicio, Producto } from "@/lib/data/types";
 import type { AgendaItem, MedioPago, PrecioServicioStaff } from "@/lib/data/queries";
 
@@ -547,12 +548,12 @@ function WalkinForm({
           ))}
         </select>
       )}
-      <select value={barberoId} onChange={(e) => setBarberoId(e.target.value)} className={fld}>
-        <option value="">Barbero…</option>
-        {sedeBarberos.map((b) => (
-          <option key={b.id} value={b.id}>{b.nombre}</option>
-        ))}
-      </select>
+      <ElegirBarbero
+        barberos={sedeBarberos}
+        value={barberoId}
+        onChange={setBarberoId}
+        placeholder="¿Quién lo atiende?"
+      />
       <input value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Nombre del cliente" className={fld} />
       <input value={tel} onChange={(e) => setTel(e.target.value)} placeholder="Teléfono" inputMode="tel" className={fld} />
       {/* Lo que más se vende, a un toque y con el precio de ESTA sede. Antes
@@ -579,12 +580,20 @@ function WalkinForm({
           );
         })}
       </div>
-      <select value={servicioId} onChange={(e) => setServicioId(e.target.value)} className={`${fld} sm:col-span-2`}>
-        <option value="">Otro servicio (opcional)…</option>
-        {servicios.map((s) => (
-          <option key={s.id} value={s.id}>{s.nombre}</option>
-        ))}
-      </select>
+      <div className="sm:col-span-2">
+        <ElegirServicio
+          servicios={servicios.map((sv) => ({
+            id: sv.id,
+            nombre: sv.nombre,
+            duracionMin: sv.duracionMin,
+            precio: preciosServicios.find((x) => x.id === sv.id)?.preciosPorSede[sede] ?? null,
+          }))}
+          value={servicioId}
+          onChange={setServicioId}
+          etiquetaVacio="Otro servicio (opcional)…"
+          placeholder="Buscar servicio…"
+        />
+      </div>
       <label className="flex items-center gap-2 text-sm text-muted sm:col-span-2">
         <input type="checkbox" checked={fidelizar} onChange={(e) => setFidelizar(e.target.checked)} className="accent-accent" />
         Inscribir en fidelización (gana puntos por la visita)
