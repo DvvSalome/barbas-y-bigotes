@@ -7,6 +7,7 @@
 // (Node ≥23.6 corre TypeScript directo con type stripping; no requiere build.)
 import assert from "node:assert/strict";
 import { bogotaDayRange, bogotaDayRangeDeFecha, bogotaYmd } from "../src/lib/slots.ts";
+import { horaBogota } from "../src/lib/format.ts";
 
 // (a) Instante conocido: 2026-07-05T03:00Z son las 22:00 del 4 de julio en Bogotá.
 //     El día civil correcto es el 4, no el 5 (con setHours en UTC salía el 5).
@@ -27,5 +28,10 @@ assert.equal(f.hasta.getTime() - f.desde.getTime(), 86_400_000, "el rango cubre 
 
 // (c) Un mediodía en Bogotá no cambia de día civil.
 assert.equal(bogotaYmd(new Date("2026-07-05T17:00:00Z")), "2026-07-05");
+
+// (d) La hora que se pinta en el server (lista de cobrados del mostrador) va en
+//     Bogotá, no en el TZ del proceso: 20:42Z son las 3:42 pm allá.
+assert.equal(horaBogota("2026-07-20T20:42:26.792Z"), "3:42 pm", "hora de la tarde en Bogotá");
+assert.equal(horaBogota("2026-07-20T13:05:00.000Z"), "8:05 am", "hora de la mañana en Bogotá");
 
 console.log(`check-tz OK — rangos de día en Bogotá correctos (TZ del proceso: ${process.env.TZ ?? "(sistema)"})`);

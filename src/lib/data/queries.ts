@@ -329,33 +329,64 @@ export async function getAgendaSedeHoy(sedeId: string | null): Promise<AgendaIte
   }));
 }
 
-/** Cobrado hoy de la sede completa, y el desglose por barbero para el mostrador. */
+/** Una venta de hoy con lo que se llevó el cliente. */
+export type VentaHoy = {
+  id: string;
+  /** null = venta rápida (sin cita). */
+  reservaId: string | null;
+  barberoId: string | null;
+  /** Nombre del cliente de la venta rápida (la de una cita lo saca de la agenda). */
+  cliente: string;
+  total: number;
+  propina: number;
+  descuento: number;
+  medio: string;
+  creadoEn: string;
+  items: { tipo: string; descripcion: string; cantidad: number; precioUnitario: number }[];
+};
+
 /**
- * Cobrado de hoy con el desglose por barbero. `sedeId` null = las DOS sedes,
- * que es lo que ve el dueño cuando abre el mostrador (el barbero siempre pasa
- * la suya). Antes solo aceptaba una sede y el admin caía en otra vista.
+ * Ventas de hoy de la sede CON sus ítems: qué se llevó cada cliente. `sedeId`
+ * null = las DOS sedes, que es lo que ve el dueño cuando abre el mostrador (el
+ * barbero siempre pasa la suya).
+ * De acá sale también el "cobrado hoy" (suma de los totales): un solo viaje.
  */
-export async function getCobradoSedeHoy(
-  sedeId: string | null,
-): Promise<{ total: number; porBarbero: Record<string, number> }> {
+export async function getVentasSedeHoy(sedeId: string | null): Promise<VentaHoy[]> {
   const admin = supabaseAdmin();
   const { desde, hasta } = bogotaDayRange();
   let q = admin
     .from("ventas")
-    .select("total,barbero_id")
+    .select(
+      "id,reserva_id,barbero_id,total,propina,descuento,medio,creado_en,cliente_nombre,clientes(nombre),venta_items(tipo,descripcion,cantidad,precio_unitario)",
+    )
     .gte("creado_en", desde.toISOString())
-    .lt("creado_en", hasta.toISOString());
+    .lt("creado_en", hasta.toISOString())
+    .order("creado_en", { ascending: false });
   if (sedeId) q = q.eq("sede_id", sedeId);
   const { data, error } = await q;
-  if (error) console.error("getCobradoSedeHoy:", error.message);
-  const filas = (data ?? []) as { total: number; barbero_id: string | null }[];
-  const porBarbero: Record<string, number> = {};
-  let total = 0;
-  for (const v of filas) {
-    total += v.total;
-    if (v.barbero_id) porBarbero[v.barbero_id] = (porBarbero[v.barbero_id] ?? 0) + v.total;
-  }
-  return { total, porBarbero };
+  if (error) console.error("getVentasSedeHoy:", error.message);
+  return ((data ?? []) as Record<string, unknown>[]).map((v) => ({
+    id: v.id as string,
+    reservaId: (v.reserva_id as string) ?? null,
+    barberoId: (v.barbero_id as string) ?? null,
+    cliente:
+      (v.clientes as { nombre?: string } | null)?.nombre ?? (v.cliente_nombre as string) ?? "",
+    total: v.total as number,
+    propina: (v.propina as number) ?? 0,
+    descuento: (v.descuento as number) ?? 0,
+    medio: v.medio as string,
+    creadoEn: v.creado_en as string,
+    items: (
+      (v.venta_items as
+        | { tipo: string; descripcion: string; cantidad: number; precio_unitario: number }[]
+        | null) ?? []
+    ).map((i) => ({
+      tipo: i.tipo,
+      descripcion: i.descripcion,
+      cantidad: i.cantidad,
+      precioUnitario: i.precio_unitario,
+    })),
+  }));
 }
 
 // "Cobrado hoy" del header de la agenda: suma de ventas del día civil (Bogotá).

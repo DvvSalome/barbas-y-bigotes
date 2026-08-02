@@ -137,14 +137,12 @@ export function AgendaList({
   const [historyFor, setHistoryFor] = useState<string | null>(null);
   const [history, setHistory] = useState<HistItem[] | null>(null);
   const [busy, setBusy] = useState(false);
-  const [terminadasOpen, setTerminadasOpen] = useState(false);
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const freeSlots = agenda.filter((item) => ["cancelada", "no_show"].includes(item.estado));
 
   // Agenda HERO: activos primero, con el que está en la silla (en_curso) al tope;
   // el resto conserva el orden por hora (getAgendaHoy ya ordena por inicio).
   const activos = agenda.filter((r) => !DONE.includes(r.estado));
-  const hechas = agenda.filter((r) => DONE.includes(r.estado));
   const activosOrd = [...activos].sort(
     (a, b) => (b.estado === "en_curso" ? 1 : 0) - (a.estado === "en_curso" ? 1 : 0),
   );
@@ -157,13 +155,6 @@ export function AgendaList({
     const h = await historialCliente(ref);
     setHistory(h as HistItem[]);
   }
-
-  // Precio del servicio de la cita, resuelto desde preciosServicios (los mismos
-  // que usa el cobro). null si es walk-in sin servicio o no hay precio en la sede.
-  const precioDe = (r: AgendaItem): number | null => {
-    if (!r.servicioId) return null;
-    return preciosServicios.find((s) => s.id === r.servicioId)?.preciosPorSede[r.sede] ?? null;
-  };
 
   // Adelanto: si un cupo anterior quedó libre (no llegó / canceló), se le puede
   // ofrecer al cliente adelantar su cita. Conserva la lógica previa.
@@ -439,41 +430,10 @@ export function AgendaList({
         </div>
       )}
 
-      {/* Terminadas hoy (colapsable) */}
-      {hechas.length > 0 && (
-        <div className="mt-6">
-          <button
-            onClick={() => setTerminadasOpen((v) => !v)}
-            className="min-h-[46px] w-full rounded-[13px] border border-line text-[13px] font-bold text-muted transition hover:text-ink"
-          >
-            Terminadas hoy ({hechas.length}) {terminadasOpen ? "▲" : "▼"}
-          </button>
-          {terminadasOpen && (
-            <div className="mt-2 space-y-1.5">
-              {hechas.map((r) => {
-                const precio = precioDe(r);
-                return (
-                  <div
-                    key={r.id}
-                    className="flex items-center gap-3 rounded-xl border border-line/60 bg-panel px-3.5 py-2.5 opacity-75"
-                  >
-                    <span className="w-12 shrink-0 font-display text-sm tabular-nums text-muted">{hora(r.inicio)}</span>
-                    <span className="min-w-0 flex-1 truncate text-sm">{r.cliente || "Walk-in"}</span>
-                    <span
-                      className={`shrink-0 rounded-full px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-wide ${chipCls(r.estado)}`}
-                    >
-                      {ESTADO[r.estado] ?? r.estado}
-                    </span>
-                    {precio != null && (
-                      <span className="shrink-0 text-[12.5px] tabular-nums text-muted">{cop(precio)}</span>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      )}
+      {/* Lo cerrado del día vive ahora en <CobradosHoy> (server component, en
+          page.tsx): muestra lo que se COBRÓ de verdad —ítems, productos de más,
+          propina— y no el precio de catálogo del servicio, que mentía en cuanto
+          la venta llevaba algo más. */}
     </div>
   );
 }

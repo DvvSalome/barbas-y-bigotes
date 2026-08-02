@@ -11,9 +11,10 @@ import {
   getCajaSede,
   getCajaDesglose,
   getAgendaSedeHoy,
-  getCobradoSedeHoy,
+  getVentasSedeHoy,
 } from "@/lib/data/queries";
 import { AgendaList } from "@/components/barbero/AgendaList";
+import { CobradosHoy } from "@/components/barbero/CobradosHoy";
 import { EsperaPanel } from "@/components/barbero/EsperaPanel";
 import { CierreCaja } from "@/components/barbero/CierreCaja";
 import { RealtimeRefresh } from "@/components/motion/RealtimeRefresh";
@@ -46,10 +47,18 @@ export default async function BarberoPage() {
   // (el server la fija desde reservas.barbero_id, no desde quién está logueado).
   // Lectura con service role ya autorizada acá: el barbero pertenece a esa sede
   // por definición, y el dueño ve las dos.
-  const [agendaSede, cobradoSede] = await Promise.all([
+  const [agendaSede, ventasSede] = await Promise.all([
     getAgendaSedeHoy(sedeBarbero),
-    getCobradoSedeHoy(sedeBarbero),
+    getVentasSedeHoy(sedeBarbero),
   ]);
+  // El "cobrado hoy" sale de las mismas ventas que la lista de abajo: un solo
+  // viaje, y el número del encabezado siempre cuadra con lo que se ve detallado.
+  const porBarbero: Record<string, number> = {};
+  let cobradoTotal = 0;
+  for (const v of ventasSede) {
+    cobradoTotal += v.total;
+    if (v.barberoId) porBarbero[v.barberoId] = (porBarbero[v.barberoId] ?? 0) + v.total;
+  }
   const mostrador = {
     sedeId: sedeBarbero,
     sedeNombre: sedeBarbero
@@ -58,8 +67,8 @@ export default async function BarberoPage() {
     agendaSede,
     // El dueño ve a todo el equipo; el barbero, solo a los de su sede.
     barberosSede: sedeBarbero ? barberos.filter((b) => b.sede === sedeBarbero) : barberos,
-    cobradoSede: cobradoSede.total,
-    porBarbero: cobradoSede.porBarbero,
+    cobradoSede: cobradoTotal,
+    porBarbero,
   };
 
 
@@ -85,6 +94,11 @@ export default async function BarberoPage() {
         esAdmin={staff.rol === "admin"}
         mostrador={mostrador}
       />
+
+      {/* Cierre del día: qué se llevó cada cliente (ítems reales de la venta). */}
+      <div className="mt-8">
+        <CobradosHoy agenda={agendaSede} ventas={ventasSede} barberos={mostrador.barberosSede} />
+      </div>
 
       <div className="mx-auto mt-12 w-full max-w-2xl border-t border-line pt-8">
         <EsperaPanel

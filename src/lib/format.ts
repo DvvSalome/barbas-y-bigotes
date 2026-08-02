@@ -5,6 +5,22 @@ export const cop = (n: number) =>
     maximumFractionDigits: 0,
   }).format(n);
 
+/**
+ * Solo la hora ("6:42 am"), SIEMPRE en Bogotá. Para lo que se pinta en el
+ * server (Vercel corre en UTC: `new Date(iso).getHours()` ahí da 5 horas de
+ * más). El "a. m." de es-CO se normaliza a "am" para igualar el resto del
+ * staff, que escribe la hora a mano.
+ */
+export const horaBogota = (iso: string) =>
+  new Intl.DateTimeFormat("es-CO", {
+    timeZone: "America/Bogota",
+    hour: "numeric",
+    minute: "2-digit",
+  })
+    .format(new Date(iso))
+    .replace(/\s*a\.\s*m\./i, " am")
+    .replace(/\s*p\.\s*m\./i, " pm");
+
 // Fecha y hora legibles para el cliente, SIEMPRE en Bogotá (los servers de
 // Vercel corren en UTC; nunca formatear con el TZ del proceso).
 // Ej.: "viernes, 10 de julio, 3:30 p. m."
