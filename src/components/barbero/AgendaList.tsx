@@ -108,12 +108,15 @@ export function AgendaList({
 }) {
   const router = useRouter();
   const [walkinOpen, setWalkinOpen] = useState(false);
+  // Barbero preseleccionado al abrir el walk-in desde la tira de libres.
+  const [walkinBarbero, setWalkinBarbero] = useState<string>("");
   const [ventaOpen, setVentaOpen] = useState(false);
   const [completeFor, setCompleteFor] = useState<string | null>(null);
   // La hoja de cobro se monta debajo de la agenda de la sede, fuera de la
   // pantalla: sin esto, el barbero toca "Cobrar", no ve ningún cambio y vuelve
   // a tocar. Se la lleva a la vista y se le marca el foco.
   const hojaCobro = useRef<HTMLDivElement | null>(null);
+  const hojaWalkin = useRef<HTMLDivElement | null>(null);
 
   /**
    * Abrir el cobro de una cita. NO es un toggle a propósito: antes, volver a
@@ -272,10 +275,15 @@ export function AgendaList({
         porBarbero={mostrador.porBarbero}
         preciosServicios={preciosServicios}
         onCobrar={abrirCobro}
+        onWalkin={(barberoId) => {
+          setWalkinBarbero(barberoId);
+          setWalkinOpen(true);
+          requestAnimationFrame(() => hojaWalkin.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
+        }}
       />
 
-      <div className="mx-auto w-full max-w-2xl">
-    {/* Walk-in / Venta rápida (como estaban) */}
+      <div ref={hojaWalkin} className="mx-auto w-full max-w-2xl">
+    {/* Walk-in / Venta rápida */}
     <div className="mb-4 space-y-3">
       {!walkinOpen && !ventaOpen && (
         <div className="flex flex-wrap gap-2">
@@ -300,8 +308,10 @@ export function AgendaList({
           servicios={servicios}
           preciosServicios={preciosServicios}
           sedeFija={mostrador.sedeId}
+          barberoInicial={walkinBarbero}
           onDone={() => {
             setWalkinOpen(false);
+            setWalkinBarbero("");
             router.refresh();
           }}
           onCancel={() => setWalkinOpen(false)}
@@ -473,6 +483,7 @@ function WalkinForm({
   servicios,
   preciosServicios,
   sedeFija,
+  barberoInicial,
   onDone,
   onCancel,
 }: {
@@ -482,6 +493,8 @@ function WalkinForm({
   preciosServicios: PrecioServicioStaff[];
   /** Sede del mostrador. Si viene, el walk-in arranca ahí y no se elige. */
   sedeFija?: string | null;
+  /** Barbero ya elegido (se abrió desde su fila en la tira de libres). */
+  barberoInicial?: string;
   onDone: () => void;
   onCancel: () => void;
 }) {
@@ -489,7 +502,7 @@ function WalkinForm({
   // que un barbero de Plaza de la Paz que no lo cambiaba mandaba el cliente, la
   // venta y la comisión a la sede equivocada.
   const [sede, setSede] = useState(sedeFija ?? sedes[0]?.id ?? "");
-  const [barberoId, setBarberoId] = useState("");
+  const [barberoId, setBarberoId] = useState(barberoInicial ?? "");
   const [nombre, setNombre] = useState("");
   const [tel, setTel] = useState("");
   const [servicioId, setServicioId] = useState("");

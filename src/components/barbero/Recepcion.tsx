@@ -59,6 +59,7 @@ export function Recepcion({
   porBarbero,
   preciosServicios = [],
   onCobrar,
+  onWalkin,
 }: {
   agenda: AgendaItem[];
   barberos: Barbero[];
@@ -73,6 +74,9 @@ export function Recepcion({
   preciosServicios?: PrecioServicioStaff[];
   /** Abre la hoja de cobro de la agenda normal (misma lógica de plata). */
   onCobrar: (reservaId: string) => void;
+  /** Abre el walk-in con ese barbero puesto. El hueco de un barbero libre es
+   *  justo donde hace falta anotar al que acaba de entrar. */
+  onWalkin?: (barberoId: string) => void;
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
@@ -114,6 +118,13 @@ export function Recepcion({
   const totalCitas = agenda.length;
   const hechas = agenda.filter((r) => DONE.includes(r.estado)).length;
 
+  // Tiene movimiento = alguien en la silla o citas por atender. Solo eso merece
+  // una columna; el resto va a una tira de una línea.
+  const tieneMovimiento = (id: string) =>
+    agenda.some((r) => r.barberoId === id && !DONE.includes(r.estado));
+  const conMovimiento = barberos.filter((b) => tieneMovimiento(b.id));
+  const libres = barberos.filter((b) => !tieneMovimiento(b.id));
+
   return (
     <div>
       {/* Encabezado del local */}
@@ -133,9 +144,11 @@ export function Recepcion({
         </div>
       </div>
 
-      {/* Una columna por barbero */}
+      {/* El que TIENE gente lleva su columna; el que está libre no necesita una
+          caja entera para decir "libre". Antes eran 6 tarjetas idénticas
+          repitiendo "Sin citas pendientes", o sea 6 veces el mismo dato. */}
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-        {barberos.map((b) => {
+        {conMovimiento.map((b) => {
           const suyas = agenda.filter((r) => r.barberoId === b.id);
           const activas = suyas.filter((r) => !DONE.includes(r.estado));
           const enSilla = suyas.find((r) => r.estado === "en_curso") ?? null;
@@ -273,6 +286,59 @@ export function Recepcion({
           );
         })}
       </div>
+
+      {/* Nadie con gente: en vez de seis cajas vacías, una sola línea que dice
+          quién está disponible. */}
+      {conMovimiento.length === 0 && (
+        <div className="rounded-[18px] border border-line bg-panel px-4 py-5 text-center">
+          <p className="text-[13.5px] font-semibold text-ink">Nadie en la silla ahora mismo</p>
+          <p className="mt-0.5 text-[12px] text-muted">
+            Cuando entre alguien sin cita, tócalo abajo y queda registrado a ese barbero.
+          </p>
+        </div>
+      )}
+
+      {libres.length > 0 && (
+        <section className="mt-3" aria-label="Barberos libres">
+          <h2 className="mb-2 text-[11px] font-bold uppercase tracking-[0.14em] text-muted">
+            Libres ahora · {libres.length}
+          </h2>
+          <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+            {libres.map((b) => (
+              <div
+                key={b.id}
+                className="flex items-center gap-2.5 rounded-xl border border-line bg-panel px-3 py-2"
+              >
+                {b.fotoUrl ? (
+                  <Image
+                    src={b.fotoUrl}
+                    alt={b.nombre}
+                    width={32}
+                    height={32}
+                    className="h-8 w-8 shrink-0 rounded-full object-cover object-top"
+                  />
+                ) : (
+                  <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-elevated text-[11px] font-bold text-ink">
+                    {iniciales(b.nombre)}
+                  </span>
+                )}
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-[13px] font-semibold text-ink">{b.nombre}</span>
+                  <span className="block text-[11px] text-ok">Libre</span>
+                </span>
+                {onWalkin && (
+                  <button
+                    onClick={() => onWalkin(b.id)}
+                    className="min-h-9 shrink-0 rounded-full border border-accent/40 bg-accent/[0.07] px-3 text-[11.5px] font-bold text-accent-soft transition hover:bg-accent/15"
+                  >
+                    + Cliente
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
     </div>
   );
 }
