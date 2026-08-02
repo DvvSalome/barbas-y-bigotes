@@ -8,6 +8,10 @@ import type { EsperaItem } from "@/lib/data/queries";
 
 const fld =
   "w-full min-h-11 rounded-lg border border-line bg-bg px-3 py-2 text-ink focus:border-accent focus:outline-none";
+// Cada campo con nombre: eran cinco casillas con placeholder y nada más, y lo
+// opcional no se distinguía de lo obligatorio.
+const lbl = "mb-1 block text-[12px] font-semibold text-ink";
+const ayuda = "mt-1 block text-[11px] leading-snug text-muted";
 
 // La lista de espera se toca de pie, con el cliente enfrente y en el aparato
 // compartido del mostrador: 44px de alto mínimo (antes eran ~28px, del tamaño
@@ -204,59 +208,86 @@ function EsperaForm({
           {err}
         </div>
       )}
+      {/* Lo primero y lo único imprescindible: a quién anoto. El barbero está de
+          pie con el cliente enfrente, no llenando una ficha. */}
+      <label className="sm:col-span-2">
+        <span className={lbl}>¿A quién anoto?</span>
+        <input
+          autoFocus
+          value={nombre}
+          onChange={(e) => setNombre(e.target.value)}
+          placeholder="Nombre del cliente"
+          className={`${fld} w-full`}
+        />
+      </label>
+
+      <label className="sm:col-span-2">
+        <span className={lbl}>
+          Teléfono <span className="font-normal text-muted">· opcional</span>
+        </span>
+        <input
+          value={tel}
+          onChange={(e) => setTel(e.target.value)}
+          placeholder="3001234567"
+          inputMode="tel"
+          className={`${fld} w-full`}
+        />
+        <span className={ayuda}>Para avisarle cuando se libere el turno. Sin teléfono igual queda en la fila.</span>
+      </label>
+
+      {/* La sede solo se elige si el que opera ve las dos (el dueño). Al barbero
+          se le muestra la suya y no se toca. */}
       {sedeFija ? (
-        <div className="rounded-lg border border-line bg-elevated px-3 py-2 text-sm text-muted sm:col-span-2">
-          Sede: <b className="text-ink">{sedes.find((x) => x.id === sede)?.nombre ?? sede}</b>
+        <div className="rounded-lg border border-line bg-elevated px-3 py-2 text-[12.5px] text-muted sm:col-span-2">
+          Queda en <b className="text-ink">{sedes.find((x) => x.id === sede)?.nombre ?? sede}</b>
         </div>
       ) : (
-        <select
-          value={sede}
-          onChange={(e) => {
-            setSede(e.target.value as typeof sede);
-            setBarberoId("");
-          }}
-          className={fld}
-        >
-          {sedes.map((s) => (
+        <label>
+          <span className={lbl}>Sede</span>
+          <select
+            value={sede}
+            onChange={(e) => {
+              setSede(e.target.value as typeof sede);
+              setBarberoId("");
+            }}
+            className={`${fld} w-full`}
+          >
+            {sedes.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.nombre}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+
+      <label>
+        <span className={lbl}>
+          ¿Con quién? <span className="font-normal text-muted">· opcional</span>
+        </span>
+        <select value={barberoId} onChange={(e) => setBarberoId(e.target.value)} className={`${fld} w-full`}>
+          <option value="">El primero que se desocupe</option>
+          {sedeBarberos.map((b) => (
+            <option key={b.id} value={b.id}>
+              {b.nombre}
+            </option>
+          ))}
+        </select>
+      </label>
+
+      <label className={sedeFija ? "" : "sm:col-span-2"}>
+        <span className={lbl}>
+          ¿Qué se va a hacer? <span className="font-normal text-muted">· opcional</span>
+        </span>
+        <select value={servicioId} onChange={(e) => setServicioId(e.target.value)} className={`${fld} w-full`}>
+          <option value="">Se define al sentarse</option>
+          {servicios.map((s) => (
             <option key={s.id} value={s.id}>
               {s.nombre}
             </option>
           ))}
         </select>
-      )}
-      <select value={barberoId} onChange={(e) => setBarberoId(e.target.value)} className={fld}>
-        <option value="">Cualquier barbero</option>
-        {sedeBarberos.map((b) => (
-          <option key={b.id} value={b.id}>
-            {b.nombre}
-          </option>
-        ))}
-      </select>
-      <input
-        value={nombre}
-        onChange={(e) => setNombre(e.target.value)}
-        placeholder="Nombre del cliente"
-        className={fld}
-      />
-      <input
-        value={tel}
-        onChange={(e) => setTel(e.target.value)}
-        placeholder="Teléfono"
-        inputMode="tel"
-        className={fld}
-      />
-      <select
-        value={servicioId}
-        onChange={(e) => setServicioId(e.target.value)}
-        className={`${fld} sm:col-span-2`}
-      >
-        <option value="">Servicio (opcional)…</option>
-        {servicios.map((s) => (
-          <option key={s.id} value={s.id}>
-            {s.nombre}
-          </option>
-        ))}
-      </select>
+      </label>
       <div className="flex gap-2 sm:col-span-2">
         <button
           disabled={saving}
