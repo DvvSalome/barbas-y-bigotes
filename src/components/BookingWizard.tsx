@@ -545,8 +545,18 @@ export function BookingWizard({
     const now = ahora;
     const activa = rangos.find((o) => new Date(o.inicio).getTime() <= now && now <= new Date(o.fin).getTime());
     if (activa) {
+      const i = new Date(activa.inicio);
       const f = new Date(activa.fin);
-      return { tipo: "silla", label: `En silla · sale ${fmtTime(f.getHours() * 60 + f.getMinutes())}` };
+      const desdeMin = i.getHours() * 60 + i.getMinutes();
+      const hastaMin = f.getHours() * 60 + f.getMinutes();
+      // Una AUSENCIA llega como un bloque del día entero (getDisponibilidad
+      // devuelve 00:00–23:59 para tapar todos los slots). Sin distinguirla, el
+      // chip decía "En silla · sale 11:59 pm": el barbero ni siquiera estaba en
+      // la barbería y el sitio lo mostraba atendiendo hasta medianoche.
+      if (desdeMin <= OPEN && hastaMin >= CLOSE) {
+        return { tipo: "cerrado", label: "No atiende hoy" };
+      }
+      return { tipo: "silla", label: `En silla · sale ${fmtTime(hastaMin)}` };
     }
     // Fuera del horario de la barbería (domingo, antes de abrir o después de cerrar)
     // "Libre ahora" (verde) engaña: no está trabajando. Se muestra neutro.

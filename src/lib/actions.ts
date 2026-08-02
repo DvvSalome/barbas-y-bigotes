@@ -858,6 +858,21 @@ export async function registrarWalkin(input: {
   if (!barberoId) return { ok: false, error: "No se pudo determinar el barbero" };
   if (!(await staffPuedeOperarBarbero(staff, barberoId)))
     return { ok: false, error: "Ese barbero es de otra sede." };
+
+  // Guard de ausencia: createReserva ya lo tenía y el walk-in NO, así que se le
+  // podía meter un cliente a alguien marcado como ausente. Peor: la atención
+  // quedaba "en curso" y el sitio público lo mostraba "en silla" el resto del
+  // día, cuando ni siquiera estaba en la barbería.
+  const hoyYmd = bogotaYmd(new Date());
+  const { data: ausente } = await sb
+    .from("barbero_ausencias")
+    .select("id")
+    .eq("barbero_id", barberoId)
+    .eq("fecha", hoyYmd)
+    .limit(1);
+  if (ausente && ausente.length) {
+    return { ok: false, error: "Ese barbero está marcado como ausente hoy. Elegí otro o quitá la ausencia." };
+  }
   // Mostrador compartido: una vez validada la sede/barbero acá, el INSERT va con
   // service_role. La RLS de reservas (0010) exige barbero_id = current_barbero_id(),
   // así que un barbero anotando el walk-in de un COLEGA de su sede chocaba 42501.
