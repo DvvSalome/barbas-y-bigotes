@@ -4,47 +4,83 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 
-// Secciones del panel (tabs horizontales bajo el topbar, según el mockup).
-const ADMIN_SECTIONS = [
+// Navegación del panel en 7 TEMAS, no en 10 tablas. Antes cada pantalla era su
+// propia pestaña y en el celular no cabían: nada decía que "Equipo" y
+// "Comisiones" hablan de lo mismo, ni por qué "Precios" e "Inventario" se veían
+// iguales (son servicios vs productos físicos, cosas distintas).
+// Las RUTAS no cambian —enlaces y marcadores viejos siguen sirviendo—: cambia
+// cómo se agrupan. Un tema con varias pantallas muestra una segunda fila con sus
+// hermanas (AdminSubTabs).
+type Hoja = { href: string; label: string };
+type Grupo = Hoja & { hijos?: readonly Hoja[] };
+
+const GRUPOS: readonly Grupo[] = [
   { href: "/admin", label: "Hoy" },
   { href: "/admin/metricas", label: "Métricas" },
   { href: "/admin/cuadre", label: "Caja" },
   { href: "/admin/clientes", label: "Clientes" },
-  { href: "/admin/inventario", label: "Inventario" },
-  { href: "/admin/precios", label: "Precios" },
-  { href: "/admin/equipo", label: "Equipo" },
-  { href: "/admin/comisiones", label: "Comisiones" },
-  { href: "/admin/cupones", label: "Cupones" },
-  { href: "/admin/avisos", label: "Avisos" },
+  {
+    href: "/admin/precios",
+    label: "Catálogo",
+    hijos: [
+      { href: "/admin/precios", label: "Servicios y precios" },
+      { href: "/admin/inventario", label: "Productos y stock" },
+    ],
+  },
+  {
+    href: "/admin/equipo",
+    label: "Equipo",
+    hijos: [
+      { href: "/admin/equipo", label: "Barberos y PINes" },
+      { href: "/admin/comisiones", label: "Comisiones y contratos" },
+    ],
+  },
+  {
+    href: "/admin/cupones",
+    label: "Marketing",
+    hijos: [
+      { href: "/admin/cupones", label: "Cupones" },
+      { href: "/admin/avisos", label: "Avisos al cliente" },
+    ],
+  },
 ] as const;
 
-const SECONDARY_SECTIONS = [{ href: "/barbero", label: "App del barbero" }] as const;
+const SECUNDARIAS: readonly Hoja[] = [{ href: "/barbero", label: "App del barbero" }] as const;
 
-// adminNav combinado: lo usan las tabs y la paleta Ctrl-K ("Ir a").
-export const adminNav = [...ADMIN_SECTIONS, ...SECONDARY_SECTIONS] as const;
+// adminNav PLANO: lo consume la paleta Ctrl-K ("Ir a"). Se aplanan los hijos con
+// su nombre largo para que buscar "inventario" o "comisiones" siga encontrando.
+export const adminNav: readonly Hoja[] = [
+  ...GRUPOS.flatMap((g) =>
+    g.hijos ? g.hijos.map((h) => ({ href: h.href, label: h.label })) : [{ href: g.href, label: g.label }],
+  ),
+  ...SECUNDARIAS,
+];
 
-// Únicas secciones que hoy leen el ?sede= del selector del topbar: Hoy y Métricas
-// filtran todos sus datos, y Precios lo usa para saber en qué sede se arma el combo.
-// El resto muestra las dos sedes siempre, así que el selector se apaga allí (ver
-// AdminTopbar): tener "Plaza de la Paz" marcado leyendo la caja de ambas es caro.
+// Únicas secciones que leen el ?sede= del selector del topbar: Hoy y Métricas
+// filtran sus datos, y Precios lo usa para saber en qué sede se arma el combo.
 const SECCIONES_CON_SEDE = ["/admin", "/admin/metricas", "/admin/precios"] as const;
 
-const esSeccion = (path: string, href: string) => (href === "/admin" ? path === href : path.startsWith(href));
+const esRuta = (path: string, href: string) => (href === "/admin" ? path === href : path.startsWith(href));
 
 export function seccionFiltraPorSede(path: string) {
-  return SECCIONES_CON_SEDE.some((href) => esSeccion(path, href));
+  return SECCIONES_CON_SEDE.some((href) => esRuta(path, href));
+}
+
+/** El grupo al que pertenece la ruta actual (marca la pestaña y da los hijos). */
+function grupoDe(path: string): Grupo | undefined {
+  return GRUPOS.find((g) => (g.hijos ? g.hijos.some((h) => esRuta(path, h.href)) : esRuta(path, g.href)));
 }
 
 // Tabs con scroll horizontal en mobile; activa con borde inferior accent.
-// Conservan el ?sede= elegido al cambiar de sección (bonus del selector).
+// Conservan el ?sede= elegido al cambiar de sección.
 export function AdminTabs() {
   const path = usePathname();
   const search = useSearchParams();
   const sede = search.get("sede");
   const barra = useRef<HTMLElement | null>(null);
   const activa = useRef<HTMLAnchorElement | null>(null);
-  // Con 11 secciones en 390px se ven ~5: hay que avisar hacia qué lado sigue la barra.
   const [sobra, setSobra] = useState({ izq: false, der: false });
+  const activo = grupoDe(path);
 
   const medirSobra = useCallback(() => {
     const cont = barra.current;
@@ -54,9 +90,8 @@ export function AdminTabs() {
     setSobra({ izq: cont.scrollLeft > 4, der: cont.scrollLeft < max - 4 });
   }, []);
 
-  // Al entrar a una sección su pestaña podía quedar fuera de pantalla (pasaba en
-  // Precios y Avisos) y el dueño no sabía dónde estaba parado. Se centra moviendo
-  // SOLO el scroll de la barra: scrollIntoView arrastraría también la página.
+  // Al entrar a una sección su pestaña podía quedar fuera de pantalla. Se centra
+  // moviendo SOLO el scroll de la barra: scrollIntoView arrastraría la página.
   useEffect(() => {
     const cont = barra.current;
     const tab = activa.current;
@@ -74,8 +109,8 @@ export function AdminTabs() {
     return () => window.removeEventListener("resize", medirSobra);
   }, [medirSobra]);
 
-  // Degradado en los bordes con máscara (no pinta encima: desvanece la propia barra,
-  // así sirve igual en tema claro y oscuro y no le roba ancho a las pestañas).
+  // Degradado en los bordes con máscara (no pinta encima: desvanece la propia
+  // barra, así sirve en tema claro y oscuro y no le roba ancho a las pestañas).
   const desvanecido = `linear-gradient(to right, ${
     sobra.izq ? "transparent 0px, #000 20px" : "#000 0px"
   }, ${sobra.der ? "#000 calc(100% - 28px), transparent 100%" : "#000 100%"})`;
@@ -88,16 +123,16 @@ export function AdminTabs() {
       style={{ maskImage: desvanecido, WebkitMaskImage: desvanecido }}
       className="mx-auto flex w-full max-w-[1180px] gap-0.5 overflow-x-auto px-4 sm:px-5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
     >
-      {adminNav.map((n) => {
-        const activo = esSeccion(path, n.href);
+      {[...GRUPOS, ...SECUNDARIAS].map((n) => {
+        const act = activo?.href === n.href;
         return (
           <Link
             key={n.href}
-            ref={activo ? activa : undefined}
+            ref={act ? activa : undefined}
             href={sede ? `${n.href}?sede=${sede}` : n.href}
-            aria-current={activo ? "page" : undefined}
+            aria-current={act ? "page" : undefined}
             className={`-mb-px whitespace-nowrap border-b-2 px-3 py-2.5 text-[13px] font-semibold transition ${
-              activo ? "border-accent text-ink" : "border-transparent text-muted hover:text-ink/80"
+              act ? "border-accent text-ink" : "border-transparent text-muted hover:text-ink/80"
             }`}
           >
             {n.label}
@@ -105,5 +140,44 @@ export function AdminTabs() {
         );
       })}
     </nav>
+  );
+}
+
+/**
+ * Segunda fila: las pantallas del tema actual. Solo aparece cuando el tema tiene
+ * más de una, así que Hoy/Métricas/Caja/Clientes no ganan una barra vacía.
+ */
+export function AdminSubTabs() {
+  const path = usePathname();
+  const search = useSearchParams();
+  const sede = search.get("sede");
+  const grupo = grupoDe(path);
+  if (!grupo?.hijos) return null;
+
+  return (
+    <div className="border-b border-line/60 bg-panel/40">
+      <nav
+        aria-label={`Secciones de ${grupo.label}`}
+        className="mx-auto flex w-full max-w-[1180px] gap-1.5 overflow-x-auto px-4 py-2 sm:px-5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      >
+        {grupo.hijos.map((h) => {
+          const act = esRuta(path, h.href);
+          return (
+            <Link
+              key={h.href}
+              href={sede ? `${h.href}?sede=${sede}` : h.href}
+              aria-current={act ? "page" : undefined}
+              className={`whitespace-nowrap rounded-full border px-3.5 py-1.5 text-[12.5px] font-semibold transition ${
+                act
+                  ? "border-accent/45 bg-accent/10 text-accent-soft"
+                  : "border-line text-muted hover:border-accent/30 hover:text-ink"
+              }`}
+            >
+              {h.label}
+            </Link>
+          );
+        })}
+      </nav>
+    </div>
   );
 }

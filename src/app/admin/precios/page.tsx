@@ -8,7 +8,7 @@ import { PrecioSedeEditable } from "@/components/admin/PrecioSedeEditable";
 import { ComboBuilder } from "@/components/admin/ComboBuilder";
 import { ServicioActivoToggle } from "@/components/admin/ServicioActivoToggle";
 
-export const metadata: Metadata = { title: "Precios por sede · Admin" };
+export const metadata: Metadata = { title: "Servicios y precios · Admin" };
 
 export default async function PreciosPage({
   searchParams,
@@ -34,8 +34,8 @@ export default async function PreciosPage({
     <div className="max-w-5xl">
       <SectionHeader
         eyebrow="Catálogo"
-        title="Precios por sede"
-        description="Los precios de cada servicio en las dos sedes. Desde acá se arman combos y se activa o desactiva un servicio."
+        title="Servicios y precios"
+        description="Lo que hace el barbero: cuánto dura y cuánto cuesta en cada sede. Desde acá se arman combos y se saca un servicio del catálogo."
       />
 
       <p className="mt-4 text-[13px] text-muted">

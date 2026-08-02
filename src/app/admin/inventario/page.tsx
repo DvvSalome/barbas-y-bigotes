@@ -8,7 +8,7 @@ import { SectionHeader } from "@/components/admin/SectionHeader";
 import { Stat } from "@/components/admin/Stat";
 import { AlertIcon } from "@/components/icons";
 
-export const metadata: Metadata = { title: "Inventario · Admin" };
+export const metadata: Metadata = { title: "Productos y stock · Admin" };
 
 export default async function InventarioPage() {
   const [productos, sedes] = await Promise.all([getProductos(), getSedes()]);
@@ -17,8 +17,8 @@ export default async function InventarioPage() {
     <div className="max-w-4xl">
       <SectionHeader
         eyebrow="Stock"
-        title="Inventario"
-        description="Stock por sede con alerta de mínimo. Agregá productos y se guardan en Supabase."
+        title="Productos y stock"
+        description="Lo que se vende en el mostrador: cuánto queda, cuánto cuesta y qué se está acabando. El precio se edita tocándolo."
       />
 
       <div className="mt-5">

@@ -4,7 +4,7 @@ import { Suspense } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
-import { AdminTabs, seccionFiltraPorSede } from "@/components/admin/AdminNav";
+import { AdminTabs, AdminSubTabs, seccionFiltraPorSede } from "@/components/admin/AdminNav";
 import { PerfilMenu } from "@/components/staff/PerfilMenu";
 import { SearchIcon } from "@/components/icons";
 import type { Sede } from "@/lib/data/types";
@@ -145,6 +145,11 @@ export function AdminTopbar({ email, sedes, caja }: { email: string; sedes: Sede
 
       <Suspense fallback={null}>
         <AdminTabs />
+      </Suspense>
+      {/* Segunda fila con las pantallas del tema actual (Catálogo, Equipo,
+          Marketing). Se dibuja sola y solo donde el tema tiene más de una. */}
+      <Suspense fallback={null}>
+        <AdminSubTabs />
       </Suspense>
     </header>
   );
