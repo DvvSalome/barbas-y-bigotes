@@ -5,6 +5,7 @@ import type { SedeId } from "@/lib/data/types";
 import { cop } from "@/lib/format";
 import { SectionHeader } from "@/components/admin/SectionHeader";
 import { Kpi } from "@/components/admin/Kpi";
+import { CaraBarbero } from "@/components/staff/Elegir";
 
 export const metadata: Metadata = { title: "Métricas · Admin" };
 
@@ -58,7 +59,7 @@ function Ranking({
 }: {
   titulo: string;
   vacio: string;
-  filas: { nombre: string; valor: string; sub: string; peso: number }[];
+  filas: { nombre: string; valor: string; sub: string; peso: number; fotoUrl?: string | null }[];
 }) {
   const max = Math.max(...filas.map((f) => f.peso), 1);
   return (
@@ -71,7 +72,12 @@ function Ranking({
           {filas.map((f) => (
             <li key={f.nombre}>
               <div className="flex items-baseline justify-between gap-3">
-                <span className="truncate text-[13.5px] font-semibold text-ink">{f.nombre}</span>
+                <span className="flex min-w-0 items-center gap-2">
+                  {/* Solo el ranking de barberos trae cara; en servicios y
+                      productos no hay a quién ponerle. */}
+                  {f.fotoUrl !== undefined && <CaraBarbero b={{ id: f.nombre, nombre: f.nombre, fotoUrl: f.fotoUrl }} size={24} />}
+                  <span className="truncate text-[13.5px] font-semibold text-ink">{f.nombre}</span>
+                </span>
                 <span className="shrink-0 text-[13px] text-ink">{f.valor}</span>
               </div>
               <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-elevated">
@@ -102,6 +108,9 @@ export default async function MetricasPage({
 
   const m = await getMetricas(p, sede);
   const qs = (periodo: Periodo) => `?p=${periodo}${sede ? `&sede=${sede}` : ""}`;
+  // Segunda consulta SOLO cuando el período elegido salió vacío: sirve para
+  // ofrecer el atajo, no se paga en el camino normal.
+  const hayEn90 = m.servicios === 0 && p !== "90d" && (await getMetricas("90d", sede)).servicios > 0;
   const nuevos = m.clientes.total - m.clientes.repiten;
 
   return (
@@ -135,10 +144,23 @@ export default async function MetricasPage({
       </div>
 
       {m.servicios === 0 ? (
-        <p className="mt-6 rounded-2xl border border-line bg-panel p-6 text-[13px] text-muted">
-          Todavía no hay cobros en este período{sede ? ` en ${nombreSede}` : ""}. Los números aparecen
-          solos a medida que los barberos van cobrando en el mostrador.
-        </p>
+        // Una pantalla en blanco no dice si el negocio está parado o si el
+        // período elegido simplemente no alcanza: si en 90 días SÍ hubo cobros,
+        // se ofrece ir para allá en vez de dejar al dueño adivinando.
+        <div className="mt-6 rounded-2xl border border-line bg-panel p-6">
+          <p className="text-[13px] text-muted">
+            No hubo cobros en este período{sede ? ` en ${nombreSede}` : ""}. Los números aparecen solos
+            a medida que los barberos van cobrando en el mostrador.
+          </p>
+          {hayEn90 && (
+            <Link
+              href={qs("90d")}
+              className="mt-3 inline-flex min-h-11 items-center rounded-xl border border-accent/45 bg-accent/[0.07] px-4 text-[13px] font-semibold text-accent-soft transition hover:bg-accent/15"
+            >
+              Ver los últimos 90 días →
+            </Link>
+          )}
+        </div>
       ) : (
         <>
           <div className="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -163,6 +185,7 @@ export default async function MetricasPage({
               vacio="Sin cobros asignados a un barbero."
               filas={m.porBarbero.map((b) => ({
                 nombre: b.nombre,
+                fotoUrl: b.fotoUrl,
                 valor: cop(b.plata),
                 sub: `${b.cortes} ${b.cortes === 1 ? "cobro" : "cobros"}`,
                 peso: b.plata,

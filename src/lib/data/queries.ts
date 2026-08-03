@@ -1785,7 +1785,7 @@ export type Metricas = {
   propinas: number;
   /** Mismo largo de período, inmediatamente anterior. Un número solo no dice si vas bien. */
   antes: { plata: number; servicios: number };
-  porBarbero: { nombre: string; plata: number; cortes: number }[];
+  porBarbero: { nombre: string; fotoUrl: string | null; plata: number; cortes: number }[];
   porServicio: { nombre: string; veces: number; plata: number }[];
   porProducto: { nombre: string; veces: number; plata: number }[];
   serie: { ymd: string; total: number }[];
@@ -1802,7 +1802,7 @@ export async function getMetricas(p: Periodo = "mes", sede?: SedeId | null): Pro
   // más que mantener. ponytail: mover a SQL si esto pasa de ~10k ventas por período.
   let q = sb
     .from("ventas")
-    .select("id,total,propina,creado_en,barbero_id,cliente_ref,barberos(nombre)")
+    .select("id,total,propina,creado_en,barbero_id,cliente_ref,barberos(nombre,foto_url)")
     .gte("creado_en", prevDesde.toISOString())
     .lt("creado_en", hasta.toISOString());
   if (sede) q = q.eq("sede_id", sede);
@@ -1818,14 +1818,20 @@ export async function getMetricas(p: Periodo = "mes", sede?: SedeId | null): Pro
   // Ítems solo del período (para el ranking de servicios y contar cortes por barbero).
   const ids = enPeriodo.map((v) => v.id as string);
   const { data: itemsRaw } = ids.length
-    ? await sb.from("venta_items").select("venta_id,tipo,descripcion,cantidad,precio_unitario").in("venta_id", ids)
+    ? await sb.from("venta_items").select("venta_id,tipo,ref_id,descripcion,cantidad,precio_unitario").in("venta_id", ids)
     : { data: [] };
   const items = (itemsRaw ?? []) as Record<string, unknown>[];
 
-  const porBarbero = new Map<string, { nombre: string; plata: number; cortes: number }>();
+  // Con la foto: el ranking de "quién produce" se lee por la cara, no leyendo
+  // seis nombres parecidos.
+  const porBarbero = new Map<
+    string,
+    { nombre: string; fotoUrl: string | null; plata: number; cortes: number }
+  >();
   for (const v of enPeriodo) {
-    const nombre = (v.barberos as { nombre?: string } | null)?.nombre ?? "Sin barbero";
-    const acc = porBarbero.get(nombre) ?? { nombre, plata: 0, cortes: 0 };
+    const b = v.barberos as { nombre?: string; foto_url?: string | null } | null;
+    const nombre = b?.nombre ?? "Sin barbero";
+    const acc = porBarbero.get(nombre) ?? { nombre, fotoUrl: b?.foto_url ?? null, plata: 0, cortes: 0 };
     acc.plata += (v.total as number) ?? 0;
     acc.cortes += 1;
     porBarbero.set(nombre, acc);
@@ -1838,11 +1844,17 @@ export async function getMetricas(p: Periodo = "mes", sede?: SedeId | null): Pro
     const destino = it.tipo === "servicio" ? porServicio : it.tipo === "producto" ? porProducto : null;
     if (!destino) continue;
     const nombre = (it.descripcion as string) ?? "—";
-    const acc = destino.get(nombre) ?? { nombre, veces: 0, plata: 0 };
+    // Se agrupa por ref_id, NO por el texto: la venta guarda el nombre tal como
+    // era el día del cobro, así que renombrar un servicio partía el ranking en
+    // dos ("Corte clásico / degradado" y "Corte (clásico, degradado)" salían
+    // como dos servicios distintos). El nombre visible es el más reciente.
+    const clave = (it.ref_id as string) || nombre;
+    const acc = destino.get(clave) ?? { nombre, veces: 0, plata: 0 };
+    acc.nombre = nombre;
     const cant = (it.cantidad as number) ?? 1;
     acc.veces += cant;
     acc.plata += cant * (((it.precio_unitario as number) ?? 0));
-    destino.set(nombre, acc);
+    destino.set(clave, acc);
   }
 
   const serie = new Map<string, number>();
