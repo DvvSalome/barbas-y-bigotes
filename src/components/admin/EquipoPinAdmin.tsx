@@ -6,10 +6,22 @@ import { setearPinBarbero, desbloquearBarbero } from "@/lib/barbero-auth";
 import { actualizarPerfilBarbero } from "@/lib/actions";
 import type { Barbero, Sede } from "@/lib/data/types";
 import { partirEspecialidades, MAX_ESPECIALIDADES } from "@/lib/admin-reglas";
+import { CaraBarbero } from "@/components/staff/Elegir";
 
 type Estado = Record<string, { tienePin: boolean; bloqueado: boolean }>;
 
-export function EquipoPinAdmin({ barberos, sedes, estado }: { barberos: Barbero[]; sedes: Sede[]; estado: Estado }) {
+export function EquipoPinAdmin({
+  barberos,
+  sedes,
+  estado,
+  ausentesHoy = [],
+}: {
+  barberos: Barbero[];
+  sedes: Sede[];
+  estado: Estado;
+  /** Ids de los que NO vienen hoy: se marca en su tarjeta. */
+  ausentesHoy?: string[];
+}) {
   const router = useRouter();
   const [editing, setEditing] = useState<string | null>(null);
   const [pin, setPin] = useState("");
@@ -83,37 +95,76 @@ export function EquipoPinAdmin({ barberos, sedes, estado }: { barberos: Barbero[
         return (
           <section key={s.id}>
             <h2 className="mb-3 text-xs uppercase tracking-[0.3em] text-accent">{s.nombre}</h2>
-            <div className="space-y-2">
+            <div className="grid gap-2.5 sm:grid-cols-2">
               {list.map((b) => {
                 const e = estado[b.id];
+                const ausente = ausentesHoy.includes(b.id);
+                const abierto = editing === b.id || perfilEditing === b.id;
                 return (
-                  <div key={b.id} className="rounded-xl border border-line bg-panel p-4">
-                    <div className="flex flex-wrap items-center justify-between gap-3">
-                      <div>
-                        <div className="font-semibold">{b.nombre}</div>
-                        <div className="text-xs text-muted">
-                          {e?.tienePin ? "PIN configurado" : "Sin PIN"}
-                          {e?.bloqueado ? " · 🔒 bloqueado" : ""}
-                          {b.especialidades.length ? ` · ${b.especialidades.length} especialidades` : " · sin especialidades"}
-                          {b.bio ? " · con bio" : ""}
+                  <div
+                    key={b.id}
+                    className={`rounded-2xl border bg-panel p-4 transition ${
+                      abierto ? "border-accent/50 sm:col-span-2" : "border-line"
+                    }`}
+                  >
+                    <div className="flex items-start gap-3">
+                      <CaraBarbero b={b} size={52} aro />
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate font-display text-[17px] font-bold uppercase leading-tight">
+                          {b.nombre}
+                        </div>
+                        {/* Estado en señales, no en una línea de texto corrida:
+                            el dueño busca "¿quién no tiene PIN?" y antes tenía
+                            que leer seis frases iguales para encontrarlo. */}
+                        <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                          <span
+                            className={`rounded-full px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-wide ${
+                              e?.tienePin ? "bg-ok/15 text-ok" : "bg-warn/15 text-warn"
+                            }`}
+                          >
+                            {e?.tienePin ? "PIN listo" : "Sin PIN"}
+                          </span>
+                          {e?.bloqueado && (
+                            <span className="rounded-full bg-accent/15 px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-wide text-accent-soft">
+                              Bloqueado
+                            </span>
+                          )}
+                          {ausente && (
+                            <span className="rounded-full bg-ink/10 px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-wide text-muted">
+                              Hoy no viene
+                            </span>
+                          )}
+                          <span className="text-[11.5px] text-muted">
+                            {b.especialidades.length
+                              ? `${b.especialidades.length} especialidades`
+                              : "sin especialidades"}
+                            {b.bio ? " · con bio" : ""}
+                          </span>
                         </div>
                       </div>
-                      <div className="flex flex-wrap justify-end gap-2">
-                        {e?.bloqueado && (
-                          <button onClick={() => desbloquear(b.id)} disabled={busy}
-                            className="rounded-full border border-line px-3 py-1.5 text-xs text-muted transition hover:text-ink disabled:opacity-50">
-                            Desbloquear
-                          </button>
-                        )}
-                        <button onClick={() => abrirPerfil(b)}
-                          className="rounded-full border border-line px-4 py-1.5 text-xs font-semibold uppercase text-muted transition hover:text-ink">
-                          {perfilEditing === b.id ? "Cerrar perfil" : "Perfil"}
+                    </div>
+
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {e?.bloqueado && (
+                        <button onClick={() => desbloquear(b.id)} disabled={busy}
+                          className="min-h-9 rounded-full border border-accent/40 bg-accent/[0.07] px-3 text-[12px] font-semibold text-accent-soft transition hover:bg-accent/15 disabled:opacity-50">
+                          Desbloquear
                         </button>
-                        <button onClick={() => { setEditing(editing === b.id ? null : b.id); setPin(""); setPerfilEditing(null); setMsg(null); }}
-                          className="rounded-full bg-accent px-4 py-1.5 text-xs font-semibold uppercase text-on-accent transition hover:bg-accent-soft">
-                          {e?.tienePin ? "Cambiar PIN" : "Setear PIN"}
-                        </button>
-                      </div>
+                      )}
+                      <button onClick={() => abrirPerfil(b)}
+                        className="min-h-9 rounded-full border border-line px-3.5 text-[12px] font-semibold text-muted transition hover:text-ink">
+                        {perfilEditing === b.id ? "Cerrar perfil" : "Perfil y especialidades"}
+                      </button>
+                      {/* Cambiar el PIN es raro (una vez por barbero): no merece el
+                          botón rojo de acción principal repetido seis veces. */}
+                      <button onClick={() => { setEditing(editing === b.id ? null : b.id); setPin(""); setPerfilEditing(null); setMsg(null); }}
+                        className={`min-h-9 rounded-full px-3.5 text-[12px] font-semibold transition ${
+                          e?.tienePin
+                            ? "border border-line text-muted hover:text-ink"
+                            : "bg-accent text-on-accent hover:bg-accent-soft"
+                        }`}>
+                        {e?.tienePin ? "Cambiar PIN" : "Poner PIN"}
+                      </button>
                     </div>
                     {editing === b.id && (
                       <div className="mt-3 flex flex-wrap items-center gap-2">

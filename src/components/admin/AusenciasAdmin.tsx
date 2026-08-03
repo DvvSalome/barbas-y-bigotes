@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { marcarAusencia, quitarAusencia } from "@/lib/actions";
 import { bogotaYmd } from "@/lib/slots";
+import { ElegirBarbero, CaraBarbero } from "@/components/staff/Elegir";
 import type { Barbero, Sede } from "@/lib/data/types";
 import type { Ausencia } from "@/lib/data/queries";
 
@@ -74,14 +75,12 @@ export function AusenciasAdmin({
     <div>
       <form onSubmit={agregar} className="grid gap-3 rounded-2xl border border-line bg-panel p-5 sm:grid-cols-4">
         <h3 className="font-display text-lg sm:col-span-4">Marcar ausencia</h3>
-        <select value={barberoId} onChange={(e) => setBarberoId(e.target.value)} className={input}>
-          <option value="">Barbero…</option>
-          {barberos.map((b) => (
-            <option key={b.id} value={b.id}>
-              {b.nombre}
-            </option>
-          ))}
-        </select>
+        <ElegirBarbero
+          barberos={barberos.map((b) => ({ id: b.id, nombre: b.nombre, fotoUrl: b.fotoUrl }))}
+          value={barberoId}
+          onChange={setBarberoId}
+          placeholder="¿Quién no viene?"
+        />
         <input type="date" min={hoy} value={fecha} onChange={(e) => setFecha(e.target.value)} className={input} />
         <input
           value={motivo}
@@ -117,7 +116,8 @@ export function AusenciasAdmin({
                 key={a.id}
                 className="flex items-center justify-between gap-3 rounded-xl border border-line bg-panel px-4 py-3"
               >
-                <div className="min-w-0">
+                <CaraBarbero b={{ id: a.barberoId, nombre: nombreBarbero(a.barberoId), fotoUrl: barberos.find((x) => x.id === a.barberoId)?.fotoUrl }} size={34} />
+                <div className="min-w-0 flex-1">
                   <div className="truncate text-sm font-semibold text-ink">
                     {nombreBarbero(a.barberoId)} <span className="font-normal text-muted">· {fechaLabel(a.fecha)}</span>
                   </div>

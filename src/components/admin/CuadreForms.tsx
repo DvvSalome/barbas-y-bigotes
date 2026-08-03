@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { registrarGasto, registrarAdelanto } from "@/lib/actions";
 import { sanearCop } from "@/lib/admin-reglas";
 import { TagIcon, PercentIcon } from "@/components/icons";
+import { ElegirBarbero } from "@/components/staff/Elegir";
 import type { Sede, Barbero } from "@/lib/data/types";
 
 const fld =
@@ -94,12 +95,14 @@ export function CuadreForms({ sedes, barberos }: { sedes: Sede[]; barberos: Barb
         <h3 className="flex items-center gap-2 font-display text-xl">
           <PercentIcon className="h-4 w-4 text-accent" /> Registrar adelanto
         </h3>
-        <select value={aBarbero} onChange={(e) => setABarbero(e.target.value)} className={fld}>
-          <option value="">Barbero…</option>
-          {barberos.map((b) => (
-            <option key={b.id} value={b.id}>{b.nombre}</option>
-          ))}
-        </select>
+        {/* Con foto: el adelanto es plata que se le descuenta a una persona, y
+            elegirla de una lista de nombres sueltos es fácil de errar. */}
+        <ElegirBarbero
+          barberos={barberos.map((b) => ({ id: b.id, nombre: b.nombre, fotoUrl: b.fotoUrl }))}
+          value={aBarbero}
+          onChange={setABarbero}
+          placeholder="¿A quién se le adelanta?"
+        />
         <input type="number" inputMode="numeric" min={1} step={1} value={aMonto} onChange={(e) => { setAMonto(e.target.value); if (aError) setAError(""); }} placeholder="Monto del adelanto" className={fld} />
         <input value={aNota} onChange={(e) => setANota(e.target.value)} placeholder="Nota (opcional)" className={fld} />
         {aError && <p className="text-xs text-red-500">{aError}</p>}

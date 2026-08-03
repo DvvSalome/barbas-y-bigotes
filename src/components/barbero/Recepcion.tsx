@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { cop } from "@/lib/format";
@@ -80,9 +80,16 @@ export function Recepcion({
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
-  // Instante estable: evita recalcular "faltan Xh" en cada render (regla del
-  // React Compiler). Basta con la frescura del refresh de la agenda.
-  const [ahora] = useState(() => Date.now());
+  // Reloj que AVANZA (un tic por minuto). La pantalla del mostrador queda
+  // abierta todo el día: con el instante congelado al montar, el botón "Llegó"
+  // de la cita de la tarde seguía diciendo "faltan 2h" para siempre y solo
+  // recargando la página se destrababa. El refresh del realtime no alcanza:
+  // vuelve a renderizar con datos nuevos, pero el estado del cliente no cambia.
+  const [ahora, setAhora] = useState(() => Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setAhora(Date.now()), 60_000);
+    return () => clearInterval(t);
+  }, []);
 
   async function marcar(r: AgendaItem, estado: string) {
     const quien = r.cliente || "este cliente";
@@ -118,6 +125,14 @@ export function Recepcion({
   const totalCitas = agenda.length;
   const hechas = agenda.filter((r) => DONE.includes(r.estado)).length;
 
+  // Su hora ya pasó y nadie dijo si llegó. Hasta ahora se quedaban calladas en la
+  // fila hasta que el barrido nocturno las daba por "no llegó" — si el cliente sí
+  // vino, esa venta no se registró nunca y el barbero perdió su comisión. Ahora
+  // el mostrador PREGUNTA.
+  const esperaRespuesta = (r: AgendaItem) =>
+    !DONE.includes(r.estado) && r.estado !== "en_curso" && new Date(r.inicio).getTime() < ahora;
+  const sinRespuesta = agenda.filter(esperaRespuesta).length;
+
   // Tiene movimiento = alguien en la silla o citas por atender. Solo eso merece
   // una columna; el resto va a una tira de una línea.
   const tieneMovimiento = (id: string) =>
@@ -137,6 +152,14 @@ export function Recepcion({
           <p className="mt-1.5 text-[12.5px] text-muted">
             {hechas} de {totalCitas} atenciones cerradas hoy
           </p>
+          {sinRespuesta > 0 && (
+            <p className="mt-1.5 inline-flex items-center gap-1.5 rounded-full bg-warn/12 px-2.5 py-1 text-[12px] font-semibold text-warn">
+              <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-warn" />
+              {sinRespuesta === 1
+                ? "1 cita sin responder: ¿llegó?"
+                : `${sinRespuesta} citas sin responder: ¿llegaron?`}
+            </p>
+          )}
         </div>
         <div className="text-right">
           <div className="font-display text-[30px] font-bold leading-none tabular-nums text-ok">{cop(cobrado)}</div>
@@ -203,12 +226,20 @@ export function Recepcion({
                 )}
                 {activas.map((r) => {
                   const enCurso = r.estado === "en_curso";
-                  const chip = chipDe(r);
+                  const pregunta = esperaRespuesta(r);
+                  const chip = pregunta ? { txt: "¿Llegó?", cls: "bg-warn/15 text-warn" } : chipDe(r);
                   const precio = precioDe(r);
                   return (
-                    <div key={r.id} className={`px-3.5 py-3 ${enCurso ? "bg-ok/[0.05]" : ""}`}>
+                    <div
+                      key={r.id}
+                      className={`px-3.5 py-3 ${
+                        enCurso ? "bg-ok/[0.05]" : pregunta ? "bg-warn/[0.06]" : ""
+                      }`}
+                    >
                       <div className="flex items-center gap-2.5">
-                        <span className="w-[52px] shrink-0 font-display text-[17px] font-bold tabular-nums text-accent-soft">
+                        {/* 64px: con 52 la hora se partía en dos líneas ("6:47 /
+                            pm") en cualquier cita de la tarde. */}
+                        <span className="w-16 shrink-0 font-display text-[17px] font-bold leading-tight tabular-nums text-accent-soft">
                           {hora(r.inicio)}
                         </span>
                         <span className="min-w-0 flex-1">
@@ -230,7 +261,42 @@ export function Recepcion({
                         </span>
                       </div>
 
-                      <div className="mt-2.5 flex flex-wrap items-center gap-2">
+                      {/* La hora ya pasó: acá el mostrador no ofrece una acción,
+                          PREGUNTA. Las dos respuestas pesan igual porque las dos
+                          son ciertas la mitad de las veces; dejar "No llegó" como
+                          un botón chiquito abajo hacía que nadie la respondiera y
+                          el barrido nocturno decidiera por el barbero. */}
+                      {pregunta && (
+                        <div className="mt-2.5 rounded-xl border border-warn/35 bg-warn/[0.07] p-2.5">
+                          <p className="mb-2 text-[12.5px] font-semibold text-ink">
+                            Su hora era {hora(r.inicio)}. ¿{r.cliente || "El cliente"} llegó?
+                          </p>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => marcar(r, "en_curso")}
+                              disabled={busy === r.id}
+                              className="min-h-12 flex-1 rounded-lg bg-[linear-gradient(180deg,var(--cta-1),var(--cta-2))] px-3 text-[13.5px] font-bold text-on-accent transition hover:brightness-105 disabled:opacity-40"
+                            >
+                              Sí, está en la silla
+                            </button>
+                            <button
+                              onClick={() => marcar(r, "no_show")}
+                              disabled={busy === r.id}
+                              className="min-h-12 flex-1 rounded-lg border border-warn/50 px-3 text-[13.5px] font-bold text-warn transition hover:bg-warn/10 disabled:opacity-40"
+                            >
+                              No llegó
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Con la pregunta arriba, estos botones sobran: repetirían
+                          "Llegó" y "No llegó" a 8px de distancia. "Cancelar" sale
+                          también a propósito — una cita cuya hora ya pasó no se
+                          cancela, se responde. */}
+                      <div
+                        className={`mt-2.5 flex-wrap items-center gap-2 ${pregunta ? "hidden" : "flex"}`}
+                      >
                         {enCurso ? (
                           <button
                             onClick={() => onCobrar(r.id)}

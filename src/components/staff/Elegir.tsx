@@ -39,22 +39,35 @@ const PANEL =
 
 export type OpcionBarbero = { id: string; nombre: string; fotoUrl?: string | null };
 
-/** Cara del barbero (foto o iniciales). Fuera del componente: definirla adentro
- *  la recrea en cada render y React la remonta. */
-function Cara({ b, size = 26 }: { b: OpcionBarbero; size?: number }) {
+/** Cara del barbero (foto o iniciales). Exportada: el admin la usa en equipo,
+ *  ausencias y comisiones — una sola cara para todo el staff.
+ *  Fuera del componente: definirla adentro la recrea en cada render y React la
+ *  remonta. */
+export function CaraBarbero({
+  b,
+  size = 26,
+  aro,
+}: {
+  b: OpcionBarbero;
+  size?: number;
+  /** Anillo alrededor de la foto (tarjetas grandes). */
+  aro?: boolean;
+}) {
   return b.fotoUrl ? (
     <Image
       src={b.fotoUrl}
       alt=""
       width={size}
       height={size}
-      className="shrink-0 rounded-full object-cover object-top"
+      className={`shrink-0 rounded-full object-cover object-top ${aro ? "ring-2 ring-line" : ""}`}
       style={{ height: size, width: size }}
     />
   ) : (
     <span
-      className="grid shrink-0 place-items-center rounded-full bg-elevated text-[10px] font-bold text-ink"
-      style={{ height: size, width: size }}
+      className={`grid shrink-0 place-items-center rounded-full bg-elevated font-bold text-ink ${
+        aro ? "ring-2 ring-line" : ""
+      }`}
+      style={{ height: size, width: size, fontSize: Math.max(10, Math.round(size * 0.34)) }}
     >
       {iniciales(b.nombre)}
     </span>
@@ -86,7 +99,7 @@ export function ElegirBarbero({
       <button type="button" onClick={() => setAbierto((v) => !v)} className={BOTON} aria-expanded={abierto}>
         {sel ? (
           <>
-            <Cara b={sel} />
+            <CaraBarbero b={sel} />
             <span className="flex-1 truncate text-[13.5px] font-semibold">{sel.nombre}</span>
           </>
         ) : (
@@ -123,7 +136,7 @@ export function ElegirBarbero({
                 b.id === value ? "bg-accent/10" : ""
               }`}
             >
-              <Cara b={b} size={30} />
+              <CaraBarbero b={b} size={30} />
               <span className="flex-1 truncate text-[13.5px] font-semibold text-ink">{b.nombre}</span>
               {b.id === value && <span className="text-[12px] text-accent-soft">✓</span>}
             </button>
