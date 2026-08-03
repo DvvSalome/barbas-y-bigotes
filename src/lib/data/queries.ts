@@ -519,7 +519,13 @@ export type EsperaItem = {
   creadoEn: string;
 };
 
-export async function getListaEspera(barberoId?: string | null): Promise<EsperaItem[]> {
+export async function getListaEspera(
+  barberoId?: string | null,
+  /** Perfil por sede (0044): la espera se acota a SU sede. La RLS de
+   *  lista_espera es is_staff(), que ya incluye al rol `sede`, así que sin este
+   *  filtro el mostrador de un local vería también la cola del otro. */
+  sedeId?: string | null,
+): Promise<EsperaItem[]> {
   const sb = await supabaseServerAuth();
   let q = sb
     .from("lista_espera")
@@ -532,6 +538,7 @@ export async function getListaEspera(barberoId?: string | null): Promise<EsperaI
     .in("estado", ["esperando", "notificado"]);
   // Un barbero ve los suyos + los que esperan a "cualquiera"; el admin (sin filtro) ve todo.
   if (barberoId) q = q.or(`barbero_id.eq.${barberoId},barbero_id.is.null`);
+  if (sedeId) q = q.eq("sede_id", sedeId);
   const { data, error } = await q.order("creado_en");
   // No tragarse el error: un fallo de esquema/RLS no debe leerse como "nadie en espera".
   if (error) console.error("getListaEspera:", error.message);

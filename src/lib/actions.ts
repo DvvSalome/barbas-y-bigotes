@@ -55,9 +55,19 @@ async function requireStaff(sb: SupabaseClient): Promise<string | null> {
   // igual que requireAdmin.
   const { data } = await sb.from("profiles").select("rol").eq("auth_id", user.id).maybeSingle();
   const rol = (data as { rol?: string } | null)?.rol;
-  if (rol !== "admin" && rol !== "barbero") return "Requiere permiso del equipo";
+  if (!ROLES_MOSTRADOR.includes(rol ?? "")) return "Requiere permiso del equipo";
   return null;
 }
+
+/**
+ * Quién puede operar el mostrador: el dueño, un barbero con su PIN y —desde
+ * 0044— el PERFIL POR SEDE, que es el aparato compartido del local. Se lista en
+ * un solo lugar porque el chequeo estaba repetido en cinco actions y agregar el
+ * rol nuevo en cuatro de las cinco habría dejado un agujero silencioso: la
+ * pantalla entra pero una acción suelta responde "No autorizado".
+ */
+const ROLES_MOSTRADOR = ["admin", "barbero", "sede"];
+const puedeMostrador = (rol: string) => ROLES_MOSTRADOR.includes(rol);
 
 export type CuponResult = {
   ok: boolean;
@@ -863,7 +873,7 @@ export async function registrarWalkin(input: {
 }): Promise<ActionResult> {
   const sb = await supabaseServerAuth();
   const staff = await getStaffContext();
-  if (staff.rol !== "admin" && staff.rol !== "barbero") return { ok: false, error: "No autorizado" };
+  if (!puedeMostrador(staff.rol)) return { ok: false, error: "No autorizado" };
   // Modo mostrador: el walk-in se puede anotar a cualquier barbero de la misma
   // sede (quien lo registra no siempre es quien atiende). Sin elección, cae en
   // uno mismo. El admin elige libre.
@@ -1056,20 +1066,25 @@ async function sedeDeBarbero(barberoId: string): Promise<string | null> {
 
 /** ¿Este staff puede operar sobre algo de esta sede? */
 export async function staffPuedeOperarSede(
-  staff: { rol: string; barberoId: string | null },
+  staff: { rol: string; barberoId: string | null; sedeId?: string | null },
   sedeId: string,
 ): Promise<boolean> {
   if (staff.rol === "admin") return true;
+  // Perfil por sede (0044): su límite es su propia sede, igual que el barbero.
+  if (staff.rol === "sede") return !!staff.sedeId && staff.sedeId === sedeId;
   if (staff.rol !== "barbero" || !staff.barberoId) return false;
   return (await sedeDeBarbero(staff.barberoId)) === sedeId;
 }
 
 /** ¿Este staff puede atribuirle una venta a este barbero (misma sede)? */
 async function staffPuedeOperarBarbero(
-  staff: { rol: string; barberoId: string | null },
+  staff: { rol: string; barberoId: string | null; sedeId?: string | null },
   barberoId: string,
 ): Promise<boolean> {
   if (staff.rol === "admin") return true;
+  if (staff.rol === "sede") {
+    return !!staff.sedeId && (await sedeDeBarbero(barberoId)) === staff.sedeId;
+  }
   if (staff.rol !== "barbero" || !staff.barberoId) return false;
   if (staff.barberoId === barberoId) return true;
   const [mia, suya] = await Promise.all([sedeDeBarbero(staff.barberoId), sedeDeBarbero(barberoId)]);
@@ -1127,7 +1142,7 @@ export async function completarReserva(input: {
 }): Promise<ActionResult> {
   const sb = await supabaseServerAuth();
   const staff = await getStaffContext();
-  if (staff.rol !== "admin" && staff.rol !== "barbero") return { ok: false, error: "No autorizado" };
+  if (!puedeMostrador(staff.rol)) return { ok: false, error: "No autorizado" };
 
   // Atribución del barbero de la venta (define la comisión). Modo mostrador
   // compartido: cualquiera del equipo cobra desde el mismo equipo y la comisión
@@ -1171,6 +1186,12 @@ export async function completarReserva(input: {
     if (barberoId && !(await staffPuedeOperarBarbero(staff, barberoId)))
       return { ok: false, error: "Ese barbero es de otra sede." };
     sedeEfectiva = input.sede;
+    // La sede se valida SIEMPRE, no solo a través del barbero. Un perfil por
+    // sede (0044) no tiene barbero propio, así que en una venta rápida sin
+    // barbero elegido no había nada que atara la venta a su local: podía
+    // registrarla en la otra sede mandando otro `input.sede`.
+    if (!(await staffPuedeOperarSede(staff, sedeEfectiva)))
+      return { ok: false, error: "Esa venta es de otra sede." };
     servicioEfectivo = input.servicioId;
     clienteEfectivo = input.clienteRef;
   }
@@ -1912,7 +1933,7 @@ export async function cerrarCajaSede(input: {
   const denied = await requireStaff(sb);
   if (denied) return { ok: false, error: denied };
   const staff = await getStaffContext();
-  if (staff.rol !== "admin" && staff.rol !== "barbero") return { ok: false, error: "No autorizado" };
+  if (!puedeMostrador(staff.rol)) return { ok: false, error: "No autorizado" };
 
   const admin = supabaseAdmin();
 
@@ -1923,6 +1944,11 @@ export async function cerrarCajaSede(input: {
     if (!staff.barberoId) return { ok: false, error: "No se pudo determinar tu sede." };
     const { data: barb } = await admin.from("barberos").select("sede_id").eq("id", staff.barberoId).maybeSingle();
     sede = (barb as { sede_id?: string } | null)?.sede_id ?? null;
+    if (!sede) return { ok: false, error: "No se pudo determinar tu sede." };
+  } else if (staff.rol === "sede") {
+    // El mostrador cierra SU caja; el `input.sede` se ignora igual que con el
+    // barbero, para que un POST directo no cierre la caja del otro local.
+    sede = staff.sedeId;
     if (!sede) return { ok: false, error: "No se pudo determinar tu sede." };
   } else {
     sede = (input.sede ?? "").trim() || null;
@@ -2066,7 +2092,7 @@ export async function agregarListaEspera(input: {
 export async function servirEspera(id: string): Promise<ActionResult> {
   const sb = await supabaseServerAuth();
   const staff = await getStaffContext();
-  if (staff.rol !== "admin" && staff.rol !== "barbero") return { ok: false, error: "No autorizado" };
+  if (!puedeMostrador(staff.rol)) return { ok: false, error: "No autorizado" };
   // Claim atómico: solo una llamada gana, y solo si sigue en la cola.
   const { data: claimed } = await sb
     .from("lista_espera")

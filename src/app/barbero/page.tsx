@@ -32,13 +32,18 @@ export default async function BarberoPage() {
     getPreciosServiciosStaff(),
     getProductos(),
     getMedios(),
-    getListaEspera(filtro),
+    // El perfil por sede ve la espera de SU sede; el barbero, la suya propia.
+    getListaEspera(filtro, staff.sedeId),
   ]);
 
-  // Cierre de caja: sólo para el barbero, sobre SU sede (el admin cierra en
-  // /admin/cuadre). La caja se abre sola con la primera venta del día.
+  // La sede que se opera. Un perfil por sede (0044) trae la suya en el perfil;
+  // un barbero, la de su ficha. El dueño (admin) no tiene → null = las dos.
+  // Sin esta rama, el mostrador de sede caía en la vista del dueño ("Todas las
+  // sedes") y se quedaba sin cierre de caja.
   const sedeBarbero =
-    staff.rol === "barbero" ? barberos.find((b) => b.id === staff.barberoId)?.sede ?? null : null;
+    staff.rol === "barbero"
+      ? barberos.find((b) => b.id === staff.barberoId)?.sede ?? null
+      : staff.sedeId ?? null;
   const [caja, cajaDesglose] = sedeBarbero
     ? await Promise.all([getCajaSede(sedeBarbero), getCajaDesglose(sedeBarbero)])
     : [null, null];

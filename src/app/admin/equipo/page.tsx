@@ -1,19 +1,21 @@
 import type { Metadata } from "next";
 import { getBarberos, getSedes, getAusencias, getDiasEspeciales } from "@/lib/data/queries";
 import { bogotaYmd } from "@/lib/slots";
-import { getBarberosPinEstado } from "@/lib/barbero-auth";
+import { getBarberosPinEstado, getSedesPinEstado } from "@/lib/barbero-auth";
 import { SectionHeader } from "@/components/admin/SectionHeader";
 import { EquipoPinAdmin } from "@/components/admin/EquipoPinAdmin";
+import { SedePinAdmin } from "@/components/admin/SedePinAdmin";
 import { AusenciasAdmin } from "@/components/admin/AusenciasAdmin";
 import { DiasEspecialesAdmin } from "@/components/admin/DiasEspecialesAdmin";
 
 export const metadata: Metadata = { title: "Equipo · Admin" };
 
 export default async function EquipoPage() {
-  const [barberos, sedes, estado, ausencias, diasEspeciales] = await Promise.all([
+  const [barberos, sedes, estado, estadoSedes, ausencias, diasEspeciales] = await Promise.all([
     getBarberos(),
     getSedes(),
     getBarberosPinEstado(),
+    getSedesPinEstado(),
     getAusencias(),
     getDiasEspeciales(),
   ]);
@@ -21,10 +23,18 @@ export default async function EquipoPage() {
     <div className="max-w-3xl">
       <SectionHeader
         eyebrow="Acceso"
-        title="Equipo"
-        description="Asigná el PIN de 6 dígitos con el que cada barbero entra a su app desde /login."
+        title="Quién entra a la app"
+        description="El PIN del mostrador lo usa todo el equipo del local; el de cada barbero es personal. Los dos entran desde /login."
       />
+
+      {/* Primero el mostrador: es la forma normal de entrar en el local. */}
       <div className="mt-5">
+        <h2 className="mb-3 text-xs uppercase tracking-[0.3em] text-accent">PIN del mostrador</h2>
+        <SedePinAdmin sedes={sedes} estado={estadoSedes} />
+      </div>
+
+      <h2 className="mb-3 mt-8 text-xs uppercase tracking-[0.3em] text-accent">PIN de cada barbero</h2>
+      <div>
         <EquipoPinAdmin
           barberos={barberos}
           sedes={sedes}

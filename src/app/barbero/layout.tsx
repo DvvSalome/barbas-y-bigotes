@@ -15,7 +15,8 @@ export default async function BarberoLayout({
   // profiles, así que un guard que solo expulsa rol === 'cliente' lo dejaba pasar.
   const staff = await getStaffContext();
   if (staff.rol === "anon") redirect("/login");
-  if (staff.rol !== "admin" && staff.rol !== "barbero") redirect("/cuenta");
+  // `sede` es el perfil del mostrador (0044): entra acá, NO al back-office.
+  if (!["admin", "barbero", "sede"].includes(staff.rol)) redirect("/cuenta");
 
   // Tema del staff desde la cookie (SSR sin flash). cookies() vuelve dinámico
   // el layout, pero /barbero ya lo es (getStaffContext lee la sesión).
