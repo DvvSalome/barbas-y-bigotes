@@ -5,7 +5,7 @@ import { supabaseServerAuth, supabaseAdmin } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { CANCELACION_MIN_HORAS, OPEN, CLOSE, STEP, bogotaYmd } from "@/lib/slots";
 import { errorPublico } from "@/lib/errors";
-import { pushACliente } from "@/lib/push";
+import { pushACliente, pushABarbero } from "@/lib/push";
 import { fechaHoraBogota } from "@/lib/format";
 
 // Ventana de "deshacer" (minutos): desde la pantalla de confirmación del wizard,
@@ -249,11 +249,11 @@ export async function cancelarReservaCliente(
   const admin = supabaseAdmin();
   const { data: res } = await admin
     .from("reservas")
-    .select("id, cliente_ref, estado, inicio")
+    .select("id, cliente_ref, estado, inicio, barbero_id")
     .eq("id", reservaId)
     .maybeSingle();
   if (!res) return { ok: false, error: "Reserva no encontrada" };
-  const r = res as { cliente_ref: string | null; estado: string; inicio: string };
+  const r = res as { cliente_ref: string | null; estado: string; inicio: string; barbero_id: string | null };
 
   if (r.cliente_ref !== ctx.clienteId) return { ok: false, error: "Reserva no encontrada" };
   if (!["pendiente", "confirmada"].includes(r.estado))
@@ -280,6 +280,15 @@ export async function cancelarReservaCliente(
     body: `Tu cita fue cancelada (era el ${fechaHoraBogota(new Date(r.inicio))}).`,
     url: "/cuenta",
   });
+  // Al barbero le cambia el día: ese turno queda libre y puede llenarlo.
+  if (r.barbero_id) {
+    await pushABarbero(r.barbero_id, {
+      title: "Se cayó una cita",
+      body: `Te quedó libre el turno de ${fechaHoraBogota(new Date(r.inicio))}.`,
+      url: "/barbero",
+      tag: "cita-cancelada",
+    });
+  }
   revalidatePath("/cuenta");
   revalidatePath("/barbero");
   return { ok: true };

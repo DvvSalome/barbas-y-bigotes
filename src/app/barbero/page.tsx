@@ -15,6 +15,7 @@ import {
 } from "@/lib/data/queries";
 import { AgendaList } from "@/components/barbero/AgendaList";
 import { CobradosHoy } from "@/components/barbero/CobradosHoy";
+import { AvisosBarbero } from "@/components/barbero/AvisosBarbero";
 import { EsperaPanel } from "@/components/barbero/EsperaPanel";
 import { CierreCaja } from "@/components/barbero/CierreCaja";
 import { RealtimeRefresh } from "@/components/motion/RealtimeRefresh";
@@ -94,6 +95,13 @@ export default async function BarberoPage() {
         esAdmin={staff.rol === "admin"}
         mostrador={mostrador}
       />
+
+      {/* Solo al barbero: el aviso se ata a SU ficha, el dueño no tiene una. */}
+      {staff.barberoId && (
+        <div className="mt-6">
+          <AvisosBarbero />
+        </div>
+      )}
 
       {/* Cierre del día: qué se llevó cada cliente (ítems reales de la venta). */}
       <div className="mt-8">

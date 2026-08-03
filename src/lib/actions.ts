@@ -24,7 +24,7 @@ import { bogotaDayRange, bogotaYmd, finEfectivo, MARGEN_LLEGADA_HORAS, OPEN, CLO
 import { errorPublico } from "@/lib/errors";
 import { calcularCobro, snapshotDinero, diferenciaCaja } from "@/lib/cobro";
 import { beneficioProximoCorte, type BeneficioTarjeta } from "@/lib/tarjeta";
-import { pushACliente } from "@/lib/push";
+import { pushACliente, pushABarbero } from "@/lib/push";
 import { fechaHoraBogota } from "@/lib/format";
 
 export type ActionResult = { ok: boolean; error?: string; /** Se guardó, pero con salvedades que el admin debe ver (p.ej. especialidades descartadas). */ aviso?: string; id?: string; total?: number; descuento?: number; propina?: number; puntos?: number; encolado?: boolean; esperaHasta?: string | null; tarjeta?: { cortesTotales: number; posicion: number; beneficio: BeneficioTarjeta | null }; resenaUrl?: string | null; /** confirm_token de la reserva recién creada: credencial para deshacerla desde la confirmación del wizard. */ token?: string | null };
@@ -793,6 +793,16 @@ export async function createReserva(input: {
       url: "/cuenta",
     });
   }
+  // Y al BARBERO, que hasta ahora no se enteraba de nada con la app cerrada: el
+  // ding del mostrador solo suena si la pantalla está abierta.
+  await pushABarbero(barberoId, {
+    title: "Nueva cita ✂️",
+    body: `${clienteNombre || "Un cliente"} · ${servicioNombre} · ${fechaHoraBogota(inicio)}`,
+    url: "/barbero",
+    // Mismo tag para todas: si entran tres seguidas no se le apilan tres avisos
+    // en la pantalla de bloqueo, se reemplaza por el último.
+    tag: "cita-nueva",
+  });
   revalidatePath("/barbero");
   return { ok: true, token: (creada as { confirm_token?: string } | null)?.confirm_token ?? null };
 }
@@ -2313,5 +2323,38 @@ export async function actualizarAjustesAvisos(input: {
     .eq("id", 1);
   if (error) return { ok: false, error: errorPublico("actualizarAjustesAvisos", error) };
   revalidatePath("/admin/avisos");
+  return { ok: true };
+}
+
+// ---------- Avisos al barbero en su celular (web push del staff, 0047) ----------
+/**
+ * Guarda la suscripción push del BARBERO logueado. Igual que la del cliente
+ * (cliente-actions), pero atada a barbero_id: el mismo navegador puede haber
+ * quedado suscrito antes como cliente o como otro barbero, por eso el upsert va
+ * por `endpoint` y RE-VINCULA la fila al que está logueado ahora. Sin eso, en el
+ * aparato compartido del local los avisos le seguirían llegando al anterior.
+ */
+export async function guardarPushBarbero(sub: {
+  endpoint: string;
+  keys: { p256dh: string; auth: string };
+}): Promise<ActionResult> {
+  const staff = await getStaffContext();
+  if (!staff.barberoId) return { ok: false, error: "Solo un barbero con sesión puede activar sus avisos." };
+  if (!sub?.endpoint || !sub.keys?.p256dh || !sub.keys?.auth) {
+    return { ok: false, error: "Suscripción inválida." };
+  }
+  const { error } = await supabaseAdmin().from("push_subscriptions").upsert(
+    {
+      barbero_id: staff.barberoId,
+      // El CHECK push_sub_dueno_unico exige exactamente un dueño: si esta fila
+      // venía de un cliente en este mismo navegador, hay que soltarla.
+      cliente_ref: null,
+      endpoint: sub.endpoint,
+      p256dh: sub.keys.p256dh,
+      auth: sub.keys.auth,
+    },
+    { onConflict: "endpoint" },
+  );
+  if (error) return { ok: false, error: errorPublico("guardarPushBarbero", error, "No se pudieron activar los avisos.") };
   return { ok: true };
 }

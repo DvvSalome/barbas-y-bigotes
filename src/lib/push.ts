@@ -55,19 +55,35 @@ function configurarVapid(): boolean {
 // celular y el compu suscritos). Las suscripciones muertas (404/410: el
 // navegador las revocó) se borran de la tabla como housekeeping.
 export async function pushACliente(clienteRef: string, payload: PushPayload): Promise<PushResumen> {
+  return enviar({ columna: "cliente_ref", id: clienteRef }, payload);
+}
+
+/**
+ * Lo mismo, pero al BARBERO (migración 0047). Se usa para avisarle que entró o
+ * se cayó una cita suya: el ding del mostrador solo suena con la app abierta en
+ * pantalla, así que con el celular bloqueado no se enteraba de nada.
+ */
+export async function pushABarbero(barberoId: string, payload: PushPayload): Promise<PushResumen> {
+  return enviar({ columna: "barbero_id", id: barberoId }, payload);
+}
+
+async function enviar(
+  destino: { columna: "cliente_ref" | "barbero_id"; id: string },
+  payload: PushPayload,
+): Promise<PushResumen> {
   const configurado = configurarVapid();
   // Estado base: nada enviado. Se devuelve tal cual si el push está apagado,
-  // no hay clienteRef o no hay suscripciones — así el caller distingue "no se
+  // no hay destinatario o no hay suscripciones — así el caller distingue "no se
   // mandó" de "se mandó bien" en vez de asumir un 200.
   const resumen: PushResumen = { configurado, enviadas: 0, fallidas: 0, muertas: 0 };
   try {
-    if (!clienteRef || !configurado) return resumen;
+    if (!destino.id || !configurado) return resumen;
 
     const sb = supabaseAdmin();
     const { data, error } = await sb
       .from("push_subscriptions")
       .select("endpoint,p256dh,auth")
-      .eq("cliente_ref", clienteRef);
+      .eq(destino.columna, destino.id);
     if (error) {
       errorPublico("pushACliente select", error);
       return resumen;
