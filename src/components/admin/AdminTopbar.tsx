@@ -7,6 +7,7 @@ import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { AdminTabs, AdminSubTabs, seccionFiltraPorSede } from "@/components/admin/AdminNav";
 import { PerfilMenu } from "@/components/staff/PerfilMenu";
 import { SearchIcon } from "@/components/icons";
+import { horaBogota, diasDesde } from "@/lib/format";
 import type { Sede } from "@/lib/data/types";
 import type { CajaChip } from "@/lib/data/queries";
 
@@ -14,19 +15,7 @@ import type { CajaChip } from "@/lib/data/queries";
 // buscador Ctrl-K, chip de caja (dato real) y la rueda de perfil (tema +
 // cerrar sesión). Debajo, las tabs.
 
-function horaBogota(iso: string) {
-  const [h, m] = new Intl.DateTimeFormat("en-GB", {
-    timeZone: "America/Bogota",
-    hour: "2-digit",
-    minute: "2-digit",
-    hourCycle: "h23",
-  })
-    .format(new Date(iso))
-    .split(":")
-    .map(Number);
-  const ap = h < 12 ? "am" : "pm";
-  return `${((h + 11) % 12) + 1}:${m.toString().padStart(2, "0")} ${ap}`;
-}
+
 
 // Segmentado Ambas / sede A / sede B: navega con ?sede= (sin param = ambas).
 // En las secciones que no filtran (Caja, Clientes, Inventario, Equipo, Comisiones,
@@ -126,19 +115,37 @@ export function AdminTopbar({ email, sedes, caja }: { email: string; sedes: Sede
           </kbd>
         </button>
 
-        <Link
-          href="/admin/cuadre"
-          className={`flex items-center gap-1.5 whitespace-nowrap rounded-full border px-3 py-1 text-xs font-semibold transition ${
-            caja.abierta ? "border-ok/35 text-ok" : "border-line text-muted hover:text-ink"
-          }`}
-        >
-          <span className={`h-[7px] w-[7px] rounded-full ${caja.abierta ? "bg-ok" : "bg-muted"}`} />
-          {caja.abierta
-            ? caja.sedesCount > 1 && caja.abiertasCount < caja.sedesCount
-              ? `Caja: ${caja.abiertasCount} de ${caja.sedesCount} abiertas`
-              : `Caja abierta${caja.desde ? ` · ${horaBogota(caja.desde)}` : ""}`
-            : "Caja cerrada"}
-        </Link>
+        {/* Una caja abierta de días se leía igual que la de hoy (solo la hora):
+            el chip pasa a alerta y dice cuántos días lleva. */}
+        {(() => {
+          const dias = caja.abierta && caja.desde ? diasDesde(caja.desde) : 0;
+          const vieja = dias > 0;
+          return (
+            <Link
+              href="/admin/cuadre"
+              className={`flex items-center gap-1.5 whitespace-nowrap rounded-full border px-3 py-1 text-xs font-semibold transition ${
+                vieja
+                  ? "border-warn/45 text-warn"
+                  : caja.abierta
+                    ? "border-ok/35 text-ok"
+                    : "border-line text-muted hover:text-ink"
+              }`}
+            >
+              <span
+                className={`h-[7px] w-[7px] rounded-full ${
+                  vieja ? "bg-warn" : caja.abierta ? "bg-ok" : "bg-muted"
+                }`}
+              />
+              {caja.abierta
+                ? caja.sedesCount > 1 && caja.abiertasCount < caja.sedesCount
+                  ? `Caja: ${caja.abiertasCount} de ${caja.sedesCount} abiertas`
+                  : vieja
+                    ? `Caja sin cerrar hace ${dias === 1 ? "1 día" : `${dias} días`}`
+                    : `Caja abierta${caja.desde ? ` · ${horaBogota(caja.desde)}` : ""}`
+                : "Caja cerrada"}
+            </Link>
+          );
+        })()}
 
         <PerfilMenu nombre={name} detalle={email} salidaHref="/login" />
       </div>

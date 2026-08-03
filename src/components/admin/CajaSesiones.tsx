@@ -3,21 +3,14 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { abrirCaja, cerrarCaja } from "@/lib/actions";
-import { cop } from "@/lib/format";
+import { cop, horaBogota, fechaCortaBogota, diasDesde } from "@/lib/format";
 import { CashIcon } from "@/components/icons";
 import type { CajaSesionSede, MedioPago } from "@/lib/data/queries";
 
 const fld =
   "w-full rounded-lg border border-line bg-bg px-3 py-2 text-ink placeholder:text-muted focus:border-accent focus:outline-none";
 
-function desdeHora(iso: string) {
-  const d = new Date(iso);
-  let h = d.getHours();
-  const m = d.getMinutes();
-  const ap = h < 12 ? "am" : "pm";
-  h = ((h + 11) % 12) + 1;
-  return `${h}:${m.toString().padStart(2, "0")} ${ap}`;
-}
+
 
 export function CajaSesiones({ cajas, medios }: { cajas: CajaSesionSede[]; medios: MedioPago[] }) {
   return (
@@ -32,6 +25,7 @@ export function CajaSesiones({ cajas, medios }: { cajas: CajaSesionSede[]; medio
 function CajaCard({ caja, medios }: { caja: CajaSesionSede; medios: MedioPago[] }) {
   const router = useRouter();
   const abierta = !!caja.sesionId;
+  const dias = abierta ? diasDesde(caja.abiertaEn!) : 0;
   const pct = caja.metaDia > 0 ? Math.min(100, Math.round((caja.ingresos / caja.metaDia) * 100)) : 0;
 
   // Desglose por medio (ordenado como en la config); slugs sin ficha se capitalizan.
@@ -103,13 +97,29 @@ function CajaCard({ caja, medios }: { caja: CajaSesionSede; medios: MedioPago[] 
           }`}
         >
           <span className={`h-1.5 w-1.5 rounded-full ${abierta ? "bg-ok" : "bg-muted"}`} />
-          {abierta ? `Abierta · ${desdeHora(caja.abiertaEn!)}` : "Cerrada"}
+          {abierta
+            ? dias === 0
+              ? `Abierta · ${horaBogota(caja.abiertaEn!)}`
+              : `Abierta desde el ${fechaCortaBogota(caja.abiertaEn!)}`
+            : "Cerrada"}
         </span>
       </div>
 
+      {/* Una caja que quedó abierta de días arrastra las ventas de todos esos
+          días en "Recaudado", y nadie lo notaba porque el chip solo decía la
+          hora. Ahora lo dice y ofrece cerrarla. */}
+      {abierta && dias > 0 && (
+        <p className="mt-3 rounded-lg border border-warn/35 bg-warn/[0.08] px-3 py-2 text-[12.5px] text-warn">
+          Lleva {dias === 1 ? "1 día" : `${dias} días`} sin cerrar: lo de abajo suma todo ese
+          período, no solo hoy.
+        </p>
+      )}
+
       <div className="mt-4 flex items-end justify-between">
         <div>
-          <div className="text-xs uppercase tracking-wide text-muted">Recaudado</div>
+          <div className="text-xs uppercase tracking-wide text-muted">
+            {abierta && dias > 0 ? "Recaudado desde que abrió" : "Recaudado"}
+          </div>
           <div className="font-display text-3xl text-accent-soft">{cop(caja.ingresos)}</div>
           <div className="mt-0.5 text-xs text-muted">
             {desglose ? `${desglose} · ` : ""}{caja.citas} citas

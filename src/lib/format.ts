@@ -10,6 +10,8 @@ export const cop = (n: number) =>
  * server (Vercel corre en UTC: `new Date(iso).getHours()` ahí da 5 horas de
  * más). El "a. m." de es-CO se normaliza a "am" para igualar el resto del
  * staff, que escribe la hora a mano.
+ * Vive acá y no en cada componente: había TRES copias privadas de esto y
+ * empezaron a divergir.
  */
 export const horaBogota = (iso: string) =>
   new Intl.DateTimeFormat("es-CO", {
@@ -20,6 +22,38 @@ export const horaBogota = (iso: string) =>
     .format(new Date(iso))
     .replace(/\s*a\.\s*m\./i, " am")
     .replace(/\s*p\.\s*m\./i, " pm");
+
+/** Fecha civil (YYYY-MM-DD) en Bogotá: para comparar días sin el TZ del proceso. */
+const fechaBogotaYmd = (d: Date) =>
+  new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Bogota",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(d);
+
+/** "lun 20 jul" — fecha corta en español (Bogotá). */
+export const fechaCortaBogota = (iso: string) =>
+  new Intl.DateTimeFormat("es-CO", {
+    timeZone: "America/Bogota",
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+  }).format(new Date(iso));
+
+/**
+ * Días civiles (Bogotá) entre esa fecha y hoy: 0 = fue hoy. Lo usa el aviso de
+ * caja sin cerrar, que suma TODO desde la apertura y en días arrastrados se leía
+ * como si fuera de hoy.
+ */
+export const diasDesde = (iso: string) =>
+  Math.max(
+    0,
+    Math.round(
+      (Date.parse(fechaBogotaYmd(new Date())) - Date.parse(fechaBogotaYmd(new Date(iso)))) /
+        86_400_000,
+    ),
+  );
 
 // Fecha y hora legibles para el cliente, SIEMPRE en Bogotá (los servers de
 // Vercel corren en UTC; nunca formatear con el TZ del proceso).

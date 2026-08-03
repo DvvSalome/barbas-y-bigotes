@@ -35,9 +35,26 @@ function fechaCorta(iso: string | null) {
 // La lista llega ya ordenada por última visita (lo más reciente arriba). El
 // buscador y los filtros corren acá, sobre la lista completa, para que filtren
 // mientras se escribe: con un submit por letra el dueño abandona la búsqueda.
+// Tono del avatar, estable por nombre (decorativo, sin token propio; mismos
+// tonos que la agenda del barbero).
+const TONOS = ["#a3907c", "#e8675c", "#c9b18a", "#8f7a60", "#d9a066"];
+const tono = (n: string) => TONOS[(n?.trim().length ?? 0) % TONOS.length];
+
 export function ClientesLista({ clientes }: { clientes: ClienteRow[] }) {
   const [q, setQ] = useState("");
   const [filtro, setFiltro] = useState<Filtro>("todos");
+
+  // Fichas repetidas del mismo correo. El fix de reservas evita que se creen
+  // nuevas, pero las viejas siguen ahí y el dueño no tenía forma de verlas:
+  // aparecían como cuatro clientes distintos con el mismo mail.
+  const duplicados = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const c of clientes) {
+      const e = c.email?.trim().toLowerCase();
+      if (e) m.set(e, (m.get(e) ?? 0) + 1);
+    }
+    return m;
+  }, [clientes]);
 
   const lista = useMemo(() => {
     const s = q.trim().toLowerCase();
@@ -100,76 +117,67 @@ export function ClientesLista({ clientes }: { clientes: ClienteRow[] }) {
             {filtro === "gastan" ? " · de mayor a menor facturado" : " · de la visita más reciente a la más vieja"}
           </p>
 
-          {/* Mobile: cards */}
-          <div className="mt-3 space-y-2 sm:hidden">
-            {lista.map((c) => (
-              <Link
-                key={c.id}
-                href={`/admin/clientes/${c.id}`}
-                className="block rounded-xl border border-line bg-panel p-4 transition active:border-accent/40"
-              >
-                <div className="flex items-center gap-3">
-                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent/15 text-sm font-bold text-accent-soft">
-                    {c.nombre.charAt(0).toUpperCase()}
-                  </span>
-                  <div className="min-w-0">
-                    <div className="font-display text-lg leading-tight">{c.nombre}</div>
-                    <div className="truncate text-xs text-muted">{c.telefono || c.email || "Sin contacto"}</div>
-                  </div>
-                </div>
-                <div className="mt-3 grid grid-cols-3 gap-2 border-t border-line/60 pt-3 text-center">
-                  <div>
-                    <div className="text-[10px] uppercase tracking-wide text-muted">Visitas</div>
-                    <div className="text-sm">{c.visitas}</div>
-                  </div>
-                  <div>
-                    <div className="text-[10px] uppercase tracking-wide text-muted">Facturado</div>
-                    <div className="text-sm text-accent-soft">{cop(c.facturado)}</div>
-                  </div>
-                  <div>
-                    <div className="text-[10px] uppercase tracking-wide text-muted">Última</div>
-                    <div className="text-sm text-muted">{fechaCorta(c.ultima)}</div>
-                  </div>
-                </div>
-              </Link>
-            ))}
-          </div>
+          {/* UNA lista para todos los anchos. Antes convivían tarjetas para
+              móvil y una tabla para escritorio: el mismo contenido escrito dos
+              veces, y en escritorio se leía como una hoja de cálculo (columnas
+              en mayúscula, "$ 0" en rojo repetido para cada ficha sin visitas).
+              Un cliente sin compras no tiene números que mostrar; lo que
+              necesita el dueño es distinguirlo de un habitual. */}
+          <ul className="mt-3 divide-y divide-line/60 overflow-hidden rounded-2xl border border-line bg-panel">
+            {lista.map((c) => {
+              const dup = c.email ? duplicados.get(c.email.toLowerCase()) ?? 0 : 0;
+              return (
+                <li key={c.id}>
+                  <Link
+                    href={`/admin/clientes/${c.id}`}
+                    className="flex items-center gap-3 px-4 py-3 transition hover:bg-elevated"
+                  >
+                    <span
+                      className="grid h-10 w-10 shrink-0 place-items-center rounded-full font-display text-[15px] font-bold text-[#0c0b0a]"
+                      style={{ background: tono(c.nombre) }}
+                    >
+                      {c.nombre.charAt(0).toUpperCase()}
+                    </span>
 
-          {/* sm+: tabla */}
-          <div className="mt-3 hidden overflow-x-auto rounded-2xl border border-line sm:block">
-            <table className="w-full text-sm">
-              <thead className="bg-elevated text-xs uppercase tracking-wide text-muted">
-                <tr>
-                  <th className="px-4 py-3 text-left font-medium">Cliente</th>
-                  <th className="px-4 py-3 text-left font-medium">Contacto</th>
-                  <th className="px-4 py-3 text-right font-medium">Visitas</th>
-                  <th className="px-4 py-3 text-right font-medium">Facturado</th>
-                  <th className="px-4 py-3 text-right font-medium">Última</th>
-                </tr>
-              </thead>
-              <tbody>
-                {lista.map((c, i) => (
-                  <tr key={c.id} className={`transition hover:bg-elevated ${i % 2 ? "bg-panel" : "bg-panel/40"}`}>
-                    <td className="px-4 py-3">
-                      <Link href={`/admin/clientes/${c.id}`} className="group flex items-center gap-3">
-                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent/15 text-xs font-bold text-accent-soft">
-                          {c.nombre.charAt(0).toUpperCase()}
-                        </span>
-                        <span className="font-display text-lg transition group-hover:text-accent-soft">{c.nombre}</span>
-                      </Link>
-                    </td>
-                    <td className="px-4 py-3 text-muted">
-                      {c.telefono || "—"}
-                      {c.email ? <span className="block text-xs text-muted/70">{c.email}</span> : null}
-                    </td>
-                    <td className="px-4 py-3 text-right text-muted">{c.visitas}</td>
-                    <td className="px-4 py-3 text-right text-accent-soft">{cop(c.facturado)}</td>
-                    <td className="px-4 py-3 text-right text-muted">{fechaCorta(c.ultima)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                    <span className="min-w-0 flex-1">
+                      <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                        <span className="truncate font-display text-[17px] leading-tight">{c.nombre}</span>
+                        {dup > 1 && (
+                          <span
+                            title={`Hay ${dup} fichas con este mismo correo`}
+                            className="shrink-0 rounded-full bg-warn/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-warn"
+                          >
+                            Repetida ×{dup}
+                          </span>
+                        )}
+                      </span>
+                      {/* Si la ficha está repetida se muestra el CORREO, que es
+                          lo que la repite: con el teléfono delante, el aviso
+                          hablaba de un dato que no estaba a la vista. */}
+                      <span className="block truncate text-[12px] text-muted">
+                        {(dup > 1 ? c.email : c.telefono || c.email) || "Sin contacto"}
+                      </span>
+                    </span>
+
+                    <span className="shrink-0 text-right">
+                      {c.visitas > 0 ? (
+                        <>
+                          <span className="block font-display text-[15px] font-bold tabular-nums text-accent-soft">
+                            {cop(c.facturado)}
+                          </span>
+                          <span className="block text-[11.5px] text-muted">
+                            {c.visitas === 1 ? "1 visita" : `${c.visitas} visitas`} · {fechaCorta(c.ultima)}
+                          </span>
+                        </>
+                      ) : (
+                        <span className="text-[12px] text-muted">Sin visitas todavía</span>
+                      )}
+                    </span>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
         </>
       )}
     </>

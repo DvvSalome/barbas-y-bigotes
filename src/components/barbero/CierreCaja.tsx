@@ -4,48 +4,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { cerrarCajaSede } from "@/lib/actions";
 import { sanearCop } from "@/lib/admin-reglas";
-import { cop } from "@/lib/format";
+import { cop, horaBogota, fechaCortaBogota, diasDesde } from "@/lib/format";
 import type { CajaSedeEstado, CajaDesglose } from "@/lib/data/queries";
-
-// Hora civil en Bogotá sin depender del TZ del proceso (server/cliente en UTC).
-function horaBogota(iso: string) {
-  const [h, m] = new Intl.DateTimeFormat("en-GB", {
-    timeZone: "America/Bogota",
-    hour: "2-digit",
-    minute: "2-digit",
-    hourCycle: "h23",
-  })
-    .format(new Date(iso))
-    .split(":")
-    .map(Number);
-  return `${((h + 11) % 12) + 1}:${m.toString().padStart(2, "0")} ${h < 12 ? "am" : "pm"}`;
-}
-
-// Fecha civil (YYYY-MM-DD) en Bogotá, para comparar días sin depender del TZ del proceso.
-function fechaBogota(d: Date) {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: "America/Bogota",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(d);
-}
-
-// "lun 20 jul" — fecha corta en español para el rótulo de apertura.
-function fechaCortaBogota(iso: string) {
-  return new Intl.DateTimeFormat("es-CO", {
-    timeZone: "America/Bogota",
-    weekday: "short",
-    day: "numeric",
-    month: "short",
-  }).format(new Date(iso));
-}
-
-// Días civiles (Bogotá) entre la apertura y hoy: 0 = se abrió hoy.
-function diasDesde(iso: string) {
-  const ms = Date.parse(fechaBogota(new Date())) - Date.parse(fechaBogota(new Date(iso)));
-  return Math.max(0, Math.round(ms / 86400000));
-}
 
 // Avatar del barbero en el desglose: foto de la ficha si existe; si no, iniciales
 // sobre un tono cálido derivado del nombre (mismos tonos del prototipo que la
