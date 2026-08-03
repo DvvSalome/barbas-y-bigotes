@@ -1,14 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { guardarPushBarbero } from "@/lib/actions";
+import { guardarPushStaff } from "@/lib/actions";
 
-// Avisos de cita en el celular del BARBERO (migración 0047).
+// Avisos de cita en el aparato del STAFF (migración 0047).
 // El ding del mostrador solo suena con la app abierta en pantalla: con el
 // celular bloqueado, una reserva nueva entraba en silencio. Esto suscribe ESTE
-// aparato a los avisos del barbero logueado.
-// Deliberadamente distinto al PushManager del cliente: la suscripción se ata a
-// barbero_id y la copia habla de citas, no de turnos.
+// aparato; a quién se ata (la sede o el barbero) lo decide el server desde el
+// perfil, no el cliente.
+// Deliberadamente distinto al PushManager del portal: la copia habla de citas
+// del local, no de turnos del cliente.
 
 function claveVapid(base64: string) {
   const padding = "=".repeat((4 - (base64.length % 4)) % 4);
@@ -98,7 +99,7 @@ export function AvisosBarbero() {
       sub ??= await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: actual });
       const json = sub.toJSON();
       if (!json.endpoint || !json.keys?.p256dh || !json.keys?.auth) throw new Error("suscripción inválida");
-      const res = await guardarPushBarbero({
+      const res = await guardarPushStaff({
         endpoint: json.endpoint,
         keys: { p256dh: json.keys.p256dh, auth: json.keys.auth },
       });

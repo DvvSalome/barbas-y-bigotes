@@ -96,8 +96,9 @@ export default async function BarberoPage() {
         mostrador={mostrador}
       />
 
-      {/* Solo al barbero: el aviso se ata a SU ficha, el dueño no tiene una. */}
-      {staff.barberoId && (
+      {/* El aviso se ata a la sede o al barbero del perfil; el dueño no tiene
+          ninguno de los dos, así que para él no se dibuja. */}
+      {(staff.sedeId || staff.barberoId) && (
         <div className="mt-6">
           <AvisosBarbero />
         </div>

@@ -1540,7 +1540,14 @@ export async function serie7Dias(sede?: SedeId | null): Promise<Serie7Dias> {
   return { dias, semana: dias.reduce((a, d) => a + d.total, 0), semanaAnterior };
 }
 
-export type StaffContext = { rol: string; barberoId: string | null; nombre: string; fotoUrl: string | null };
+export type StaffContext = {
+  rol: string;
+  barberoId: string | null;
+  /** Sede del perfil por sede (rol `sede`, 0044). null en admin y en barbero. */
+  sedeId: string | null;
+  nombre: string;
+  fotoUrl: string | null;
+};
 
 // Rol + barbero del usuario logueado (para decidir qué agenda mostrar).
 // Sin perfil → no filtra (las tablas igual están protegidas por RLS is_staff()).
@@ -1549,22 +1556,28 @@ export async function getStaffContext(): Promise<StaffContext> {
   const {
     data: { user },
   } = await sb.auth.getUser();
-  if (!user) return { rol: "anon", barberoId: null, nombre: "", fotoUrl: null };
+  if (!user) return { rol: "anon", barberoId: null, sedeId: null, nombre: "", fotoUrl: null };
   const { data } = await sb
     .from("profiles")
-    .select("rol,barbero_id,nombre")
+    .select("rol,barbero_id,sede_id,nombre")
     .eq("auth_id", user.id)
     .maybeSingle();
   // Fail-closed: sin perfil → rol sin privilegios (no asumir admin).
-  if (!data) return { rol: "none", barberoId: null, nombre: "", fotoUrl: null };
-  const row = data as { rol: string; barbero_id: string | null; nombre: string };
+  if (!data) return { rol: "none", barberoId: null, sedeId: null, nombre: "", fotoUrl: null };
+  const row = data as { rol: string; barbero_id: string | null; sede_id: string | null; nombre: string };
   // Foto del barbero (para el header de la app): la ficha vive en barberos.
   let fotoUrl: string | null = null;
   if (row.barbero_id) {
     const { data: b } = await sb.from("barberos").select("foto_url").eq("id", row.barbero_id).maybeSingle();
     fotoUrl = ((b as { foto_url?: string } | null)?.foto_url as string) ?? null;
   }
-  return { rol: row.rol, barberoId: row.barbero_id ?? null, nombre: row.nombre ?? "", fotoUrl };
+  return {
+    rol: row.rol,
+    barberoId: row.barbero_id ?? null,
+    sedeId: row.sede_id ?? null,
+    nombre: row.nombre ?? "",
+    fotoUrl,
+  };
 }
 
 // ---------- Tarjeta de cortes (fidelización) ----------

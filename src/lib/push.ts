@@ -59,16 +59,24 @@ export async function pushACliente(clienteRef: string, payload: PushPayload): Pr
 }
 
 /**
- * Lo mismo, pero al BARBERO (migración 0047). Se usa para avisarle que entró o
- * se cayó una cita suya: el ding del mostrador solo suena con la app abierta en
- * pantalla, así que con el celular bloqueado no se enteraba de nada.
+ * Al BARBERO (migración 0047), mientras existan los logins por barbero. Cuando
+ * se retiren en favor del perfil por sede, esta función queda sin llamadas.
  */
 export async function pushABarbero(barberoId: string, payload: PushPayload): Promise<PushResumen> {
   return enviar({ columna: "barbero_id", id: barberoId }, payload);
 }
 
+/**
+ * A la SEDE: el aparato del mostrador. Es el destinatario que importa —el modelo
+ * del producto es un perfil por sede operando una pantalla compartida—, así que
+ * el aviso suena en el local sin depender de quién esté parado enfrente.
+ */
+export async function pushASede(sedeId: string, payload: PushPayload): Promise<PushResumen> {
+  return enviar({ columna: "sede_id", id: sedeId }, payload);
+}
+
 async function enviar(
-  destino: { columna: "cliente_ref" | "barbero_id"; id: string },
+  destino: { columna: "cliente_ref" | "barbero_id" | "sede_id"; id: string },
   payload: PushPayload,
 ): Promise<PushResumen> {
   const configurado = configurarVapid();
