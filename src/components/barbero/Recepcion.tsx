@@ -190,19 +190,19 @@ export function Recepcion({
                   <Image
                     src={b.fotoUrl}
                     alt={b.nombre}
-                    width={44}
-                    height={44}
-                    className={`h-11 w-11 shrink-0 rounded-full object-cover object-top ring-2 ${
+                    width={56}
+                    height={56}
+                    className={`h-14 w-14 shrink-0 rounded-full object-cover object-top ring-2 ${
                       enSilla ? "ring-ok/60" : "ring-line"
                     }`}
                   />
                 ) : (
-                  <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-elevated font-display text-sm font-bold text-ink ring-2 ring-line">
+                  <span className="grid h-14 w-14 shrink-0 place-items-center rounded-full bg-elevated font-display text-base font-bold text-ink ring-2 ring-line">
                     {iniciales(b.nombre)}
                   </span>
                 )}
                 <div className="min-w-0 flex-1">
-                  <div className="truncate font-display text-[19px] font-bold uppercase leading-tight">
+                  <div className="truncate font-display text-[21px] font-bold uppercase leading-tight">
                     {b.nombre}
                   </div>
                   <div className="text-[11.5px] text-muted">
@@ -221,7 +221,7 @@ export function Recepcion({
               <div className="flex-1 divide-y divide-line/60">
                 {activas.length === 0 && (
                   <p className="px-3.5 py-6 text-center text-[12.5px] text-muted">
-                    Sin citas pendientes. Suma un walk-in desde la agenda.
+                    Sin citas pendientes.
                   </p>
                 )}
                 {activas.map((r) => {
@@ -239,12 +239,12 @@ export function Recepcion({
                       <div className="flex items-center gap-2.5">
                         {/* 64px: con 52 la hora se partía en dos líneas ("6:47 /
                             pm") en cualquier cita de la tarde. */}
-                        <span className="w-16 shrink-0 font-display text-[17px] font-bold leading-tight tabular-nums text-accent-soft">
+                        <span className="w-[74px] shrink-0 font-display text-[20px] font-bold leading-tight tabular-nums text-accent-soft">
                           {hora(r.inicio)}
                         </span>
                         <span className="min-w-0 flex-1">
-                          <span className="block truncate text-[13.5px] font-bold">{r.cliente || "Walk-in"}</span>
-                          <span className="block truncate text-[11.5px] text-muted">{r.servicio || "—"}</span>
+                          <span className="block truncate text-[16px] font-bold">{r.cliente || "Walk-in"}</span>
+                          <span className="block truncate text-[13px] text-muted">{r.servicio || "—"}</span>
                         </span>
                         <span className="flex shrink-0 flex-col items-end gap-1">
                           {/* Cuánto vale la cita, sin abrir la hoja de cobro. */}
@@ -268,21 +268,21 @@ export function Recepcion({
                           el barrido nocturno decidiera por el barbero. */}
                       {pregunta && (
                         <div className="mt-2.5 rounded-xl border border-warn/35 bg-warn/[0.07] p-2.5">
-                          <p className="mb-2 text-[12.5px] font-semibold text-ink">
+                          <p className="mb-2.5 text-[14px] font-semibold text-ink">
                             Su hora era {hora(r.inicio)}. ¿{r.cliente || "El cliente"} llegó?
                           </p>
                           <div className="flex gap-2">
                             <button
                               onClick={() => marcar(r, "en_curso")}
                               disabled={busy === r.id}
-                              className="min-h-12 flex-1 rounded-lg bg-[linear-gradient(180deg,var(--cta-1),var(--cta-2))] px-3 text-[13.5px] font-bold text-on-accent transition hover:brightness-105 disabled:opacity-40"
+                              className="min-h-14 flex-1 rounded-xl bg-[linear-gradient(180deg,var(--cta-1),var(--cta-2))] px-3 text-[15px] font-bold text-on-accent transition hover:brightness-105 disabled:opacity-40"
                             >
                               Sí, está en la silla
                             </button>
                             <button
                               onClick={() => marcar(r, "no_show")}
                               disabled={busy === r.id}
-                              className="min-h-12 flex-1 rounded-lg border border-warn/50 px-3 text-[13.5px] font-bold text-warn transition hover:bg-warn/10 disabled:opacity-40"
+                              className="min-h-14 flex-1 rounded-xl border border-warn/50 px-3 text-[15px] font-bold text-warn transition hover:bg-warn/10 disabled:opacity-40"
                             >
                               No llegó
                             </button>
@@ -300,7 +300,7 @@ export function Recepcion({
                         {enCurso ? (
                           <button
                             onClick={() => onCobrar(r.id)}
-                            className="min-h-12 flex-1 basis-full rounded-lg bg-[linear-gradient(180deg,var(--cta-1),var(--cta-2))] px-3.5 text-[13.5px] font-bold text-on-accent transition hover:brightness-105"
+                            className="min-h-14 flex-1 basis-full rounded-xl bg-[linear-gradient(180deg,var(--cta-1),var(--cta-2))] px-3.5 text-[15.5px] font-bold text-on-accent transition hover:brightness-105"
                           >
                             {/* Sin el monto: el precio de la fila es el del
                                 servicio, y el cobro real puede sumar productos,
@@ -315,7 +315,7 @@ export function Recepcion({
                                 onClick={() => marcar(r, "en_curso")}
                                 disabled={busy === r.id || temprano !== null}
                                 title={temprano ? "Todavía no empieza esta cita" : undefined}
-                                className="min-h-12 flex-1 basis-full rounded-lg bg-[linear-gradient(180deg,var(--cta-1),var(--cta-2))] px-3.5 text-[13.5px] font-bold text-on-accent transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-40"
+                                className="min-h-14 flex-1 basis-full rounded-xl bg-[linear-gradient(180deg,var(--cta-1),var(--cta-2))] px-3.5 text-[15.5px] font-bold text-on-accent transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-40"
                               >
                                 {temprano ? `Llegó · ${temprano}` : "✓ Llegó"}
                               </button>
@@ -329,7 +329,7 @@ export function Recepcion({
                           <button
                             onClick={() => marcar(r, "no_show")}
                             disabled={busy === r.id}
-                            className="min-h-11 rounded-lg border border-line px-3 text-[12px] text-muted transition hover:text-ink disabled:opacity-50"
+                            className="min-h-12 rounded-lg border border-line px-4 text-[13.5px] text-muted transition hover:text-ink disabled:opacity-50"
                           >
                             No llegó
                           </button>
@@ -337,7 +337,7 @@ export function Recepcion({
                             <button
                               onClick={() => marcar(r, "cancelada")}
                               disabled={busy === r.id}
-                              className="min-h-11 rounded-lg border border-line px-3 text-[12px] text-muted transition hover:border-accent/40 hover:text-accent-soft disabled:opacity-50"
+                              className="min-h-12 rounded-lg border border-line px-4 text-[13.5px] text-muted transition hover:border-accent/40 hover:text-accent-soft disabled:opacity-50"
                             >
                               Cancelar
                             </button>
@@ -359,49 +359,67 @@ export function Recepcion({
         <div className="rounded-[18px] border border-line bg-panel px-4 py-5 text-center">
           <p className="text-[13.5px] font-semibold text-ink">Nadie en la silla ahora mismo</p>
           <p className="mt-0.5 text-[12px] text-muted">
-            Cuando entre alguien sin cita, tócalo abajo y queda registrado a ese barbero.
+            Cuando entre alguien sin cita, toca a su barbero abajo y queda registrado.
           </p>
         </div>
       )}
 
       {libres.length > 0 && (
-        <section className="mt-3" aria-label="Barberos libres">
-          <h2 className="mb-2 text-[11px] font-bold uppercase tracking-[0.14em] text-muted">
+        <section className="mt-4" aria-label="Barberos libres">
+          <h2 className="mb-2 text-[12px] font-bold uppercase tracking-[0.14em] text-muted">
             Libres ahora · {libres.length}
           </h2>
-          <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
-            {libres.map((b) => (
-              <div
-                key={b.id}
-                className="flex items-center gap-2.5 rounded-xl border border-line bg-panel px-3 py-2"
-              >
-                {b.fotoUrl ? (
-                  <Image
-                    src={b.fotoUrl}
-                    alt={b.nombre}
-                    width={32}
-                    height={32}
-                    className="h-8 w-8 shrink-0 rounded-full object-cover object-top"
-                  />
-                ) : (
-                  <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-elevated text-[11px] font-bold text-ink">
-                    {iniciales(b.nombre)}
+          {/* La TARJETA ENTERA es el botón: de pie, con un dedo, apuntarle a un
+              pill de 30px al borde de la tarjeta falla una de cada tres veces.
+              Tocar al barbero libre = anotarle el cliente que acaba de entrar. */}
+          <div className="grid grid-cols-2 gap-2.5 xl:grid-cols-3">
+            {libres.map((b) => {
+              const contenido = (
+                <>
+                  {b.fotoUrl ? (
+                    <Image
+                      src={b.fotoUrl}
+                      alt=""
+                      width={56}
+                      height={56}
+                      className="h-14 w-14 shrink-0 rounded-full object-cover object-top ring-2 ring-ok/40"
+                    />
+                  ) : (
+                    <span className="grid h-14 w-14 shrink-0 place-items-center rounded-full bg-elevated text-[15px] font-bold text-ink ring-2 ring-ok/40">
+                      {iniciales(b.nombre)}
+                    </span>
+                  )}
+                  <span className="min-w-0 flex-1 text-left">
+                    <span className="block truncate text-[16px] font-bold text-ink">{b.nombre}</span>
+                    <span className="block text-[12.5px] text-ok">Libre</span>
                   </span>
-                )}
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-[13px] font-semibold text-ink">{b.nombre}</span>
-                  <span className="block text-[11px] text-ok">Libre</span>
-                </span>
-                {onWalkin && (
-                  <button
-                    onClick={() => onWalkin(b.id)}
-                    className="min-h-9 shrink-0 rounded-full border border-accent/40 bg-accent/[0.07] px-3 text-[11.5px] font-bold text-accent-soft transition hover:bg-accent/15"
-                  >
-                    + Cliente
-                  </button>
-                )}
-              </div>
-            ))}
+                  {onWalkin && (
+                    <span
+                      aria-hidden
+                      className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-accent/12 font-display text-xl font-bold text-accent-soft"
+                    >
+                      +
+                    </span>
+                  )}
+                </>
+              );
+              return onWalkin ? (
+                <button
+                  key={b.id}
+                  onClick={() => onWalkin(b.id)}
+                  className="flex min-h-[72px] items-center gap-3 rounded-2xl border border-line bg-panel px-3.5 py-2.5 transition hover:border-accent/45 active:scale-[0.99]"
+                >
+                  {contenido}
+                </button>
+              ) : (
+                <div
+                  key={b.id}
+                  className="flex min-h-[72px] items-center gap-3 rounded-2xl border border-line bg-panel px-3.5 py-2.5"
+                >
+                  {contenido}
+                </div>
+              );
+            })}
           </div>
         </section>
       )}

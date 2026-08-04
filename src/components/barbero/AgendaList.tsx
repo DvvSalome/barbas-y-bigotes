@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { cop } from "@/lib/format";
 import {
@@ -77,6 +77,9 @@ const iniciales = (n: string) => {
   return parts.slice(0, 2).map((p) => p.charAt(0).toUpperCase()).join("");
 };
 
+/** Pestañas del mostrador: lo vivo, la cola y el cierre. */
+type TabMostrador = "turnos" | "espera" | "cierre";
+
 export function AgendaList({
   agenda,
   sedes,
@@ -87,6 +90,9 @@ export function AgendaList({
   medios,
   esAdmin = false,
   mostrador,
+  esperaSlot,
+  cierreSlot,
+  esperaCount = 0,
 }: {
   agenda: AgendaItem[];
   sedes: Sede[];
@@ -106,33 +112,34 @@ export function AgendaList({
     cobradoSede: number;
     porBarbero: Record<string, number>;
   };
+  /** Lista de espera (server component): vive en su pestaña. */
+  esperaSlot?: React.ReactNode;
+  /** Cierre del día: qué se llevó cada cliente + caja (server components). */
+  cierreSlot?: React.ReactNode;
+  /** Cuántos esperan ahora: la insignia de la pestaña. */
+  esperaCount?: number;
 }) {
   const router = useRouter();
+  // El mostrador era UNA página de ~3.000px: agenda, formularios, espera, caja y
+  // cierre apilados. De pie y con un dedo eso es scroll a ciegas. Ahora son tres
+  // pestañas en una barra FIJA abajo (donde cae el pulgar en una pantalla táctil)
+  // y los formularios suben como hoja desde el borde inferior.
+  const [tab, setTab] = useState<TabMostrador>("turnos");
   const [walkinOpen, setWalkinOpen] = useState(false);
   // Barbero preseleccionado al abrir el walk-in desde la tira de libres.
   const [walkinBarbero, setWalkinBarbero] = useState<string>("");
   const [ventaOpen, setVentaOpen] = useState(false);
   const [completeFor, setCompleteFor] = useState<string | null>(null);
-  // La hoja de cobro se monta debajo de la agenda de la sede, fuera de la
-  // pantalla: sin esto, el barbero toca "Cobrar", no ve ningún cambio y vuelve
-  // a tocar. Se la lleva a la vista y se le marca el foco.
-  const hojaCobro = useRef<HTMLDivElement | null>(null);
-  const hojaWalkin = useRef<HTMLDivElement | null>(null);
 
   /**
    * Abrir el cobro de una cita. NO es un toggle a propósito: antes, volver a
    * tocar "Cobrar" —el reflejo natural cuando parecía que no había pasado
    * nada— CERRABA la hoja. Para cerrarla está "Cancelar".
+   * La hoja ahora sube desde abajo (ver <HojaInferior>): ya no hay que
+   * desplazar la página hasta un formulario montado fuera de la vista.
    */
   const abrirCobro = (id: string) => {
     setCompleteFor(id);
-    // Tras el render: la hoja todavía no existe en el DOM cuando esto corre.
-    // block "start" y no "center": la hoja mide ~2000px, así que centrarla deja
-    // su cabecera 460px ARRIBA del borde (medido). Alineando el inicio, el
-    // barbero ve el título y baja llenando.
-    requestAnimationFrame(() =>
-      hojaCobro.current?.scrollIntoView({ behavior: "smooth", block: "start" }),
-    );
   };
   const [historyFor, setHistoryFor] = useState<string | null>(null);
   const [history, setHistory] = useState<HistItem[] | null>(null);
@@ -253,12 +260,9 @@ export function AgendaList({
   return (
     <div>
 
-      {/* UNA sola vista: el MOSTRADOR. El equipo comparte el aparato del local y
-          opera la sede entera desde acá. Antes había un selector "Mi agenda /
-          Mostrador" con una vista personal por barbero; se retiró porque el
-          modelo del producto es un único mostrador compartido, y mantener dos
-          agendas obligaba a traer dos juegos de datos en cada carga para usar
-          uno solo. */}
+      {/* Pestaña TURNOS: lo vivo. Las otras se ocultan con CSS (no se desmontan)
+          para que cambiar de pestaña sea instantáneo y no pierda estado. */}
+      <div className={tab === "turnos" ? "" : "hidden"}>
       <Recepcion
         agenda={mostrador.agendaSede}
         barberos={mostrador.barberosSede}
@@ -270,76 +274,8 @@ export function AgendaList({
         onWalkin={(barberoId) => {
           setWalkinBarbero(barberoId);
           setWalkinOpen(true);
-          requestAnimationFrame(() => hojaWalkin.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
         }}
       />
-
-      <div ref={hojaWalkin} className="mx-auto w-full max-w-2xl">
-    {/* Walk-in / Venta rápida */}
-    <div className="mb-4 space-y-3">
-      {!walkinOpen && !ventaOpen && (
-        <div className="flex flex-wrap gap-2">
-          <button
-            onClick={() => setWalkinOpen(true)}
-            className="rounded-full bg-[linear-gradient(180deg,var(--cta-1),var(--cta-2))] px-6 py-2.5 text-sm font-semibold uppercase tracking-wide text-on-accent shadow-[0_10px_24px_-10px_rgba(210,63,52,0.7)] transition hover:brightness-105"
-          >
-            + Cliente sin reserva (walk-in)
-          </button>
-          <button
-            onClick={() => setVentaOpen(true)}
-            className="rounded-full border border-accent/50 bg-accent/[0.06] px-6 py-2.5 text-sm font-semibold uppercase tracking-wide text-accent-soft transition hover:bg-accent/15"
-          >
-            Venta rápida
-          </button>
-        </div>
-      )}
-      {walkinOpen && (
-        <WalkinForm
-          sedes={sedes}
-          barberos={barberos}
-          servicios={servicios}
-          preciosServicios={preciosServicios}
-          sedeFija={mostrador.sedeId}
-          barberoInicial={walkinBarbero}
-          onDone={() => {
-            setWalkinOpen(false);
-            setWalkinBarbero("");
-            router.refresh();
-          }}
-          onCancel={() => setWalkinOpen(false)}
-        />
-      )}
-      {ventaOpen && (
-        <CheckoutForm
-          reserva={null}
-          sedes={sedes}
-          barberos={barberos}
-          servicios={servicios}
-          preciosServicios={preciosServicios}
-          productos={productos}
-          medios={medios}
-          esAdmin={esAdmin}
-          onDone={() => {
-            setVentaOpen(false);
-            router.refresh();
-          }}
-          onCancel={() => setVentaOpen(false)}
-        />
-      )}
-    </div>
-      </div>
-
-      {/* La hoja de cobro vive en un punto de montaje ESTABLE (no dentro de la
-          fila): al cobrar, el realtime refresca y la cita salta a "Terminadas";
-          si el form vivía dentro de la fila se desmontaba y el "¡Cobrado!" (con
-          el botón de reseña) desaparecía antes de poder tocarlo.
-          El ancho se acota igual que la agenda: en el equipo del mostrador se
-          estiraba a 1152px y los chips quedaban desparramados. */}
-      {reservaEnCobro && (
-        <div ref={hojaCobro} className="mx-auto w-full max-w-2xl scroll-mt-4">
-          {cobroDe(reservaEnCobro)}
-        </div>
-      )}
 
       {/* Después: resto de la agenda en filas compactas (tap para acciones) */}
       {resto.length > 0 && (
@@ -430,10 +366,151 @@ export function AgendaList({
         </div>
       )}
 
-      {/* Lo cerrado del día vive ahora en <CobradosHoy> (server component, en
-          page.tsx): muestra lo que se COBRÓ de verdad —ítems, productos de más,
-          propina— y no el precio de catálogo del servicio, que mentía en cuanto
-          la venta llevaba algo más. */}
+      </div>
+      {/* fin pestaña Turnos */}
+
+      <div className={`mx-auto w-full max-w-2xl ${tab === "espera" ? "" : "hidden"}`}>{esperaSlot}</div>
+      <div className={tab === "cierre" ? "" : "hidden"}>{cierreSlot}</div>
+
+      {/* HOJAS que suben desde abajo. En una pantalla táctil de pie, un
+          formulario incrustado a mitad del scroll obliga a buscarlo; la hoja
+          aparece SOBRE lo que estabas mirando y se cierra donde mismo. Es el
+          patrón estándar de un POS táctil, no un modal por pereza: se agotó la
+          alternativa inline (probada un mes: el "scrollIntoView al form" perdía
+          al barbero cada vez que el realtime refrescaba la página).
+          El montaje sigue siendo ESTABLE (nivel AgendaList, nunca dentro de una
+          fila): al cobrar, el realtime refresca y la cita cambia de lista; si el
+          form viviera en la fila se desmontaría y el "¡Cobrado!" (con el botón
+          de reseña) desaparecería antes de poder tocarlo. */}
+      {reservaEnCobro && (
+        <HojaInferior
+          titulo={`Cobrar a ${reservaEnCobro.cliente || "walk-in"}`}
+          onCerrar={() => {
+            setCompleteFor(null);
+            router.refresh();
+          }}
+        >
+          {cobroDe(reservaEnCobro)}
+        </HojaInferior>
+      )}
+
+      {walkinOpen && (
+        <HojaInferior titulo="Cliente sin reserva" onCerrar={() => { setWalkinOpen(false); setWalkinBarbero(""); }}>
+          {/* El caso hermano a un toque: llegó solo a comprar un producto. */}
+          <button
+            onClick={() => { setWalkinOpen(false); setWalkinBarbero(""); setVentaOpen(true); }}
+            className="mb-3 min-h-11 rounded-full border border-line px-4 text-[13.5px] font-semibold text-muted transition hover:text-ink"
+          >
+            ¿Solo lleva productos? Venta rápida →
+          </button>
+          <WalkinForm
+            sedes={sedes}
+            barberos={barberos}
+            servicios={servicios}
+            preciosServicios={preciosServicios}
+            sedeFija={mostrador.sedeId}
+            barberoInicial={walkinBarbero}
+            onDone={() => {
+              setWalkinOpen(false);
+              setWalkinBarbero("");
+              router.refresh();
+            }}
+            onCancel={() => { setWalkinOpen(false); setWalkinBarbero(""); }}
+          />
+        </HojaInferior>
+      )}
+
+      {ventaOpen && (
+        <HojaInferior titulo="Venta rápida" onCerrar={() => setVentaOpen(false)}>
+          <CheckoutForm
+            reserva={null}
+            sedes={sedes}
+            barberos={barberos}
+            servicios={servicios}
+            preciosServicios={preciosServicios}
+            productos={productos}
+            medios={medios}
+            esAdmin={esAdmin}
+            onDone={() => {
+              setVentaOpen(false);
+              router.refresh();
+            }}
+            onCancel={() => setVentaOpen(false)}
+          />
+        </HojaInferior>
+      )}
+
+      {/* BARRA FIJA inferior: navegación + la acción más frecuente del día.
+          Abajo porque ahí cae el pulgar de pie frente a una pantalla táctil;
+          los 56px de alto son el mínimo cómodo con el cliente enfrente. */}
+      <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-bg/95 backdrop-blur-md">
+        <div className="mx-auto flex max-w-6xl items-stretch gap-1.5 px-3 pt-2 [padding-bottom:max(env(safe-area-inset-bottom),10px)]">
+          {(
+            [
+              { id: "turnos", label: "Turnos", badge: 0 },
+              { id: "espera", label: "Espera", badge: esperaCount },
+              { id: "cierre", label: "Cierre", badge: 0 },
+            ] as { id: TabMostrador; label: string; badge: number }[]
+          ).map((t) => (
+            <button
+              key={t.id}
+              onClick={() => setTab(t.id)}
+              aria-current={tab === t.id ? "page" : undefined}
+              className={`min-h-14 flex-1 rounded-xl text-[14px] font-bold transition ${
+                tab === t.id ? "bg-elevated text-ink" : "text-muted hover:text-ink"
+              }`}
+            >
+              {t.label}
+              {t.badge > 0 && (
+                <span className="ml-1.5 inline-flex min-w-5 items-center justify-center rounded-full bg-warn/20 px-1.5 text-[11.5px] font-extrabold tabular-nums text-warn">
+                  {t.badge}
+                </span>
+              )}
+            </button>
+          ))}
+          <button
+            onClick={() => { setWalkinBarbero(""); setWalkinOpen(true); }}
+            className="min-h-14 flex-1 rounded-xl bg-[linear-gradient(180deg,var(--cta-1),var(--cta-2))] text-[14.5px] font-bold text-on-accent shadow-[0_10px_24px_-10px_rgba(210,63,52,0.7)] transition hover:brightness-105"
+          >
+            + Cliente
+          </button>
+        </div>
+      </nav>
+    </div>
+  );
+}
+
+/**
+ * Hoja que sube desde el borde inferior (formularios del mostrador). El fondo
+ * queda visible y atenuado: el barbero no pierde el contexto de la agenda.
+ */
+function HojaInferior({
+  titulo,
+  onCerrar,
+  children,
+}: {
+  titulo: string;
+  onCerrar: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="fixed inset-0 z-40 flex flex-col justify-end">
+      <button aria-label="Cerrar" onClick={onCerrar} className="absolute inset-0 bg-black/60" />
+      <div className="relative max-h-[92dvh] overflow-y-auto rounded-t-[22px] border-t border-line bg-bg px-4 pb-10 pt-3 sm:px-6">
+        <div className="mx-auto w-full max-w-2xl">
+          <div aria-hidden className="mx-auto mb-3 h-1 w-10 rounded-full bg-line" />
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <h2 className="font-display text-[22px] font-bold uppercase leading-none">{titulo}</h2>
+            <button
+              onClick={onCerrar}
+              className="min-h-11 shrink-0 rounded-full border border-line px-4 text-[13.5px] font-semibold text-muted transition hover:text-ink"
+            >
+              Cerrar
+            </button>
+          </div>
+          {children}
+        </div>
+      </div>
     </div>
   );
 }

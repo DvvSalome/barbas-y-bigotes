@@ -79,7 +79,8 @@ export default async function BarberoPage() {
 
 
   return (
-    <main className={`mx-auto px-4 py-6 sm:px-6 ${mostrador ? "max-w-6xl" : "max-w-2xl"}`}>
+    // pb-28: aire para la barra fija de pestañas del mostrador.
+    <main className="mx-auto max-w-6xl px-4 pb-28 pt-6 sm:px-6">
       <RealtimeRefresh
         subscriptions={[
           // Sin filtro por barbero cuando hay mostrador: la pantalla compartida
@@ -89,6 +90,9 @@ export default async function BarberoPage() {
         ]}
         dingOnInsertTable="reservas"
       />
+      {/* AgendaList es el cascarón del mostrador: pestañas fijas abajo (Turnos /
+          Espera / Cierre) + hojas para los formularios. La espera y el cierre
+          son server components y entran como slots a su pestaña. */}
       <AgendaList
         agenda={agendaSede}
         sedes={sedes}
@@ -99,36 +103,31 @@ export default async function BarberoPage() {
         medios={medios}
         esAdmin={staff.rol === "admin"}
         mostrador={mostrador}
+        esperaCount={espera.length}
+        esperaSlot={
+          <EsperaPanel
+            espera={espera}
+            sedes={sedes}
+            barberos={barberos}
+            servicios={servicios}
+            sedeFija={sedeBarbero}
+          />
+        }
+        cierreSlot={
+          <div className="space-y-8">
+            {/* Qué se llevó cada cliente (ítems reales de la venta). */}
+            <CobradosHoy agenda={agendaSede} ventas={ventasSede} barberos={mostrador.barberosSede} />
+            {sedeBarbero && (
+              <div className="mx-auto w-full max-w-2xl">
+                <CierreCaja caja={caja} desglose={cajaDesglose} miBarberoId={staff.barberoId} />
+              </div>
+            )}
+            {/* El aviso se ata a la sede o al barbero del perfil; el dueño no
+                tiene ninguno de los dos, así que para él no se dibuja. */}
+            {(staff.sedeId || staff.barberoId) && <AvisosBarbero />}
+          </div>
+        }
       />
-
-      {/* El aviso se ata a la sede o al barbero del perfil; el dueño no tiene
-          ninguno de los dos, así que para él no se dibuja. */}
-      {(staff.sedeId || staff.barberoId) && (
-        <div className="mt-6">
-          <AvisosBarbero />
-        </div>
-      )}
-
-      {/* Cierre del día: qué se llevó cada cliente (ítems reales de la venta). */}
-      <div className="mt-8">
-        <CobradosHoy agenda={agendaSede} ventas={ventasSede} barberos={mostrador.barberosSede} />
-      </div>
-
-      <div className="mx-auto mt-12 w-full max-w-2xl border-t border-line pt-8">
-        <EsperaPanel
-          espera={espera}
-          sedes={sedes}
-          barberos={barberos}
-          servicios={servicios}
-          sedeFija={sedeBarbero}
-        />
-      </div>
-
-      {sedeBarbero && (
-        <div className="mx-auto mt-12 w-full max-w-2xl border-t border-line pt-8">
-          <CierreCaja caja={caja} desglose={cajaDesglose} miBarberoId={staff.barberoId} />
-        </div>
-      )}
     </main>
   );
 }

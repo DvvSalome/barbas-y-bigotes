@@ -79,7 +79,18 @@ export function CobradosHoy({
     // PostgREST, pero un cambio de formato ISO ordenaría mal en silencio.
   ].sort((a, b) => new Date(b.cuando).getTime() - new Date(a.cuando).getTime());
 
-  if (filas.length === 0) return null;
+  // Estado vacío diseñado: en la pestaña Cierre, un null dejaba la pantalla en
+  // blanco y parecía rota. Decir "todavía nada" también es información.
+  if (filas.length === 0) {
+    return (
+      <div className="rounded-[18px] border border-line bg-panel px-5 py-8 text-center">
+        <p className="font-display text-[17px] font-bold uppercase">Todavía no se cierra nada hoy</p>
+        <p className="mx-auto mt-1 max-w-sm text-[13px] text-muted">
+          Cuando cobres una atención o una venta, acá queda el detalle de qué se llevó cada cliente.
+        </p>
+      </div>
+    );
+  }
 
   const cobradas = filas.filter((f) => f.venta);
   const total = cobradas.reduce((a, f) => a + (f.venta?.total ?? 0), 0);
