@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import {
+  getStaffContext,
   ventasHoyPorMedio,
   equipoAhora,
   citasSiguientes,
@@ -88,6 +90,14 @@ export default async function AdminHoy({
 }: {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
+  // Gate PROPIO, no solo del layout: Next renderiza layout y pagina en paralelo,
+  // asi que el redirect() del layout no frena a tiempo estos fetches con
+  // service_role (equipoAhora, getCierresHoy, etc. bypassan RLS). Sin este corte,
+  // un no-admin autenticado podria streamear plata/equipo/caja antes de la
+  // expulsion. Se re-verifica el rol como defensa en profundidad.
+  const staff = await getStaffContext();
+  if (staff.rol !== "admin") redirect(staff.rol === "anon" ? "/login" : "/barbero");
+
   const sp = await searchParams;
   const sedeParam = typeof sp.sede === "string" ? sp.sede : undefined;
   const sede = sedeParam && sedeParam in NOMBRE_SEDE ? (sedeParam as SedeId) : null;

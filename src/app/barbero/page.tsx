@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import {
   getSedes,
   getBarberos,
@@ -24,6 +25,12 @@ export const metadata: Metadata = { title: "Mostrador" };
 
 export default async function BarberoPage() {
   const staff = await getStaffContext();
+  // Gate PROPIO de la pagina, no solo del layout: Next renderiza layout y pagina
+  // en paralelo, asi que el redirect() del layout NO frena los fetches de aca a
+  // tiempo. Esta pagina lee con service_role (getAgendaSedeHoy/getVentasSedeHoy),
+  // que bypassa RLS; sin este corte, el RSC de un cliente autenticado podria
+  // transmitir la agenda de las DOS sedes antes de que el layout lo expulse.
+  if (!["admin", "barbero", "sede"].includes(staff.rol)) redirect("/cuenta");
   const filtro = staff.rol === "barbero" ? staff.barberoId : null;
   const [sedes, barberos, servicios, preciosServicios, productos, medios, espera] = await Promise.all([
     getSedes(),

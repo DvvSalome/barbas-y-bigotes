@@ -110,8 +110,18 @@ export function Recepcion({
     )
       return;
     setBusy(r.id);
-    await actualizarReserva(r.id, estado === "en_curso" ? { estado, llegada: "a_tiempo" } : { estado });
+    const res = await actualizarReserva(
+      r.id,
+      estado === "en_curso" ? { estado, llegada: "a_tiempo" } : { estado },
+    );
     setBusy(null);
+    // Mostrar el rechazo del server: si la cita ya estaba cerrada (por el realtime
+    // que la movio, un doble marcado, o el guard de las 2h), antes se hacia refresh
+    // igual y el barbero creia que habia funcionado. Ahora se avisa.
+    if (!res.ok) {
+      window.alert(res.error ?? "No se pudo actualizar la cita.");
+      return;
+    }
     router.refresh();
   }
 

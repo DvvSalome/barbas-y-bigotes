@@ -881,6 +881,12 @@ export async function registrarWalkin(input: {
   if (!barberoId) return { ok: false, error: "No se pudo determinar el barbero" };
   if (!(await staffPuedeOperarBarbero(staff, barberoId)))
     return { ok: false, error: "Ese barbero es de otra sede." };
+  // La sede se DERIVA del barbero, no se confia en input.sede: el gate valida al
+  // barbero, pero el sede_id del INSERT (service_role) llegaba crudo del POST, asi
+  // que un staff de Parque podia crear la reserva con sede: 'plaza' + un barbero de
+  // Parque -> reserva con barbero cruzado de sede y venta en la caja equivocada.
+  const sedeReal = await sedeDeBarbero(barberoId);
+  if (!sedeReal) return { ok: false, error: "No se pudo determinar la sede del barbero." };
 
   // Guard de ausencia: createReserva ya lo tenía y el walk-in NO, así que se le
   // podía meter un cliente a alguien marcado como ausente. Peor: la atención
@@ -915,7 +921,7 @@ export async function registrarWalkin(input: {
   }
   const fin = new Date(now.getTime() + dur * 60000);
   const { error } = await admin.from("reservas").insert({
-    sede_id: input.sede,
+    sede_id: sedeReal,
     barbero_id: barberoId,
     servicio_id: input.servicioId || null,
     cliente_ref: clienteRef,
@@ -941,7 +947,7 @@ export async function registrarWalkin(input: {
       // service_role (la policy staff_all_lista_espera es is_staff(), funciona con
       // cualquier cliente).
       const { error: eErr } = await admin.from("lista_espera").insert({
-        sede_id: input.sede,
+        sede_id: sedeReal,
         barbero_id: barberoId,
         servicio_id: input.servicioId || null,
         cliente_ref: clienteRef,
@@ -1014,13 +1020,18 @@ export async function actualizarReserva(
   }
   if (Object.keys(cambios).length === 0) return { ok: false, error: "Nada para actualizar." };
 
+  // Solo se actua sobre citas ACTIVAS: el filtro de estado ORIGEN evita pisar una
+  // ya cerrada. Sin el, marcar "no llego" sobre una cita ya COBRADA (por doble
+  // clic, por el realtime que la movio, o por POST directo) la volvia no_show y
+  // dejaba la venta huerfana; y una cancelada podia revivir a en_curso.
   const { data, error } = await admin
     .from("reservas")
     .update(cambios)
     .eq("id", reservaId)
+    .in("estado", ["pendiente", "confirmada", "en_curso"])
     .select("id,cliente_ref");
   if (error) return { ok: false, error: errorPublico("actualizarReserva", error) };
-  if (!data || data.length === 0) return { ok: false, error: "Reserva no encontrada o sin permiso" };
+  if (!data || data.length === 0) return { ok: false, error: "Esta cita ya fue cerrada o cobrada." };
 
   // "¡Es tu turno!": al marcar en_curso (botón "Llegó"), avisar al cliente. Solo en
   // ese estado, DESPUÉS del update exitoso, fire-and-forget (pushACliente jamás lanza).
@@ -1274,13 +1285,22 @@ export async function completarReserva(input: {
 
   if (input.productos.length) {
     const ids = input.productos.map((p) => p.id);
-    const { data: prods } = await sb.from("productos").select("id,nombre,precio,comision_pct").in("id", ids);
+    // Filtrado por sede_id = sedeEfectiva: cada producto pertenece a UNA sede (con
+    // su propio precio, comision y stock). Sin esto, un cobro en la sede A podia
+    // incluir el id de un producto de la sede B, y decrement_stock bajaba el
+    // inventario del otro local con su precio/comision. El guard `!pr` de abajo
+    // rechaza el producto que no exista en esta sede (no viene en `prods`).
+    const { data: prods } = await sb
+      .from("productos")
+      .select("id,nombre,precio,comision_pct")
+      .eq("sede_id", sedeEfectiva)
+      .in("id", ids);
     for (const sel of input.productos) {
       const cantidad = Math.floor(sel.cantidad);
       if (!Number.isFinite(cantidad) || cantidad < 1) return { ok: false, error: "Cantidad de producto inválida." };
       const pr = ((prods ?? []) as Record<string, unknown>[]).find((x) => x.id === sel.id);
       // No descartar en silencio: cobraría menos de lo que el barbero vio en pantalla.
-      if (!pr) return { ok: false, error: "Un producto ya no está disponible. Actualizá la página." };
+      if (!pr) return { ok: false, error: "Un producto ya no está disponible en esta sede. Actualizá la página." };
       items.push({
         tipo: "producto",
         ref_id: sel.id,

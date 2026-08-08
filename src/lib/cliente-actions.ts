@@ -5,7 +5,7 @@ import { supabaseServerAuth, supabaseAdmin } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { CANCELACION_MIN_HORAS, OPEN, CLOSE, STEP, bogotaYmd } from "@/lib/slots";
 import { errorPublico } from "@/lib/errors";
-import { pushACliente, pushABarbero } from "@/lib/push";
+import { pushACliente, pushABarbero, pushASede } from "@/lib/push";
 import { fechaHoraBogota } from "@/lib/format";
 
 // Ventana de "deshacer" (minutos): desde la pantalla de confirmación del wizard,
@@ -220,9 +220,16 @@ export async function savePushSubscription(
   // anterior seguiría recibiendo sus avisos en este dispositivo → fuga de datos).
   // El upsert reemplaza el select+branch y cierra la fuga incluso si hubiera
   // filas duplicadas del pasado (el dedup + unique de 0022 las colapsa a una).
+  // barbero_id/sede_id en null EXPLICITO: la migracion 0047 agrego el CHECK
+  // push_sub_dueno_unico (exactamente UN dueno). En un aparato compartido, si el
+  // staff se suscribio antes en este mismo navegador, la fila tenia sede_id; sin
+  // limpiarlos, el upsert por endpoint dejaba cliente_ref Y sede_id -> viola el
+  // CHECK y el cliente NO podia activar sus avisos. guardarPushStaff ya hace esto.
   const { error } = await admin.from("push_subscriptions").upsert(
     {
       cliente_ref: ctx.clienteId,
+      barbero_id: null,
+      sede_id: null,
       endpoint: subscription.endpoint,
       p256dh: subscription.keys.p256dh,
       auth: subscription.keys.auth,
@@ -249,11 +256,11 @@ export async function cancelarReservaCliente(
   const admin = supabaseAdmin();
   const { data: res } = await admin
     .from("reservas")
-    .select("id, cliente_ref, estado, inicio, barbero_id")
+    .select("id, cliente_ref, estado, inicio, barbero_id, sede_id")
     .eq("id", reservaId)
     .maybeSingle();
   if (!res) return { ok: false, error: "Reserva no encontrada" };
-  const r = res as { cliente_ref: string | null; estado: string; inicio: string; barbero_id: string | null };
+  const r = res as { cliente_ref: string | null; estado: string; inicio: string; barbero_id: string | null; sede_id: string };
 
   if (r.cliente_ref !== ctx.clienteId) return { ok: false, error: "Reserva no encontrada" };
   if (!["pendiente", "confirmada"].includes(r.estado))
@@ -280,15 +287,18 @@ export async function cancelarReservaCliente(
     body: `Tu cita fue cancelada (era el ${fechaHoraBogota(new Date(r.inicio))}).`,
     url: "/cuenta",
   });
-  // Al barbero le cambia el día: ese turno queda libre y puede llenarlo.
-  if (r.barbero_id) {
-    await pushABarbero(r.barbero_id, {
-      title: "Se cayó una cita",
-      body: `Te quedó libre el turno de ${fechaHoraBogota(new Date(r.inicio))}.`,
-      url: "/barbero",
-      tag: "cita-cancelada",
-    });
-  }
+  // Aviso al LOCAL: a la sede (el aparato del mostrador con login de sede, que es
+  // el modelo del producto) y al barbero mientras siga su login. Mismo tag: un
+  // aparato suscrito de las dos formas ve UN aviso, no dos. Antes solo iba al
+  // barbero, asi que el mostrador de sede nunca se enteraba de una cancelacion.
+  const avisoCaida = {
+    title: "Se cayó una cita",
+    body: `Quedó libre el turno de ${fechaHoraBogota(new Date(r.inicio))}.`,
+    url: "/barbero",
+    tag: "cita-cancelada",
+  };
+  await pushASede(r.sede_id, avisoCaida);
+  if (r.barbero_id) await pushABarbero(r.barbero_id, avisoCaida);
   revalidatePath("/cuenta");
   revalidatePath("/barbero");
   return { ok: true };
@@ -483,6 +493,17 @@ export async function reagendarReservaCliente(
     body: `Tu cita cambió para ${fechaHoraBogota(nuevoInicio)}.`,
     url: "/cuenta",
   });
+  // Al local le cambia la agenda del día en DOS momentos (el hueco viejo y el
+  // nuevo): antes reagendar no avisaba a nadie del mostrador. Se avisa a la sede
+  // y al barbero, mismo tag.
+  const avisoMov = {
+    title: "Una cita se movió",
+    body: `Un cliente reagendó para ${fechaHoraBogota(nuevoInicio)}.`,
+    url: "/barbero",
+    tag: "cita-movida",
+  };
+  await pushASede(r.sede_id, avisoMov);
+  if (r.barbero_id) await pushABarbero(r.barbero_id, avisoMov);
   revalidatePath("/cuenta");
   revalidatePath("/barbero");
   return { ok: true };
