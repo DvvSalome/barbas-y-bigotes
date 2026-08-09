@@ -2109,7 +2109,7 @@ export async function agregarListaEspera(input: {
 // Atender ahora a alguien de la lista de espera: crea la atención en_curso y lo saca de la cola.
 // Reclama la entrada de forma atómica ('asignado' sale del filtro de la cola) para evitar
 // doble atención / carrera con cancelación; revierte el claim si no se pudo crear la atención.
-export async function servirEspera(id: string): Promise<ActionResult> {
+export async function servirEspera(id: string, barberoElegido?: string): Promise<ActionResult> {
   const sb = await supabaseServerAuth();
   const staff = await getStaffContext();
   if (!puedeMostrador(staff.rol)) return { ok: false, error: "No autorizado" };
@@ -2139,12 +2139,20 @@ export async function servirEspera(id: string): Promise<ActionResult> {
   }
 
   // La cita es de quien FIGURA en la espera (define su comisión, igual que
-  // completarReserva deriva de reservas.barbero_id); solo si la espera no tiene
-  // barbero asignado cae en quien opera el mostrador.
-  const barberoId = ent.barbero_id ?? staff.barberoId;
+  // completarReserva deriva de reservas.barbero_id). Si la espera no tiene barbero
+  // ("el primero que se desocupe"), cae en: el que el mostrador ELIGE al atender
+  // (barberoElegido) o, si hay un barbero logueado, en él. Sin esta via, el perfil
+  // 'sede' (login primario del mostrador, sin barbero propio) no podia servir NI
+  // UNA espera "cualquiera", que es el caso normal.
+  const barberoId = ent.barbero_id ?? barberoElegido ?? staff.barberoId;
   if (!barberoId) {
     await revertir();
-    return { ok: false, error: "Asigná un barbero a esta espera primero" };
+    return { ok: false, error: "Elegí qué barbero la atiende." };
+  }
+  // El barbero elegido debe ser de la sede de la espera (mismo gate que el walk-in).
+  if (barberoElegido && !(await staffPuedeOperarBarbero(staff, barberoId))) {
+    await revertir();
+    return { ok: false, error: "Ese barbero es de otra sede." };
   }
   const clienteRef =
     ent.cliente_ref ?? (await upsertClienteId(sb, ent.cliente_nombre ?? "", ent.telefono ?? "", "", "walkin"));

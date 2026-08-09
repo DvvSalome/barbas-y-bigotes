@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { agregarListaEspera, actualizarListaEspera, servirEspera } from "@/lib/actions";
+import { ElegirBarbero } from "@/components/staff/Elegir";
 import type { Sede, Barbero, Servicio } from "@/lib/data/types";
 import type { EsperaItem } from "@/lib/data/queries";
 
@@ -32,6 +33,7 @@ export function EsperaPanel({
   barberos,
   servicios,
   sedeFija,
+  elegirBarbero = false,
 }: {
   espera: EsperaItem[];
   sedes: Sede[];
@@ -40,10 +42,17 @@ export function EsperaPanel({
   /** Sede del mostrador (la del barbero logueado). Si viene, la espera se anota
    *  ahí y no se elige; null = el dueño mirando las dos sedes. */
   sedeFija?: string | null;
+  /** El operador NO tiene barbero propio (mostrador de sede o admin): al atender
+   *  una espera "cualquiera" hay que preguntarle qué barbero la toma. */
+  elegirBarbero?: boolean;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
+  // Espera cuyo barbero se está eligiendo (solo cuando la entrada no trae barbero
+  // y el operador no tiene uno propio). Guarda el barbero elegido en el selector.
+  const [eligiendo, setEligiendo] = useState<string | null>(null);
+  const [barberoSel, setBarberoSel] = useState("");
 
   async function setEstado(id: string, estado: string) {
     setBusy(true);
@@ -52,15 +61,29 @@ export function EsperaPanel({
     router.refresh();
   }
 
-  async function atender(id: string) {
+  async function atender(id: string, barberoOverride?: string) {
     setBusy(true);
-    const res = await servirEspera(id);
+    const res = await servirEspera(id, barberoOverride);
     setBusy(false);
     if (!res.ok) {
       alert(res.error);
       return;
     }
+    setEligiendo(null);
+    setBarberoSel("");
     router.refresh();
+  }
+
+  // Al tocar "Atender ahora": si la espera ya tiene barbero, o el operador tiene
+  // el suyo (login de barbero), va directo. Si no (mostrador de sede/admin sobre
+  // una espera "cualquiera"), primero pregunta qué barbero la atiende.
+  function pedirAtender(e: EsperaItem) {
+    if (e.barberoId || !elegirBarbero) {
+      atender(e.id);
+    } else {
+      setEligiendo(e.id);
+      setBarberoSel("");
+    }
   }
 
   return (
@@ -101,50 +124,85 @@ export function EsperaPanel({
           {espera.map((e, i) => (
             <div
               key={e.id}
-              className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line bg-panel p-3"
+              className="rounded-xl border border-line bg-panel p-3"
             >
-              <div className="flex items-center gap-3">
-                <span className="font-display text-xl text-accent-soft">{i + 1}</span>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold">{e.cliente || "Sin nombre"}</span>
-                    {e.estado === "notificado" && (
-                      <span className="rounded-full bg-accent/15 px-2 py-0.5 text-[10px] uppercase tracking-wide text-accent-soft">
-                        Avisado
-                      </span>
-                    )}
-                  </div>
-                  <div className="text-sm text-muted">
-                    {e.barbero} · {e.servicio}
-                    {e.telefono ? ` · ${e.telefono}` : ""} · {desde(e.creadoEn)}
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <span className="font-display text-xl text-accent-soft">{i + 1}</span>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold">{e.cliente || "Sin nombre"}</span>
+                      {e.estado === "notificado" && (
+                        <span className="rounded-full bg-accent/15 px-2 py-0.5 text-[10px] uppercase tracking-wide text-accent-soft">
+                          Avisado
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-sm text-muted">
+                      {e.barbero} · {e.servicio}
+                      {e.telefono ? ` · ${e.telefono}` : ""} · {desde(e.creadoEn)}
+                    </div>
                   </div>
                 </div>
-              </div>
-              <div className="flex flex-wrap gap-2.5">
-                {e.estado !== "notificado" && (
+                <div className="flex flex-wrap gap-2.5">
+                  {e.estado !== "notificado" && (
+                    <button
+                      onClick={() => setEstado(e.id, "notificado")}
+                      disabled={busy}
+                      className={`${btnEspera} border border-line hover:border-accent/50`}
+                    >
+                      Avisar
+                    </button>
+                  )}
                   <button
-                    onClick={() => setEstado(e.id, "notificado")}
+                    onClick={() => pedirAtender(e)}
                     disabled={busy}
-                    className={`${btnEspera} border border-line hover:border-accent/50`}
+                    className={`${btnEspera} bg-[linear-gradient(180deg,var(--cta-1),var(--cta-2))] uppercase text-on-accent shadow-[0_8px_20px_-10px_rgba(210,63,52,0.7)] hover:brightness-105`}
                   >
-                    Avisar
+                    Atender ahora
                   </button>
-                )}
-                <button
-                  onClick={() => atender(e.id)}
-                  disabled={busy}
-                  className={`${btnEspera} bg-[linear-gradient(180deg,var(--cta-1),var(--cta-2))] uppercase text-on-accent shadow-[0_8px_20px_-10px_rgba(210,63,52,0.7)] hover:brightness-105`}
-                >
-                  Atender ahora
-                </button>
-                <button
-                  onClick={() => setEstado(e.id, "cancelado")}
-                  disabled={busy}
-                  className={`${btnEspera} border border-line text-muted hover:text-ink`}
-                >
-                  Quitar
-                </button>
+                  <button
+                    onClick={() => setEstado(e.id, "cancelado")}
+                    disabled={busy}
+                    className={`${btnEspera} border border-line text-muted hover:text-ink`}
+                  >
+                    Quitar
+                  </button>
+                </div>
               </div>
+
+              {/* La espera es "para el primero que se desocupe" y el mostrador de
+                  sede no tiene un barbero propio: se pregunta cuál la atiende. */}
+              {eligiendo === e.id && (
+                <div className="mt-3 border-t border-line/60 pt-3">
+                  <span className={lbl}>¿Qué barbero la atiende?</span>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <div className="min-w-[200px] flex-1">
+                      <ElegirBarbero
+                        barberos={barberos
+                          .filter((b) => !sedeFija || b.sede === sedeFija)
+                          .map((b) => ({ id: b.id, nombre: b.nombre, fotoUrl: b.fotoUrl }))}
+                        value={barberoSel}
+                        onChange={setBarberoSel}
+                        placeholder="Elegí el barbero"
+                      />
+                    </div>
+                    <button
+                      onClick={() => barberoSel && atender(e.id, barberoSel)}
+                      disabled={busy || !barberoSel}
+                      className={`${btnEspera} bg-accent uppercase text-on-accent disabled:opacity-40`}
+                    >
+                      Confirmar
+                    </button>
+                    <button
+                      onClick={() => { setEligiendo(null); setBarberoSel(""); }}
+                      className={`${btnEspera} border border-line text-muted`}
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           ))}
         </div>

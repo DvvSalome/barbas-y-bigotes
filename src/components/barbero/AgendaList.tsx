@@ -87,8 +87,8 @@ export function AgendaList({
   servicios,
   preciosServicios,
   productos,
-  medios,
-  esAdmin = false,
+  medios,
+  elegirBarbero = false,
   mostrador,
   esperaSlot,
   cierreSlot,
@@ -100,8 +100,10 @@ export function AgendaList({
   servicios: Servicio[];
   preciosServicios: PrecioServicioStaff[];
   productos: Producto[];
-  medios: MedioPago[];
-  esAdmin?: boolean;
+  medios: MedioPago[];
+  /** El operador no tiene barbero propio (admin o perfil sede): debe poder elegir
+   *  a qué barbero se atribuye una venta rápida. */
+  elegirBarbero?: boolean;
   /** La sede que se opera desde el mostrador (o las dos, para el dueño). */
   mostrador: {
     /** null = el dueño mirando las dos sedes; hay que elegir en cada alta. */
@@ -240,8 +242,8 @@ export function AgendaList({
       servicios={servicios}
       preciosServicios={preciosServicios}
       productos={productos}
-      medios={medios}
-      esAdmin={esAdmin}
+      medios={medios}
+      elegirBarbero={elegirBarbero}
       onDone={() => {
         setCompleteFor(null);
         router.refresh();
@@ -429,8 +431,8 @@ export function AgendaList({
             servicios={servicios}
             preciosServicios={preciosServicios}
             productos={productos}
-            medios={medios}
-            esAdmin={esAdmin}
+            medios={medios}
+            elegirBarbero={elegirBarbero}
             onDone={() => {
               setVentaOpen(false);
               router.refresh();
@@ -658,8 +660,8 @@ function CheckoutForm({
   servicios,
   preciosServicios,
   productos,
-  medios,
-  esAdmin = false,
+  medios,
+  elegirBarbero = false,
   onDone,
   onCancel,
 }: {
@@ -669,8 +671,8 @@ function CheckoutForm({
   servicios: Servicio[];
   preciosServicios: PrecioServicioStaff[];
   productos: Producto[];
-  medios: MedioPago[];
-  esAdmin?: boolean;
+  medios: MedioPago[];
+  elegirBarbero?: boolean;
   onDone: () => void;
   onCancel?: () => void;
 }) {
@@ -938,11 +940,14 @@ function CheckoutForm({
                 <option key={s.id} value={s.id}>{s.nombre}</option>
               ))}
             </select>
-            {/* Solo el admin puede atribuir la venta a otro barbero; para el rol
-                barbero el server la registra a su nombre sí o sí. */}
-            {esAdmin && (
+            {/* Se elige el barbero cuando el operador no tiene uno propio: el
+                admin, y el MOSTRADOR DE SEDE (login primario del 0044). Sin esto
+                la venta rápida del mostrador de sede se grababa con barbero_id
+                null y el barbero perdía su comisión. El login de barbero cae en
+                él mismo, sin selector. */}
+            {elegirBarbero && (
               <select value={barberoId} onChange={(e) => setBarberoId(e.target.value)} className={fld}>
-                <option value="">Barbero (opcional)…</option>
+                <option value="">¿Qué barbero vende?</option>
                 {barberosSede.map((b) => (
                   <option key={b.id} value={b.id}>{b.nombre}</option>
                 ))}

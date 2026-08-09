@@ -99,7 +99,10 @@ export default async function BarberoPage() {
       />
       {/* AgendaList es el cascarón del mostrador: pestañas fijas abajo (Turnos /
           Espera / Cierre) + hojas para los formularios. La espera y el cierre
-          son server components y entran como slots a su pestaña. */}
+          son server components y entran como slots a su pestaña.
+          elegirBarbero: admin y perfil SEDE no tienen barbero propio; en venta
+          rápida y al servir una espera "cualquiera" se pregunta qué barbero la
+          hace, o la comisión se pierde. El login de barbero cae en él mismo. */}
       <AgendaList
         agenda={agendaSede}
         sedes={sedes}
@@ -107,8 +110,8 @@ export default async function BarberoPage() {
         servicios={servicios}
         preciosServicios={preciosServicios}
         productos={productos}
-        medios={medios}
-        esAdmin={staff.rol === "admin"}
+        medios={medios}
+        elegirBarbero={staff.rol !== "barbero"}
         mostrador={mostrador}
         esperaCount={espera.length}
         esperaSlot={
@@ -118,6 +121,7 @@ export default async function BarberoPage() {
             barberos={barberos}
             servicios={servicios}
             sedeFija={sedeBarbero}
+            elegirBarbero={staff.rol !== "barbero"}
           />
         }
         cierreSlot={
