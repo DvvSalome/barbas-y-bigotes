@@ -244,24 +244,33 @@ export type Periodo = "mes" | "30d" | "90d";
 
 /**
  * Rango del período + el rango anterior del MISMO largo, para comparar peras con
- * peras. Vive acá con el resto de la matemática de fechas de Bogotá (y no en
- * queries.ts) para que sea verificable sin levantar Supabase — ver check-metricas.
+ * peras. Devuelve [prevDesde, prevHasta) explícitos (no solo prevDesde) porque en
+ * "mes" el comparativo NO termina donde arranca el actual. Vive acá con el resto de
+ * la matemática de fechas de Bogotá (y no en queries.ts) para que sea verificable
+ * sin levantar Supabase — ver check-metricas.
  */
 export function rangoPeriodo(p: Periodo, ahora: Date = new Date()): {
   desde: Date;
   hasta: Date;
   prevDesde: Date;
+  prevHasta: Date;
 } {
   const hasta = new Date(ahora);
-  let desde: Date;
   if (p === "mes") {
-    // Del 1° a hoy. El comparativo son los MISMOS días del mes pasado: comparar
-    // un mes a medias contra uno completo daría siempre "vas peor".
-    const [y, m] = bogotaYmd(hasta).split("-");
-    desde = bogotaDayRangeDeFecha(`${y}-${m}-01`).desde;
-  } else {
-    desde = new Date(hasta.getTime() - (p === "30d" ? 30 : 90) * 86_400_000);
+    // Del 1° a hoy. El comparativo son los MISMOS DÍAS del mes pasado: el 1° del mes
+    // anterior + lo transcurrido este mes (ej. 1–12 jun vs 1–12 jul). Comparar contra
+    // la COLA del mes anterior (que arrastra la quincena de cierre) sesgaba a "vas
+    // peor" toda la primera parte del mes — el bug que este cálculo debía evitar.
+    const [y, m] = bogotaYmd(hasta).split("-").map(Number);
+    const desde = bogotaDayRangeDeFecha(`${y}-${String(m).padStart(2, "0")}-01`).desde;
+    const prevYm = m === 1 ? `${y - 1}-12` : `${y}-${String(m - 1).padStart(2, "0")}`;
+    const prevDesde = bogotaDayRangeDeFecha(`${prevYm}-01`).desde;
+    const prevHasta = new Date(prevDesde.getTime() + (hasta.getTime() - desde.getTime()));
+    return { desde, hasta, prevDesde, prevHasta };
   }
+  // Ventanas móviles (30d/90d): el comparativo son los N días JUSTO antes; termina
+  // donde arranca el actual.
+  const desde = new Date(hasta.getTime() - (p === "30d" ? 30 : 90) * 86_400_000);
   const largo = hasta.getTime() - desde.getTime();
-  return { desde, hasta, prevDesde: new Date(desde.getTime() - largo) };
+  return { desde, hasta, prevDesde: new Date(desde.getTime() - largo), prevHasta: desde };
 }

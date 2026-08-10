@@ -36,8 +36,10 @@ function CajaCard({ caja, medios }: { caja: CajaSesionSede; medios: MedioPago[] 
     .sort(([a], [b]) => (ordenDe.get(a) ?? 999) - (ordenDe.get(b) ?? 999))
     .map(([slug, t]) => `${cop(t.total)} ${nombreDe(slug).toLowerCase()}`)
     .join(" · ");
-  // El cajón debe tener las ventas en efectivo + las propinas en efectivo.
-  const esperadoEfectivo = caja.efectivo + caja.propinaEfectivo;
+  // El esperado del cajón viene YA calculado del servidor (fondo + efectivo +
+  // propina efectivo − gastos), el MISMO número que usa el cierre real. Antes se
+  // re-derivaba acá como efectivo+propina, sin fondo ni gastos, y engañaba.
+  const esperadoEfectivo = caja.esperadoEfectivo;
 
   const [openForm, setOpenForm] = useState(false);
   const [meta, setMeta] = useState("");
@@ -162,7 +164,9 @@ function CajaCard({ caja, medios }: { caja: CajaSesionSede; medios: MedioPago[] 
         <form onSubmit={cerrar} className="mt-4 space-y-2.5">
           <div className="text-xs text-muted">
             Esperado en efectivo: <b className="text-ink">{cop(esperadoEfectivo)}</b>
-            {caja.propinaEfectivo > 0 && <> (incluye {cop(caja.propinaEfectivo)} de propinas)</>}
+            {caja.montoApertura > 0 && <> · base {cop(caja.montoApertura)}</>}
+            {caja.propinaEfectivo > 0 && <> · +{cop(caja.propinaEfectivo)} propinas</>}
+            {caja.gastos > 0 && <> · −{cop(caja.gastos)} gastos</>}
           </div>
           <input
             type="number"

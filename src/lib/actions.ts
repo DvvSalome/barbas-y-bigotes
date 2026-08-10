@@ -193,9 +193,21 @@ export async function addProducto(input: {
     .select("id")
     .single();
   if (error) return { ok: false, error: errorPublico("addProducto", error) };
+  const productoId = (data as { id: string }).id;
+  // Kardex: registrar el stock inicial como 'entrada'. Sin esto el historial del
+  // producto arranca sin punto de partida y no cuadra (las ventas ya las anota
+  // decrement_stock, y los ajustes ingresar_stock). service_role porque
+  // stock_movimientos es RLS restringida; el gate real es requireAdmin de arriba.
+  // Best-effort: no tumba la creación del producto.
+  if (stock > 0) {
+    const { error: movErr } = await supabaseAdmin()
+      .from("stock_movimientos")
+      .insert({ producto_id: productoId, cantidad: stock, motivo: "entrada", nota: "Inventario inicial" });
+    if (movErr) errorPublico("addProducto movimiento inicial", movErr);
+  }
   revalidatePath("/admin/inventario");
   // El id permite encadenar la foto opcional (subirFotoProducto) tras crear.
-  return { ok: true, id: (data as { id: string }).id };
+  return { ok: true, id: productoId };
 }
 
 // Precio editable desde /admin/inventario. Revalida /reservar porque las

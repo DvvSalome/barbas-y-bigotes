@@ -40,10 +40,12 @@ export interface Barbero {
   nombre: string;
   sede: SedeId;
   especialidades: string[];
-  tipoContrato: TipoContrato;
-  /** Si tipoContrato = "porcentaje". */
+  /** Contrato: dato CONFIDENCIAL. Solo viene en getBarberosContrato (admin); el
+   *  catálogo público (getBarberos) lo omite, por eso es opcional. Ver migración 0049. */
+  tipoContrato?: TipoContrato;
+  /** Si tipoContrato = "porcentaje". Confidencial (ver arriba). */
   comisionPct?: number;
-  /** Si tipoContrato = "arriendo" (COP/mes). */
+  /** Si tipoContrato = "arriendo" (COP/mes). Confidencial (ver arriba). */
   arriendoMensual?: number;
   fotoUrl?: string | null;
   destacado?: boolean;

@@ -3,7 +3,7 @@ import { supabaseServer, supabaseServerAuth, supabaseAdmin } from "@/lib/supabas
 import { bogotaDayRange, bogotaDayRangeDeFecha, bogotaYmd, rangoPeriodo, type Periodo } from "@/lib/slots";
 import { totalesPorMedio, snapshotDinero, type TotalesPorMedio } from "@/lib/cobro";
 import { CERQUILLO_EXCLUIDOS, estadoTarjeta, TARJETA_SIZE, type BeneficioTarjeta } from "@/lib/tarjeta";
-import type { Sede, SedeId, Servicio, Barbero, Producto, Categoria } from "./types";
+import type { Sede, SedeId, Servicio, Barbero, Producto, Categoria, TipoContrato } from "./types";
 
 export async function getSedes(): Promise<Sede[]> {
   const sb = supabaseServer();
@@ -88,8 +88,53 @@ export async function getPreciosServiciosStaff(): Promise<PrecioServicioStaff[]>
   });
 }
 
+// Campos PÚBLICOS del catálogo (sin el contrato). El contrato —tipo/comisión/
+// arriendo— es dato confidencial de negocio y NO se expone acá (ver getBarberosContrato).
+function mapBarberoPublico(b: Record<string, unknown>): Barbero {
+  return {
+    id: b.id as string,
+    nombre: b.nombre as string,
+    sede: b.sede_id as SedeId,
+    especialidades: ((b.barbero_especialidades as { especialidad: string }[]) ?? []).map((e) => e.especialidad),
+    fotoUrl: (b.foto_url as string) ?? null,
+    destacado: b.destacado as boolean,
+    rating: (b.rating as number) ?? undefined,
+    resenas: (b.resenas as number) ?? undefined,
+    bio: (b.bio as string) ?? null,
+  };
+}
+
+// Catálogo público de barberos (lo lee la web, el wizard, el login del staff). NO
+// trae tipo_contrato/comision_pct/arriendo_mensual: esas columnas están revocadas a
+// anon/authenticated (0049) porque son el reparto de plata del local. Si se pidieran
+// acá con la anon key, el REST las devolvía a cualquiera.
 export async function getBarberos(): Promise<Barbero[]> {
   const sb = supabaseServer();
+  const { data } = await sb
+    .from("barberos")
+    .select("id,nombre,sede_id,foto_url,destacado,rating,resenas,bio,orden,barbero_especialidades(especialidad)")
+    .eq("activo", true)
+    .order("sede_id")
+    .order("orden");
+  return (data ?? []).map((b) => mapBarberoPublico(b as Record<string, unknown>));
+}
+
+export type BarberoConContrato = Barbero & { tipoContrato: TipoContrato };
+
+// Barberos CON su contrato (comisión/arriendo). Datos confidenciales: las 3 columnas
+// están revocadas a anon y authenticated (0049), así que se leen con service_role y
+// SOLO tras confirmar que quien pide es admin (defensa en profundidad: service_role
+// saltea la RLS). Lo usa /admin/comisiones.
+export async function getBarberosContrato(): Promise<BarberoConContrato[]> {
+  const auth = await supabaseServerAuth();
+  const {
+    data: { user },
+  } = await auth.auth.getUser();
+  if (!user) return [];
+  const { data: prof } = await auth.from("profiles").select("rol").eq("auth_id", user.id).maybeSingle();
+  if ((prof as { rol?: string } | null)?.rol !== "admin") return [];
+
+  const sb = supabaseAdmin();
   const { data } = await sb
     .from("barberos")
     .select(
@@ -98,22 +143,15 @@ export async function getBarberos(): Promise<Barbero[]> {
     .eq("activo", true)
     .order("sede_id")
     .order("orden");
-  return (data ?? []).map((b: Record<string, unknown>) => ({
-    id: b.id as string,
-    nombre: b.nombre as string,
-    sede: b.sede_id as SedeId,
-    especialidades: ((b.barbero_especialidades as { especialidad: string }[]) ?? []).map(
-      (e) => e.especialidad,
-    ),
-    tipoContrato: b.tipo_contrato as Barbero["tipoContrato"],
-    comisionPct: (b.comision_pct as number) ?? undefined,
-    arriendoMensual: (b.arriendo_mensual as number) ?? undefined,
-    fotoUrl: (b.foto_url as string) ?? null,
-    destacado: b.destacado as boolean,
-    rating: (b.rating as number) ?? undefined,
-    resenas: (b.resenas as number) ?? undefined,
-    bio: (b.bio as string) ?? null,
-  }));
+  return (data ?? []).map((b) => {
+    const r = b as Record<string, unknown>;
+    return {
+      ...mapBarberoPublico(r),
+      tipoContrato: (r.tipo_contrato as TipoContrato) ?? "porcentaje",
+      comisionPct: (r.comision_pct as number) ?? undefined,
+      arriendoMensual: (r.arriendo_mensual as number) ?? undefined,
+    };
+  });
 }
 
 export async function getProductos(): Promise<Producto[]> {
@@ -599,6 +637,12 @@ export type CajaSesionSede = {
   totales: TotalesPorMedio;
   /** Propinas cobradas en efectivo: entran al cajón para el cuadre. */
   propinaEfectivo: number;
+  /** Gastos en efectivo desde la apertura (salen del cajón). */
+  gastos: number;
+  /** Efectivo esperado en el cajón = fondo + efectivo + propina efectivo − gastos.
+   *  MISMO cálculo que el cierre real (cerrarCaja/snapshotDinero); la card del admin
+   *  lo usa tal cual, no lo re-deriva, para que el preview no engañe. */
+  esperadoEfectivo: number;
 };
 
 // Estado de caja por sede: si hay sesión abierta + lo recaudado desde la apertura
@@ -621,28 +665,32 @@ export async function getCajaSesiones(): Promise<CajaSesionSede[]> {
   for (const s of sedes) {
     const sess = open.find((o) => o.sede_id === s.id);
     const start = sess ? sess.abierta_en : bogotaDayRange().desde.toISOString();
-    const { data: ventas } = await sb
-      .from("ventas")
-      .select("medio,total,propina")
-      .eq("sede_id", s.id)
-      .gte("creado_en", start);
-    const vs = (ventas ?? []) as { medio: string; total: number; propina: number | null }[];
-    const totales = totalesPorMedio(vs);
-    // Ingresos = TODOS los medios (no solo efectivo + datáfono).
-    const ingresos = Object.values(totales).reduce((a, t) => a + t.total, 0);
+    // Ventas Y gastos desde la apertura (gastos por creado_en, igual que getCajaSede):
+    // el "esperado" del admin debe salir del MISMO snapshotDinero que el cierre, o
+    // muestra una sobra/faltante fantasma cuando hay fondo o gastos.
+    const [ventasRes, gastosRes] = await Promise.all([
+      sb.from("ventas").select("medio,total,propina").eq("sede_id", s.id).gte("creado_en", start),
+      sb.from("gastos").select("monto").eq("sede_id", s.id).gte("creado_en", start),
+    ]);
+    const vs = (ventasRes.data ?? []) as { medio: string; total: number; propina: number | null }[];
+    const totalGastos = ((gastosRes.data ?? []) as { monto: number }[]).reduce((a, g) => a + g.monto, 0);
+    const montoApertura = sess?.monto_apertura ?? 0;
+    const snap = snapshotDinero(vs, { montoApertura, totalGastos });
     out.push({
       sede: s.id,
       nombre: s.nombre,
       sesionId: sess?.id ?? null,
       abiertaEn: sess?.abierta_en ?? null,
       metaDia: sess?.meta_dia ?? 0,
-      montoApertura: sess?.monto_apertura ?? 0,
-      efectivo: totales.efectivo?.total ?? 0,
-      datafono: totales.datafono?.total ?? 0,
-      ingresos,
+      montoApertura,
+      efectivo: snap.efectivo,
+      datafono: snap.datafono,
+      ingresos: snap.ingresos, // TODOS los medios (no solo efectivo + datáfono)
       citas: vs.length,
-      totales,
-      propinaEfectivo: totales.efectivo?.propina ?? 0,
+      totales: snap.totales,
+      propinaEfectivo: snap.totales.efectivo?.propina ?? 0,
+      gastos: totalGastos,
+      esperadoEfectivo: snap.esperadoEfectivo,
     });
   }
   return out;
@@ -1835,7 +1883,7 @@ export type Metricas = {
 
 export async function getMetricas(p: Periodo = "mes", sede?: SedeId | null): Promise<Metricas> {
   const sb = await supabaseServerAuth();
-  const { desde, hasta, prevDesde } = rangoPeriodo(p);
+  const { desde, hasta, prevDesde, prevHasta } = rangoPeriodo(p);
 
   // Una sola pasada por ventas: trae el período y el anterior juntos y se parten
   // en memoria. Son cientos de filas al mes, no miles: agregar en SQL sería un RPC
@@ -1850,7 +1898,13 @@ export async function getMetricas(p: Periodo = "mes", sede?: SedeId | null): Pro
   if (error) console.error("getMetricas:", error.message);
   const filas = (data ?? []) as Record<string, unknown>[];
   const enPeriodo = filas.filter((v) => new Date(v.creado_en as string) >= desde);
-  const previas = filas.filter((v) => new Date(v.creado_en as string) < desde);
+  // El comparativo es SOLO [prevDesde, prevHasta): en "mes" eso son los mismos días
+  // del mes pasado, no toda la cola. Las ventas del hueco entre prevHasta y desde
+  // (la parte final del mes anterior) se traen en la misma query pero no cuentan.
+  const previas = filas.filter((v) => {
+    const t = new Date(v.creado_en as string);
+    return t >= prevDesde && t < prevHasta;
+  });
 
   const plata = enPeriodo.reduce((a, v) => a + ((v.total as number) ?? 0), 0);
   const propinas = enPeriodo.reduce((a, v) => a + ((v.propina as number) ?? 0), 0);

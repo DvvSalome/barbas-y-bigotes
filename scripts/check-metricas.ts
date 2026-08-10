@@ -11,21 +11,24 @@ import { celdaCsv } from "../src/lib/format.ts";
 
 const dia = 86_400_000;
 
-// (a) "Este mes" el día 12: el rango va del 1° a hoy, y el comparativo tiene que
-//     medir EXACTAMENTE los mismos 11 días y pico del mes anterior.
+// (a) "Este mes" el día 12: el rango va del 1° a hoy, y el comparativo tiene que ser
+//     los MISMOS DÍAS del mes pasado — 1–12 jun, NO la cola de junio (19-30). Comparar
+//     contra el cierre del mes anterior (quincena fuerte) sesgaba a "vas peor".
 const doce = new Date("2026-07-12T15:00:00Z"); // 10:00 en Bogotá
 const mes = rangoPeriodo("mes", doce);
 assert.equal(bogotaYmd(mes.desde), "2026-07-01", "el mes arranca el 1° en Bogotá");
 assert.equal(mes.hasta.getTime(), doce.getTime(), "el mes corre hasta ahora, no hasta fin de mes");
 const largoMes = mes.hasta.getTime() - mes.desde.getTime();
+// El comparativo arranca el 1° del MES ANTERIOR (misma fase del ciclo de pago)...
+assert.equal(bogotaYmd(mes.prevDesde), "2026-06-01", "el comparativo arranca el 1° del mes anterior");
+// ...y mide lo mismo que el actual: 1-jun + (mismo largo) = 12-jun 10:00 Bogotá.
 assert.equal(
-  mes.desde.getTime() - mes.prevDesde.getTime(),
+  mes.prevHasta.getTime() - mes.prevDesde.getTime(),
   largoMes,
   "el período anterior mide lo mismo que el actual (peras con peras)",
 );
-assert.ok(mes.prevDesde < mes.desde, "el comparativo va antes del período");
-// 1-jul 00:00 Bogotá menos 11 días y 10 horas = 19-jun 14:00 Bogotá.
-assert.equal(bogotaYmd(mes.prevDesde), "2026-06-19", "el comparativo arranca 11d 10h antes del 1-jul");
+assert.equal(bogotaYmd(mes.prevHasta), "2026-06-12", "el comparativo termina el mismo día (12) del mes pasado");
+assert.ok(mes.prevHasta <= mes.desde, "el comparativo va antes del período");
 
 // (b) El 1° del mes a primera hora el rango es casi cero, pero nunca negativo:
 //     con un rango negativo la serie de días se generaría al revés.
@@ -39,6 +42,8 @@ for (const [p, n] of [["30d", 30], ["90d", 90]] as const) {
   const r = rangoPeriodo(p, doce);
   assert.equal(r.hasta.getTime() - r.desde.getTime(), n * dia, `${p} cubre ${n} días`);
   assert.equal(r.desde.getTime() - r.prevDesde.getTime(), n * dia, `el comparativo de ${p} también`);
+  // Ventana móvil: el comparativo termina justo donde arranca el actual.
+  assert.equal(r.prevHasta.getTime(), r.desde.getTime(), `el comparativo de ${p} termina donde arranca el actual`);
 }
 
 // (d) No depende del huso del proceso: el 1° de mes se calcula en Bogotá, no en UTC.

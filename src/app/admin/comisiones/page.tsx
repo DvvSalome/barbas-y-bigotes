@@ -1,14 +1,14 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import { cop } from "@/lib/format";
-import { getBarberos, getSedes } from "@/lib/data/queries";
+import { getBarberosContrato, getSedes } from "@/lib/data/queries";
 import { SectionHeader } from "@/components/admin/SectionHeader";
 import { ContratoEditable } from "@/components/admin/ContratoEditable";
 
 export const metadata: Metadata = { title: "Comisiones · Admin" };
 
 export default async function ComisionesPage() {
-  const [barberos, sedes] = await Promise.all([getBarberos(), getSedes()]);
+  const [barberos, sedes] = await Promise.all([getBarberosContrato(), getSedes()]);
   const sedeNombre = (id: string) => sedes.find((s) => s.id === id)?.nombre ?? id;
 
   // Un vistazo al reparto antes del detalle: cuántos van por comisión y cuántos
