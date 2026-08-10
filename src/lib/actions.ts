@@ -32,7 +32,7 @@ import { errorPublico } from "@/lib/errors";
 import { calcularCobro, snapshotDinero, diferenciaCaja } from "@/lib/cobro";
 import { beneficioProximoCorte, type BeneficioTarjeta } from "@/lib/tarjeta";
 import { pushACliente, pushABarbero, pushASede } from "@/lib/push";
-import { fechaHoraBogota } from "@/lib/format";
+import { cop, fechaHoraBogota } from "@/lib/format";
 
 export type ActionResult = { ok: boolean; error?: string; /** Se guardó, pero con salvedades que el admin debe ver (p.ej. especialidades descartadas). */ aviso?: string; id?: string; total?: number; descuento?: number; propina?: number; puntos?: number; encolado?: boolean; esperaHasta?: string | null; tarjeta?: { cortesTotales: number; posicion: number; beneficio: BeneficioTarjeta | null }; resenaUrl?: string | null; /** confirm_token de la reserva recién creada: credencial para deshacerla desde la confirmación del wizard. */ token?: string | null };
 
@@ -969,6 +969,19 @@ export async function registrarWalkin(input: {
   // El gate staffPuedeOperarBarbero de arriba es el control real (mismo patrón que
   // actualizarReserva/completarReserva). NO usar admin antes de esa validación.
   const admin = supabaseAdmin();
+  // La silla es UNA: si el barbero ya tiene una atención EN CURSO (aunque se haya
+  // pasado de su fin estimado —por eso el EXCLUDE de solape, que usa el fin guardado,
+  // no la ve—), no se le puede encimar otro walk-in. El operador cierra la atención
+  // actual (cobra) y registra la nueva.
+  const { data: enSilla } = await admin
+    .from("reservas")
+    .select("id")
+    .eq("barbero_id", barberoId)
+    .eq("estado", "en_curso")
+    .limit(1);
+  if (enSilla && enSilla.length) {
+    return { ok: false, error: "Ese barbero tiene un cliente en la silla ahora. Cerrá esa atención antes de registrar otra." };
+  }
   const clienteRef = await upsertClienteId(sb, input.clienteNombre, input.telefono, "", "walkin", input.fidelizar ?? true);
   const now = new Date();
   let dur = 30;
@@ -1826,6 +1839,16 @@ export async function agregarMovWallet(input: {
   // Monto de la wallet: entero de pesos, mayor a cero.
   const monto = sanearCop(input.monto);
   if (monto === null || monto <= 0) return { ok: false, error: "Monto inválido" };
+  // Un consumo no puede dejar el monedero en negativo (mismo criterio que canjearPuntos).
+  // Sin esto, un consumo mayor a lo recargado mostraba un saldo imposible en la ficha.
+  if (input.tipo === "consumo") {
+    const { data } = await sb.from("cliente_wallet_mov").select("tipo,monto").eq("cliente_ref", input.clienteRef);
+    const saldo = ((data ?? []) as { tipo: string; monto: number }[]).reduce(
+      (a, m) => a + (m.tipo === "recarga" ? m.monto : -m.monto),
+      0,
+    );
+    if (monto > saldo) return { ok: false, error: `Saldo insuficiente en el monedero (disponible ${cop(saldo)}).` };
+  }
   const { error } = await sb.from("cliente_wallet_mov").insert({
     cliente_ref: input.clienteRef,
     tipo: input.tipo,
@@ -2234,6 +2257,13 @@ export async function servirEspera(id: string, barberoElegido?: string): Promise
   if (barberoElegido && !(await staffPuedeOperarBarbero(staff, barberoId))) {
     await revertir();
     return { ok: false, error: "Ese barbero es de otra sede." };
+  }
+  // La silla es UNA: si el barbero ya tiene una atención en curso (aunque se haya
+  // pasado de su fin estimado), no se le encima otra. Se revierte el claim de la espera.
+  const { data: enSilla } = await sb.from("reservas").select("id").eq("barbero_id", barberoId).eq("estado", "en_curso").limit(1);
+  if (enSilla && enSilla.length) {
+    await revertir();
+    return { ok: false, error: "Ese barbero tiene un cliente en la silla ahora. Cerrá esa atención antes de servir la espera." };
   }
   const clienteRef =
     ent.cliente_ref ?? (await upsertClienteId(sb, ent.cliente_nombre ?? "", ent.telefono ?? "", "", "walkin"));

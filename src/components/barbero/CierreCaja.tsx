@@ -171,11 +171,13 @@ export function CierreCaja({
                     )}
                     <span className="shrink-0 text-sm font-bold tabular-nums text-ink">{cop(b.ventas)}</span>
                   </div>
-                  {/* "Mi comisión (50%)" resaltada SOLO en la fila del barbero logueado. */}
+                  {/* Comisión resaltada SOLO en la fila del barbero logueado. Sin el
+                      "50%" fijo: el monto ya sale del % REAL del contrato de cada uno
+                      (puede ser otro, o arriendo), así que el rótulo no debe afirmarlo. */}
                   {esMi && (
                     <div className="flex items-center justify-between gap-2 border-t border-line/60 bg-ok/5 px-3.5 py-2">
                       <span className="min-w-0 text-xs font-semibold text-ok">
-                        Mi comisión (50% de mis ventas)
+                        Mi comisión (sobre mis ventas)
                       </span>
                       <span className="shrink-0 text-sm font-bold tabular-nums text-ok">
                         {cop(b.comision)}
