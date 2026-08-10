@@ -6,17 +6,26 @@
 -- (GET /rest/v1/barberos?select=comision_pct,arriendo_mensual). Esas 3 columnas son
 -- el reparto de plata del local: dato confidencial de negocio.
 --
--- Fix a nivel de COLUMNA (lo único que Postgres puede hacer para ocultar columnas):
--- se revoca su SELECT a anon y authenticated. El catálogo público (nombre, foto,
--- especialidades, rating, bio) sigue abierto. El admin las lee por service_role
--- (getBarberosContrato, que ANTES verifica rol='admin') y las edita con
--- actualizarContratoBarbero (que solo hace .select('id'), no lee estas columnas).
+-- OJO (esto se aprendió aplicando la 1ª versión): un `revoke select (col) ... from`
+-- NO sirve cuando existe un GRANT de SELECT a nivel de TABLA (el default de Supabase
+-- `grant all on all tables to anon, authenticated` lo tiene), porque el grant de
+-- tabla ya cubre TODA columna y el revoke de columna es un no-op silencioso. La única
+-- forma de ocultar columnas es: REVOCAR el SELECT de tabla y volver a GRANTear SELECT
+-- SOLO en las columnas públicas.
 --
--- No toca la policy viva (sin ventana deny-all). Idempotente: REVOKE de un permiso
--- ya ausente no falla. Aplicar manualmente en el SQL Editor.
+-- El catálogo público (nombre, foto, especialidades, rating, bio) sigue abierto. El
+-- admin lee el contrato por service_role (getBarberosContrato, que antes verifica
+-- rol='admin') y lo edita con actualizarContratoBarbero (que solo hace .select('id')).
+-- postgres y service_role no se tocan. Aplicar manualmente en el SQL Editor.
+--
+-- REQUISITO DE ORDEN: aplicar SOLO después de desplegar el código que quita esas
+-- columnas de getBarberos; si no, el getBarberos viejo (que las pide con la anon key)
+-- daría "permission denied for column" y rompería la web.
 
-revoke select (tipo_contrato, comision_pct, arriendo_mensual)
-  on public.barberos from anon, authenticated;
+revoke select on public.barberos from anon, authenticated;
+
+grant select (id, profile_id, nombre, sede_id, foto_url, destacado, activo, orden, rating, resenas, creado_en, bio)
+  on public.barberos to anon, authenticated;
 
 -- Que PostgREST recargue los privilegios de columna.
 notify pgrst, 'reload schema';
