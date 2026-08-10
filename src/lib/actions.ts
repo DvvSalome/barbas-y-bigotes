@@ -1467,27 +1467,11 @@ export async function completarReserva(input: {
     if (revErr) errorPublico("completarReserva revertir", revErr);
   }
 
-  // 2) Reservar el uso del cupón ANTES de armar/insertar la venta. bump_cupon_uso
-  //    es atómico (0008: incrementa solo si usos < usos_max, devuelve found), así
-  //    que reservar el uso primero cierra la carrera de dos cobros casi simultáneos
-  //    con un cupón de 1 uso: solo uno consigue el uso, el otro se rechaza acá SIN
-  //    haber cobrado el descuento. Antes el bump iba al final y su `false` (tope
-  //    alcanzado) se ignoraba → ambos cobros aplicaban el mismo cupón.
-  //    TRADEOFF documentado: si la venta/ítems fallan DESPUÉS de este bump, el uso
-  //    queda consumido (no hay decremento: cupones es escritura solo-admin por RLS
-  //    y agregar una RPC de reverso excede este fix). Es un caso raro y el peor
-  //    resultado es que un cupón quede "gastado" sin cobro — nunca un doble cobro.
-  if (cuponCodigo) {
-    const { data: bumped, error: cupErr } = await sb.rpc("bump_cupon_uso", { p_codigo: cuponCodigo });
-    if (cupErr) {
-      await revertirClaim();
-      return { ok: false, error: errorPublico("completarReserva bump_cupon_uso", cupErr, "No se pudo aplicar el cupón. Intenta de nuevo.") };
-    }
-    if (bumped === false) {
-      await revertirClaim();
-      return { ok: false, error: "Cupón agotado." };
-    }
-  }
+  // 2) El uso del cupón se sube DESPUÉS de la venta (paso 6), no antes: ver la nota
+  //    ahí. Subirlo antes hacía que, en la venta RÁPIDA (sin claim de reserva), un
+  //    doble-toque con el mismo idem_token gastara DOS usos —la 2ª venta rebotaba con
+  //    23505 recién en el INSERT, después del bump—. Ahora el bump va tras la barrera
+  //    de idempotencia, así el doble-toque ni llega a él.
 
   // 3) Auto-open de caja ANTES de insertar la venta: el panel/cierre de caja solo
   //    cuenta ventas con creado_en >= abierta_en, y la primera venta del día quedaba
@@ -1522,8 +1506,9 @@ export async function completarReserva(input: {
     .select("id")
     .single();
   if (error || !venta) {
-    // 23505 = ya existe una venta para esta reserva/token: quedó cobrada, no revertir
-    // (la venta ganadora ya consumió el uso del cupón; revertirlo lo desharía mal).
+    // 23505 = ya existe una venta para esta reserva/token: quedó cobrada. Este cobro
+    // "perdedor" no tocó nada (el cupón se sube DESPUÉS de la venta, paso 6, así que
+    // esta llamada ni bumpeó): solo retorna. La ganadora sube el uso tras su insert.
     if (error?.code === "23505") {
       const yaMsg = input.reservaId ? "Esta cita ya fue cobrada." : "Esta venta ya fue cobrada.";
       return { ok: false, error: errorPublico("completarReserva", error, yaMsg) };
@@ -1545,9 +1530,24 @@ export async function completarReserva(input: {
     }
   }
 
-  // 6) Efectos secundarios: la venta ya quedó registrada; si algo de esto falla
+  // 6) Subir el uso del cupón: recién ACÁ, con la venta (+ ítems) ya committeada y
+  //    pasada la barrera anti doble-cobro (claim de reserva / unique index de
+  //    idem_token). Así un doble-toque de la venta rápida NO llega a este bump (la 2ª
+  //    llamada ya rebotó con 23505). bump_cupon_uso es atómico (0008: sube solo si
+  //    usos < usos_max). TRADEOFF: dos cobros DISTINTOS que corran por el ÚLTIMO uso a
+  //    la vez podrían ambos aplicar el descuento (el bump atómico topa al 2º y esa
+  //    venta queda sin uso contado) → un cupón puede pasarse en 1 canje. Caso raro y
+  //    el peor efecto es ese, nunca un doble cobro. Best-effort: la venta ya está hecha,
+  //    un fallo del bump se loguea pero no la tumba.
+  if (cuponCodigo) {
+    const { data: bumped, error: cupErr } = await sb.rpc("bump_cupon_uso", { p_codigo: cuponCodigo });
+    if (cupErr) errorPublico("completarReserva bump_cupon_uso", cupErr);
+    else if (bumped === false)
+      errorPublico("completarReserva cupon sobre tope", { message: `cupón ${cuponCodigo} superó su tope en carrera` });
+  }
+
+  // 7) Efectos secundarios: la venta ya quedó registrada; si algo de esto falla
   //    NO se aborta el cobro, pero SIEMPRE queda log (nunca tragar en silencio).
-  //    (El uso del cupón ya se reservó en el paso 2, antes de la venta.)
   for (const it of items) {
     if (it.tipo !== "producto") continue;
     const { error: stockErr } = await sb.rpc("decrement_stock", { p_id: it.ref_id, p_qty: it.cantidad });

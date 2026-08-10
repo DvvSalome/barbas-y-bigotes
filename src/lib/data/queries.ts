@@ -594,6 +594,15 @@ export async function getListaEspera(
   sedeId?: string | null,
 ): Promise<EsperaItem[]> {
   const sb = await supabaseServerAuth();
+  // El login PERSONAL de barbero no trae sede en su perfil (StaffContext.sedeId=null),
+  // pero SU ficha sí. Sin acotar por sede, el `.or(barbero_id.is.null)` de abajo le
+  // mostraría las entradas "cualquiera" —con nombre y teléfono del cliente— de la OTRA
+  // sede. Se resuelve la sede del barbero y se acota igual que el rol `sede`.
+  let sedeScope = sedeId ?? null;
+  if (!sedeScope && barberoId) {
+    const { data: b } = await sb.from("barberos").select("sede_id").eq("id", barberoId).maybeSingle();
+    sedeScope = (b as { sede_id?: string } | null)?.sede_id ?? null;
+  }
   let q = sb
     .from("lista_espera")
     .select(
@@ -603,9 +612,10 @@ export async function getListaEspera(
       "id,sede_id,barbero_id,estado,creado_en,cliente_nombre,telefono,servicios(nombre),barberos!lista_espera_barbero_id_fkey(nombre)",
     )
     .in("estado", ["esperando", "notificado"]);
-  // Un barbero ve los suyos + los que esperan a "cualquiera"; el admin (sin filtro) ve todo.
+  // Un barbero ve los suyos + los que esperan a "cualquiera" (de su sede); el admin
+  // (sin filtro) ve todo.
   if (barberoId) q = q.or(`barbero_id.eq.${barberoId},barbero_id.is.null`);
-  if (sedeId) q = q.eq("sede_id", sedeId);
+  if (sedeScope) q = q.eq("sede_id", sedeScope);
   const { data, error } = await q.order("creado_en");
   // No tragarse el error: un fallo de esquema/RLS no debe leerse como "nadie en espera".
   if (error) console.error("getListaEspera:", error.message);
