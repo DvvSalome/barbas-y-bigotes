@@ -8,10 +8,15 @@ import { createReserva, getDisponibilidad } from "@/lib/actions";
 import { cancelarReservaReciente } from "@/lib/cliente-actions";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import type { Sede, SedeId, Servicio, Barbero, Categoria } from "@/lib/data/types";
-import type { BebidaUpsell, Ausencia, DiaEspecial } from "@/lib/data/queries";
+import type { BebidaUpsell, Ausencia, DiaEspecial, HorarioSemanal } from "@/lib/data/queries";
 import { cop } from "@/lib/format";
 import { ScissorsIcon } from "@/components/icons";
-import { DOW, MON, STEP, OPEN, CLOSE, fmtTime, buildSlots } from "@/lib/slots";
+import { DOW, MON, STEP, OPEN, CLOSE, fmtTime, buildSlots, horarioEfectivo, type VentanaDia } from "@/lib/slots";
+
+// YYYY-MM-DD de un Date por sus componentes LOCALES (mismo criterio con que se
+// rotulan los chips de día); horarioEfectivo lo re-ancla a mediodía UTC para el dow.
+const ymdLocal = (d: Date) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
 // ------------------------------------------------------------------
 //  WIZARD DE RESERVA — recreación 1:1 del prototipo (Claude Design).
@@ -124,6 +129,7 @@ export function BookingWizard({
   bebidas,
   ausencias,
   diasEspeciales,
+  horarioSemanal,
   initialBarberoId,
   initialSedeId,
 }: {
@@ -133,6 +139,7 @@ export function BookingWizard({
   bebidas: BebidaUpsell[];
   ausencias: Ausencia[];
   diasEspeciales: DiaEspecial[];
+  horarioSemanal: HorarioSemanal[];
   initialBarberoId?: string;
   initialSedeId?: SedeId;
 }) {
@@ -229,29 +236,45 @@ export function BookingWizard({
     return new Set(ausencias.filter((a) => a.fecha === ymd).map((a) => a.barberoId));
   }, [ausencias, day, ahora]);
 
-  // Días disponibles: próximos días hábiles (domingos cerrado). Estable entre renders.
-  // Días ofrecidos: por defecto lun-sáb, pero el dueño puede abrir un domingo o
-  // cerrar un festivo desde el admin (sede_dias_especiales). Depende de la sede
-  // porque una puede abrir y la otra no.
+  // Horario de la sede activa, partido en base semanal + excepciones de fecha.
+  // horarioEfectivo (misma función que valida el server) resuelve la cascada:
+  // excepción del día → base de ese día de semana → respaldo 9-20 / domingo cerrado.
+  const semanalSede = useMemo(() => horarioSemanal.filter((h) => h.sede === sedeId), [horarioSemanal, sedeId]);
+  const especialesSede = useMemo(() => diasEspeciales.filter((e) => e.sede === sedeId), [diasEspeciales, sedeId]);
+
+  // Días disponibles: próximos días que la sede ABRE (según su horario efectivo).
+  // El dueño puede cerrar un día fijo de la semana, abrir un domingo o cambiar un
+  // festivo desde el admin; acá se refleja tal cual. Depende de la sede porque una
+  // puede abrir y la otra no.
   const dias = useMemo<Date[]>(() => {
-    const ymd = (d: Date) =>
-      `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-    const excepciones = new Map(
-      diasEspeciales.filter((e) => e.sede === sedeId).map((e) => [e.fecha, e.abierta]),
-    );
     const out: Date[] = [];
     const base = new Date(ahora);
     for (let i = 0; out.length < 6 && i < 21; i++) {
       const d = new Date(base);
       d.setDate(base.getDate() + i);
-      const exc = excepciones.get(ymd(d));
-      const abre = exc !== undefined ? exc : d.getDay() !== 0; // default: domingo cerrado
-      if (abre) out.push(d);
+      if (horarioEfectivo(ymdLocal(d), semanalSede, especialesSede).abierta) out.push(d);
     }
     return out;
-  }, [diasEspeciales, sedeId, ahora]);
+  }, [semanalSede, especialesSede, ahora]);
 
-  const slots = useMemo(() => (servicio ? buildSlots(servicio.duracionMin) : ([] as number[])), [servicio]);
+  // Ventana efectiva del día elegido; de ahí salen los slots (alineados a su apertura).
+  const ventanaDia = useMemo<VentanaDia>(
+    () => (day ? horarioEfectivo(ymdLocal(day), semanalSede, especialesSede) : { abierta: false, abreMin: OPEN, cierraMin: CLOSE }),
+    [day, semanalSede, especialesSede],
+  );
+  // Ventana de HOY: para el chip "en vivo" del paso 3 (barbero libre / fuera de horario).
+  const ventanaHoy = useMemo<VentanaDia>(
+    () => horarioEfectivo(ymdLocal(new Date(ahora)), semanalSede, especialesSede),
+    [semanalSede, especialesSede, ahora],
+  );
+
+  const slots = useMemo(
+    () =>
+      servicio && ventanaDia.abierta
+        ? buildSlots(servicio.duracionMin, ventanaDia.abreMin, ventanaDia.cierraMin)
+        : ([] as number[]),
+    [servicio, ventanaDia],
+  );
   const dur = servicio?.duracionMin ?? STEP;
 
   // Al entrar al paso horario sin día elegido, preselecciona el primero (proto muestra "Hoy").
@@ -553,16 +576,16 @@ export function BookingWizard({
       // devuelve 00:00–23:59 para tapar todos los slots). Sin distinguirla, el
       // chip decía "En silla · sale 11:59 pm": el barbero ni siquiera estaba en
       // la barbería y el sitio lo mostraba atendiendo hasta medianoche.
-      if (desdeMin <= OPEN && hastaMin >= CLOSE) {
+      if (desdeMin <= ventanaHoy.abreMin && hastaMin >= ventanaHoy.cierraMin) {
         return { tipo: "cerrado", label: "No atiende hoy" };
       }
       return { tipo: "silla", label: `En silla · sale ${fmtTime(hastaMin)}` };
     }
-    // Fuera del horario de la barbería (domingo, antes de abrir o después de cerrar)
+    // Fuera del horario de la barbería (día cerrado, antes de abrir o tras cerrar):
     // "Libre ahora" (verde) engaña: no está trabajando. Se muestra neutro.
     const d = new Date(now);
     const min = d.getHours() * 60 + d.getMinutes();
-    if (d.getDay() === 0 || min < OPEN || min >= CLOSE) {
+    if (!ventanaHoy.abierta || min < ventanaHoy.abreMin || min >= ventanaHoy.cierraMin) {
       // Corto a propósito: "Disponible para reservar" no cabía en la card móvil
       // (~161px de ancho) y partía el chip en dos líneas.
       return { tipo: "cerrado", label: "Puedes reservar" };
@@ -949,7 +972,9 @@ export function BookingWizard({
         {step === "sede" && (
           <div>
             <h2 className="font-display text-[26px] font-extrabold uppercase leading-none">¿En qué sede?</h2>
-            <p className="mt-1.5 text-xs text-muted">Las dos abren de lunes a sábado, 9 am – 8 pm.</p>
+            {/* Sin horas fijas acá: cambian por sede y día, y el dueño las edita. El
+                día y la hora reales salen en el paso 4 y en "Horarios de atención". */}
+            <p className="mt-1.5 text-xs text-muted">Elige el local; el día y la hora los ves en seguida.</p>
             <div className="mt-5 flex flex-col gap-3 md:grid md:grid-cols-[repeat(auto-fit,minmax(340px,1fr))] md:gap-4">
               {sedes.map((s) => {
                 const sel = sedeId === s.id;
@@ -1211,12 +1236,13 @@ export function BookingWizard({
                     );
                   })}
                 </div>
+                {/* Horas REALES del día elegido (no un rango fijo): pueden cambiar por
+                    sede/día y las edita el dueño. Los chips de día ya muestran solo
+                    los días que la sede abre. */}
                 <p className="mt-3 hidden text-[11px] leading-relaxed text-muted md:block">
-                  Horario de la sede: 9:00 am a 8:00 pm.
-                  <br />
-                  {dias.some((d) => d.getDay() === 0)
-                    ? "Este domingo abrimos."
-                    : "Domingos cerrado."}
+                  {ventanaDia.abierta
+                    ? `Ese día atendemos de ${fmtTime(ventanaDia.abreMin)} a ${fmtTime(ventanaDia.cierraMin)}.`
+                    : "Ese día la sede no atiende."}
                 </p>
               </div>
 

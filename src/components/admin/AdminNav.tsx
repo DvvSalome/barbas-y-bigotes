@@ -33,6 +33,7 @@ const GRUPOS: readonly Grupo[] = [
     hijos: [
       { href: "/admin/equipo", label: "Barberos y PINes" },
       { href: "/admin/comisiones", label: "Comisiones y contratos" },
+      { href: "/admin/horarios", label: "Horarios" },
     ],
   },
   {

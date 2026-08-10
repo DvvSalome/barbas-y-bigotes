@@ -11,10 +11,81 @@ import {
   MARGEN_LLEGADA_HORAS,
   buildSlots,
   computeTaken,
+  horarioEfectivo,
+  slotEnVentana,
+  resumirSemana,
+  dowDeFecha,
   OPEN,
   CLOSE,
   STEP,
 } from "../src/lib/slots.ts";
+
+// ---- horarioEfectivo / slotEnVentana / resumirSemana (horarios editables) ----
+// Fuente de verdad única cliente+servidor: la cascada excepción → semana → respaldo,
+// la validación de slots contra la ventana, y el resumen del bloque público.
+function checkHorarioEfectivo() {
+  const fecha = "2026-08-15"; // sábado (dow 6)
+  const dow = dowDeFecha(fecha);
+  const semanal = [{ dow, abierta: true, abreMin: 540, cierraMin: 1200 }];
+
+  // Sin excepción → base semanal.
+  assert.deepEqual(
+    horarioEfectivo(fecha, semanal, []),
+    { abierta: true, abreMin: 540, cierraMin: 1200 },
+    "usa la base semanal cuando no hay excepción",
+  );
+  // Excepción cerrada gana sobre la base.
+  assert.equal(
+    horarioEfectivo(fecha, semanal, [{ fecha, abierta: false, abreMin: null, cierraMin: null }]).abierta,
+    false,
+    "excepción cerrada cierra el día",
+  );
+  // Excepción abierta con horas propias (caso sábado 1:00–4:30).
+  assert.deepEqual(
+    horarioEfectivo(fecha, semanal, [{ fecha, abierta: true, abreMin: 780, cierraMin: 990 }]),
+    { abierta: true, abreMin: 780, cierraMin: 990 },
+    "excepción con horas propias manda su franja",
+  );
+  // Excepción abierta SIN horas → cae en las de la base.
+  assert.deepEqual(
+    horarioEfectivo(fecha, semanal, [{ fecha, abierta: true, abreMin: null, cierraMin: null }]),
+    { abierta: true, abreMin: 540, cierraMin: 1200 },
+    "excepción abierta sin horas usa las de la base",
+  );
+  // Respaldo sin base ni excepción: domingo cerrado, hábil 9-20.
+  assert.equal(horarioEfectivo("2026-08-16", [], []).abierta, false, "respaldo: domingo cerrado");
+  assert.deepEqual(
+    horarioEfectivo("2026-08-17", [], []),
+    { abierta: true, abreMin: OPEN, cierraMin: CLOSE },
+    "respaldo: día hábil 9-20",
+  );
+
+  // slotEnVentana: alineado a la APERTURA de la ventana (no a OPEN), cabe completo.
+  const vent = { abierta: true, abreMin: 780, cierraMin: 990 }; // 13:00–16:30
+  assert.ok(slotEnVentana(780, 30, vent), "13:00 entra");
+  assert.ok(slotEnVentana(960, 30, vent), "16:00 entra (termina justo al cierre)");
+  assert.ok(!slotEnVentana(990, 30, vent), "16:30 no: no cabe antes del cierre");
+  assert.ok(!slotEnVentana(795, 30, vent), "13:15 no está alineado a STEP");
+  assert.ok(!slotEnVentana(540, 30, vent), "9:00 fuera de la ventana");
+  assert.ok(!slotEnVentana(780, 30, { abierta: false, abreMin: 780, cierraMin: 990 }), "día cerrado: nada");
+
+  // buildSlots con ventana custom arranca en abreMin y respeta el cierre.
+  const s = buildSlots(30, 780, 990);
+  assert.equal(s[0], 780, "buildSlots(30,13:00,16:30) arranca 13:00");
+  assert.equal(s[s.length - 1], 960, "último inicio 16:00");
+  assert.ok(!s.includes(990), "no ofrece inicio en el cierre");
+
+  // resumirSemana agrupa días consecutivos con la misma franja (caso del seed).
+  const seed = [0, 1, 2, 3, 4, 5, 6].map((d) => ({ dow: d, abierta: d !== 0, abreMin: 540, cierraMin: 1200 }));
+  const esperado = [
+    { dias: "Lun a Sáb", horas: "9:00 am a 8:00 pm" },
+    { dias: "Dom", horas: "Cerrado" },
+  ];
+  assert.deepEqual(resumirSemana(seed), esperado, "resumen agrupa lun-sáb y separa el domingo");
+  // Sin filas (migración 0048 aún sin aplicar): mismo resultado por el respaldo.
+  // Es el estado EXACTO que ve el footer hoy, antes de aplicar la migración.
+  assert.deepEqual(resumirSemana([]), esperado, "respaldo: sin base semanal, lun-sáb 9-20 y domingo cerrado");
+}
 
 // ---- buildSlots: grilla de inicios válidos, respeta el cierre (AUD-D-007) ----
 function checkBuildSlots() {
@@ -76,6 +147,7 @@ function checkComputeTakenBogota() {
 if (process.env.SLOTS_TZ_CHILD) {
   checkBuildSlots();
   checkComputeTakenBogota();
+  checkHorarioEfectivo();
   process.exit(0);
 }
 
@@ -135,6 +207,7 @@ assert.equal(faltaParaLlegar(citaISO, cita - 3 * 3600_000), "faltan 3h");
 // Grilla + ocupación anclada a Bogotá, en la TZ actual del proceso.
 checkBuildSlots();
 checkComputeTakenBogota();
+checkHorarioEfectivo();
 
 // Y lo mismo re-corrido en un proceso hijo con una TZ bien distinta a Bogotá:
 // caza cualquier regresión a la hora del dispositivo aunque la máquina de dev

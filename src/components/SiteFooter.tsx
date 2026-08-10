@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import { HorariosAtencion } from "@/components/HorariosAtencion";
 
 /*
   Footer del prototipo (spec §1.7 móvil + §5 desktop), centrado:
@@ -172,15 +173,13 @@ export function SiteFooter({ conCtaMovil = false }: { conCtaMovil?: boolean }) {
           </Link>
         </nav>
 
-        {/* Pill de horario */}
-        <div className="mt-6 inline-flex items-center gap-2.5 rounded-full border border-[rgba(242,237,228,0.1)] bg-[rgba(21,19,17,0.5)] px-5 py-[11px] text-[12.5px]">
-          <span className="text-muted">Lun – Sáb</span>
-          <span className="font-extrabold tabular-nums">9am – 8pm</span>
-          <span aria-hidden className="h-[3px] w-[3px] rounded-full bg-muted/60" />
-          <span className="font-bold text-accent-soft">Dom cerrado</span>
-        </div>
+        {/* Horarios reales por sede (semana + días especiales), del mismo
+            horarioEfectivo que arma los turnos: nunca contradice lo que se ve al
+            reservar. Reemplaza al pill fijo "Lun–Sáb 9am–8pm" que quedaba viejo cada
+            vez que el dueño cambiaba un horario. */}
+        <HorariosAtencion />
 
-        <p className="mt-3.5 text-[11.5px] text-muted">
+        <p className="mt-4 text-[11.5px] text-muted">
           Cancelaciones online hasta 2 horas antes de tu cita.
         </p>
 

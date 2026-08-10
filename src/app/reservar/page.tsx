@@ -7,6 +7,7 @@ import {
   getBebidasUpsell,
   getAusencias,
   getDiasEspeciales,
+  getHorarioSemanal,
 } from "@/lib/data/queries";
 
 export const metadata: Metadata = {
@@ -23,13 +24,14 @@ export default async function ReservarPage({
   searchParams: Promise<{ barbero?: string; sede?: string }>;
 }) {
   const { barbero, sede } = await searchParams;
-  const [sedes, barberos, servicios, bebidas, ausencias, diasEspeciales] = await Promise.all([
+  const [sedes, barberos, servicios, bebidas, ausencias, diasEspeciales, horarioSemanal] = await Promise.all([
     getSedes(),
     getBarberos(),
     getServicios(),
     getBebidasUpsell(),
     getAusencias(),
     getDiasEspeciales(),
+    getHorarioSemanal(),
   ]);
   const initialSedeId = sedes.find((s) => s.id === sede)?.id;
   return (
@@ -41,6 +43,7 @@ export default async function ReservarPage({
         bebidas={bebidas}
         ausencias={ausencias}
         diasEspeciales={diasEspeciales}
+        horarioSemanal={horarioSemanal}
         initialBarberoId={barbero}
         initialSedeId={initialSedeId}
       />

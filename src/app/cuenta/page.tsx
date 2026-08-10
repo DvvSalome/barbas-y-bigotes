@@ -10,7 +10,7 @@ import { CitaAcciones } from "@/components/cuenta/CitaAcciones";
 import { CalificarServicio } from "@/components/cuenta/CalificarServicio";
 import { ensureCliente } from "@/lib/cliente-actions";
 import { TarjetaFidelidad } from "@/components/cuenta/TarjetaFidelidad";
-import { getCuenta, getReservaSinCalificar } from "@/lib/data/queries";
+import { getCuenta, getReservaSinCalificar, getHorarioSemanal, getDiasEspeciales } from "@/lib/data/queries";
 
 export const metadata: Metadata = { title: "Mi cuenta" };
 
@@ -116,9 +116,11 @@ export default async function CuentaPage() {
 }
 
 async function Portal({ clienteId, nombre, avatarUrl }: { clienteId: string; nombre?: string; avatarUrl?: string | null }) {
-  const [{ proximas, pasadas, tarjeta, cola }, sinCalificar] = await Promise.all([
+  const [{ proximas, pasadas, tarjeta, cola }, sinCalificar, horarioSemanal, diasEspeciales] = await Promise.all([
     getCuenta(clienteId),
     getReservaSinCalificar(clienteId),
+    getHorarioSemanal(),
+    getDiasEspeciales(),
   ]);
 
   // Los turnos llamados (notificado) son el momento estrella; la espera va aparte.
@@ -321,6 +323,8 @@ async function Portal({ clienteId, nombre, avatarUrl }: { clienteId: string; nom
                       barberoId={r.barberoId}
                       duracionMin={r.duracionMin}
                       inicio={r.inicio}
+                      horarioSemanal={horarioSemanal.filter((h) => h.sede === r.sede)}
+                      diasEspeciales={diasEspeciales.filter((d) => d.sede === r.sede)}
                     />
                   </div>
                   {prop && (

@@ -1,23 +1,22 @@
 import type { Metadata } from "next";
-import { getBarberos, getSedes, getAusencias, getDiasEspeciales } from "@/lib/data/queries";
+import Link from "next/link";
+import { getBarberos, getSedes, getAusencias } from "@/lib/data/queries";
 import { bogotaYmd } from "@/lib/slots";
 import { getBarberosPinEstado, getSedesPinEstado } from "@/lib/barbero-auth";
 import { SectionHeader } from "@/components/admin/SectionHeader";
 import { EquipoPinAdmin } from "@/components/admin/EquipoPinAdmin";
 import { SedePinAdmin } from "@/components/admin/SedePinAdmin";
 import { AusenciasAdmin } from "@/components/admin/AusenciasAdmin";
-import { DiasEspecialesAdmin } from "@/components/admin/DiasEspecialesAdmin";
 
 export const metadata: Metadata = { title: "Equipo · Admin" };
 
 export default async function EquipoPage() {
-  const [barberos, sedes, estado, estadoSedes, ausencias, diasEspeciales] = await Promise.all([
+  const [barberos, sedes, estado, estadoSedes, ausencias] = await Promise.all([
     getBarberos(),
     getSedes(),
     getBarberosPinEstado(),
     getSedesPinEstado(),
     getAusencias(),
-    getDiasEspeciales(),
   ]);
   return (
     <div className="max-w-3xl">
@@ -54,15 +53,17 @@ export default async function EquipoPage() {
         </div>
       </div>
 
-      <div className="mt-10">
-        <SectionHeader
-          eyebrow="Calendario"
-          title="Días especiales"
-          description="Abre un domingo o un festivo, o cierra un día hábil. Por defecto se atiende de lunes a sábado."
-        />
-        <div className="mt-5">
-          <DiasEspecialesAdmin sedes={sedes} dias={diasEspeciales} />
-        </div>
+      {/* El horario de la sede (semana + días especiales) se movió a su propia
+          sección "Horarios": acá viven las cosas del EQUIPO (personas), allá las
+          del LOCAL (cuándo abre). */}
+      <div className="mt-10 rounded-2xl border border-line bg-panel px-4 py-4">
+        <p className="text-[13px] text-muted">
+          ¿Buscas los horarios de la barbería (abrir un festivo, cambiar un sábado)? Ahora están en{" "}
+          <Link href="/admin/horarios" className="font-semibold text-accent-soft hover:underline">
+            Equipo → Horarios
+          </Link>
+          .
+        </p>
       </div>
     </div>
   );

@@ -10,6 +10,11 @@ export const metadata: Metadata = {
     "Barbas & Bigotes: tradición, estilo y cuidado para el caballero moderno en Barranquilla. El ritual clásico de la barbería con técnicas tradicionales y tendencias actuales.",
 };
 
+// ISR de 10 min (igual que / y /barberos): el footer muestra "Horarios de atención"
+// desde la BD; sin esto la página quedaba 100% estática y congelaba los horarios al
+// build. Los cambios del dueño se reflejan en ≤10 min sin redeploy.
+export const revalidate = 600;
+
 // Pilares (spec §4, L4243-4248) — copy y glyphs LITERALES.
 const PILARES = [
   {

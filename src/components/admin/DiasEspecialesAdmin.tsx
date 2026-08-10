@@ -24,6 +24,19 @@ const esDomingo = (ymd: string) => {
   return new Date(y, m - 1, d).getDay() === 0;
 };
 
+const minToTime = (m: number) =>
+  `${Math.floor(m / 60).toString().padStart(2, "0")}:${(m % 60).toString().padStart(2, "0")}`;
+const timeToMin = (t: string) => {
+  const [h, mm] = t.split(":").map(Number);
+  return (h || 0) * 60 + (mm || 0);
+};
+const horaCorta = (m: number) => {
+  const h = Math.floor(m / 60);
+  const mm = m % 60;
+  const ap = h < 12 ? "am" : "pm";
+  return `${((h + 11) % 12) + 1}:${mm.toString().padStart(2, "0")} ${ap}`;
+};
+
 export function DiasEspecialesAdmin({
   sedes,
   dias,
@@ -37,17 +50,35 @@ export function DiasEspecialesAdmin({
   const [fecha, setFecha] = useState(hoy);
   const [abierta, setAbierta] = useState(true);
   const [motivo, setMotivo] = useState("");
+  // Horario propio del día: apagado = usa el de la semana; prendido = franja
+  // especial (el caso "este sábado 1:00-4:30").
+  const [horarioPropio, setHorarioPropio] = useState(false);
+  const [abreMin, setAbreMin] = useState(540);
+  const [cierraMin, setCierraMin] = useState(1200);
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
   async function guardar(e: React.FormEvent) {
     e.preventDefault();
     setErr(null);
+    if (abierta && horarioPropio && abreMin >= cierraMin) {
+      setErr("La hora de apertura debe ser antes de la de cierre.");
+      return;
+    }
     setSaving(true);
-    const res = await marcarDiaEspecial({ sede, fecha, abierta, motivo });
+    const res = await marcarDiaEspecial({
+      sede,
+      fecha,
+      abierta,
+      motivo,
+      // Solo cuando abre con horario propio; si no, null = el de la semana.
+      abreMin: abierta && horarioPropio ? abreMin : null,
+      cierraMin: abierta && horarioPropio ? cierraMin : null,
+    });
     setSaving(false);
     if (res.ok) {
       setMotivo("");
+      setHorarioPropio(false);
       router.refresh();
     } else setErr(res.error ?? "No se pudo guardar.");
   }
@@ -105,6 +136,41 @@ export function DiasEspecialesAdmin({
           ))}
         </div>
 
+        {/* Horario propio del día: solo tiene sentido si ese día se abre. */}
+        {abierta && (
+          <div className="rounded-lg border border-line bg-bg px-3 py-2.5 sm:col-span-4">
+            <label className="flex cursor-pointer items-center gap-2 text-[13px] text-ink">
+              <input
+                type="checkbox"
+                checked={horarioPropio}
+                onChange={(e) => setHorarioPropio(e.target.checked)}
+                className="accent-accent"
+              />
+              Ese día con un horario distinto al de siempre
+            </label>
+            {horarioPropio && (
+              <div className="mt-2.5 flex flex-wrap items-center gap-2 text-[13px] text-muted">
+                <span>de</span>
+                <input
+                  type="time"
+                  step={1800}
+                  value={minToTime(abreMin)}
+                  onChange={(e) => setAbreMin(timeToMin(e.target.value))}
+                  className={input}
+                />
+                <span>a</span>
+                <input
+                  type="time"
+                  step={1800}
+                  value={minToTime(cierraMin)}
+                  onChange={(e) => setCierraMin(timeToMin(e.target.value))}
+                  className={input}
+                />
+              </div>
+            )}
+          </div>
+        )}
+
         <input
           value={motivo}
           onChange={(e) => setMotivo(e.target.value)}
@@ -113,8 +179,8 @@ export function DiasEspecialesAdmin({
         />
 
         <p className="text-[11.5px] leading-relaxed text-muted sm:col-span-4">
-          Por defecto se atiende de lunes a sábado, 9:00 am a 8:00 pm. Acá solo se marcan las
-          excepciones. Si un barbero no va ese día, marcalo como ausente arriba.
+          Estas son EXCEPCIONES a un día puntual. El horario de siempre se cambia arriba. Si un
+          barbero no va ese día, marcalo como ausente en Equipo.
         </p>
 
         {err && (
@@ -155,6 +221,11 @@ export function DiasEspecialesAdmin({
                     >
                       {d.abierta ? "Abrimos" : "Cerramos"}
                     </span>
+                    {d.abierta && d.abreMin != null && d.cierraMin != null && (
+                      <span className="rounded-full bg-accent/10 px-2 py-0.5 text-[10.5px] font-semibold text-accent-soft">
+                        {horaCorta(d.abreMin)} – {horaCorta(d.cierraMin)}
+                      </span>
+                    )}
                     {d.abierta && esDomingo(d.fecha) && (
                       <span className="rounded-full border border-line px-2 py-0.5 text-[10px] text-muted">
                         domingo

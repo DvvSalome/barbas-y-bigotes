@@ -155,6 +155,35 @@ export type DiaEspecial = {
   cierraMin: number | null;
 };
 
+export type HorarioSemanal = {
+  sede: SedeId;
+  dow: number; // 0=domingo..6=sábado
+  abierta: boolean;
+  abreMin: number;
+  cierraMin: number;
+};
+
+// Horario base semanal por sede (migración 0048). Lectura pública: el wizard y el
+// bloque de "Horarios de atención" lo usan. Si la tabla aún no existe (migración
+// sin aplicar), devuelve [] y horarioEfectivo cae al respaldo 9-20; nada se rompe.
+export async function getHorarioSemanal(): Promise<HorarioSemanal[]> {
+  const sb = supabaseServer();
+  const { data, error } = await sb
+    .from("sede_horario_semanal")
+    .select("sede_id,dow,abierta,abre_min,cierra_min");
+  if (error) {
+    console.error("getHorarioSemanal:", error.message);
+    return [];
+  }
+  return ((data ?? []) as Record<string, unknown>[]).map((h) => ({
+    sede: h.sede_id as SedeId,
+    dow: h.dow as number,
+    abierta: h.abierta as boolean,
+    abreMin: h.abre_min as number,
+    cierraMin: h.cierra_min as number,
+  }));
+}
+
 // Excepciones de calendario de hoy en adelante (abrir un domingo, cerrar un
 // festivo). Lectura pública: el wizard arma con esto los días que ofrece.
 export async function getDiasEspeciales(): Promise<DiaEspecial[]> {

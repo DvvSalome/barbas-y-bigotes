@@ -4,7 +4,13 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getDisponibilidad } from "@/lib/actions";
 import { cancelarReservaCliente, reagendarReservaCliente } from "@/lib/cliente-actions";
-import { DOW, fmtTime, buildSlots, computeTaken, nextDays, CANCELACION_MIN_HORAS } from "@/lib/slots";
+import { DOW, fmtTime, buildSlots, computeTaken, nextDays, horarioEfectivo, CANCELACION_MIN_HORAS } from "@/lib/slots";
+import type { HorarioSemanal, DiaEspecial } from "@/lib/data/queries";
+
+// YYYY-MM-DD por componentes LOCALES (como se rotulan los chips); horarioEfectivo
+// lo re-ancla a mediodía UTC para el día de la semana.
+const ymdLocal = (d: Date) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
 const WA_NUM = "573006734799";
 
@@ -23,11 +29,16 @@ export function CitaAcciones({
   barberoId,
   duracionMin,
   inicio,
+  horarioSemanal,
+  diasEspeciales,
 }: {
   reservaId: string;
   barberoId: string | null;
   duracionMin: number;
   inicio: string;
+  // Ya vienen filtrados por la sede de ESTA cita (los filtra /cuenta).
+  horarioSemanal: HorarioSemanal[];
+  diasEspeciales: DiaEspecial[];
 }) {
   const router = useRouter();
   const [confirmCancel, setConfirmCancel] = useState(false);
@@ -125,6 +136,8 @@ export function CitaAcciones({
           reservaId={reservaId}
           barberoId={barberoId}
           duracionMin={duracionMin}
+          horarioSemanal={horarioSemanal}
+          diasEspeciales={diasEspeciales}
           onDone={() => {
             setRescheduleOpen(false);
             router.refresh();
@@ -142,14 +155,21 @@ function ReagendarPanel({
   reservaId,
   barberoId,
   duracionMin,
+  horarioSemanal,
+  diasEspeciales,
   onDone,
 }: {
   reservaId: string;
   barberoId: string | null;
   duracionMin: number;
+  horarioSemanal: HorarioSemanal[];
+  diasEspeciales: DiaEspecial[];
   onDone: () => void;
 }) {
-  const days = nextDays(7);
+  // Solo los próximos días que la sede ABRE (horario efectivo: excepción → semana →
+  // respaldo), mismo criterio que el wizard. Sin esto el panel ofrecía domingos y
+  // el server los rechazaba después.
+  const days = nextDays(7).filter((d) => horarioEfectivo(ymdLocal(d), horarioSemanal, diasEspeciales).abierta);
   const [day, setDay] = useState<Date | null>(null);
   const [ocupados, setOcupados] = useState<{ inicio: string; fin: string }[]>([]);
   const [cargando, setCargando] = useState(false);
@@ -157,7 +177,9 @@ function ReagendarPanel({
   const [err, setErr] = useState<string | null>(null);
   const reqId = useRef(0);
 
-  const slots = buildSlots(duracionMin);
+  // Slots dentro de la ventana REAL del día elegido (arranca a su hora de apertura).
+  const ventana = day ? horarioEfectivo(ymdLocal(day), horarioSemanal, diasEspeciales) : null;
+  const slots = ventana?.abierta ? buildSlots(duracionMin, ventana.abreMin, ventana.cierraMin) : [];
   const taken = day ? computeTaken({ slots, ocupados, day, duracionMin }) : new Set<number>();
 
   async function pickDay(d: Date) {
@@ -177,8 +199,9 @@ function ReagendarPanel({
   // del React Compiler). pickDay conserva su guard de carrera reqId.
   useEffect(() => {
     let cancel = false;
+    const primero = days[1] ?? days[0]; // "Mañana" si abre; si no, el primer día abierto
     Promise.resolve().then(() => {
-      if (!cancel) pickDay(days[1] ?? days[0]);
+      if (!cancel && primero) pickDay(primero);
     });
     return () => {
       cancel = true;

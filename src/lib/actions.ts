@@ -20,7 +20,14 @@ import { type SupabaseClient } from "@supabase/supabase-js";
 import { supabaseServerAuth, supabaseAdmin } from "@/lib/supabase/server";
 import { getStaffContext, getCorteIds, contarCortesCliente, precioCorteBase } from "@/lib/data/queries";
 import { clienteIdForUser } from "@/lib/cliente-actions";
-import { bogotaDayRange, bogotaYmd, finEfectivo, MARGEN_LLEGADA_HORAS, OPEN, CLOSE, STEP } from "@/lib/slots";
+import {
+  bogotaDayRange,
+  bogotaYmd,
+  finEfectivo,
+  MARGEN_LLEGADA_HORAS,
+  slotEnVentana,
+} from "@/lib/slots";
+import { ventanaDeDia } from "@/lib/horario";
 import { errorPublico } from "@/lib/errors";
 import { calcularCobro, snapshotDinero, diferenciaCaja } from "@/lib/cobro";
 import { beneficioProximoCorte, type BeneficioTarjeta } from "@/lib/tarjeta";
@@ -349,14 +356,28 @@ export async function marcarDiaEspecial(input: {
   fecha: string;
   abierta: boolean;
   motivo?: string;
+  /** Horario propio del día (minutos). null/undefined = usar el de la semana. */
+  abreMin?: number | null;
+  cierraMin?: number | null;
 }): Promise<ActionResult> {
   const sb = await supabaseServerAuth();
   const denied = await requireAdmin(sb);
   if (denied) return { ok: false, error: denied };
   if (!input.sede || !/^\d{4}-\d{2}-\d{2}$/.test(input.fecha)) return { ok: false, error: "Datos inválidos" };
   if (input.fecha < bogotaYmd()) return { ok: false, error: "No se puede cambiar una fecha pasada." };
+  // Horas del día especial: solo cuando se abre, y las dos juntas y coherentes.
+  // El CHECK de la tabla (0034) exige ambas null o ambas con abre<cierra en rango.
+  let abreMin: number | null = null;
+  let cierraMin: number | null = null;
+  if (input.abierta && input.abreMin != null && input.cierraMin != null) {
+    const a = Math.floor(input.abreMin);
+    const c = Math.floor(input.cierraMin);
+    if (!(a >= 0 && c <= 1440 && a < c)) return { ok: false, error: "El horario del día no es válido." };
+    abreMin = a;
+    cierraMin = c;
+  }
   // upsert: volver a marcar la misma fecha cambia la decisión en vez de fallar.
-  const { error } = await sb
+  const { data, error } = await sb
     .from("sede_dias_especiales")
     .upsert(
       {
@@ -364,11 +385,50 @@ export async function marcarDiaEspecial(input: {
         fecha: input.fecha,
         abierta: input.abierta,
         motivo: (input.motivo ?? "").trim() || null,
+        abre_min: abreMin,
+        cierra_min: cierraMin,
       },
       { onConflict: "sede_id,fecha" },
-    );
+    )
+    .select("id");
   if (error) return { ok: false, error: errorPublico("marcarDiaEspecial", error) };
+  if (!data || data.length === 0)
+    return { ok: false, error: "No se guardó el día especial: tu usuario no tiene permiso." };
+  revalidatePath("/admin/horarios");
   revalidatePath("/admin/equipo");
+  revalidatePath("/reservar");
+  return { ok: true };
+}
+
+// Horario base de un día de la semana de una sede (migración 0048). Solo admin.
+export async function actualizarHorarioSemanal(input: {
+  sede: string;
+  dow: number;
+  abierta: boolean;
+  abreMin: number;
+  cierraMin: number;
+}): Promise<ActionResult> {
+  const sb = await supabaseServerAuth();
+  const denied = await requireAdmin(sb);
+  if (denied) return { ok: false, error: denied };
+  if (!input.sede || !Number.isInteger(input.dow) || input.dow < 0 || input.dow > 6)
+    return { ok: false, error: "Datos inválidos" };
+  const a = Math.floor(input.abreMin);
+  const c = Math.floor(input.cierraMin);
+  // Siempre se guardan horas coherentes (aunque el día quede cerrado): el CHECK de
+  // 0048 las exige, y así al reabrir el día conserva su última franja.
+  if (!(a >= 0 && c <= 1440 && a < c)) return { ok: false, error: "El horario no es válido (abre antes de cerrar)." };
+  const { data, error } = await sb
+    .from("sede_horario_semanal")
+    .upsert(
+      { sede_id: input.sede, dow: input.dow, abierta: input.abierta, abre_min: a, cierra_min: c, actualizado_en: new Date().toISOString() },
+      { onConflict: "sede_id,dow" },
+    )
+    .select("dow");
+  if (error) return { ok: false, error: errorPublico("actualizarHorarioSemanal", error) };
+  if (!data || data.length === 0)
+    return { ok: false, error: "No se guardó el horario: tu usuario no tiene permiso." };
+  revalidatePath("/admin/horarios");
   revalidatePath("/reservar");
   return { ok: true };
 }
@@ -678,12 +738,14 @@ export async function createReserva(input: {
   const servicioNombre = (serv as { nombre?: string } | null)?.nombre ?? "Tu cita";
   const fin = new Date(inicio.getTime() + dur * 60000);
 
-  // Horario de atención (autoritativo): el inicio tiene que estar alineado al paso
-  // y caber dentro de [OPEN, CLOSE] en Bogotá. El wizard ya lo respeta; esto blinda
-  // el POST directo y el path del asistente IA (se reservaba a las 3am). Horas de
-  // slots.ts, sin re-derivar.
+  // Horario de atención (autoritativo): el inicio tiene que caber en la ventana
+  // REAL de ese día (excepción → semana → respaldo) y estar alineado al paso. El
+  // wizard ya lo respeta; esto blinda el POST directo y el path del asistente IA
+  // (se reservaba a las 3am). Misma función que ve el cliente, así no divergen.
   const minDia = minutoDelDiaBogota(inicio);
-  if (minDia < OPEN || minDia + dur > CLOSE || (minDia - OPEN) % STEP !== 0) {
+  const ventana = await ventanaDeDia(sb, input.sede, bogotaYmd(inicio));
+  if (!ventana.abierta) return { ok: false, error: "Ese día la barbería no atiende. Elige otra fecha." };
+  if (!slotEnVentana(minDia, dur, ventana)) {
     return { ok: false, error: "Ese horario está fuera del horario de atención." };
   }
 
@@ -721,22 +783,9 @@ export async function createReserva(input: {
     .limit(1);
   if (aus && aus.length) return { ok: false, error: "Ese barbero no atiende ese día. Elige otra fecha u otro barbero." };
 
-  // Guard de calendario: la sede cierra los domingos salvo que el dueño haya
-  // marcado ese día como abierto, y puede cerrar un día hábil por festivo. El
-  // wizard ya no ofrece esos días; esto blinda el POST directo.
-  const fechaYmd = bogotaYmd(inicio);
-  const { data: diaEsp } = await sb
-    .from("sede_dias_especiales")
-    .select("abierta")
-    .eq("sede_id", input.sede)
-    .eq("fecha", fechaYmd)
-    .maybeSingle();
-  const excepcion = (diaEsp as { abierta?: boolean } | null)?.abierta;
-  // getDay() sobre la fecha local del server no sirve (UTC): se deriva del YMD
-  // de Bogotá ya calculado, a mediodía para no cruzar husos.
-  const esDomingo = new Date(`${fechaYmd}T12:00:00Z`).getUTCDay() === 0;
-  const abre = excepcion !== undefined ? excepcion : !esDomingo;
-  if (!abre) return { ok: false, error: "Ese día la barbería no atiende. Elige otra fecha." };
+  // (El guard de calendario —día cerrado / domingo— ya lo cubre `ventana.abierta`
+  // de arriba, resuelto con horarioEfectivo. Antes había un chequeo aparte que
+  // solo miraba `abierta` e ignoraba las horas.)
 
   // Pre-chequeo de solape (UX: evita crear el cliente si el cupo ya está tomado).
   // El EXCLUDE constraint en la DB es la garantía real contra carreras concurrentes.
@@ -2243,15 +2292,16 @@ export async function proponerAdelanto(input: {
   }
 
   // Validación de la hora propuesta (antes se escribía a ojos cerrados): a futuro,
-  // dentro del horario de atención de Bogotá (OPEN/CLOSE/STEP de slots.ts) y ANTES
-  // de la hora actual de la cita (es un ADELANTO). El cliente re-valida al aceptar.
+  // dentro de la ventana REAL de ese día (horarioEfectivo) y ANTES de la hora
+  // actual de la cita (es un ADELANTO). El cliente re-valida al aceptar.
   const nuevo = new Date(input.inicioISO);
   if (Number.isNaN(nuevo.getTime())) return { ok: false, error: "La hora propuesta no es válida." };
   if (nuevo.getTime() <= Date.now()) return { ok: false, error: "Esa hora ya pasó. Proponé un horario a futuro." };
   if (nuevo.getTime() >= new Date(rRow.inicio).getTime())
     return { ok: false, error: "El adelanto tiene que ser antes de la hora actual de la cita." };
   const minDiaAdel = minutoDelDiaBogota(nuevo);
-  if (minDiaAdel < OPEN || minDiaAdel + dur > CLOSE || (minDiaAdel - OPEN) % STEP !== 0)
+  const ventanaAdel = await ventanaDeDia(admin, rRow.sede_id, bogotaYmd(nuevo));
+  if (!slotEnVentana(minDiaAdel, dur, ventanaAdel))
     return { ok: false, error: "Ese horario está fuera del horario de atención." };
 
   const fin = new Date(nuevo.getTime() + dur * 60000);

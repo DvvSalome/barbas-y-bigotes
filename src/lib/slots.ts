@@ -60,11 +60,94 @@ export function fmtDur(min: number): string {
   return `${m}m`;
 }
 
-// Slots de inicio válidos (min-desde-medianoche) para un servicio de `duracionMin`.
-export function buildSlots(duracionMin: number): number[] {
+// Slots de inicio válidos (min-desde-medianoche) para un servicio de `duracionMin`,
+// dentro de la ventana [abreMin, cierraMin]. Por defecto la ventana fija de siempre
+// (9-20), para que los llamadores que aún no pasan horas se comporten igual.
+export function buildSlots(duracionMin: number, abreMin: number = OPEN, cierraMin: number = CLOSE): number[] {
   const out: number[] = [];
-  for (let t = OPEN; t + duracionMin <= CLOSE; t += STEP) out.push(t);
+  for (let t = abreMin; t + duracionMin <= cierraMin; t += STEP) out.push(t);
   return out;
+}
+
+// ---- Horario efectivo por sede/fecha (fuente de verdad única) ----
+// El horario real de un día sale de resolver, en cascada: la excepción de esa
+// fecha (sede_dias_especiales) → el horario base de ese día de semana
+// (sede_horario_semanal) → el respaldo quemado (9-20, domingo cerrado) por si las
+// tablas todavía no existen o no tienen la fila. La MISMA función la usan el
+// cliente (para armar los turnos) y el servidor (para validar la reserva), así no
+// se pueden desincronizar.
+
+export type HorarioDia = { dow: number; abierta: boolean; abreMin: number; cierraMin: number };
+export type ExcepcionDia = { fecha: string; abierta: boolean; abreMin: number | null; cierraMin: number | null };
+export type VentanaDia = { abierta: boolean; abreMin: number; cierraMin: number };
+
+// Día de la semana (0=domingo..6=sábado) de un YYYY-MM-DD, anclado a mediodía UTC
+// para no cruzar de día por el huso (Bogotá es UTC-5). Mismo criterio que usaba
+// createReserva para "¿es domingo?".
+export function dowDeFecha(fechaYmd: string): number {
+  return new Date(`${fechaYmd}T12:00:00Z`).getUTCDay();
+}
+
+export function horarioEfectivo(
+  fechaYmd: string,
+  semanal: HorarioDia[],
+  especiales: ExcepcionDia[],
+): VentanaDia {
+  const dow = dowDeFecha(fechaYmd);
+  const base = semanal.find((h) => h.dow === dow) ?? null;
+  const exc = especiales.find((e) => e.fecha === fechaYmd) ?? null;
+  if (exc) {
+    if (!exc.abierta) return { abierta: false, abreMin: OPEN, cierraMin: CLOSE };
+    // Excepción abierta: sus horas propias; si no las trae, cae en las de la
+    // semana y, en última instancia, en el respaldo fijo.
+    return {
+      abierta: true,
+      abreMin: exc.abreMin ?? base?.abreMin ?? OPEN,
+      cierraMin: exc.cierraMin ?? base?.cierraMin ?? CLOSE,
+    };
+  }
+  if (base) return { abierta: base.abierta, abreMin: base.abreMin, cierraMin: base.cierraMin };
+  // Respaldo: el comportamiento de siempre (domingo cerrado, 9-20).
+  return { abierta: dow !== 0, abreMin: OPEN, cierraMin: CLOSE };
+}
+
+// Resume el horario BASE de la semana en filas legibles para el bloque público
+// "Horarios de atención", agrupando días consecutivos con la misma ventana:
+// [{dias:"Lun a Sáb", horas:"9:00 am a 8:00 pm"}, {dias:"Dom", horas:"Cerrado"}].
+// Solo mira la base semanal (las excepciones de fecha se listan aparte). Puro.
+export function resumirSemana(semanal: HorarioDia[]): { dias: string; horas: string }[] {
+  const orden = [1, 2, 3, 4, 5, 6, 0]; // lunes primero, como uno lee la semana
+  const celda = (dow: number): string => {
+    const base = semanal.find((h) => h.dow === dow);
+    if (base) return base.abierta ? `${fmtTime(base.abreMin)} a ${fmtTime(base.cierraMin)}` : "Cerrado";
+    // Respaldo si la tabla no tiene la fila (migración sin aplicar): 9-20, dom cerrado.
+    return dow !== 0 ? `${fmtTime(OPEN)} a ${fmtTime(CLOSE)}` : "Cerrado";
+  };
+  const filas: { dias: string; horas: string }[] = [];
+  let inicio: number | null = null;
+  for (let i = 0; i < orden.length; i++) {
+    const dow = orden[i];
+    if (inicio === null) inicio = dow;
+    const horas = celda(dow);
+    const siguiente = i + 1 < orden.length ? celda(orden[i + 1]) : null;
+    if (horas !== siguiente) {
+      filas.push({ dias: inicio === dow ? DOW[dow] : `${DOW[inicio]} a ${DOW[dow]}`, horas });
+      inicio = null;
+    }
+  }
+  return filas;
+}
+
+// ¿Un inicio (min-del-día) cae en un slot válido de esta ventana? Lo usa el
+// servidor para blindar el POST directo con el MISMO criterio que buildSlots
+// (alineado a abreMin, no a OPEN, porque la ventana puede empezar a otra hora).
+export function slotEnVentana(minInicio: number, duracionMin: number, v: VentanaDia): boolean {
+  return (
+    v.abierta &&
+    minInicio >= v.abreMin &&
+    minInicio + duracionMin <= v.cierraMin &&
+    (minInicio - v.abreMin) % STEP === 0
+  );
 }
 
 // Minuto-del-día (0..1439) de un instante EN Bogotá, sin depender del TZ del

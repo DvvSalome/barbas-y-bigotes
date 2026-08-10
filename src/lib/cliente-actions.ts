@@ -3,7 +3,8 @@
 import { type SupabaseClient } from "@supabase/supabase-js";
 import { supabaseServerAuth, supabaseAdmin } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
-import { CANCELACION_MIN_HORAS, OPEN, CLOSE, STEP, bogotaYmd } from "@/lib/slots";
+import { CANCELACION_MIN_HORAS, slotEnVentana, bogotaYmd } from "@/lib/slots";
+import { ventanaDeDia } from "@/lib/horario";
 import { errorPublico } from "@/lib/errors";
 import { pushACliente, pushABarbero, pushASede } from "@/lib/push";
 import { fechaHoraBogota } from "@/lib/format";
@@ -410,13 +411,19 @@ export async function reagendarReservaCliente(
     dur = (serv as { duracion_min?: number } | null)?.duracion_min ?? 30;
   }
   const nuevoFin = new Date(nuevoInicio.getTime() + dur * 60000);
+  const fechaYmd = bogotaYmd(nuevoInicio);
 
   // Guard de calendario/horario (F-001): reagendar nació como camino paralelo a
   // createReserva y NO copió estos guards, así que aceptaba domingos y horas fuera
-  // de rango (madrugada). Se validan las MISMAS reglas de negocio de slots.ts.
+  // de rango (madrugada). Se valida contra la ventana EFECTIVA de ese día
+  // (horarioEfectivo: excepción de la fecha → base de la semana → respaldo 9-20),
+  // el MISMO criterio que ve el cliente y que usa createReserva; ya no se re-derivan
+  // OPEN/CLOSE ni el "¿es domingo?" acá.
+  const ventana = await ventanaDeDia(admin, r.sede_id, fechaYmd);
+  if (!ventana.abierta)
+    return { ok: false, error: "Ese día la barbería no atiende. Elige otra fecha." };
   // Minuto-del-día en Bogotá (UTC-5 fijo): el instante viene en UTC, hay que anclar
-  // a Bogotá para no correrse contra OPEN/CLOSE. No re-derivamos las horas: OPEN/
-  // CLOSE/STEP salen de slots.ts.
+  // a Bogotá para no correrse contra la ventana.
   const hm = new Intl.DateTimeFormat("en-GB", {
     timeZone: "America/Bogota",
     hour: "2-digit",
@@ -426,15 +433,11 @@ export async function reagendarReservaCliente(
   const minDia =
     Number(hm.find((p) => p.type === "hour")?.value) * 60 +
     Number(hm.find((p) => p.type === "minute")?.value);
-  // Dentro del horario de atención y alineado a la grilla de STEP; y que el servicio
-  // completo entre antes del cierre (mismo criterio que buildSlots).
-  if (minDia < OPEN || minDia + dur > CLOSE || (minDia - OPEN) % STEP !== 0)
+  if (!slotEnVentana(minDia, dur, ventana))
     return { ok: false, error: "Ese horario no está disponible. Elige uno dentro del horario de atención." };
 
-  // Día abierto: la sede cierra los domingos salvo excepción del dueño, y puede
-  // cerrar un día hábil por festivo; el barbero puede tener el día marcado ausente.
-  // Mismos guards que createReserva (actions.ts) para blindar el reagendar directo.
-  const fechaYmd = bogotaYmd(nuevoInicio);
+  // Ausencia del barbero: esa persona no atiende ese día, aunque la sede sí abra
+  // (barbero_ausencias es un concepto aparte de la ventana de la sede).
   if (r.barbero_id) {
     const { data: aus } = await admin
       .from("barbero_ausencias")
@@ -445,17 +448,6 @@ export async function reagendarReservaCliente(
     if (aus && aus.length)
       return { ok: false, error: "Ese barbero no atiende ese día. Elige otra fecha." };
   }
-  const { data: diaEsp } = await admin
-    .from("sede_dias_especiales")
-    .select("abierta")
-    .eq("sede_id", r.sede_id)
-    .eq("fecha", fechaYmd)
-    .maybeSingle();
-  const excepcion = (diaEsp as { abierta?: boolean } | null)?.abierta;
-  // getUTCDay() sobre el YMD de Bogotá a mediodía, para no cruzar husos.
-  const esDomingo = new Date(`${fechaYmd}T12:00:00Z`).getUTCDay() === 0;
-  const abre = excepcion !== undefined ? excepcion : !esDomingo;
-  if (!abre) return { ok: false, error: "Ese día la barbería no atiende. Elige otra fecha." };
 
   // Pre-chequeo de solape del barbero, excluyendo la propia reserva.
   if (r.barbero_id) {
