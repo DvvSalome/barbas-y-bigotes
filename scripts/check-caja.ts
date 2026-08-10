@@ -112,6 +112,20 @@ import { snapshotDinero, diferenciaCaja } from "../src/lib/cobro.ts";
   assert.equal(diferenciaCaja(95_000, s.esperadoEfectivo), -4_000, "faltan $4.000 en el cajón");
 }
 
+// (k) Propina en EFECTIVO sobre una venta DIGITAL (0053, #16): entra al cajón aunque
+//     el servicio se pagó por Nequi. Sin propina_medio (casos a/j) seguía el medio de
+//     la venta y generaba un sobrante; marcada 'efectivo' va al cajón.
+{
+  const s = snapshotDinero([
+    { medio: "nequi", total: 30_000, propina: 5_000, propinaMedio: "efectivo" },
+    { medio: "efectivo", total: 20_000, propina: 2_000 },
+  ]);
+  assert.equal(s.efectivo, 20_000, "el TOTAL de ventas en efectivo no cambia (la propina va aparte)");
+  // Cajón = 20.000 efectivo + 2.000 propina efectivo + 5.000 propina en efectivo de la venta Nequi.
+  assert.equal(s.esperadoEfectivo, 27_000, "la propina en efectivo de una venta Nequi SÍ va al cajón");
+  assert.equal(s.ingresos, 50_000, "ingresos = todos los medios");
+}
+
 console.log(
   "check-caja OK — esperado = fondo + efectivo + propina efectivo − gastos; diferencia = contado − esperado",
 );

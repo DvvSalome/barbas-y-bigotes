@@ -1235,6 +1235,9 @@ export async function completarReserva(input: {
   medio: string;
   productos: { id: string; cantidad: number }[];
   propina?: number; // entero COP ≥ 0; NO entra al total
+  /** Medio con que se pagó la PROPINA si difiere del de la venta (0053). Hoy solo
+   *  'efectivo' desde el form ("propina en efectivo"). null/undefined = el de la venta. */
+  propinaMedio?: string | null;
   nota?: string;
   cuponCodigo?: string;
   idemToken?: string; // token de idempotencia (obligatorio en venta rápida)
@@ -1531,6 +1534,10 @@ export async function completarReserva(input: {
       descuento: cobro.descuento,
       cupon_codigo: cuponCodigo,
       propina: cobro.propina,
+      // Medio propio de la propina solo si hay propina y difiere del de la venta
+      // (0053); si no, null = va con el medio de la venta (compat).
+      propina_medio:
+        cobro.propina > 0 && input.propinaMedio && input.propinaMedio !== medio ? input.propinaMedio : null,
       beneficio_tarjeta: beneficioTarjeta,
       nota,
     })
@@ -1935,11 +1942,13 @@ async function snapshotCaja(
 }> {
   // Ventas de ESTA sesión por caja_sesion_id (0052), no por ventana de tiempo: así el
   // cierre no deja huérfana una venta que se confirmó justo mientras se cerraba (#08).
-  const vs = (await ventasDeSesion(admin, sedeId, sesionId, abiertaEnISO, "medio,total,propina")) as {
-    medio: string;
-    total: number;
-    propina: number | null;
-  }[];
+  const vs = (await ventasDeSesion(
+    admin,
+    sedeId,
+    sesionId,
+    abiertaEnISO,
+    "medio,total,propina,propinaMedio:propina_medio",
+  )) as { medio: string; total: number; propina: number | null; propinaMedio: string | null }[];
   const { data: gastos } = await admin
     .from("gastos")
     .select("monto")

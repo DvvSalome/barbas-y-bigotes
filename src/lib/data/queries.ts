@@ -717,16 +717,16 @@ export async function getCajaSesiones(): Promise<CajaSesionSede[]> {
     // y el cierre), para que el "esperado" salga del MISMO snapshotDinero que el cierre.
     const [vsRaw, gastosRes] = await Promise.all([
       sess
-        ? ventasDeSesion(sb, s.id, sess.id, sess.abierta_en, "medio,total,propina")
+        ? ventasDeSesion(sb, s.id, sess.id, sess.abierta_en, "medio,total,propina,propinaMedio:propina_medio")
         : sb
             .from("ventas")
-            .select("medio,total,propina")
+            .select("medio,total,propina,propinaMedio:propina_medio")
             .eq("sede_id", s.id)
             .gte("creado_en", start)
-            .then((r) => (r.data ?? []) as Record<string, unknown>[]),
+            .then((r) => (r.data ?? []) as unknown as Record<string, unknown>[]),
       sb.from("gastos").select("monto").eq("sede_id", s.id).gte("creado_en", start),
     ]);
-    const vs = vsRaw as { medio: string; total: number; propina: number | null }[];
+    const vs = vsRaw as { medio: string; total: number; propina: number | null; propinaMedio: string | null }[];
     const totalGastos = ((gastosRes.data ?? []) as { monto: number }[]).reduce((a, g) => a + g.monto, 0);
     const montoApertura = sess?.monto_apertura ?? 0;
     const snap = snapshotDinero(vs, { montoApertura, totalGastos });
@@ -780,10 +780,10 @@ export async function getCajaSede(sedeId: string): Promise<CajaSedeEstado> {
   // efectivo − gastos) y el mismo criterio de pertenencia, o el barbero ve un
   // "esperado" que no coincide con lo que sale al cerrar.
   const [vsRaw, gastosRes] = await Promise.all([
-    ventasDeSesion(admin, sedeId, ses.id, ses.abierta_en, "medio,total,propina"),
+    ventasDeSesion(admin, sedeId, ses.id, ses.abierta_en, "medio,total,propina,propinaMedio:propina_medio"),
     admin.from("gastos").select("monto").eq("sede_id", sedeId).gte("creado_en", ses.abierta_en),
   ]);
-  const vs = vsRaw as { medio: string; total: number; propina: number | null }[];
+  const vs = vsRaw as { medio: string; total: number; propina: number | null; propinaMedio: string | null }[];
   const totalGastos = ((gastosRes.data ?? []) as { monto: number }[]).reduce((a, g) => a + g.monto, 0);
   const { esperadoEfectivo, ingresos } = snapshotDinero(vs, {
     montoApertura: ses.monto_apertura ?? 0,
@@ -836,7 +836,7 @@ export async function getCajaDesglose(sedeId: string): Promise<CajaDesglose> {
       .eq("activo", true)
       .order("orden"),
     // Ventas de la SESIÓN (por caja_sesion_id, 0052), con su id para atribuir la comisión.
-    ventasDeSesion(admin, sedeId, ses.id, ses.abierta_en, "id,barbero_id,medio,total,propina"),
+    ventasDeSesion(admin, sedeId, ses.id, ses.abierta_en, "id,barbero_id,medio,total,propina,propinaMedio:propina_medio"),
     admin.from("gastos").select("monto").eq("sede_id", sedeId).gte("creado_en", ses.abierta_en),
   ]);
 
@@ -852,6 +852,7 @@ export async function getCajaDesglose(sedeId: string): Promise<CajaDesglose> {
     medio: string;
     total: number;
     propina: number | null;
+    propinaMedio: string | null;
   }[];
   const totalGastos = ((gastosRes.data ?? []) as { monto: number }[]).reduce((a, g) => a + g.monto, 0);
   // Comisión por barbero: se calcula sobre los venta_items (los servicios llevan el

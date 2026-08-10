@@ -87,7 +87,7 @@ export function AgendaList({
   servicios,
   preciosServicios,
   productos,
-  medios,
+  medios,
   elegirBarbero = false,
   mostrador,
   esperaSlot,
@@ -100,7 +100,7 @@ export function AgendaList({
   servicios: Servicio[];
   preciosServicios: PrecioServicioStaff[];
   productos: Producto[];
-  medios: MedioPago[];
+  medios: MedioPago[];
   /** El operador no tiene barbero propio (admin o perfil sede): debe poder elegir
    *  a qué barbero se atribuye una venta rápida. */
   elegirBarbero?: boolean;
@@ -242,7 +242,7 @@ export function AgendaList({
       servicios={servicios}
       preciosServicios={preciosServicios}
       productos={productos}
-      medios={medios}
+      medios={medios}
       elegirBarbero={elegirBarbero}
       onDone={() => {
         setCompleteFor(null);
@@ -431,7 +431,7 @@ export function AgendaList({
             servicios={servicios}
             preciosServicios={preciosServicios}
             productos={productos}
-            medios={medios}
+            medios={medios}
             elegirBarbero={elegirBarbero}
             onDone={() => {
               setVentaOpen(false);
@@ -660,7 +660,7 @@ function CheckoutForm({
   servicios,
   preciosServicios,
   productos,
-  medios,
+  medios,
   elegirBarbero = false,
   onDone,
   onCancel,
@@ -671,7 +671,7 @@ function CheckoutForm({
   servicios: Servicio[];
   preciosServicios: PrecioServicioStaff[];
   productos: Producto[];
-  medios: MedioPago[];
+  medios: MedioPago[];
   elegirBarbero?: boolean;
   onDone: () => void;
   onCancel?: () => void;
@@ -693,6 +693,7 @@ function CheckoutForm({
   const [prodQty, setProdQty] = useState<Record<string, number>>({});
   const [propina, setPropina] = useState(0);
   const [propinaOtra, setPropinaOtra] = useState(false); // "Otra…" abre el input libre
+  const [propinaEfectivo, setPropinaEfectivo] = useState(false); // propina en efectivo aunque la venta sea digital (0053)
   const [nota, setNota] = useState("");
   const [medio, setMedio] = useState(medios[0]?.slug ?? "");
   const [saving, setSaving] = useState(false);
@@ -835,6 +836,8 @@ function CheckoutForm({
       medio,
       productos: Object.entries(prodQty).map(([id, cantidad]) => ({ id, cantidad })),
       propina,
+      // Propina en efectivo aunque la venta sea digital: entra al cajón (0053, #16).
+      propinaMedio: propina > 0 && propinaEfectivo && medio !== "efectivo" ? "efectivo" : null,
       nota,
       cuponCodigo: cupon.trim() || undefined,
       idemToken,
@@ -1172,6 +1175,21 @@ function CheckoutForm({
             </div>
           )}
         </div>
+
+        {/* Propina en efectivo aunque el servicio se pague digital (común en CO: pagan
+            por Nequi y dejan la propina en la mano). Sin esto ese efectivo genera un
+            sobrante en el cierre, porque el sistema lo esperaba en el medio de la venta. */}
+        {propina > 0 && medio && medio !== "efectivo" && (
+          <label className="flex cursor-pointer items-center gap-2.5 rounded-xl border border-line bg-elevated px-3.5 py-2.5 text-sm text-ink">
+            <input
+              type="checkbox"
+              checked={propinaEfectivo}
+              onChange={(e) => setPropinaEfectivo(e.target.checked)}
+              className="h-4 w-4 accent-accent"
+            />
+            La propina la dejó en <b>efectivo</b> (entra al cajón)
+          </label>
+        )}
 
         <div>
           <div className={sLabel}>Nota (opcional)</div>

@@ -89,7 +89,7 @@ export type SnapshotDinero = {
 // y las propinas cobradas EN EFECTIVO (esas sí van al cajón, no las de otros
 // medios) y le RESTA los gastos pagados en efectivo desde la apertura.
 export function snapshotDinero(
-  ventas: { medio: string; total: number; propina?: number | null }[],
+  ventas: { medio: string; total: number; propina?: number | null; propinaMedio?: string | null }[],
   opts?: { montoApertura?: number; totalGastos?: number },
 ): SnapshotDinero {
   const totales = totalesPorMedio(ventas);
@@ -113,14 +113,16 @@ export function diferenciaCaja(efectivoContado: number, esperadoEfectivo: number
 // y el desglose que muestran las cards de caja. La propina va aparte del total
 // (la propina en efectivo sí entra al cajón para el cuadre).
 export function totalesPorMedio(
-  ventas: { medio: string; total: number; propina?: number | null }[],
+  ventas: { medio: string; total: number; propina?: number | null; propinaMedio?: string | null }[],
 ): TotalesPorMedio {
   const out: TotalesPorMedio = {};
+  const bucket = (medio: string) => (out[medio] ??= { total: 0, propina: 0 });
   for (const v of ventas) {
-    const t = out[v.medio] ?? { total: 0, propina: 0 };
-    t.total += v.total;
-    t.propina += v.propina ?? 0;
-    out[v.medio] = t;
+    bucket(v.medio).total += v.total;
+    // La propina se atribuye a SU medio (propina_medio, 0053); si no se registró, al
+    // de la venta (compat). Así una propina en efectivo sobre una venta por Nequi
+    // suma al bucket de efectivo (entra al cajón), no al de Nequi.
+    bucket(v.propinaMedio ?? v.medio).propina += v.propina ?? 0;
   }
   return out;
 }
