@@ -18,7 +18,7 @@ import {
 } from "@/lib/admin-reglas";
 import { type SupabaseClient } from "@supabase/supabase-js";
 import { supabaseServerAuth, supabaseAdmin } from "@/lib/supabase/server";
-import { getStaffContext, getCorteIds, contarCortesCliente, precioCorteBase } from "@/lib/data/queries";
+import { getStaffContext, getCorteIds, contarCortesCliente, precioCorteBase, ventasDeSesion } from "@/lib/data/queries";
 import { clienteIdForUser } from "@/lib/cliente-actions";
 import {
   bogotaDayRange,
@@ -1169,7 +1169,10 @@ async function staffPuedeOperarBarbero(
 // BEST-EFFORT: jamás puede tumbar un cobro — el caller la envuelve en try/catch
 // y acá se traga el 23505 de la carrera (dos ventas simultáneas → una gana el
 // unique index parcial `caja_una_abierta_por_sede`, la otra no reabre nada).
-async function asegurarCajaAbierta(admin: SupabaseClient, sedeId: string): Promise<void> {
+// Devuelve el id de la sesión de caja abierta de la sede (la que había o la que
+// abre acá), o null si no se pudo. La venta lo estampa (caja_sesion_id, 0052) para
+// pertenecer a ESA sesión sin depender de la ventana de tiempo (#08).
+async function asegurarCajaAbierta(admin: SupabaseClient, sedeId: string): Promise<string | null> {
   const { data: abierta, error: selErr } = await admin
     .from("caja_sesiones")
     .select("id")
@@ -1178,19 +1181,30 @@ async function asegurarCajaAbierta(admin: SupabaseClient, sedeId: string): Promi
     .limit(1);
   if (selErr) {
     errorPublico("asegurarCajaAbierta select", selErr);
-    return;
+    return null;
   }
-  if (abierta && abierta.length > 0) return; // ya hay una caja abierta
-  const { error: insErr } = await admin.from("caja_sesiones").insert({
-    sede_id: sedeId,
-    estado: "abierta",
-    meta_dia: 0,
-    monto_apertura: 0,
-    auto_abierta: true,
-  });
-  // 23505 = otra venta simultánea ya la abrió (unique index parcial): ya quedó
-  // abierta, ignorar. Cualquier otro error se loguea pero no se propaga.
-  if (insErr && insErr.code !== "23505") errorPublico("asegurarCajaAbierta insert", insErr);
+  if (abierta && abierta.length > 0) return (abierta[0] as { id: string }).id; // ya hay una caja abierta
+  const { data: nueva, error: insErr } = await admin
+    .from("caja_sesiones")
+    .insert({ sede_id: sedeId, estado: "abierta", meta_dia: 0, monto_apertura: 0, auto_abierta: true })
+    .select("id")
+    .maybeSingle();
+  if (insErr) {
+    // 23505 = otra venta simultánea ya la abrió (unique index parcial): re-leemos su
+    // id para estampar la venta en la sesión ganadora. Otro error: log, sin propagar.
+    if (insErr.code === "23505") {
+      const { data: reab } = await admin
+        .from("caja_sesiones")
+        .select("id")
+        .eq("sede_id", sedeId)
+        .eq("estado", "abierta")
+        .limit(1);
+      return reab && reab.length ? (reab[0] as { id: string }).id : null;
+    }
+    errorPublico("asegurarCajaAbierta insert", insErr);
+    return null;
+  }
+  return (nueva as { id: string } | null)?.id ?? null;
 }
 
 // Completar la atención: cobra el cierre completo (servicio de la reserva +
@@ -1477,9 +1491,12 @@ export async function completarReserva(input: {
   //    cuenta ventas con creado_en >= abierta_en, y la primera venta del día quedaba
   //    84ms más vieja que la apertura → caja en $0 y cierre descuadrado (bug cazado
   //    en QA 2026-07-17). Best-effort: jamás tumba el cobro; si la venta luego falla,
-  //    queda una caja auto-abierta vacía (inofensivo).
+  //    queda una caja auto-abierta vacía (inofensivo). Devuelve el id de la sesión
+  //    para ESTAMPARLO en la venta (caja_sesion_id, 0052): así la venta pertenece a
+  //    esta caja aunque el cobro se confirme justo mientras se cierra (#08).
+  let cajaSesionId: string | null = null;
   try {
-    await asegurarCajaAbierta(supabaseAdmin(), sedeEfectiva);
+    cajaSesionId = await asegurarCajaAbierta(supabaseAdmin(), sedeEfectiva);
   } catch (e) {
     errorPublico("completarReserva auto-open caja", e as { message?: string });
   }
@@ -1490,6 +1507,7 @@ export async function completarReserva(input: {
     .from("ventas")
     .insert({
       sede_id: sedeEfectiva,
+      caja_sesion_id: cajaSesionId,
       barbero_id: barberoId,
       cliente_ref: clienteEfectivo,
       cliente_nombre: !clienteEfectivo ? (input.clienteNombre ?? "").trim() || null : null,
@@ -1883,6 +1901,7 @@ async function snapshotCaja(
   sedeId: string,
   abiertaEnISO: string,
   montoApertura: number,
+  sesionId: string,
 ): Promise<{
   totales: ReturnType<typeof snapshotDinero>["totales"];
   efectivo: number;
@@ -1891,12 +1910,13 @@ async function snapshotCaja(
   esperadoEfectivo: number;
   citas: number;
 }> {
-  const { data: ventas } = await admin
-    .from("ventas")
-    .select("medio,total,propina")
-    .eq("sede_id", sedeId)
-    .gte("creado_en", abiertaEnISO);
-  const vs = (ventas ?? []) as { medio: string; total: number; propina: number | null }[];
+  // Ventas de ESTA sesión por caja_sesion_id (0052), no por ventana de tiempo: así el
+  // cierre no deja huérfana una venta que se confirmó justo mientras se cerraba (#08).
+  const vs = (await ventasDeSesion(admin, sedeId, sesionId, abiertaEnISO, "medio,total,propina")) as {
+    medio: string;
+    total: number;
+    propina: number | null;
+  }[];
   const { data: gastos } = await admin
     .from("gastos")
     .select("monto")
@@ -1933,7 +1953,7 @@ async function ejecutarCierreCaja(
   | { ok: true; snap: Awaited<ReturnType<typeof snapshotCaja>>; diferencia: number }
   | { ok: false; error: string }
 > {
-  const snap = await snapshotCaja(client, params.sede, params.abiertaEnISO, params.montoApertura);
+  const snap = await snapshotCaja(client, params.sede, params.abiertaEnISO, params.montoApertura, params.sesionId);
   const diferencia = diferenciaCaja(params.efectivoContado, snap.esperadoEfectivo);
   // Columnas legacy pobladas por compat (histórico y UI vieja) + snapshot jsonb.
   const update: Record<string, unknown> = {

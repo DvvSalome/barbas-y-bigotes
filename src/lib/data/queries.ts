@@ -662,6 +662,36 @@ export type CajaSesionSede = {
   esperadoEfectivo: number;
 };
 
+// Ventas que pertenecen a una sesión de caja (0052): las ESTAMPADAS con su id (las
+// nuevas) MÁS —red de transición e histórico— las SIN estampar que caen en su ventana
+// de tiempo. Reemplaza la asociación solo-por-tiempo que dejaba ventas huérfanas si se
+// confirmaban justo mientras se cerraba la caja (auditoría #08). El cierre y las
+// previews lo usan para que "esperado" no dependa del timing. Dos queries en vez de un
+// `.or(...)` con timestamp: evita el frágil string de filtro de PostgREST.
+export async function ventasDeSesion(
+  client: SupabaseClient,
+  sede: string,
+  sesionId: string,
+  abiertaEnISO: string,
+  cols: string,
+): Promise<Record<string, unknown>[]> {
+  const [tagged, sinTag] = await Promise.all([
+    client.from("ventas").select(cols).eq("sede_id", sede).eq("caja_sesion_id", sesionId),
+    client
+      .from("ventas")
+      .select(cols)
+      .eq("sede_id", sede)
+      .is("caja_sesion_id", null)
+      .gte("creado_en", abiertaEnISO),
+  ]);
+  // .select(cols) con cols dinámico: supabase-js no infiere las columnas (tipa data
+  // como error), por eso el cast va vía unknown.
+  return [
+    ...((tagged.data ?? []) as unknown as Record<string, unknown>[]),
+    ...((sinTag.data ?? []) as unknown as Record<string, unknown>[]),
+  ];
+}
+
 // Estado de caja por sede: si hay sesión abierta + lo recaudado desde la apertura
 // (o desde el inicio del día si no hay sesión abierta).
 export async function getCajaSesiones(): Promise<CajaSesionSede[]> {
@@ -682,14 +712,21 @@ export async function getCajaSesiones(): Promise<CajaSesionSede[]> {
   for (const s of sedes) {
     const sess = open.find((o) => o.sede_id === s.id);
     const start = sess ? sess.abierta_en : bogotaDayRange().desde.toISOString();
-    // Ventas Y gastos desde la apertura (gastos por creado_en, igual que getCajaSede):
-    // el "esperado" del admin debe salir del MISMO snapshotDinero que el cierre, o
-    // muestra una sobra/faltante fantasma cuando hay fondo o gastos.
-    const [ventasRes, gastosRes] = await Promise.all([
-      sb.from("ventas").select("medio,total,propina").eq("sede_id", s.id).gte("creado_en", start),
+    // Ventas de la SESIÓN (por caja_sesion_id, 0052) si hay caja abierta; si no, lo
+    // recaudado del día. Gastos por creado_en dentro del período (igual que getCajaSede
+    // y el cierre), para que el "esperado" salga del MISMO snapshotDinero que el cierre.
+    const [vsRaw, gastosRes] = await Promise.all([
+      sess
+        ? ventasDeSesion(sb, s.id, sess.id, sess.abierta_en, "medio,total,propina")
+        : sb
+            .from("ventas")
+            .select("medio,total,propina")
+            .eq("sede_id", s.id)
+            .gte("creado_en", start)
+            .then((r) => (r.data ?? []) as Record<string, unknown>[]),
       sb.from("gastos").select("monto").eq("sede_id", s.id).gte("creado_en", start),
     ]);
-    const vs = (ventasRes.data ?? []) as { medio: string; total: number; propina: number | null }[];
+    const vs = vsRaw as { medio: string; total: number; propina: number | null }[];
     const totalGastos = ((gastosRes.data ?? []) as { monto: number }[]).reduce((a, g) => a + g.monto, 0);
     const montoApertura = sess?.monto_apertura ?? 0;
     const snap = snapshotDinero(vs, { montoApertura, totalGastos });
@@ -738,14 +775,15 @@ export async function getCajaSede(sedeId: string): Promise<CajaSedeEstado> {
     .maybeSingle();
   if (!sesion) return null;
   const ses = sesion as { id: string; abierta_en: string; monto_apertura: number | null };
-  // Ventas + gastos desde la apertura: el preview debe usar el MISMO cálculo que
-  // el cierre (fondo + efectivo + propina efectivo − gastos), o el barbero ve un
-  // "esperado" inflado y una diferencia falsa cuando hubo gastos.
-  const [ventasRes, gastosRes] = await Promise.all([
-    admin.from("ventas").select("medio,total,propina").eq("sede_id", sedeId).gte("creado_en", ses.abierta_en),
+  // Ventas de la SESIÓN (por caja_sesion_id, 0052) + gastos desde la apertura: el
+  // preview debe usar el MISMO cálculo que el cierre (fondo + efectivo + propina
+  // efectivo − gastos) y el mismo criterio de pertenencia, o el barbero ve un
+  // "esperado" que no coincide con lo que sale al cerrar.
+  const [vsRaw, gastosRes] = await Promise.all([
+    ventasDeSesion(admin, sedeId, ses.id, ses.abierta_en, "medio,total,propina"),
     admin.from("gastos").select("monto").eq("sede_id", sedeId).gte("creado_en", ses.abierta_en),
   ]);
-  const vs = (ventasRes.data ?? []) as { medio: string; total: number; propina: number | null }[];
+  const vs = vsRaw as { medio: string; total: number; propina: number | null }[];
   const totalGastos = ((gastosRes.data ?? []) as { monto: number }[]).reduce((a, g) => a + g.monto, 0);
   const { esperadoEfectivo, ingresos } = snapshotDinero(vs, {
     montoApertura: ses.monto_apertura ?? 0,
@@ -790,28 +828,16 @@ export async function getCajaDesglose(sedeId: string): Promise<CajaDesglose> {
   if (!sesion) return null;
   const ses = sesion as { id: string; abierta_en: string; monto_apertura: number | null };
 
-  const [barbsRes, ventasRes, gastosRes, itemsRes] = await Promise.all([
+  const [barbsRes, vsRaw, gastosRes] = await Promise.all([
     admin
       .from("barberos")
       .select("id,nombre,foto_url,orden")
       .eq("sede_id", sedeId)
       .eq("activo", true)
       .order("orden"),
-    admin
-      .from("ventas")
-      .select("barbero_id,medio,total,propina")
-      .eq("sede_id", sedeId)
-      .gte("creado_en", ses.abierta_en),
+    // Ventas de la SESIÓN (por caja_sesion_id, 0052), con su id para atribuir la comisión.
+    ventasDeSesion(admin, sedeId, ses.id, ses.abierta_en, "id,barbero_id,medio,total,propina"),
     admin.from("gastos").select("monto").eq("sede_id", sedeId).gte("creado_en", ses.abierta_en),
-    // Comisión por barbero: se calcula sobre los venta_items (los servicios llevan
-    // el comision_pct del barbero —50—, los productos el suyo). No hay un cálculo
-    // reusable en /admin/comisiones (esa página solo edita el % del contrato), así
-    // que se calcula acá con el join venta_items→ventas (misma sede + desde apertura).
-    admin
-      .from("venta_items")
-      .select("cantidad,precio_unitario,comision_pct,ventas!inner(barbero_id,sede_id,creado_en)")
-      .eq("ventas.sede_id", sedeId)
-      .gte("ventas.creado_en", ses.abierta_en),
   ]);
 
   const barbs = (barbsRes.data ?? []) as {
@@ -820,20 +846,30 @@ export async function getCajaDesglose(sedeId: string): Promise<CajaDesglose> {
     foto_url: string | null;
     orden: number | null;
   }[];
-  const vs = (ventasRes.data ?? []) as {
+  const vs = vsRaw as {
+    id: string;
     barbero_id: string | null;
     medio: string;
     total: number;
     propina: number | null;
   }[];
   const totalGastos = ((gastosRes.data ?? []) as { monto: number }[]).reduce((a, g) => a + g.monto, 0);
-  // El embed a la venta padre (to-one) llega como objeto en runtime, pero el tipo
-  // inferido de PostgREST lo trata como array → cast vía unknown.
-  const items = (itemsRes.data ?? []) as unknown as {
+  // Comisión por barbero: se calcula sobre los venta_items (los servicios llevan el
+  // comision_pct del barbero, los productos el suyo). Antes se traía con un join
+  // embebido venta_items→ventas filtrado por ventana; ahora se piden por los ids de
+  // las ventas de la sesión (mismo criterio caja_sesion_id que el resto) y se atribuye
+  // con el mapa venta→barbero de arriba.
+  const barberoDeVenta = new Map<string, string | null>();
+  for (const v of vs) barberoDeVenta.set(v.id, v.barbero_id);
+  const ventaIds = vs.map((v) => v.id);
+  const { data: itemsData } = ventaIds.length
+    ? await admin.from("venta_items").select("venta_id,cantidad,precio_unitario,comision_pct").in("venta_id", ventaIds)
+    : { data: [] as Record<string, unknown>[] };
+  const items = (itemsData ?? []) as {
+    venta_id: string;
     cantidad: number;
     precio_unitario: number;
     comision_pct: number | null;
-    ventas: { barbero_id: string | null } | null;
   }[];
 
   // Ventas por barbero (suma de ventas.total desde la apertura).
@@ -845,7 +881,7 @@ export async function getCajaDesglose(sedeId: string): Promise<CajaDesglose> {
   // Comisión por barbero: precio_unitario·cantidad·comision_pct/100 por ítem.
   const comisionPorBarbero = new Map<string, number>();
   for (const it of items) {
-    const bid = it.ventas?.barbero_id;
+    const bid = barberoDeVenta.get(it.venta_id);
     if (!bid) continue;
     const c = (it.precio_unitario * it.cantidad * (Number(it.comision_pct) || 0)) / 100;
     comisionPorBarbero.set(bid, (comisionPorBarbero.get(bid) ?? 0) + c);
