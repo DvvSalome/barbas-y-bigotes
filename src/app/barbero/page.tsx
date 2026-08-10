@@ -13,6 +13,8 @@ import {
   getCajaDesglose,
   getAgendaSedeHoy,
   getVentasSedeHoy,
+  getHorarioSemanal,
+  getDiasEspeciales,
 } from "@/lib/data/queries";
 import { AgendaList } from "@/components/barbero/AgendaList";
 import { CobradosHoy } from "@/components/barbero/CobradosHoy";
@@ -32,16 +34,19 @@ export default async function BarberoPage() {
   // transmitir la agenda de las DOS sedes antes de que el layout lo expulse.
   if (!["admin", "barbero", "sede"].includes(staff.rol)) redirect("/cuenta");
   const filtro = staff.rol === "barbero" ? staff.barberoId : null;
-  const [sedes, barberos, servicios, preciosServicios, productos, medios, espera] = await Promise.all([
-    getSedes(),
-    getBarberos(),
-    getServicios(),
-    getPreciosServiciosStaff(),
-    getProductos(),
-    getMedios(),
-    // El perfil por sede ve la espera de SU sede; el barbero, la suya propia.
-    getListaEspera(filtro, staff.sedeId),
-  ]);
+  const [sedes, barberos, servicios, preciosServicios, productos, medios, espera, horarioSemanal, diasEspeciales] =
+    await Promise.all([
+      getSedes(),
+      getBarberos(),
+      getServicios(),
+      getPreciosServiciosStaff(),
+      getProductos(),
+      getMedios(),
+      // El perfil por sede ve la espera de SU sede; el barbero, la suya propia.
+      getListaEspera(filtro, staff.sedeId),
+      getHorarioSemanal(),
+      getDiasEspeciales(),
+    ]);
 
   // La sede que se opera. Un perfil por sede (0044) trae la suya en el perfil;
   // un barbero, la de su ficha. El dueño (admin) no tiene → null = las dos.
@@ -110,9 +115,11 @@ export default async function BarberoPage() {
         servicios={servicios}
         preciosServicios={preciosServicios}
         productos={productos}
-        medios={medios}
+        medios={medios}
         elegirBarbero={staff.rol !== "barbero"}
         mostrador={mostrador}
+        horarioSemanal={sedeBarbero ? horarioSemanal.filter((h) => h.sede === sedeBarbero) : []}
+        diasEspeciales={sedeBarbero ? diasEspeciales.filter((d) => d.sede === sedeBarbero) : []}
         esperaCount={espera.length}
         esperaSlot={
           <EsperaPanel

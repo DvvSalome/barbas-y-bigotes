@@ -1039,6 +1039,100 @@ export async function registrarWalkin(input: {
   return { ok: true };
 }
 
+// Agendar una cita FUTURA desde el mostrador (el cliente escribió por WhatsApp, no
+// vino ni reservó online). A diferencia del walk-in (que es "ahora" y en_curso), acá
+// se elige día y hora. El cliente se resuelve por TELÉFONO (no por el usuario logueado
+// como en createReserva: quien opera es el mostrador, no el cliente). Mismas
+// validaciones de negocio que createReserva (ventana efectiva, servicio en la sede,
+// ausencia, solape) para no divergir. El mostrador agenda para CUALQUIER barbero de su
+// sede (staffPuedeOperarBarbero); el INSERT va con service_role tras ese gate, igual
+// que registrarWalkin (la RLS de reservas exige barbero_id = current_barbero_id()).
+export async function agendarCita(input: {
+  barberoId: string;
+  servicioId: string;
+  inicioISO: string;
+  clienteNombre: string;
+  telefono: string;
+  email?: string;
+  nota?: string;
+}): Promise<ActionResult> {
+  const sb = await supabaseServerAuth();
+  const denied = await requireStaff(sb);
+  if (denied) return { ok: false, error: denied };
+  const staff = await getStaffContext();
+  if (!puedeMostrador(staff.rol)) return { ok: false, error: "No autorizado" };
+  if (!(await staffPuedeOperarBarbero(staff, input.barberoId)))
+    return { ok: false, error: "Ese barbero no es de tu sede." };
+
+  const sede = await sedeDeBarbero(input.barberoId);
+  if (!sede) return { ok: false, error: "No se pudo determinar la sede del barbero." };
+
+  const inicio = new Date(input.inicioISO);
+  if (isNaN(inicio.getTime())) return { ok: false, error: "Hora inválida." };
+  if (inicio.getTime() <= Date.now()) return { ok: false, error: "Esa hora ya pasó. Elegí una a futuro." };
+
+  const admin = supabaseAdmin();
+  // Duración del servicio + que tenga precio en la sede (misma barrera que createReserva).
+  const { data: serv } = await admin.from("servicios").select("duracion_min").eq("id", input.servicioId).maybeSingle();
+  const dur = (serv as { duracion_min?: number } | null)?.duracion_min ?? 30;
+  const fin = new Date(inicio.getTime() + dur * 60000);
+  const { data: ss } = await admin
+    .from("servicio_sede")
+    .select("servicio_id")
+    .eq("sede_id", sede)
+    .eq("servicio_id", input.servicioId)
+    .maybeSingle();
+  if (!ss) return { ok: false, error: "Ese servicio no está disponible en esa sede." };
+
+  // Dentro de la ventana efectiva del día (horarioEfectivo) y alineado a la grilla.
+  const ventana = await ventanaDeDia(admin, sede, bogotaYmd(inicio));
+  if (!ventana.abierta) return { ok: false, error: "Ese día la sede no atiende. Elegí otra fecha." };
+  if (!slotEnVentana(minutoDelDiaBogota(inicio), dur, ventana))
+    return { ok: false, error: "Ese horario está fuera del horario de atención." };
+
+  // Ausencia del barbero + pre-chequeo de solape (el EXCLUDE es la garantía real).
+  const { data: aus } = await admin
+    .from("barbero_ausencias")
+    .select("id")
+    .eq("barbero_id", input.barberoId)
+    .eq("fecha", bogotaYmd(inicio))
+    .limit(1);
+  if (aus && aus.length) return { ok: false, error: "Ese barbero no atiende ese día. Elegí otra fecha u otro barbero." };
+  const { data: clash } = await admin
+    .from("reservas")
+    .select("id")
+    .eq("barbero_id", input.barberoId)
+    .not("estado", "in", "(cancelada,no_show)")
+    .lt("inicio", fin.toISOString())
+    .gt("fin", inicio.toISOString())
+    .limit(1);
+  if (clash && clash.length) return { ok: false, error: "Ese horario ya fue tomado. Elegí otro." };
+
+  // Cliente por teléfono (dedup), NO por el usuario logueado.
+  const clienteNombre = (input.clienteNombre ?? "").trim().slice(0, 120);
+  const telefono = (input.telefono ?? "").trim().slice(0, 40);
+  const clienteRef = await upsertClienteId(admin, clienteNombre, telefono, (input.email ?? "").trim(), "walkin");
+  const nota = (input.nota ?? "").trim().slice(0, 500) || null;
+
+  const { error } = await admin.from("reservas").insert({
+    sede_id: sede,
+    barbero_id: input.barberoId,
+    servicio_id: input.servicioId,
+    cliente_ref: clienteRef,
+    inicio: inicio.toISOString(),
+    fin: fin.toISOString(),
+    estado: "confirmada",
+    canal: "app",
+    nota,
+  });
+  if (error) {
+    if (error.code === "23P01") return { ok: false, error: "Ese horario ya fue tomado. Elegí otro." };
+    return { ok: false, error: errorPublico("agendarCita", error) };
+  }
+  revalidatePath("/barbero");
+  return { ok: true };
+}
+
 export async function actualizarReserva(
   reservaId: string,
   patch: { estado?: string; llegada?: string },

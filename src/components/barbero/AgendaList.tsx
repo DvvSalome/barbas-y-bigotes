@@ -19,9 +19,10 @@ import type { Categoria } from "@/lib/data/types";
 import { ProductoThumb } from "@/components/staff/ProductoThumb";
 import { MedioLogo } from "@/components/staff/MedioLogo";
 import { Recepcion } from "@/components/barbero/Recepcion";
+import { AgendarCitaForm } from "@/components/barbero/AgendarCitaForm";
 import { ElegirBarbero, ElegirServicio } from "@/components/staff/Elegir";
 import type { Sede, SedeId, Barbero, Servicio, Producto } from "@/lib/data/types";
-import type { AgendaItem, MedioPago, PrecioServicioStaff } from "@/lib/data/queries";
+import type { AgendaItem, MedioPago, PrecioServicioStaff, HorarioSemanal, DiaEspecial } from "@/lib/data/queries";
 
 const fld = "w-full rounded-lg border border-line bg-bg px-3 py-2 text-ink focus:border-accent focus:outline-none";
 
@@ -90,6 +91,8 @@ export function AgendaList({
   medios,
   elegirBarbero = false,
   mostrador,
+  horarioSemanal = [],
+  diasEspeciales = [],
   esperaSlot,
   cierreSlot,
   esperaCount = 0,
@@ -101,6 +104,9 @@ export function AgendaList({
   preciosServicios: PrecioServicioStaff[];
   productos: Producto[];
   medios: MedioPago[];
+  /** Horario de la sede (semana + excepciones), para agendar citas futuras. */
+  horarioSemanal?: HorarioSemanal[];
+  diasEspeciales?: DiaEspecial[];
   /** El operador no tiene barbero propio (admin o perfil sede): debe poder elegir
    *  a qué barbero se atribuye una venta rápida. */
   elegirBarbero?: boolean;
@@ -130,6 +136,8 @@ export function AgendaList({
   const [walkinOpen, setWalkinOpen] = useState(false);
   // Barbero preseleccionado al abrir el walk-in desde la tira de libres.
   const [walkinBarbero, setWalkinBarbero] = useState<string>("");
+  // Agendar cita futura (cliente que escribió por WhatsApp). Solo con sede definida.
+  const [agendarOpen, setAgendarOpen] = useState(false);
   const [ventaOpen, setVentaOpen] = useState(false);
   const [completeFor, setCompleteFor] = useState<string | null>(null);
 
@@ -422,6 +430,23 @@ export function AgendaList({
         </HojaInferior>
       )}
 
+      {agendarOpen && mostrador.sedeId && (
+        <HojaInferior titulo="Agendar cita" onCerrar={() => setAgendarOpen(false)}>
+          <AgendarCitaForm
+            sede={mostrador.sedeId}
+            barberos={mostrador.barberosSede}
+            servicios={servicios}
+            horarioSemanal={horarioSemanal}
+            diasEspeciales={diasEspeciales}
+            onDone={() => {
+              setAgendarOpen(false);
+              router.refresh();
+            }}
+            onCancel={() => setAgendarOpen(false)}
+          />
+        </HojaInferior>
+      )}
+
       {ventaOpen && (
         <HojaInferior titulo="Venta rápida" onCerrar={() => setVentaOpen(false)}>
           <CheckoutForm
@@ -476,6 +501,16 @@ export function AgendaList({
           >
             + Cliente
           </button>
+          {/* Agendar cita futura (WhatsApp): solo con sede definida (el dueño mirando
+              las dos no tiene una sede fija donde agendar). */}
+          {mostrador.sedeId && (
+            <button
+              onClick={() => setAgendarOpen(true)}
+              className="min-h-14 flex-1 rounded-xl border border-accent/45 text-[14.5px] font-bold text-accent-soft transition hover:bg-accent/10"
+            >
+              + Cita
+            </button>
+          )}
         </div>
       </nav>
     </div>
