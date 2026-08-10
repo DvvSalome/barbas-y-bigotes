@@ -151,7 +151,16 @@ export async function responderPropuestaAdelanto(
   if (respuesta === "aceptar") {
     const start = new Date(prop.inicio);
     const end = new Date(prop.fin);
-    
+
+    // La propuesta pudo VENCERSE por el paso del tiempo: proponerAdelanto valida
+    // inicio>ahora al PROPONER, pero si el cliente la acepta cuando esa hora ya pasó,
+    // la cita se movería al PASADO. Nada lo re-validaba al aceptar. Se marca vencida.
+    if (start.getTime() <= Date.now()) {
+      prop.estado = "vencido";
+      await admin.from("reservas").update({ nota: JSON.stringify(notaObj) }).eq("id", reservaId);
+      return { ok: false, error: "Esa hora ya pasó. Pídele al barbero que te proponga otra." };
+    }
+
     // Check if the slot is still free (avoid double bookings)
     const { data: clash } = await admin
       .from("reservas")

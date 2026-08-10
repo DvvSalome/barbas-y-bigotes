@@ -531,12 +531,19 @@ export type CuadreSede = {
 
 export async function getCuadre() {
   const sb = await supabaseServerAuth();
-  const { desde } = bogotaDayRange();
-  const fechaHoy = bogotaYmd();
+  const { desde, hasta } = bogotaDayRange();
   const [sedesRes, ventasRes, gastosRes] = await Promise.all([
     sb.from("sedes").select("id,nombre").order("nombre"),
     sb.from("ventas").select("sede_id,medio,total").gte("creado_en", desde.toISOString()),
-    sb.from("gastos").select("id,sede_id,categoria,descripcion,monto").gte("fecha", fechaHoy),
+    // Gastos por creado_en dentro del día de Bogotá [desde, hasta), igual que las
+    // ventas y el cierre de caja. Antes se filtraba por la columna `fecha` (date con
+    // default current_date en UTC) con un `>=` abierto: un gasto de la noche quedaba
+    // fechado el día siguiente y, sin cota superior, se contaba HOY y MAÑANA.
+    sb
+      .from("gastos")
+      .select("id,sede_id,categoria,descripcion,monto")
+      .gte("creado_en", desde.toISOString())
+      .lt("creado_en", hasta.toISOString()),
   ]);
   const ventas = (ventasRes.data ?? []) as { sede_id: string; medio: string; total: number }[];
   const gastos = (gastosRes.data ?? []) as {
@@ -1961,13 +1968,27 @@ export async function getMetricas(p: Periodo = "mes", sede?: SedeId | null): Pro
     destino.set(clave, acc);
   }
 
+  // Un balde por CADA día civil de Bogotá en [desde, hasta], inclusive. Antes se
+  // usaba Math.round(span/día) y se caminaba hacia atrás desde `hasta`: como el período
+  // casi nunca mide un nº entero de días (hasta = ahora), redondeaba hacia abajo y el
+  // día más temprano (p.ej. el 1° del mes) no quedaba como balde, así que sus ventas se
+  // caían del gráfico aunque el KPI "Entró" sí las contaba (chart ≠ total, y encima
+  // dependía de la hora). Ahora se recorre día civil por día civil (Colombia no tiene
+  // DST, así que +24h siempre cae en la misma hora local y avanza un día civil).
   const serie = new Map<string, number>();
-  const dias = Math.max(1, Math.round((hasta.getTime() - desde.getTime()) / 86_400_000));
-  for (let i = dias - 1; i >= 0; i--) serie.set(bogotaYmd(new Date(hasta.getTime() - i * 86_400_000)), 0);
+  const finYmd = bogotaYmd(hasta);
+  const cursor = new Date(desde.getTime());
+  for (let guard = 0; guard < 400; guard++) {
+    const ymd = bogotaYmd(cursor);
+    serie.set(ymd, 0);
+    if (ymd >= finYmd) break;
+    cursor.setTime(cursor.getTime() + 86_400_000);
+  }
   for (const v of enPeriodo) {
     const d = bogotaYmd(new Date(v.creado_en as string));
     if (serie.has(d)) serie.set(d, (serie.get(d) ?? 0) + ((v.total as number) ?? 0));
   }
+  const dias = serie.size;
 
   // "Repiten" = clientes del período que ya habían venido ANTES del período.
   // Es la métrica que importa en una barbería: si nadie vuelve, no hay negocio.
