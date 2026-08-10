@@ -228,6 +228,16 @@ export function bogotaDayRangeDeFecha(ymd: string): { desde: Date; hasta: Date }
   return { desde, hasta: new Date(desde.getTime() + 86_400_000) };
 }
 
+// Instante UTC de un minuto-del-día EN Bogotá (UTC-5 fijo, sin DST). TZ-SAFE: no
+// depende del reloj del dispositivo. El wizard y el reagendar armaban la hora con
+// `new Date(day).setHours(min)`, que interpreta en la TZ LOCAL del teléfono: en un
+// dispositivo fuera de Colombia el instante enviado se corría (se reservaba otra hora).
+export function instanteBogota(fechaYmd: string, minutoDia: number): Date {
+  const hh = Math.floor(minutoDia / 60).toString().padStart(2, "0");
+  const mm = (minutoDia % 60).toString().padStart(2, "0");
+  return new Date(`${fechaYmd}T${hh}:${mm}:00-05:00`);
+}
+
 export function nextDays(n: number): Date[] {
   const out: Date[] = [];
   const base = new Date();

@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getDisponibilidad } from "@/lib/actions";
 import { cancelarReservaCliente, reagendarReservaCliente } from "@/lib/cliente-actions";
-import { DOW, fmtTime, buildSlots, computeTaken, nextDays, horarioEfectivo, CANCELACION_MIN_HORAS } from "@/lib/slots";
+import { DOW, fmtTime, buildSlots, computeTaken, nextDays, horarioEfectivo, instanteBogota, CANCELACION_MIN_HORAS } from "@/lib/slots";
 import type { HorarioSemanal, DiaEspecial } from "@/lib/data/queries";
 
 // YYYY-MM-DD por componentes LOCALES (como se rotulan los chips); horarioEfectivo
@@ -212,8 +212,9 @@ function ReagendarPanel({
   // Tocar una hora confirma de una (proto §2.7): "Toca una hora y queda confirmada".
   async function confirmar(t: number) {
     if (!day) return;
-    const nuevo = new Date(day);
-    nuevo.setHours(Math.floor(t / 60), t % 60, 0, 0);
+    // El slot es minuto-del-día de Bogotá; se arma en Bogotá (UTC-5), no en la TZ del
+    // dispositivo (setHours corría la hora fuera de Colombia).
+    const nuevo = instanteBogota(ymdLocal(day), t);
     setSavingSlot(t);
     setErr(null);
     const res = await reagendarReservaCliente(reservaId, nuevo.toISOString());

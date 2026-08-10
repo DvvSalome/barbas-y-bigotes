@@ -15,10 +15,20 @@ import {
   slotEnVentana,
   resumirSemana,
   dowDeFecha,
+  instanteBogota,
   OPEN,
   CLOSE,
   STEP,
 } from "../src/lib/slots.ts";
+
+// ---- instanteBogota: la hora se arma en Bogotá (UTC-5), no en la TZ del proceso ----
+// El wizard/reagendar usaban setHours (TZ del dispositivo) → fuera de Colombia el
+// instante se corría. Esta función es TZ-safe; el hijo la re-corre bajo NY/Tokyo/UTC.
+function checkInstanteBogota() {
+  assert.equal(instanteBogota("2026-08-15", 780).toISOString(), "2026-08-15T18:00:00.000Z", "13:00 Bogotá = 18:00Z");
+  assert.equal(instanteBogota("2026-08-15", 540).toISOString(), "2026-08-15T14:00:00.000Z", "09:00 Bogotá = 14:00Z");
+  assert.equal(instanteBogota("2026-08-16", 0).toISOString(), "2026-08-16T05:00:00.000Z", "medianoche Bogotá = 05:00Z");
+}
 
 // ---- horarioEfectivo / slotEnVentana / resumirSemana (horarios editables) ----
 // Fuente de verdad única cliente+servidor: la cascada excepción → semana → respaldo,
@@ -148,6 +158,7 @@ if (process.env.SLOTS_TZ_CHILD) {
   checkBuildSlots();
   checkComputeTakenBogota();
   checkHorarioEfectivo();
+  checkInstanteBogota();
   process.exit(0);
 }
 
@@ -208,6 +219,7 @@ assert.equal(faltaParaLlegar(citaISO, cita - 3 * 3600_000), "faltan 3h");
 checkBuildSlots();
 checkComputeTakenBogota();
 checkHorarioEfectivo();
+checkInstanteBogota();
 
 // Y lo mismo re-corrido en un proceso hijo con una TZ bien distinta a Bogotá:
 // caza cualquier regresión a la hora del dispositivo aunque la máquina de dev

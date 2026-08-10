@@ -11,7 +11,7 @@ import type { Sede, SedeId, Servicio, Barbero, Categoria } from "@/lib/data/type
 import type { BebidaUpsell, Ausencia, DiaEspecial, HorarioSemanal } from "@/lib/data/queries";
 import { cop } from "@/lib/format";
 import { ScissorsIcon } from "@/components/icons";
-import { DOW, MON, STEP, OPEN, CLOSE, fmtTime, buildSlots, horarioEfectivo, type VentanaDia } from "@/lib/slots";
+import { DOW, MON, STEP, OPEN, CLOSE, fmtTime, buildSlots, horarioEfectivo, instanteBogota, type VentanaDia } from "@/lib/slots";
 
 // YYYY-MM-DD de un Date por sus componentes LOCALES (mismo criterio con que se
 // rotulan los chips de día); horarioEfectivo lo re-ancla a mediodía UTC para el dow.
@@ -738,8 +738,9 @@ export function BookingWizard({
     }
     setSaving(true);
     setErrorMsg(null);
-    const inicio = new Date(day);
-    inicio.setHours(Math.floor(slot / 60), slot % 60, 0, 0);
+    // El slot es minuto-del-día de BOGOTÁ; se arma el instante en Bogotá (UTC-5), no
+    // en la TZ del teléfono (setHours corría la hora en dispositivos fuera de Colombia).
+    const inicio = instanteBogota(ymdLocal(day), slot);
     // Upsell: la bebida extra (con cargo) se pierde si no viaja al barbero. La
     // mandamos como nota para que la vea en su agenda. La incluida en combo no
     // lleva nota (se sirve por el propio combo; no se cobra aparte).
