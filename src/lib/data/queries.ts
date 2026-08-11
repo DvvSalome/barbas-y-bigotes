@@ -437,6 +437,30 @@ export async function getAgendaSedeDia(sedeId: string, fechaYmd: string): Promis
   }));
 }
 
+export type AdelantoHoy = { id: string; barbero: string; monto: number; nota: string | null; creadoEn: string };
+
+// Adelantos registrados HOY (día civil Bogotá), con el nombre del barbero. El
+// cuadre los lista para que registrar un adelanto deje rastro visible (antes no
+// aparecía en ninguna parte y el dueño lo registraba dos veces).
+export async function getAdelantosHoy(): Promise<AdelantoHoy[]> {
+  const admin = supabaseAdmin();
+  const { desde, hasta } = bogotaDayRange();
+  const { data, error } = await admin
+    .from("adelantos")
+    .select("id,monto,nota,creado_en,barberos(nombre)")
+    .gte("creado_en", desde.toISOString())
+    .lt("creado_en", hasta.toISOString())
+    .order("creado_en", { ascending: false });
+  if (error) console.error("getAdelantosHoy:", error.message);
+  return ((data ?? []) as Record<string, unknown>[]).map((a) => ({
+    id: a.id as string,
+    barbero: (a.barberos as { nombre?: string } | null)?.nombre ?? "",
+    monto: a.monto as number,
+    nota: (a.nota as string) ?? null,
+    creadoEn: a.creado_en as string,
+  }));
+}
+
 /** Bloqueo pintado en el calendario. desdeMin null = todo el día. */
 export type BloqueoDia = {
   id: string;

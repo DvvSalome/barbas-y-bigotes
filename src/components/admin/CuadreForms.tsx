@@ -11,7 +11,11 @@ import type { Sede, Barbero } from "@/lib/data/types";
 const fld =
   "w-full rounded-lg border border-line bg-bg px-3 py-2 text-ink placeholder:text-muted focus:border-accent focus:outline-none";
 const btn =
-  "rounded-full bg-accent px-5 py-2 text-xs font-semibold uppercase tracking-wide text-on-accent transition hover:bg-accent-soft disabled:opacity-50";
+  "rounded-full bg-accent px-5 py-3 text-sm font-semibold uppercase tracking-wide text-on-accent transition hover:bg-accent-soft disabled:opacity-50";
+
+// Categorías frecuentes del gasto: con texto libre cada quien escribía distinto
+// ("papeleria"/"Papelería"/"aseo") y la lista quedaba inagrupable.
+const CATS_GASTO = ["Insumos", "Aseo", "Papelería", "Servicios", "Comida", "Arreglos"];
 
 export function CuadreForms({ sedes, barberos }: { sedes: Sede[]; barberos: Barbero[] }) {
   const router = useRouter();
@@ -22,12 +26,14 @@ export function CuadreForms({ sedes, barberos }: { sedes: Sede[]; barberos: Barb
   const [gDesc, setGDesc] = useState("");
   const [gSaving, setGSaving] = useState(false);
   const [gError, setGError] = useState("");
+  const [gOk, setGOk] = useState("");
 
   const [aBarbero, setABarbero] = useState("");
   const [aMonto, setAMonto] = useState("");
   const [aNota, setANota] = useState("");
   const [aSaving, setASaving] = useState(false);
   const [aError, setAError] = useState("");
+  const [aOk, setAOk] = useState("");
 
   async function submitGasto(e: React.FormEvent) {
     e.preventDefault();
@@ -40,10 +46,12 @@ export function CuadreForms({ sedes, barberos }: { sedes: Sede[]; barberos: Barb
       return;
     }
     setGError("");
+    setGOk("");
     setGSaving(true);
     const res = await registrarGasto({ sede: gSede, categoria: gCat || "Otro", monto, descripcion: gDesc });
     setGSaving(false);
     if (res.ok) {
+      setGOk(`Gasto de ${gCat || "Otro"} guardado ✓ — aparece abajo en "Gastos de hoy".`);
       setGCat("");
       setGMonto("");
       setGDesc("");
@@ -63,10 +71,13 @@ export function CuadreForms({ sedes, barberos }: { sedes: Sede[]; barberos: Barb
       return;
     }
     setAError("");
+    setAOk("");
     setASaving(true);
     const res = await registrarAdelanto({ barberoId: aBarbero, monto, nota: aNota });
     setASaving(false);
     if (res.ok) {
+      const nombre = barberos.find((b) => b.id === aBarbero)?.nombre ?? "el barbero";
+      setAOk(`Adelanto registrado ✓ para ${nombre} — queda abajo en "Adelantos de hoy".`);
       setAMonto("");
       setANota("");
       router.refresh();
@@ -84,10 +95,26 @@ export function CuadreForms({ sedes, barberos }: { sedes: Sede[]; barberos: Barb
             <option key={s.id} value={s.id}>{s.nombre}</option>
           ))}
         </select>
-        <input value={gCat} onChange={(e) => setGCat(e.target.value)} placeholder="Categoría (ej. papelería, insumos)" className={fld} />
+        {/* Categorías con chips (un toque) + campo libre para lo que no encaje */}
+        <div className="flex flex-wrap gap-1.5">
+          {CATS_GASTO.map((c) => (
+            <button
+              key={c}
+              type="button"
+              onClick={() => setGCat(gCat === c ? "" : c)}
+              className={`min-h-[38px] rounded-full border px-3 text-xs font-semibold transition ${
+                gCat === c ? "border-accent bg-accent/15 text-ink" : "border-line text-muted hover:text-ink"
+              }`}
+            >
+              {c}
+            </button>
+          ))}
+        </div>
+        <input value={gCat} onChange={(e) => setGCat(e.target.value)} placeholder="Otra categoría (o toca un chip)" className={fld} />
         <input type="number" inputMode="numeric" min={1} step={1} value={gMonto} onChange={(e) => { setGMonto(e.target.value); if (gError) setGError(""); }} placeholder="Monto" className={fld} />
         <input value={gDesc} onChange={(e) => setGDesc(e.target.value)} placeholder="Descripción (opcional)" className={fld} />
         {gError && <p className="text-xs text-red-500">{gError}</p>}
+        {gOk && <p className="rounded-lg border border-ok/40 bg-ok/10 px-3 py-2 text-xs text-ok">{gOk}</p>}
         <button disabled={gSaving} className={btn}>{gSaving ? "Guardando…" : "Agregar gasto"}</button>
       </form>
 
@@ -106,6 +133,7 @@ export function CuadreForms({ sedes, barberos }: { sedes: Sede[]; barberos: Barb
         <input type="number" inputMode="numeric" min={1} step={1} value={aMonto} onChange={(e) => { setAMonto(e.target.value); if (aError) setAError(""); }} placeholder="Monto del adelanto" className={fld} />
         <input value={aNota} onChange={(e) => setANota(e.target.value)} placeholder="Nota (opcional)" className={fld} />
         {aError && <p className="text-xs text-red-500">{aError}</p>}
+        {aOk && <p className="rounded-lg border border-ok/40 bg-ok/10 px-3 py-2 text-xs text-ok">{aOk}</p>}
         <button disabled={aSaving} className={btn}>{aSaving ? "Guardando…" : "Agregar adelanto"}</button>
       </form>
     </div>

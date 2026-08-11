@@ -179,15 +179,18 @@ function NotasTab({ d }: { d: Detalle }) {
   const [nota, setNota] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [ok, setOk] = useState(false);
 
   async function add(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true);
     setErr(null);
+    setOk(false);
     const res = await agregarNotaCliente({ clienteRef: d.id, nota });
     setBusy(false);
     if (res.ok) {
       setNota("");
+      setOk(true);
       router.refresh();
     } else setErr(res.error ?? "Error");
   }
@@ -196,6 +199,7 @@ function NotasTab({ d }: { d: Detalle }) {
     <div>
       <form onSubmit={add} className="mb-5 space-y-2 rounded-2xl border border-line bg-panel p-4">
         {err && <div className="rounded-lg border border-accent/40 bg-accent/10 px-3 py-2 text-sm text-accent-soft">{err}</div>}
+        {ok && <div className="rounded-lg border border-ok/40 bg-ok/10 px-3 py-2 text-sm text-ok">Nota guardada ✓ — quedó abajo en la lista.</div>}
         <textarea
           value={nota}
           onChange={(e) => setNota(e.target.value)}
@@ -228,14 +232,17 @@ function WalletTab({ d }: { d: Detalle }) {
   const [nota, setNota] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [ok, setOk] = useState<string | null>(null);
 
   async function add(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true);
     setErr(null);
+    setOk(null);
     const res = await agregarMovWallet({ clienteRef: d.id, tipo, monto: Number(monto) || 0, nota });
     setBusy(false);
     if (res.ok) {
+      setOk(`${tipo === "recarga" ? "Recarga" : "Consumo"} de ${cop(Number(monto) || 0)} registrado ✓`);
       setMonto("");
       setNota("");
       router.refresh();
@@ -251,6 +258,7 @@ function WalletTab({ d }: { d: Detalle }) {
 
         <form onSubmit={add} className="mt-4 space-y-2">
           {err && <div className="rounded-lg border border-accent/40 bg-accent/10 px-3 py-2 text-sm text-accent-soft">{err}</div>}
+          {ok && <div className="rounded-lg border border-ok/40 bg-ok/10 px-3 py-2 text-sm text-ok">{ok}</div>}
           <div className="flex gap-2">
             {(["recarga", "consumo"] as const).map((t) => (
               <button
@@ -297,14 +305,17 @@ function FidelidadTab({ d, tarjeta }: { d: Detalle; tarjeta: TarjetaClienteView 
   const [nota, setNota] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [ok, setOk] = useState<string | null>(null);
 
   async function canjear(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true);
     setErr(null);
+    setOk(null);
     const res = await canjearPuntos({ clienteRef: d.id, puntos: Number(puntos) || 0, nota });
     setBusy(false);
     if (res.ok) {
+      setOk(`Canje de ${Number(puntos) || 0} puntos registrado ✓`);
       setPuntos("");
       setNota("");
       router.refresh();
@@ -335,6 +346,7 @@ function FidelidadTab({ d, tarjeta }: { d: Detalle; tarjeta: TarjetaClienteView 
 
         <form onSubmit={canjear} className="mt-4 space-y-2">
           {err && <div className="rounded-lg border border-accent/40 bg-accent/10 px-3 py-2 text-sm text-accent-soft">{err}</div>}
+          {ok && <div className="rounded-lg border border-ok/40 bg-ok/10 px-3 py-2 text-sm text-ok">{ok}</div>}
           <input type="number" value={puntos} onChange={(e) => setPuntos(e.target.value)} placeholder="Puntos a canjear" className={fld} />
           <input value={nota} onChange={(e) => setNota(e.target.value)} placeholder="Premio / nota (ej. servicio gratis)" className={fld} />
           <button disabled={busy || d.puntosBalance <= 0} className={btn}>{busy ? "Guardando…" : "Canjear puntos"}</button>
@@ -391,16 +403,19 @@ function ResenasTab({ d, barberos }: { d: Detalle; barberos: Barbero[] }) {
   const [nota, setNota] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [ok, setOk] = useState(false);
 
   async function add(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true);
     setErr(null);
+    setOk(false);
     const res = await agregarResenaCliente({ clienteRef: d.id, barberoId, score, nota });
     setBusy(false);
     if (res.ok) {
       setNota("");
       setScore(5);
+      setOk(true);
       router.refresh();
     } else setErr(res.error ?? "Error");
   }
@@ -409,6 +424,7 @@ function ResenasTab({ d, barberos }: { d: Detalle; barberos: Barbero[] }) {
     <div>
       <form onSubmit={add} className="mb-5 space-y-3 rounded-2xl border border-line bg-panel p-4">
         {err && <div className="rounded-lg border border-accent/40 bg-accent/10 px-3 py-2 text-sm text-accent-soft">{err}</div>}
+        {ok && <div className="rounded-lg border border-ok/40 bg-ok/10 px-3 py-2 text-sm text-ok">Reseña guardada ✓ — quedó abajo en la lista.</div>}
         <div className="text-xs uppercase tracking-wide text-muted">Calificar al cliente</div>
         <div className="flex gap-1">
           {[1, 2, 3, 4, 5].map((n) => (

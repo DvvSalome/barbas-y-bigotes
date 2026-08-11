@@ -7,6 +7,7 @@ import {
   getReservasPendientesCobro,
   getCuadresAnteriores,
   getMediosTodos,
+  getAdelantosHoy,
   type MedioPago,
 } from "@/lib/data/queries";
 import { CuadreForms } from "@/components/admin/CuadreForms";
@@ -45,7 +46,7 @@ function desgloseCierre(totales: TotalesPorMedio, medios: MedioPago[]) {
 }
 
 export default async function CuadrePage() {
-  const [cuadre, sedes, barberos, cajas, pendientes, anteriores, medios] = await Promise.all([
+  const [cuadre, sedes, barberos, cajas, pendientes, anteriores, medios, adelantos] = await Promise.all([
     getCuadre(),
     getSedes(),
     getBarberos(),
@@ -53,6 +54,7 @@ export default async function CuadrePage() {
     getReservasPendientesCobro(),
     getCuadresAnteriores(),
     getMediosTodos(),
+    getAdelantosHoy(),
   ]);
   const fecha = new Date().toLocaleDateString("es-CO", { timeZone: "America/Bogota", weekday: "long", day: "numeric", month: "long" });
   const totalPendiente = pendientes.reduce((a, p) => a + p.monto, 0);
@@ -126,6 +128,25 @@ export default async function CuadrePage() {
                   {g.descripcion && <span className="block text-xs text-muted">{g.descripcion}</span>}
                 </span>
                 <span className="shrink-0 tabular-nums text-muted">−{cop(g.monto)}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {/* Rastro visible del adelanto: sin esta lista, registrar uno no se veía
+          en ninguna parte y el dueño dudaba si guardó (o lo metía dos veces). */}
+      {adelantos.length > 0 && (
+        <div className="mt-8">
+          <h2 className="mb-3 text-xs uppercase tracking-[0.3em] text-accent">Adelantos de hoy</h2>
+          <ul className="divide-y divide-line/60 overflow-hidden rounded-2xl border border-line bg-panel">
+            {adelantos.map((a) => (
+              <li key={a.id} className="flex items-center justify-between gap-3 px-4 py-3 text-sm">
+                <span className="min-w-0">
+                  <span className="block font-medium">{a.barbero}</span>
+                  {a.nota && <span className="block text-xs text-muted">{a.nota}</span>}
+                </span>
+                <span className="shrink-0 tabular-nums text-muted">−{cop(a.monto)}</span>
               </li>
             ))}
           </ul>
