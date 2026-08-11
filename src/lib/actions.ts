@@ -28,6 +28,7 @@ import {
   slotEnVentana,
 } from "@/lib/slots";
 import { ventanaDeDia } from "@/lib/horario";
+import { choqueAusencia } from "@/lib/ausencias";
 import { errorPublico } from "@/lib/errors";
 import { calcularCobro, snapshotDinero, diferenciaCaja } from "@/lib/cobro";
 import { beneficioProximoCorte, type BeneficioTarjeta } from "@/lib/tarjeta";
@@ -785,15 +786,10 @@ export async function createReserva(input: {
     .eq("servicio_id", input.servicioId)
     .maybeSingle();
   if (!ss) return { ok: false, error: "Ese servicio no está disponible en esa sede." };
-  // Guard de ausencia (autoritativo): el admin marcó que el barbero no atiende esa
-  // fecha. Se bloquea acá aunque la UI se saltara (endpoint POST directo).
-  const { data: aus } = await sb
-    .from("barbero_ausencias")
-    .select("id")
-    .eq("barbero_id", barberoId)
-    .eq("fecha", bogotaYmd(inicio))
-    .limit(1);
-  if (aus && aus.length) return { ok: false, error: "Ese barbero no atiende ese día. Elige otra fecha u otro barbero." };
+  // Guard de ausencia/bloqueo (autoritativo): día completo o rango de horas
+  // (0054). Se bloquea acá aunque la UI se saltara (endpoint POST directo).
+  const ausErr = await choqueAusencia(sb, barberoId, inicio, new Date(inicio.getTime() + dur * 60000));
+  if (ausErr) return { ok: false, error: ausErr };
 
   // (El guard de calendario —día cerrado / domingo— ya lo cubre `ventana.abierta`
   // de arriba, resuelto con horarioEfectivo. Antes había un chequeo aparte que
@@ -900,12 +896,18 @@ export async function getDisponibilidad(input: {
   // nada (bug cazado en QA 2026-07-17).
   const { data: aus } = await sb
     .from("barbero_ausencias")
-    .select("id")
+    .select("desde_min,hasta_min")
     .eq("barbero_id", input.barberoId)
-    .eq("fecha", bogotaYmd(new Date(input.fechaISO)))
-    .limit(1);
-  if (aus && aus.length)
+    .eq("fecha", bogotaYmd(new Date(input.fechaISO)));
+  const ausFilas = (aus ?? []) as { desde_min: number | null; hasta_min: number | null }[];
+  if (ausFilas.some((a) => a.desde_min == null))
     return [{ inicio: desde.toISOString(), fin: new Date(hasta.getTime() - 60000).toISOString() }];
+  // Bloqueos PARCIALES (almuerzo/diligencia, 0054): entran como intervalos
+  // ocupados más — todos los pickers los pintan gris sin lógica extra.
+  const bloqueos = ausFilas.map((a) => ({
+    inicio: new Date(desde.getTime() + (a.desde_min ?? 0) * 60000).toISOString(),
+    fin: new Date(desde.getTime() + (a.hasta_min ?? 1440) * 60000).toISOString(),
+  }));
   const { data } = await sb
     .from("reservas")
     .select("inicio,fin,estado")
@@ -917,10 +919,13 @@ export async function getDisponibilidad(input: {
   // hasta el fin estimado (finEfectivo), así una atención que se alarga no libera
   // el cupo online antes de tiempo.
   const ahora = Date.now();
-  return ((data ?? []) as { inicio: string; fin: string; estado: string }[]).map((r) => ({
-    inicio: r.inicio,
-    fin: finEfectivo(r.estado, r.fin, ahora),
-  }));
+  return [
+    ...bloqueos,
+    ...((data ?? []) as { inicio: string; fin: string; estado: string }[]).map((r) => ({
+      inicio: r.inicio,
+      fin: finEfectivo(r.estado, r.fin, ahora),
+    })),
+  ];
 }
 
 // Walk-in registrado por el barbero (con sesión).
@@ -953,15 +958,10 @@ export async function registrarWalkin(input: {
   // podía meter un cliente a alguien marcado como ausente. Peor: la atención
   // quedaba "en curso" y el sitio público lo mostraba "en silla" el resto del
   // día, cuando ni siquiera estaba en la barbería.
-  const hoyYmd = bogotaYmd(new Date());
-  const { data: ausente } = await sb
-    .from("barbero_ausencias")
-    .select("id")
-    .eq("barbero_id", barberoId)
-    .eq("fecha", hoyYmd)
-    .limit(1);
-  if (ausente && ausente.length) {
-    return { ok: false, error: "Ese barbero está marcado como ausente hoy. Elegí otro o quitá la ausencia." };
+  const ahoraWk = new Date();
+  const ausWkErr = await choqueAusencia(sb, barberoId, ahoraWk, new Date(ahoraWk.getTime() + 30 * 60000));
+  if (ausWkErr) {
+    return { ok: false, error: "Ese barbero está ausente o bloqueado ahora mismo. Elegí otro o quitá el bloqueo." };
   }
   // Mostrador compartido: una vez validada la sede/barbero acá, el INSERT va con
   // service_role. La RLS de reservas (0010) exige barbero_id = current_barbero_id(),
@@ -1090,14 +1090,9 @@ export async function agendarCita(input: {
   if (!slotEnVentana(minutoDelDiaBogota(inicio), dur, ventana))
     return { ok: false, error: "Ese horario está fuera del horario de atención." };
 
-  // Ausencia del barbero + pre-chequeo de solape (el EXCLUDE es la garantía real).
-  const { data: aus } = await admin
-    .from("barbero_ausencias")
-    .select("id")
-    .eq("barbero_id", input.barberoId)
-    .eq("fecha", bogotaYmd(inicio))
-    .limit(1);
-  if (aus && aus.length) return { ok: false, error: "Ese barbero no atiende ese día. Elegí otra fecha u otro barbero." };
+  // Ausencia/bloqueo del barbero + pre-chequeo de solape (el EXCLUDE es la garantía real).
+  const ausErr = await choqueAusencia(admin, input.barberoId, inicio, fin);
+  if (ausErr) return { ok: false, error: ausErr };
   const { data: clash } = await admin
     .from("reservas")
     .select("id")
@@ -1130,6 +1125,64 @@ export async function agendarCita(input: {
     return { ok: false, error: errorPublico("agendarCita", error) };
   }
   revalidatePath("/barbero");
+  return { ok: true };
+}
+
+// Bloquear un rato (o el día) de un barbero desde el calendario: almuerzo,
+// diligencia, ausencia. Staff de la sede, no solo admin (a diferencia de
+// marcarAusencia): el mostrador también tapa huecos. RLS de escritura es
+// admin-only (0030), por eso el insert va con service role tras el gate.
+export async function bloquearHoras(input: {
+  barberoId: string;
+  fecha: string; // YYYY-MM-DD
+  desdeMin?: number; // omitidos ambos = todo el día
+  hastaMin?: number;
+  motivo?: string;
+}): Promise<ActionResult> {
+  const sb = await supabaseServerAuth();
+  const denied = await requireStaff(sb);
+  if (denied) return { ok: false, error: denied };
+  const staff = await getStaffContext();
+  if (!puedeMostrador(staff.rol)) return { ok: false, error: "No autorizado" };
+  if (!(await staffPuedeOperarBarbero(staff, input.barberoId)))
+    return { ok: false, error: "Ese barbero no es de tu sede." };
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(input.fecha)) return { ok: false, error: "Fecha inválida." };
+
+  const parcial = input.desdeMin != null || input.hastaMin != null;
+  const desde = input.desdeMin ?? null;
+  const hasta = input.hastaMin ?? null;
+  if (parcial && (desde == null || hasta == null || desde < 0 || hasta > 1440 || desde >= hasta))
+    return { ok: false, error: "El rango de horas no cuadra (desde tiene que ir antes de hasta)." };
+
+  const { error } = await supabaseAdmin().from("barbero_ausencias").insert({
+    barbero_id: input.barberoId,
+    fecha: input.fecha,
+    motivo: (input.motivo ?? "").trim().slice(0, 120) || null,
+    desde_min: desde,
+    hasta_min: hasta,
+  });
+  if (error) return { ok: false, error: errorPublico("bloquearHoras", error) };
+  revalidatePath("/barbero");
+  revalidatePath("/admin/agenda");
+  return { ok: true };
+}
+
+// Quitar un bloqueo tocándolo en el calendario. Mismo gate que crearlo.
+export async function quitarBloqueo(id: string): Promise<ActionResult> {
+  const sb = await supabaseServerAuth();
+  const denied = await requireStaff(sb);
+  if (denied) return { ok: false, error: denied };
+  const staff = await getStaffContext();
+  if (!puedeMostrador(staff.rol)) return { ok: false, error: "No autorizado" };
+  const admin = supabaseAdmin();
+  const { data: fila } = await admin.from("barbero_ausencias").select("barbero_id").eq("id", id).maybeSingle();
+  if (!fila) return { ok: false, error: "Ese bloqueo ya no existe." };
+  if (!(await staffPuedeOperarBarbero(staff, (fila as { barbero_id: string }).barbero_id)))
+    return { ok: false, error: "Ese barbero no es de tu sede." };
+  const { error } = await admin.from("barbero_ausencias").delete().eq("id", id);
+  if (error) return { ok: false, error: errorPublico("quitarBloqueo", error) };
+  revalidatePath("/barbero");
+  revalidatePath("/admin/agenda");
   return { ok: true };
 }
 
@@ -1178,13 +1231,8 @@ export async function moverCita(input: {
   if (!slotEnVentana(minutoDelDiaBogota(inicio), dur, ventana))
     return { ok: false, error: "Ese horario está fuera del horario de atención." };
 
-  const { data: aus } = await admin
-    .from("barbero_ausencias")
-    .select("id")
-    .eq("barbero_id", barberoId)
-    .eq("fecha", bogotaYmd(inicio))
-    .limit(1);
-  if (aus && aus.length) return { ok: false, error: "Ese barbero no atiende ese día. Elegí otro." };
+  const ausErr = await choqueAusencia(admin, barberoId, inicio, fin);
+  if (ausErr) return { ok: false, error: ausErr };
   const { data: clash } = await admin
     .from("reservas")
     .select("id")

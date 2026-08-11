@@ -5,6 +5,7 @@ import { supabaseServerAuth, supabaseAdmin } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { CANCELACION_MIN_HORAS, slotEnVentana, bogotaYmd } from "@/lib/slots";
 import { ventanaDeDia } from "@/lib/horario";
+import { choqueAusencia } from "@/lib/ausencias";
 import { errorPublico } from "@/lib/errors";
 import { pushACliente, pushABarbero, pushASede } from "@/lib/push";
 import { fechaHoraBogota } from "@/lib/format";
@@ -445,17 +446,11 @@ export async function reagendarReservaCliente(
   if (!slotEnVentana(minDia, dur, ventana))
     return { ok: false, error: "Ese horario no está disponible. Elige uno dentro del horario de atención." };
 
-  // Ausencia del barbero: esa persona no atiende ese día, aunque la sede sí abra
-  // (barbero_ausencias es un concepto aparte de la ventana de la sede).
+  // Ausencia/bloqueo del barbero (día completo o rango de horas, 0054): esa
+  // persona no atiende ese rato, aunque la sede sí abra.
   if (r.barbero_id) {
-    const { data: aus } = await admin
-      .from("barbero_ausencias")
-      .select("id")
-      .eq("barbero_id", r.barbero_id)
-      .eq("fecha", fechaYmd)
-      .limit(1);
-    if (aus && aus.length)
-      return { ok: false, error: "Ese barbero no atiende ese día. Elige otra fecha." };
+    const ausErr = await choqueAusencia(admin, r.barbero_id, nuevoInicio, nuevoFin);
+    if (ausErr) return { ok: false, error: ausErr };
   }
 
   // Pre-chequeo de solape del barbero, excluyendo la propia reserva.

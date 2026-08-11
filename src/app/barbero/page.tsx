@@ -13,6 +13,7 @@ import {
   getCajaDesglose,
   getAgendaSedeHoy,
   getAgendaSedeDia,
+  getBloqueosDia,
   getVentasSedeHoy,
   getHorarioSemanal,
   getDiasEspeciales,
@@ -77,10 +78,12 @@ export default async function BarberoPage({
   // Calendario (pestaña Agenda): el día pedido por ?fecha=, hoy por defecto.
   const hoy = bogotaYmd();
   const fechaCal = /^\d{4}-\d{2}-\d{2}$/.test(sp.fecha ?? "") ? sp.fecha! : hoy;
-  const [agendaSede, ventasSede, agendaCal] = await Promise.all([
+  const idsSede = sedeBarbero ? barberos.filter((b) => b.sede === sedeBarbero).map((b) => b.id) : [];
+  const [agendaSede, ventasSede, agendaCal, bloqueosCal] = await Promise.all([
     getAgendaSedeHoy(sedeBarbero),
     getVentasSedeHoy(sedeBarbero),
     sedeBarbero ? getAgendaSedeDia(sedeBarbero, fechaCal) : Promise.resolve(null),
+    sedeBarbero ? getBloqueosDia(idsSede, fechaCal) : Promise.resolve([]),
   ]);
   // El "cobrado hoy" sale de las mismas ventas que la lista de abajo: un solo
   // viaje, y el número del encabezado siempre cuadra con lo que se ve detallado.
@@ -142,6 +145,7 @@ export default async function BarberoPage({
               fecha={fechaCal}
               hoy={hoy}
               agenda={agendaCal}
+              bloqueos={bloqueosCal}
               barberos={mostrador.barberosSede}
               servicios={servicios}
               horarioSemanal={horarioSemanal.filter((h) => h.sede === sedeBarbero)}

@@ -244,13 +244,15 @@ export async function getDiasEspeciales(): Promise<DiaEspecial[]> {
 
 export type Ausencia = { id: string; barberoId: string; fecha: string };
 
-// Ausencias de hoy en adelante (barbero + fecha). Lectura pública: el wizard filtra
-// al barbero ausente y el admin lista/quita. `fecha` es YYYY-MM-DD (date de Postgres).
+// Ausencias de DÍA COMPLETO de hoy en adelante. Lectura pública: el wizard filtra
+// al barbero ausente y el admin lista/quita. Los bloqueos por HORAS (0054) NO
+// entran acá — viven en el calendario y en getDisponibilidad como ocupados.
 export async function getAusencias(): Promise<Ausencia[]> {
   const sb = supabaseServer();
   const { data } = await sb
     .from("barbero_ausencias")
     .select("id,barbero_id,fecha")
+    .is("desde_min", null)
     .gte("fecha", bogotaYmd())
     .order("fecha");
   return (data ?? []).map((a: Record<string, unknown>) => ({
@@ -432,6 +434,35 @@ export async function getAgendaSedeDia(sedeId: string, fechaYmd: string): Promis
     nota: r.nota as string | null,
     confirmado: r.confirmado_en != null,
     duracionMin: (r.servicios as { duracion_min?: number } | null)?.duracion_min ?? 30,
+  }));
+}
+
+/** Bloqueo pintado en el calendario. desdeMin null = todo el día. */
+export type BloqueoDia = {
+  id: string;
+  barberoId: string;
+  motivo: string | null;
+  desdeMin: number | null;
+  hastaMin: number | null;
+};
+
+// Bloqueos/ausencias de un día para las columnas del calendario (0054). Mismo
+// contrato que getAgendaSedeDia: lectura ya autorizada tras el gate staff/admin.
+export async function getBloqueosDia(barberoIds: string[], fechaYmd: string): Promise<BloqueoDia[]> {
+  if (!barberoIds.length) return [];
+  const admin = supabaseAdmin();
+  const { data, error } = await admin
+    .from("barbero_ausencias")
+    .select("id,barbero_id,motivo,desde_min,hasta_min")
+    .in("barbero_id", barberoIds)
+    .eq("fecha", fechaYmd);
+  if (error) console.error("getBloqueosDia:", error.message);
+  return ((data ?? []) as Record<string, unknown>[]).map((b) => ({
+    id: b.id as string,
+    barberoId: b.barbero_id as string,
+    motivo: (b.motivo as string) ?? null,
+    desdeMin: (b.desde_min as number) ?? null,
+    hastaMin: (b.hasta_min as number) ?? null,
   }));
 }
 

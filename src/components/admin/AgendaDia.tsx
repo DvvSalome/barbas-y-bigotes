@@ -5,10 +5,12 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AgendarCitaForm } from "@/components/barbero/AgendarCitaForm";
 import { MoverCitaForm } from "@/components/admin/MoverCitaForm";
+import { BloquearHorasForm } from "@/components/admin/BloquearHorasForm";
+import { quitarBloqueo } from "@/lib/actions";
 import { CaraBarbero } from "@/components/staff/Elegir";
 import { DOW, MON, fmtTime, horarioEfectivo } from "@/lib/slots";
 import type { Barbero, Servicio, SedeId } from "@/lib/data/types";
-import type { AgendaDiaItem, HorarioSemanal, DiaEspecial } from "@/lib/data/queries";
+import type { AgendaDiaItem, BloqueoDia, HorarioSemanal, DiaEspecial } from "@/lib/data/queries";
 
 // Calendario del día (estilo WeiBook): una columna por barbero de la sede, las
 // citas como bloques de color por estado, línea de "ahora" y "+ Cita" a mano.
@@ -56,6 +58,7 @@ export function AgendaDia({
   fecha,
   hoy,
   agenda,
+  bloqueos = [],
   barberos,
   servicios,
   horarioSemanal,
@@ -66,6 +69,8 @@ export function AgendaDia({
   fecha: string; // YYYY-MM-DD del día mostrado
   hoy: string; // YYYY-MM-DD de hoy en Bogotá (server)
   agenda: AgendaDiaItem[];
+  /** Ausencias/bloqueos del día (0054); se pintan grises en la columna. */
+  bloqueos?: BloqueoDia[];
   barberos: Barbero[]; // ya filtrados por la sede
   servicios: Servicio[];
   horarioSemanal: HorarioSemanal[]; // ya filtrados por la sede
@@ -78,6 +83,11 @@ export function AgendaDia({
   // Detalle de una cita tocada (+ modo mover dentro del mismo sheet).
   const [detalle, setDetalle] = useState<AgendaDiaItem | null>(null);
   const [moviendo, setMoviendo] = useState(false);
+  // Bloquear horas: sheet de creación y bloqueo tocado (para quitarlo).
+  const [bloqueoSheet, setBloqueoSheet] = useState<{ barberoId?: string } | null>(null);
+  const [bloqueoSel, setBloqueoSel] = useState<BloqueoDia | null>(null);
+  const [quitando, setQuitando] = useState(false);
+  const [errBloqueo, setErrBloqueo] = useState<string | null>(null);
   const [ahoraMin, setAhoraMin] = useState(minutoBogota);
 
   const esHoy = fecha === hoy;
@@ -121,12 +131,20 @@ export function AgendaDia({
             </Link>
           )}
         </div>
-        <button
-          onClick={() => setSheet({})}
-          className="rounded-full bg-accent px-5 py-2.5 text-xs font-bold uppercase tracking-wide text-on-accent transition hover:bg-accent-soft"
-        >
-          + Cita
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setBloqueoSheet({})}
+            className="rounded-full border border-line px-4 py-2.5 text-xs font-bold uppercase tracking-wide text-muted transition hover:text-ink"
+          >
+            Bloquear
+          </button>
+          <button
+            onClick={() => setSheet({})}
+            className="rounded-full bg-accent px-5 py-2.5 text-xs font-bold uppercase tracking-wide text-on-accent transition hover:bg-accent-soft"
+          >
+            + Cita
+          </button>
+        </div>
       </div>
 
       <div className="mt-2.5 flex flex-wrap gap-x-3 gap-y-1 text-[10.5px] text-muted">
@@ -183,6 +201,7 @@ export function AgendaDia({
 
               {barberos.map((b) => {
                 const citas = agenda.filter((a) => a.barberoId === b.id);
+                const misBloqueos = bloqueos.filter((x) => x.barberoId === b.id);
                 return (
                   <div
                     key={b.id}
@@ -202,6 +221,28 @@ export function AgendaDia({
                         style={{ top: (m - abre) * PX_MIN }}
                       />
                     ))}
+
+                    {/* Bloqueos (gris): almuerzo/diligencia o el día entero. Tocar → quitar. */}
+                    {misBloqueos.map((x) => {
+                      const desde = x.desdeMin ?? abre;
+                      const hastaB = x.hastaMin ?? cierra;
+                      return (
+                        <button
+                          key={x.id}
+                          type="button"
+                          onClick={() => {
+                            setErrBloqueo(null);
+                            setBloqueoSel(x);
+                          }}
+                          className="absolute inset-x-1 z-[5] overflow-hidden rounded-lg border border-line bg-[repeating-linear-gradient(45deg,transparent,transparent_6px,rgba(120,120,120,0.12)_6px,rgba(120,120,120,0.12)_12px)] px-2 py-1 text-left text-[11px] leading-tight text-muted"
+                          style={{ top: (Math.max(desde, abre) - abre) * PX_MIN + 1, height: Math.max(26, (Math.min(hastaB, cierra) - Math.max(desde, abre)) * PX_MIN - 3) }}
+                          title={`Bloqueado${x.motivo ? ` · ${x.motivo}` : ""} — tocá para quitar`}
+                        >
+                          <span className="font-bold">Bloqueado</span>
+                          {x.motivo && <span className="block truncate opacity-80">{x.motivo}</span>}
+                        </button>
+                      );
+                    })}
 
                     {citas.map((c) => {
                       const ini = minutoDeISO(c.inicio);
@@ -269,6 +310,79 @@ export function AgendaDia({
               }}
               onCancel={() => setSheet(null)}
             />
+          </div>
+        </div>
+      )}
+
+      {/* Bloquear horas: sheet de creación */}
+      {bloqueoSheet && ventana.abierta && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-0 sm:items-center sm:p-6" onClick={() => setBloqueoSheet(null)}>
+          <div
+            className="max-h-[92dvh] w-full overflow-y-auto rounded-t-3xl border border-line bg-panel p-5 sm:max-w-lg sm:rounded-3xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="font-display text-xl">Bloquear horas · {esHoy ? "hoy" : labelFecha(fecha)}</h3>
+              <button onClick={() => setBloqueoSheet(null)} aria-label="Cerrar" className="grid h-11 w-11 place-items-center rounded-full border border-line text-muted transition hover:text-ink">
+                ×
+              </button>
+            </div>
+            <BloquearHorasForm
+              fecha={fecha}
+              barberos={barberos}
+              barberoInicial={bloqueoSheet.barberoId}
+              abreMin={abre}
+              cierraMin={cierra}
+              onDone={() => {
+                setBloqueoSheet(null);
+                router.refresh();
+              }}
+              onCancel={() => setBloqueoSheet(null)}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Bloqueo tocado: quitar */}
+      {bloqueoSel && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-0 sm:items-center sm:p-6" onClick={() => setBloqueoSel(null)}>
+          <div
+            className="w-full rounded-t-3xl border border-line bg-panel p-5 sm:max-w-md sm:rounded-3xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="font-display text-xl">Quitar el bloqueo</h3>
+            <p className="mt-2 text-sm text-muted">
+              {bloqueoSel.desdeMin == null
+                ? "Todo el día"
+                : `${fmtTime(bloqueoSel.desdeMin)} – ${fmtTime(bloqueoSel.hastaMin ?? 0)}`}
+              {bloqueoSel.motivo ? ` · ${bloqueoSel.motivo}` : ""} · {barberos.find((b) => b.id === bloqueoSel.barberoId)?.nombre ?? ""}
+            </p>
+            {errBloqueo && (
+              <div className="mt-3 rounded-xl border border-accent/40 bg-accent/10 px-3.5 py-2.5 text-sm text-accent-soft">
+                {errBloqueo}
+              </div>
+            )}
+            <div className="mt-4 flex gap-2">
+              <button
+                disabled={quitando}
+                onClick={async () => {
+                  setQuitando(true);
+                  setErrBloqueo(null);
+                  const res = await quitarBloqueo(bloqueoSel.id);
+                  setQuitando(false);
+                  if (res.ok) {
+                    setBloqueoSel(null);
+                    router.refresh();
+                  } else setErrBloqueo(res.error ?? "No se pudo quitar.");
+                }}
+                className="flex-1 rounded-full bg-accent px-5 py-3 text-sm font-bold uppercase tracking-wide text-on-accent transition hover:bg-accent-soft disabled:opacity-50"
+              >
+                {quitando ? "Quitando…" : "Quitar bloqueo"}
+              </button>
+              <button onClick={() => setBloqueoSel(null)} className="rounded-full border border-line px-5 py-3 text-sm text-muted">
+                Dejarlo
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -7,6 +7,7 @@ import {
   getHorarioSemanal,
   getDiasEspeciales,
   getAgendaSedeDia,
+  getBloqueosDia,
 } from "@/lib/data/queries";
 import { bogotaYmd } from "@/lib/slots";
 import type { SedeId } from "@/lib/data/types";
@@ -38,7 +39,11 @@ export default async function AgendaPage({
 
   const hoy = bogotaYmd();
   const fecha = /^\d{4}-\d{2}-\d{2}$/.test(sp.fecha ?? "") ? sp.fecha! : hoy;
-  const agenda = await getAgendaSedeDia(sede, fecha);
+  const barberosSede = barberos.filter((b) => b.sede === sede);
+  const [agenda, bloqueos] = await Promise.all([
+    getAgendaSedeDia(sede, fecha),
+    getBloqueosDia(barberosSede.map((b) => b.id), fecha),
+  ]);
 
   return (
     <div className="max-w-6xl">
@@ -52,7 +57,8 @@ export default async function AgendaPage({
         fecha={fecha}
         hoy={hoy}
         agenda={agenda}
-        barberos={barberos.filter((b) => b.sede === sede)}
+        bloqueos={bloqueos}
+        barberos={barberosSede}
         servicios={servicios}
         horarioSemanal={horarioSemanal.filter((h) => h.sede === sede)}
         diasEspeciales={diasEspeciales.filter((d) => d.sede === sede)}
