@@ -2134,6 +2134,41 @@ export async function agregarNotaCliente(input: { clienteRef: string; nota: stri
   return { ok: true };
 }
 
+// Corregir o borrar una nota interna: un tipeo mal no puede quedar para siempre
+// en la ficha. Mismo gate que crearla; clienteRef solo para revalidar la ruta.
+export async function editarNotaCliente(input: { id: string; clienteRef: string; nota: string }): Promise<ActionResult> {
+  const sb = await supabaseServerAuth();
+  const denied = await requireAdmin(sb);
+  if (denied) return { ok: false, error: denied };
+  if (!input.nota.trim()) return { ok: false, error: "Escribe la nota" };
+  const { error } = await sb.from("cliente_notas").update({ nota: input.nota.trim() }).eq("id", input.id);
+  if (error) return { ok: false, error: errorPublico("editarNotaCliente", error) };
+  revalidatePath(`/admin/clientes/${input.clienteRef}`);
+  return { ok: true };
+}
+
+export async function borrarNotaCliente(input: { id: string; clienteRef: string }): Promise<ActionResult> {
+  const sb = await supabaseServerAuth();
+  const denied = await requireAdmin(sb);
+  if (denied) return { ok: false, error: denied };
+  const { error } = await sb.from("cliente_notas").delete().eq("id", input.id);
+  if (error) return { ok: false, error: errorPublico("borrarNotaCliente", error) };
+  revalidatePath(`/admin/clientes/${input.clienteRef}`);
+  return { ok: true };
+}
+
+// Borrar una reseña del staff (estrella puesta por error). Editar el puntaje a
+// posteriori se presta a maquillar el historial: se borra y se vuelve a crear.
+export async function borrarResenaCliente(input: { id: string; clienteRef: string }): Promise<ActionResult> {
+  const sb = await supabaseServerAuth();
+  const denied = await requireAdmin(sb);
+  if (denied) return { ok: false, error: denied };
+  const { error } = await sb.from("cliente_resenas").delete().eq("id", input.id);
+  if (error) return { ok: false, error: errorPublico("borrarResenaCliente", error) };
+  revalidatePath(`/admin/clientes/${input.clienteRef}`);
+  return { ok: true };
+}
+
 export async function agregarMovWallet(input: {
   clienteRef: string;
   tipo: "recarga" | "consumo";

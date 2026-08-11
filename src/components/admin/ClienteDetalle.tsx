@@ -4,7 +4,15 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "motion/react";
 import { cop } from "@/lib/format";
-import { agregarNotaCliente, agregarMovWallet, agregarResenaCliente, canjearPuntos } from "@/lib/actions";
+import {
+  agregarNotaCliente,
+  editarNotaCliente,
+  borrarNotaCliente,
+  agregarMovWallet,
+  agregarResenaCliente,
+  borrarResenaCliente,
+  canjearPuntos,
+} from "@/lib/actions";
 import { Kpi } from "@/components/admin/Kpi";
 import type { ClienteDetalle as Detalle } from "@/lib/data/queries";
 import type { Barbero } from "@/lib/data/types";
@@ -249,10 +257,7 @@ function NotasTab({ d }: { d: Detalle }) {
       ) : (
         <div className="space-y-2">
           {d.notas.map((n) => (
-            <div key={n.id} className="rounded-xl border border-line bg-panel px-4 py-3 text-sm">
-              <div>{n.nota}</div>
-              <div className="mt-1 text-xs text-muted">{fecha(n.fecha)}</div>
-            </div>
+            <NotaFila key={n.id} clienteRef={d.id} id={n.id} nota={n.nota} fechaTxt={fecha(n.fecha)} />
           ))}
         </div>
       )}
@@ -493,13 +498,130 @@ function ResenasTab({ d, barberos }: { d: Detalle; barberos: Barbero[] }) {
             <div key={r.id} className="rounded-xl border border-line bg-panel px-4 py-3 text-sm">
               <div className="flex items-center justify-between">
                 <span className="text-accent">{"★".repeat(r.score)}<span className="text-line">{"★".repeat(5 - r.score)}</span></span>
-                <span className="text-xs text-muted">{fecha(r.fecha)}</span>
+                <span className="flex items-center gap-2">
+                  <span className="text-xs text-muted">{fecha(r.fecha)}</span>
+                  <BorrarChico
+                    label="reseña"
+                    onBorrar={() => borrarResenaCliente({ id: r.id, clienteRef: d.id })}
+                  />
+                </span>
               </div>
               {r.nota ? <div className="mt-1">{r.nota}</div> : null}
               {r.barbero ? <div className="mt-1 text-xs text-muted">por {r.barbero}</div> : null}
             </div>
           ))}
         </div>
+      )}
+    </div>
+  );
+}
+
+/** Borrar con confirmación de dos toques (patrón "Quitar foto"): el primero
+ *  pregunta en warn, el segundo ejecuta. Al perder el foco se desarma. */
+function BorrarChico({ label, onBorrar }: { label: string; onBorrar: () => Promise<{ ok: boolean; error?: string }> }) {
+  const router = useRouter();
+  const [confirmando, setConfirmando] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  async function click() {
+    if (!confirmando) {
+      setConfirmando(true);
+      return;
+    }
+    setBusy(true);
+    setErr(null);
+    const res = await onBorrar();
+    setBusy(false);
+    setConfirmando(false);
+    if (res.ok) router.refresh();
+    else setErr(res.error ?? "No se pudo borrar.");
+  }
+
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      {err && <span className="text-[10px] text-accent-soft">{err}</span>}
+      <button
+        type="button"
+        onClick={click}
+        onBlur={() => setConfirmando(false)}
+        disabled={busy}
+        className={`min-h-8 rounded-full border px-2.5 text-[10.5px] font-semibold transition disabled:opacity-50 ${
+          confirmando ? "border-warn/50 text-warn" : "border-line text-muted hover:text-ink"
+        }`}
+      >
+        {busy ? "Borrando…" : confirmando ? "¿Seguro? Toca de nuevo" : `Borrar ${label}`}
+      </button>
+    </span>
+  );
+}
+
+/** Fila de nota interna con editar inline + borrar: un tipeo mal ya no queda
+ *  para siempre en la ficha. */
+function NotaFila({ clienteRef, id, nota, fechaTxt }: { clienteRef: string; id: string; nota: string; fechaTxt: string }) {
+  const router = useRouter();
+  const [editando, setEditando] = useState(false);
+  const [texto, setTexto] = useState(nota);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  async function guardar() {
+    setBusy(true);
+    setErr(null);
+    const res = await editarNotaCliente({ id, clienteRef, nota: texto });
+    setBusy(false);
+    if (res.ok) {
+      setEditando(false);
+      router.refresh();
+    } else setErr(res.error ?? "No se pudo guardar.");
+  }
+
+  return (
+    <div className="rounded-xl border border-line bg-panel px-4 py-3 text-sm">
+      {editando ? (
+        <div className="space-y-2">
+          <textarea
+            value={texto}
+            onChange={(e) => setTexto(e.target.value)}
+            rows={2}
+            autoFocus
+            className={fld}
+          />
+          {err && <p className="text-[11px] text-accent-soft">{err}</p>}
+          <div className="flex gap-1.5">
+            <button type="button" onClick={guardar} disabled={busy} className={btn}>
+              {busy ? "Guardando…" : "Guardar"}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setEditando(false);
+                setTexto(nota);
+                setErr(null);
+              }}
+              className="rounded-full border border-line px-4 py-2 text-xs text-muted transition hover:text-ink"
+            >
+              Cancelar
+            </button>
+          </div>
+        </div>
+      ) : (
+        <>
+          <div>{nota}</div>
+          <div className="mt-1.5 flex items-center justify-between gap-2">
+            <span className="text-xs text-muted">{fechaTxt}</span>
+            <span className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => setEditando(true)}
+                className="min-h-8 rounded-full border border-line px-2.5 text-[10.5px] font-semibold text-muted transition hover:text-ink"
+              >
+                Editar ✎
+              </button>
+              <BorrarChico label="nota" onBorrar={() => borrarNotaCliente({ id, clienteRef })} />
+            </span>
+          </div>
+        </>
       )}
     </div>
   );
