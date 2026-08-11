@@ -26,9 +26,11 @@ const NOMBRE_SEDE: Record<string, string> = {
   "parque-venezuela": "Parque Venezuela",
   "plaza-de-la-paz": "Plaza de la Paz",
 };
+// Nombre corto LEGIBLE y consistente ("PV" no le decía nada a nadie, y "PV" vs
+// "PLAZA" eran dos estilos para el mismo dato).
 const TAG_SEDE: Record<string, string> = {
-  "parque-venezuela": "PV",
-  "plaza-de-la-paz": "PLAZA",
+  "parque-venezuela": "P. Venezuela",
+  "plaza-de-la-paz": "Plaza Paz",
 };
 const FOTO_SEDE: Record<string, string> = {
   "parque-venezuela": "/sedes/parque-venezuela-frente.jpg",

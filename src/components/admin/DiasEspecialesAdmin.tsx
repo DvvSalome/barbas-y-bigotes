@@ -102,13 +102,27 @@ export function DiasEspecialesAdmin({
       <form onSubmit={guardar} className="grid gap-3 rounded-2xl border border-line bg-panel p-5 sm:grid-cols-4">
         <h3 className="font-display text-lg sm:col-span-4">Abrir o cerrar un día</h3>
 
-        <select value={sede} onChange={(e) => setSede(e.target.value as typeof sede)} className={input}>
-          {sedes.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.nombre}
-            </option>
-          ))}
-        </select>
+        {/* La sede se elige IGUAL que en "Horario de la semana" de arriba
+            (pestañas): dos controles distintos para la misma decisión, uno
+            encima del otro, hacían dudar si eran cosas diferentes. Con una
+            sola sede no se pregunta. */}
+        {sedes.length > 1 && (
+          <div className="flex gap-1.5 sm:col-span-4" role="tablist" aria-label="Sede">
+            {sedes.map((s) => (
+              <button
+                key={s.id}
+                type="button"
+                aria-pressed={s.id === sede}
+                onClick={() => setSede(s.id as typeof sede)}
+                className={`min-h-11 rounded-lg px-3.5 text-[12.5px] font-semibold transition ${
+                  s.id === sede ? "bg-accent/15 text-accent-soft" : "text-muted hover:text-ink"
+                }`}
+              >
+                {s.nombre}
+              </button>
+            ))}
+          </div>
+        )}
         <input type="date" min={hoy} value={fecha} onChange={(e) => setFecha(e.target.value)} className={input} />
 
         {/* Abrir / Cerrar como par de botones: más claro que un checkbox suelto. */}

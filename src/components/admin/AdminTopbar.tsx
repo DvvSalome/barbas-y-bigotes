@@ -29,9 +29,11 @@ function SedeSelector({ sedes }: { sedes: Sede[] }) {
   const search = useSearchParams();
   const filtra = seccionFiltraPorSede(pathname);
   const actual = filtra ? search.get("sede") : null;
-  const opciones: { id: string | null; nombre: string }[] = [
-    { id: null, nombre: "Ambas sedes" },
-    ...sedes.map((s) => ({ id: s.id as string, nombre: s.nombre })),
+  // Etiqueta corta en el celular ("Parque"/"Plaza"): los nombres completos no
+  // encogían (whitespace-nowrap) y el segmentado se salía de la pantalla.
+  const opciones: { id: string | null; nombre: string; corto: string }[] = [
+    { id: null, nombre: "Ambas sedes", corto: "Ambas" },
+    ...sedes.map((s) => ({ id: s.id as string, nombre: s.nombre, corto: s.nombre.split(" ")[0] })),
   ];
 
   function ir(id: string | null) {
@@ -60,13 +62,14 @@ function SedeSelector({ sedes }: { sedes: Sede[] }) {
               aria-pressed={activo}
               disabled={!filtra}
               onClick={() => ir(o.id)}
-              className={`whitespace-nowrap rounded-md px-2.5 py-1 text-xs font-semibold transition disabled:cursor-not-allowed sm:px-3 ${
+              className={`min-h-10 whitespace-nowrap rounded-md px-2.5 text-xs font-semibold transition disabled:cursor-not-allowed sm:px-3 ${
                 activo
                   ? `bg-elevated shadow-[inset_0_0_0_1px_var(--line)] ${filtra ? "text-ink" : "text-muted"}`
                   : `text-muted ${filtra ? "hover:text-ink" : ""}`
               }`}
             >
-              {o.nombre}
+              <span className="sm:hidden">{o.corto}</span>
+              <span className="hidden sm:inline">{o.nombre}</span>
             </button>
           );
         })}
@@ -136,11 +139,12 @@ export function AdminTopbar({ email, sedes, caja }: { email: string; sedes: Sede
                   vieja ? "bg-warn" : caja.abierta ? "bg-ok" : "bg-muted"
                 }`}
               />
+              {/* La antigüedad manda: "1 de 2 abiertas" TAPABA el "hace N días". */}
               {caja.abierta
-                ? caja.sedesCount > 1 && caja.abiertasCount < caja.sedesCount
-                  ? `Caja: ${caja.abiertasCount} de ${caja.sedesCount} abiertas`
-                  : vieja
-                    ? `Caja sin cerrar hace ${dias === 1 ? "1 día" : `${dias} días`}`
+                ? vieja
+                  ? `Caja sin cerrar hace ${dias === 1 ? "1 día" : `${dias} días`}`
+                  : caja.sedesCount > 1 && caja.abiertasCount < caja.sedesCount
+                    ? `Caja: ${caja.abiertasCount} de ${caja.sedesCount} abiertas`
                     : `Caja abierta${caja.desde ? ` · ${horaBogota(caja.desde)}` : ""}`
                 : "Caja cerrada"}
             </Link>
@@ -149,6 +153,21 @@ export function AdminTopbar({ email, sedes, caja }: { email: string; sedes: Sede
 
         <PerfilMenu nombre={name} detalle={email} salidaHref="/login" />
       </div>
+
+      {/* Caja abierta de DÍAS: franja completa, no solo el chip (que en móvil se
+          envolvía a otra fila y quedaba como un adorno más entre los controles). */}
+      {(() => {
+        const dias = caja.abierta && caja.desde ? diasDesde(caja.desde) : 0;
+        if (dias <= 0) return null;
+        return (
+          <Link
+            href="/admin/cuadre"
+            className="block border-t border-warn/30 bg-warn/10 px-4 py-2.5 text-center text-[13px] font-bold text-warn transition hover:bg-warn/15"
+          >
+            La caja lleva {dias === 1 ? "1 día" : `${dias} días`} sin cerrar — toca para cerrarla →
+          </Link>
+        );
+      })()}
 
       <Suspense fallback={null}>
         <AdminTabs />

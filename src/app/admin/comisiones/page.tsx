@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import { cop } from "@/lib/format";
 import { getBarberosContrato, getSedes } from "@/lib/data/queries";
 import { SectionHeader } from "@/components/admin/SectionHeader";
 import { ContratoEditable } from "@/components/admin/ContratoEditable";
+import { CaraBarbero } from "@/components/staff/Elegir";
 
 export const metadata: Metadata = { title: "Comisiones · Admin" };
 
@@ -59,18 +59,9 @@ export default async function ComisionesPage() {
             className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3 border-b border-line/60 px-4 py-3 last:border-b-0"
           >
             <div className="flex min-w-0 items-center gap-3">
-              <span className="relative grid h-9 w-9 shrink-0 place-items-center overflow-hidden rounded-full bg-elevated text-xs font-bold text-ink">
-                {b.fotoUrl ? (
-                  <Image src={b.fotoUrl} alt={b.nombre} width={36} height={36} className="h-full w-full object-cover" />
-                ) : (
-                  b.nombre
-                    .split(" ")
-                    .map((x) => x[0])
-                    .join("")
-                    .slice(0, 2)
-                    .toUpperCase()
-                )}
-              </span>
+              {/* La MISMA cara que Equipo/Ausencias (CaraBarbero): el armado a
+                  mano encuadraba la foto distinto entre secciones. */}
+              <CaraBarbero b={{ id: b.id, nombre: b.nombre, fotoUrl: b.fotoUrl }} size={36} />
               <span className="min-w-0">
                 <span className="block truncate text-[13.5px] font-semibold text-ink">{b.nombre}</span>
                 <span className="block truncate text-[11.5px] text-muted">{sedeNombre(b.sede)}</span>

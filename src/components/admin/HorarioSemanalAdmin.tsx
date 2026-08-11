@@ -94,7 +94,7 @@ export function HorarioSemanalAdmin({ sedes, horario }: { sedes: Sede[]; horario
               type="button"
               aria-pressed={s.id === sedeId}
               onClick={() => cambiarSede(s.id)}
-              className={`min-h-9 rounded-lg px-3 text-[12.5px] font-semibold transition ${
+              className={`min-h-11 rounded-lg px-3.5 text-[12.5px] font-semibold transition ${
                 s.id === sedeId ? "bg-accent/15 text-accent-soft" : "text-muted hover:text-ink"
               }`}
             >
