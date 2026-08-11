@@ -579,6 +579,62 @@ export async function subirFotoProducto(formData: FormData): Promise<ActionResul
   return { ok: true };
 }
 
+// Foto REAL del servicio (0055): mismo pipeline blindado que subirFotoProducto
+// (allowlist de MIME + firma de bytes + bucket público 'servicios').
+export async function subirFotoServicio(formData: FormData): Promise<ActionResult> {
+  const sb = await supabaseServerAuth();
+  const denied = await requireAdmin(sb);
+  if (denied) return { ok: false, error: denied };
+
+  const servicioId = String(formData.get("servicioId") ?? "").trim();
+  const file = formData.get("foto");
+  if (!servicioId || !(file instanceof File) || file.size === 0)
+    return { ok: false, error: "Elige una imagen." };
+  if (!["image/jpeg", "image/png", "image/webp", "image/avif"].includes(file.type))
+    return { ok: false, error: "La imagen tiene que ser JPG, PNG, WebP o AVIF." };
+  if (file.size > FOTO_MAX_BYTES) return { ok: false, error: "La imagen no puede pesar más de 2MB." };
+  const cabecera = new Uint8Array(await file.slice(0, 16).arrayBuffer());
+  if (!pareceImagen(cabecera))
+    return { ok: false, error: "Ese archivo no es una imagen válida." };
+
+  const admin = supabaseAdmin();
+  const { data: srv } = await admin.from("servicios").select("id").eq("id", servicioId).maybeSingle();
+  if (!srv) return { ok: false, error: "Servicio no encontrado." };
+
+  const ext = extDeMime(file.type);
+  const path = `${servicioId}.${ext}`;
+  const { error: upErr } = await admin.storage
+    .from("servicios")
+    .upload(path, file, { upsert: true, contentType: file.type });
+  if (upErr)
+    return { ok: false, error: errorPublico("subirFotoServicio upload", upErr, "No se pudo subir la foto. Intenta de nuevo.") };
+  const { error: rmErr } = await admin.storage.from("servicios").remove(variantesObsoletas(servicioId, ext));
+  if (rmErr) errorPublico("subirFotoServicio limpieza", rmErr);
+
+  const { data: pub } = admin.storage.from("servicios").getPublicUrl(path);
+  const url = `${pub.publicUrl}?v=${Date.now()}`;
+  const { error: updErr } = await admin.from("servicios").update({ foto_url: url }).eq("id", servicioId);
+  if (updErr) return { ok: false, error: errorPublico("subirFotoServicio update", updErr) };
+
+  revalidatePath("/admin/precios");
+  revalidatePath("/reservar");
+  return { ok: true };
+}
+
+// Descripción del servicio (una frase de qué incluye): la ve el cliente al
+// reservar. Vacía = se borra (vuelve a "sin descripción").
+export async function actualizarDescripcionServicio(servicioId: string, texto: string): Promise<ActionResult> {
+  const sb = await supabaseServerAuth();
+  const denied = await requireAdmin(sb);
+  if (denied) return { ok: false, error: denied };
+  const limpio = texto.trim().slice(0, 200) || null;
+  const { error } = await supabaseAdmin().from("servicios").update({ descripcion: limpio }).eq("id", servicioId);
+  if (error) return { ok: false, error: errorPublico("actualizarDescripcionServicio", error) };
+  revalidatePath("/admin/precios");
+  revalidatePath("/reservar");
+  return { ok: true };
+}
+
 // --- Armador de combos (F3) ---
 
 // Crea un combo EN LA SEDE ACTIVA del módulo Precios (decisión del dueño): queda

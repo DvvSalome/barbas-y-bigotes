@@ -19,7 +19,7 @@ export async function getServicios(): Promise<Servicio[]> {
   const sb = supabaseServer();
   const { data } = await sb
     .from("servicios")
-    .select("id,nombre,categoria,duracion_min,es_combo,desde,servicio_sede(sede_id,precio)")
+    .select("id,nombre,categoria,duracion_min,es_combo,desde,foto_url,descripcion,servicio_sede(sede_id,precio)")
     .eq("activo", true);
   return (data ?? []).map((s: Record<string, unknown>) => {
     const precios = {} as Record<SedeId, number>;
@@ -33,6 +33,8 @@ export async function getServicios(): Promise<Servicio[]> {
       duracionMin: s.duracion_min as number,
       esCombo: s.es_combo as boolean,
       desde: s.desde as boolean,
+      fotoUrl: (s.foto_url as string) ?? null,
+      descripcion: (s.descripcion as string) ?? null,
       precios,
     };
   });
@@ -45,7 +47,7 @@ export async function getServiciosCatalogoAdmin(): Promise<Servicio[]> {
   const sb = supabaseServer();
   const { data } = await sb
     .from("servicios")
-    .select("id,nombre,categoria,duracion_min,es_combo,desde,activo,servicio_sede(sede_id,precio)")
+    .select("id,nombre,categoria,duracion_min,es_combo,desde,activo,foto_url,descripcion,servicio_sede(sede_id,precio)")
     .order("categoria");
   return (data ?? []).map((s: Record<string, unknown>) => {
     const precios = {} as Record<SedeId, number>;
@@ -60,6 +62,8 @@ export async function getServiciosCatalogoAdmin(): Promise<Servicio[]> {
       esCombo: s.es_combo as boolean,
       desde: s.desde as boolean,
       activo: s.activo as boolean,
+      fotoUrl: (s.foto_url as string) ?? null,
+      descripcion: (s.descripcion as string) ?? null,
       precios,
     };
   });

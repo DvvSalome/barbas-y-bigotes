@@ -27,6 +27,10 @@ export interface Servicio {
   /** Precio "desde $X". */
   desde?: boolean;
   esCombo?: boolean;
+  /** Foto real subida por el admin (bucket 'servicios'); null = sin foto (0055). */
+  fotoUrl?: string | null;
+  /** Una frase de qué incluye; la ve el cliente al reservar (0055). */
+  descripcion?: string | null;
   /** Solo lo llena el catálogo admin (getServiciosCatalogoAdmin): un servicio
    *  desactivado (activo=false) no aparece en la reserva. La lectura pública
    *  (getServicios) ya filtra activo=true, así que ahí queda undefined. */

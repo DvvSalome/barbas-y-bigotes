@@ -4,6 +4,8 @@ import { useMemo, useState } from "react";
 import { SearchIcon } from "@/components/icons";
 import { PrecioSedeEditable } from "@/components/admin/PrecioSedeEditable";
 import { ServicioActivoToggle } from "@/components/admin/ServicioActivoToggle";
+import { FotoServicio } from "@/components/admin/FotoServicio";
+import { DescripcionServicio } from "@/components/admin/DescripcionServicio";
 import type { Categoria, Sede, SedeId } from "@/lib/data/types";
 
 // Catálogo de servicios y precios.
@@ -22,6 +24,9 @@ export type ServicioPrecios = {
   duracionMin: number;
   desde?: boolean;
   activo?: boolean;
+  /** Foto y descripción que ve el cliente al reservar (0055). */
+  fotoUrl?: string | null;
+  descripcion?: string | null;
   precios: Partial<Record<SedeId, number>>;
 };
 
@@ -122,6 +127,11 @@ export function PreciosLista({
                           inactivo ? "opacity-55" : ""
                         }`}
                       >
+                        {/* Foto + descripción: es LO QUE VE EL CLIENTE al reservar,
+                            y se administra acá, junto al precio. */}
+                        <span className="shrink-0">
+                          <FotoServicio servicioId={s.id} nombre={s.nombre} fotoUrl={s.fotoUrl} />
+                        </span>
                         <span className="min-w-[45%] flex-1 text-[13.5px] font-semibold text-ink">
                           {s.nombre}
                           {s.desde && <span className="text-[11px] font-normal text-muted"> (desde)</span>}
@@ -133,6 +143,7 @@ export function PreciosLista({
                               Fuera del catálogo
                             </span>
                           )}
+                          <DescripcionServicio servicioId={s.id} descripcion={s.descripcion} />
                         </span>
 
                         {/* El precio como ficha con el nombre de la sede encima:

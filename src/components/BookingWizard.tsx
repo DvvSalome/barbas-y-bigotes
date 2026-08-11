@@ -42,8 +42,9 @@ const SEDE_INFO: Record<string, { detalle: string; frente: string }> = {
   "plaza-de-la-paz": { detalle: "Centro · Barranquilla", frente: "/sedes/plaza-de-la-paz-frente.jpg" },
 };
 
-// Fotos de servicio que cicla el proto (§6.4): corte-2, corte-3, corte-5, corte-1 por índice.
-const SERV_FOTOS = ["/cortes/corte-2.jpg", "/cortes/corte-3.jpg", "/cortes/corte-5.jpg", "/cortes/corte-1.jpg"];
+// Fotos de servicio: SOLO la foto real subida por el admin (0055). Antes se
+// ciclaban 4 fotos genéricas por índice y a "Cejas" le tocaba un corte: parecía
+// un error y confundía justo al elegir. Sin foto → placeholder neutro.
 
 // Copy default del upsell (proto §6.9; sin fuente admin, usamos el del prototipo).
 const UPSELL_EXTRA = { titulo: "¿Le sumas una bebida a tu corte?", sub: "Te la sirven apenas te sientas en la silla.", rechazo: "No, gracias" };
@@ -163,7 +164,7 @@ export function BookingWizard({
   const [cancelError, setCancelError] = useState<string | null>(null);
   const [sedeId, setSedeId] = useState<SedeId | null>(sedeDefault);
   const [servicio, setServicio] = useState<Servicio | null>(null);
-  const [servicioFoto, setServicioFoto] = useState<string>(SERV_FOTOS[0]);
+  const [servicioFoto, setServicioFoto] = useState<string>("");
   const [selectedCat, setSelectedCat] = useState<Categoria>("cortes");
   const [barbero, setBarbero] = useState<Barbero | null>(initialBarbero);
   const [day, setDay] = useState<Date | null>(null);
@@ -851,7 +852,13 @@ export function BookingWizard({
           <div className="mt-6 rounded-2xl border border-line bg-panel text-left" style={{ animation: "bbrise .5s ease-out .45s both" }}>
             <div className="flex items-center gap-3 border-b border-[rgba(242,237,228,0.07)] p-3.5">
               <div className="relative h-[46px] w-[46px] shrink-0 overflow-hidden rounded-[10px]">
-                <Image src={servicioFoto} alt="" fill sizes="46px" className="object-cover" />
+                {servicioFoto ? (
+                  <Image src={servicioFoto} alt="" fill sizes="46px" className="object-cover" />
+                ) : (
+                  <span className="flex h-full w-full items-center justify-center bg-elevated text-lg text-muted/50" aria-hidden>
+                    ✂
+                  </span>
+                )}
               </div>
               <div className="min-w-0">
                 <div className="text-[10.5px] font-bold uppercase tracking-[0.12em] text-muted">Servicio</div>
@@ -889,19 +896,33 @@ export function BookingWizard({
           </div>
 
           <div className="mt-6 flex gap-2.5" style={{ animation: "bbrise .5s ease-out .55s both" }}>
-            <button
-              onClick={() => router.push("/cuenta")}
-              className="flex min-h-[50px] flex-[1.3] items-center justify-center rounded-2xl font-display text-[15px] font-extrabold uppercase tracking-wide text-on-accent"
-              style={{ background: GRAD_CTA }}
-            >
-              Ver mi cuenta
-            </button>
-            <button
-              onClick={() => router.push("/")}
-              className="flex flex-1 items-center justify-center rounded-2xl border border-[rgba(242,237,228,0.16)] px-3 text-[13px] text-muted"
-            >
-              Volver al inicio
-            </button>
+            {/* El invitado NO tiene cuenta: mandarlo a /cuenta como CTA estrella
+                era ofrecerle una puerta cerrada justo después de reservar. */}
+            {sesion ? (
+              <>
+                <button
+                  onClick={() => router.push("/cuenta")}
+                  className="flex min-h-[50px] flex-[1.3] items-center justify-center rounded-2xl font-display text-[15px] font-extrabold uppercase tracking-wide text-on-accent"
+                  style={{ background: GRAD_CTA }}
+                >
+                  Ver mi cuenta
+                </button>
+                <button
+                  onClick={() => router.push("/")}
+                  className="flex flex-1 items-center justify-center rounded-2xl border border-[rgba(242,237,228,0.16)] px-3 text-[13px] text-muted"
+                >
+                  Volver al inicio
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={() => router.push("/")}
+                className="flex min-h-[50px] flex-1 items-center justify-center rounded-2xl font-display text-[15px] font-extrabold uppercase tracking-wide text-on-accent"
+                style={{ background: GRAD_CTA }}
+              >
+                Volver al inicio
+              </button>
+            )}
           </div>
 
           {/* Deshacer: por si puso un dato mal. Sin cuenta regresiva; cancela con
@@ -1054,16 +1075,16 @@ export function BookingWizard({
             <div className="grid grid-cols-2 gap-[9px] md:grid-cols-[repeat(auto-fill,minmax(160px,190px))] md:justify-center md:gap-3">
               {serviciosSede
                 .filter((s) => s.categoria === selectedCat)
-                .map((s, i) => {
+                .map((s) => {
                   const sel = servicio?.id === s.id;
-                  const foto = SERV_FOTOS[i % SERV_FOTOS.length];
+                  const foto = s.fotoUrl ?? null;
                   const precio = sedeId ? s.precios[sedeId] : s.precios["parque-venezuela"];
                   return (
                     <button
                       key={s.id}
                       onClick={() => {
                         setServicio(s);
-                        setServicioFoto(foto);
+                        setServicioFoto(foto ?? "");
                         setSlot(null);
                         // Reset del upsell: si venías de un combo con bebida incluida y
                         // cambias a otro servicio, no arrastres la bebida (se regalaba
@@ -1075,8 +1096,15 @@ export function BookingWizard({
                       className="flex flex-col overflow-hidden rounded-xl text-left"
                       style={{ border: `2px solid ${sel ? "#d23f34" : "rgba(242,237,228,.1)"}` }}
                     >
-                      <div className="bb-foto-skeleton relative aspect-[4/3] w-full overflow-hidden md:aspect-[3/2]">
-                        <Image src={foto} alt="" fill sizes="(max-width:768px) 50vw, 240px" className="object-cover" />
+                      <div className={`relative aspect-[4/3] w-full overflow-hidden md:aspect-[3/2] ${foto ? "bb-foto-skeleton" : ""}`}>
+                        {foto ? (
+                          <Image src={foto} alt="" fill sizes="(max-width:768px) 50vw, 240px" className="object-cover" />
+                        ) : (
+                          // Sin foto real no se inventa una: fondo neutro con tijera.
+                          <span className="absolute inset-0 flex items-center justify-center bg-elevated text-3xl text-muted/40" aria-hidden>
+                            ✂
+                          </span>
+                        )}
                         <span
                           className="absolute bottom-1.5 left-1.5 flex items-center gap-1 rounded-[5px] px-2 py-0.5 font-display text-[11px] font-extrabold text-white"
                           style={{ background: "rgba(5,4,3,.85)" }}
@@ -1090,6 +1118,10 @@ export function BookingWizard({
                       </div>
                       <div className="px-2.5 pb-1 pt-2.5">
                         <div className="min-h-[34px] text-[12.5px] font-bold leading-tight text-ink">{s.nombre}</div>
+                        {/* Qué incluye: sin esto el cliente decidía solo con el nombre. */}
+                        {s.descripcion && (
+                          <div className="mt-0.5 text-[10.5px] leading-snug text-muted">{s.descripcion}</div>
+                        )}
                       </div>
                       <div className="mt-auto flex items-center justify-between border-t border-[rgba(242,237,228,0.07)] px-2.5 py-2">
                         <span className="text-[9.5px] font-bold uppercase tracking-[0.12em] text-muted">Precio</span>
