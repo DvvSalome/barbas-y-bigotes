@@ -66,3 +66,11 @@ public/fallback-*.js.map
 # supabase
 supabase/.temp/
 qa-out/
+
+# tooling de agentes de IA (local, NUNCA al repo):
+#  .claude/ trae settings.local.json con tokens; los symlinks de skills usan
+#  rutas absolutas del disco → se romperían en otra máquina/CI.
+.claude/
+.agents/
+.superpowers/
+skills-lock.json
