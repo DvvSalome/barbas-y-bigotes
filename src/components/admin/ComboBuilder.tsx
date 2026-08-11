@@ -4,12 +4,15 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { crearCombo } from "@/lib/actions";
 import { cop } from "@/lib/format";
-import type { SedeId, Servicio } from "@/lib/data/types";
+import { SearchIcon } from "@/components/icons";
+import type { Categoria, SedeId, Servicio } from "@/lib/data/types";
 
-// Armador de combos (proto §7.1). Se arma con servicios NO combo de la sede activa
-// (cada uno con su precio) + una bebida opcional (+$5.000). El nombre/duración/precio
-// se autocompletan al tocar las partes y quedan editables. El combo se crea SOLO en
-// la sede activa (decisión del dueño). CTA deshabilitado hasta que sea válido.
+// Armador de combos (proto §7.1). Las partes se eligen de la MISMA forma que se
+// leen los precios arriba: buscador + grupos por categoría (antes era una nube
+// plana de ~30 chips mezclados). Nombre/duración/precio se autocompletan al
+// tocar partes, pero SOLO mientras el dueño no los haya editado a mano: lo
+// escrito no se pisa (antes agregar una parte borraba el nombre puesto).
+// El combo se crea SOLO en la sede activa (decisión del dueño).
 
 const BEBIDA = 5000; // proto §7.1: "Incluye bebida · +$5.000"
 const PISO = 5000; // piso de precio del combo (proto §7.3)
@@ -20,45 +23,23 @@ const inputCls =
 const shortName = (n: string) => n.split("(")[0].trim();
 const capitalizar = (s: string) => (s ? s[0].toUpperCase() + s.slice(1) : s);
 const sugeridoDe = (suelto: number) => Math.max(PISO, Math.round((suelto * 0.9) / 1000) * 1000);
+const norm = (s: string) =>
+  s
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "");
 
-function Stepper({
-  value,
-  step,
-  min,
-  onChange,
-  money,
-  label,
-}: {
-  value: number;
-  step: number;
-  min: number;
-  onChange: (v: number) => void;
-  money?: boolean;
-  label: string;
-}) {
+function BotonMasMenos({ onClick, disabled, label, children }: { onClick: () => void; disabled?: boolean; label: string; children: React.ReactNode }) {
   return (
-    <div className="inline-flex items-center rounded-full border border-line bg-elevated" role="group" aria-label={label}>
-      <button
-        type="button"
-        aria-label={`Bajar ${label}`}
-        onClick={() => onChange(Math.max(min, value - step))}
-        disabled={value <= min}
-        className="flex h-9 w-9 items-center justify-center text-lg text-muted transition hover:text-ink disabled:opacity-40"
-      >
-        −
-      </button>
-      <span className="min-w-[80px] text-center font-display text-[17px] font-extrabold tabular-nums text-ink">
-        {money ? cop(value) : value}
-      </span>
-      <button
-        type="button"
-        aria-label={`Subir ${label}`}
-        onClick={() => onChange(value + step)}
-        className="flex h-9 w-9 items-center justify-center text-lg text-muted transition hover:text-ink"
-      >
-        +
-      </button>
-    </div>
+    <button
+      type="button"
+      aria-label={label}
+      onClick={onClick}
+      disabled={disabled}
+      className="flex h-11 w-11 items-center justify-center text-lg text-muted transition hover:text-ink disabled:opacity-40"
+    >
+      {children}
+    </button>
   );
 }
 
@@ -66,20 +47,35 @@ export function ComboBuilder({
   partesDisponibles,
   sedeActiva,
   sedeNombre,
+  etiquetas,
 }: {
   partesDisponibles: Servicio[];
   sedeActiva: SedeId;
   sedeNombre: string;
+  etiquetas: Record<Categoria, string>;
 }) {
   const router = useRouter();
   const [partes, setPartes] = useState<Set<string>>(new Set());
   const [conBebida, setConBebida] = useState(false);
+  const [q, setQ] = useState("");
   const [nombre, setNombre] = useState("");
   const [duracion, setDuracion] = useState(0);
   const [precio, setPrecio] = useState(PISO);
+  // Qué editó el dueño a mano: esos campos dejan de autocompletarse.
+  const [manual, setManual] = useState({ nombre: false, duracion: false, precio: false });
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [ok, setOk] = useState(false);
+
+  // Partes agrupadas por categoría (el orden de `etiquetas`), con el buscador
+  // filtrando en TODO el catálogo — mismo criterio que la lista de arriba.
+  const grupos = useMemo(() => {
+    const t = norm(q.trim());
+    const visibles = t ? partesDisponibles.filter((p) => norm(p.nombre).includes(t)) : partesDisponibles;
+    return (Object.keys(etiquetas) as Categoria[])
+      .map((c) => ({ cat: c, items: visibles.filter((p) => p.categoria === c) }))
+      .filter((g) => g.items.length > 0);
+  }, [partesDisponibles, q, etiquetas]);
 
   // Selección en el orden de la lista (estable, no depende del orden de tap).
   const seleccion = useMemo(
@@ -91,18 +87,20 @@ export function ComboBuilder({
   const durSugerida = seleccion.reduce((a, p) => a + p.duracionMin, 0);
   const sugerido = sugeridoDe(suelto);
 
-  // Al tocar partes/bebida se auto-rellenan nombre/duración/precio (proto §7.1).
+  // Al tocar partes/bebida se re-sugieren SOLO los campos aún en automático.
   function aplicar(nuevas: Set<string>, bebida: boolean) {
     setOk(false);
     setPartes(nuevas);
     setConBebida(bebida);
     const sel = partesDisponibles.filter((p) => nuevas.has(p.id));
     const suma = sel.reduce((a, p) => a + (p.precios[sedeActiva] ?? 0), 0) + (bebida ? BEBIDA : 0);
-    const nombres = sel.map((p) => shortName(p.nombre));
-    if (bebida) nombres.push("bebida");
-    setNombre(capitalizar(nombres.join(" + ")));
-    setDuracion(sel.reduce((a, p) => a + p.duracionMin, 0));
-    setPrecio(sugeridoDe(suma));
+    if (!manual.nombre) {
+      const nombres = sel.map((p) => shortName(p.nombre));
+      if (bebida) nombres.push("bebida");
+      setNombre(capitalizar(nombres.join(" + ")));
+    }
+    if (!manual.duracion) setDuracion(sel.reduce((a, p) => a + p.duracionMin, 0));
+    if (!manual.precio) setPrecio(sugeridoDe(suma));
   }
 
   function togglePart(id: string) {
@@ -136,6 +134,8 @@ export function ComboBuilder({
       setNombre("");
       setDuracion(0);
       setPrecio(PISO);
+      setManual({ nombre: false, duracion: false, precio: false });
+      setQ("");
       setOk(true);
       router.refresh();
     } else {
@@ -152,35 +152,58 @@ export function ComboBuilder({
         Se crea en <span className="font-semibold text-ink">{sedeNombre}</span> · queda disponible solo en esta sede.
       </p>
 
-      {/* Partes: servicios no combo de la sede activa, con su precio */}
-      <div className="mt-3 flex flex-wrap gap-2">
-        {partesDisponibles.map((p) => {
-          const on = partes.has(p.id);
-          return (
-            <button
-              key={p.id}
-              type="button"
-              aria-pressed={on}
-              onClick={() => togglePart(p.id)}
-              className={`inline-flex min-h-[38px] items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-[12.5px] transition ${
-                on ? "border-accent/75 bg-accent/[0.14] text-ink" : "border-line text-muted hover:text-ink"
-              }`}
-            >
-              <span className="font-medium">{shortName(p.nombre)}</span>
-              <span className={`tabular-nums ${on ? "text-accent-soft" : "text-muted"}`}>
-                +{cop(p.precios[sedeActiva] ?? 0)}
-              </span>
-            </button>
-          );
-        })}
+      {/* Buscador de partes: mismo gesto que la lista de precios de arriba */}
+      <div className="relative mt-3 max-w-md">
+        <SearchIcon className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
+        <input
+          type="search"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder="Buscar servicio para el combo…"
+          aria-label="Buscar servicio para el combo"
+          className="w-full rounded-xl border border-line bg-bg px-4 py-2.5 pl-10 text-ink placeholder:text-muted focus:border-accent focus:outline-none"
+        />
       </div>
+
+      {/* Partes por categoría (no una nube plana) */}
+      {grupos.length === 0 && (
+        <p className="mt-3 text-sm text-muted">Nada coincide con “{q}”. Probá con otro nombre.</p>
+      )}
+      {grupos.map((g) => (
+        <div key={g.cat} className="mt-3">
+          <div className="mb-1.5 text-[10.5px] font-bold uppercase tracking-[0.12em] text-muted">
+            {etiquetas[g.cat]}
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {g.items.map((p) => {
+              const on = partes.has(p.id);
+              return (
+                <button
+                  key={p.id}
+                  type="button"
+                  aria-pressed={on}
+                  onClick={() => togglePart(p.id)}
+                  className={`inline-flex min-h-[44px] items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-[12.5px] transition ${
+                    on ? "border-accent/75 bg-accent/[0.14] text-ink" : "border-line text-muted hover:text-ink"
+                  }`}
+                >
+                  <span className="font-medium">{shortName(p.nombre)}</span>
+                  <span className={`tabular-nums ${on ? "text-accent-soft" : "text-muted"}`}>
+                    +{cop(p.precios[sedeActiva] ?? 0)}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ))}
 
       {/* Bebida */}
       <button
         type="button"
         aria-pressed={conBebida}
         onClick={() => aplicar(partes, !conBebida)}
-        className={`mt-3 inline-flex min-h-[38px] items-center gap-2 rounded-full border px-4 py-1.5 text-[12.5px] font-bold transition ${
+        className={`mt-3 inline-flex min-h-[44px] items-center gap-2 rounded-full border px-4 py-1.5 text-[12.5px] font-bold transition ${
           conBebida ? "border-ok/50 bg-ok/10 text-ok" : "border-line text-muted hover:text-ink"
         }`}
       >
@@ -192,10 +215,9 @@ export function ComboBuilder({
         <div className="mt-3 border-t border-line pt-3">
           <div className="text-[12.5px] font-bold text-ink">{nombre || "Combo"}</div>
           <p className="mt-0.5 text-xs text-muted">
-            Suelto vale <span className="tabular-nums text-ink">{cop(suelto)}</span> · {durSugerida} min · precio de
+            Por separado costaría <span className="tabular-nums text-ink">{cop(suelto)}</span> · {durSugerida} min ·
             combo sugerido <span className="font-bold tabular-nums text-ok">{cop(sugerido)}</span> (10% menos)
           </p>
-          <p className="mt-1 text-[11px] text-muted">Nombre, precio y duración quedaron abajo — ajústalos si quieres.</p>
         </div>
       )}
 
@@ -209,24 +231,67 @@ export function ComboBuilder({
             value={nombre}
             onChange={(e) => {
               setNombre(e.target.value);
+              // Vaciarlo devuelve el campo al modo automático.
+              setManual((m) => ({ ...m, nombre: e.target.value.trim() !== "" }));
               setOk(false);
             }}
             placeholder="Nombre del combo"
             className={inputCls}
           />
         </label>
-        <div className="flex flex-wrap gap-4">
+        <div className="flex flex-wrap items-end gap-4">
           <div>
             <span className="mb-1 block text-[11px] font-bold uppercase tracking-[0.14em] text-muted">
               Duración (min)
             </span>
-            <Stepper value={duracion} step={5} min={5} onChange={setDuracion} label="duración" />
+            <div className="inline-flex items-center rounded-full border border-line bg-elevated" role="group" aria-label="duración">
+              <BotonMasMenos label="Bajar duración" disabled={duracion <= 5} onClick={() => { setDuracion(Math.max(5, duracion - 5)); setManual((m) => ({ ...m, duracion: true })); }}>
+                −
+              </BotonMasMenos>
+              <span className="min-w-[64px] text-center font-display text-[17px] font-extrabold tabular-nums text-ink">
+                {duracion}
+              </span>
+              <BotonMasMenos label="Subir duración" onClick={() => { setDuracion(duracion + 5); setManual((m) => ({ ...m, duracion: true })); }}>
+                +
+              </BotonMasMenos>
+            </div>
           </div>
           <div>
             <span className="mb-1 block text-[11px] font-bold uppercase tracking-[0.14em] text-muted">
-              Precio (COP)
+              Precio (COP) — tocá el número para escribirlo
             </span>
-            <Stepper value={precio} step={1000} min={PISO} onChange={setPrecio} money label="precio" />
+            <div className="inline-flex items-center rounded-full border border-line bg-elevated" role="group" aria-label="precio">
+              <BotonMasMenos label="Bajar precio" disabled={precio <= PISO} onClick={() => { setPrecio(Math.max(PISO, precio - 1000)); setManual((m) => ({ ...m, precio: true })); }}>
+                −
+              </BotonMasMenos>
+              <input
+                type="number"
+                min={PISO}
+                step={500}
+                value={precio}
+                onChange={(e) => {
+                  setPrecio(Number(e.target.value) || 0);
+                  setManual((m) => ({ ...m, precio: true }));
+                }}
+                aria-label="Precio del combo en pesos"
+                className="w-[92px] border-0 bg-transparent text-center font-display text-[17px] font-extrabold tabular-nums text-ink focus:outline-none"
+              />
+              <BotonMasMenos label="Subir precio" onClick={() => { setPrecio(precio + 1000); setManual((m) => ({ ...m, precio: true })); }}>
+                +
+              </BotonMasMenos>
+            </div>
+            {manual.precio && precio !== sugerido && cantidad >= 1 && (
+              <button
+                type="button"
+                onClick={() => {
+                  setPrecio(sugerido);
+                  setManual((m) => ({ ...m, precio: false }));
+                }}
+                className="mt-1.5 block text-[11.5px] font-semibold text-accent-soft transition hover:text-accent"
+              >
+                Usar el sugerido ({cop(sugerido)})
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -238,7 +303,7 @@ export function ComboBuilder({
       )}
       {ok && (
         <div className="mt-3 rounded-lg border border-ok/40 bg-ok/10 px-3 py-2 text-sm text-ok">
-          Combo creado en {sedeNombre}. Ya aparece en el catálogo de abajo.
+          Combo creado en {sedeNombre} ✓ — ya aparece en el catálogo de arriba.
         </div>
       )}
 
@@ -250,6 +315,17 @@ export function ComboBuilder({
       >
         {saving ? "Creando…" : "Crear combo"}
       </button>
+      {!valido && (
+        <p className="mt-2 text-center text-[11.5px] text-muted">
+          {cantidad === 0
+            ? "Tocá al menos 2 servicios (o 1 servicio + la bebida) para armar el combo."
+            : cantidad === 1 && !conBebida
+              ? "Falta 1: agregá otro servicio o la bebida."
+              : nombre.trim() === ""
+                ? "Ponele nombre al combo."
+                : "Revisá que el precio y la duración sean mayores a cero."}
+        </p>
+      )}
     </div>
   );
 }

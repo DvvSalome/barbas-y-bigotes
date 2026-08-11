@@ -53,7 +53,12 @@ export default async function PreciosPage({
           Armador de combos
         </h2>
         {sedeActiva ? (
-          <ComboBuilder partesDisponibles={partesDisponibles} sedeActiva={sedeActiva} sedeNombre={sedeNombre} />
+          <ComboBuilder
+            partesDisponibles={partesDisponibles}
+            sedeActiva={sedeActiva}
+            sedeNombre={sedeNombre}
+            etiquetas={categorias}
+          />
         ) : (
           <div className="rounded-2xl border border-warn/40 bg-warn/10 px-4 py-3 text-sm text-warn">
             Elige una sede arriba (Parque Venezuela o Plaza de la Paz) para armar un combo. El combo queda disponible
