@@ -3,12 +3,14 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
+import { HeaderCuenta } from "@/components/HeaderCuenta";
 
 /*
   Header público del prototipo (spec §1.1 móvil, §2.1 desktop):
-  - Móvil: logo lockup 44px + pill "Entrar" (va a Mi cuenta).
-  - Desktop: nav sticky con blur, links Barberos / Nosotros / Mi cuenta
-    (activa en rojo suave) + botón "Reservar".
+  - Móvil: logo lockup 44px + botón de cuenta inteligente (Entrar / avatar+menú).
+  - Desktop: nav sticky con blur, links Barberos / Nosotros + "Reservar" y el mismo
+    botón de cuenta. "Mi cuenta" y "Cerrar sesión" viven ahora en ese botón (HeaderCuenta),
+    no como items sueltos.
 */
 export function SiteHeader() {
   const pathname = usePathname();
@@ -16,7 +18,6 @@ export function SiteHeader() {
   const links = [
     { href: "/barberos", label: "Barberos" },
     { href: "/nosotros", label: "Nosotros" },
-    { href: "/cuenta", label: "Mi cuenta" },
   ];
 
   return (
@@ -33,40 +34,34 @@ export function SiteHeader() {
           />
         </Link>
 
-        {/* Móvil: solo "Entrar" */}
-        {/* El pill mide 32px de alto (medida del proto). El ::before lo lleva a
-            ~48px de área táctil sin tocar el aspecto: sale en TODAS las páginas
-            públicas, así que era el target chico más frecuente del sitio. */}
-        <Link
-          href="/cuenta"
-          className="relative rounded-full border border-[rgba(242,237,228,0.16)] px-3.5 py-[7px] text-xs text-ink before:absolute before:-inset-2 before:content-[''] md:hidden"
-        >
-          Entrar
-        </Link>
+        <div className="flex items-center gap-4 md:gap-[26px]">
+          {/* Desktop: nav + Reservar (Barberos / Nosotros; "Mi cuenta" pasó al botón). */}
+          <nav className="hidden items-center gap-[26px] md:flex">
+            {links.map((link) => {
+              const activa = pathname === link.href;
+              return (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className={`text-[11.5px] font-semibold uppercase tracking-[0.1em] transition-colors ${
+                    activa ? "text-accent-soft" : "text-muted hover:text-accent-soft"
+                  }`}
+                >
+                  {link.label}
+                </Link>
+              );
+            })}
+            <Link
+              href="/reservar"
+              className="rounded-full bg-accent px-[22px] py-[11px] text-[11px] font-bold uppercase tracking-[0.14em] text-on-accent transition hover:bg-accent-soft"
+            >
+              Reservar
+            </Link>
+          </nav>
 
-        {/* Desktop: nav + Reservar */}
-        <nav className="hidden items-center gap-[26px] md:flex">
-          {links.map((link) => {
-            const activa = pathname === link.href;
-            return (
-              <Link
-                key={link.href}
-                href={link.href}
-                className={`text-[11.5px] font-semibold uppercase tracking-[0.1em] transition-colors ${
-                  activa ? "text-accent-soft" : "text-muted hover:text-accent-soft"
-                }`}
-              >
-                {link.label}
-              </Link>
-            );
-          })}
-          <Link
-            href="/reservar"
-            className="rounded-full bg-accent px-[22px] py-[11px] text-[11px] font-bold uppercase tracking-[0.14em] text-on-accent transition hover:bg-accent-soft"
-          >
-            Reservar
-          </Link>
-        </nav>
+          {/* Botón de cuenta inteligente (móvil y escritorio): Entrar / avatar + menú. */}
+          <HeaderCuenta />
+        </div>
       </div>
     </header>
   );

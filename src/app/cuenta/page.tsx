@@ -3,7 +3,7 @@ import Link from "next/link";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 import { ContactoWidget } from "@/components/ContactoWidget";
-import { ClienteLoginButton, ClienteLogout } from "@/components/cuenta/ClienteAuth";
+import { ClienteLoginButton } from "@/components/cuenta/ClienteAuth";
 import { AdelantoBanner } from "@/components/cuenta/AdelantoBanner";
 import { PushManager } from "@/components/cuenta/PushManager";
 import { CitaAcciones } from "@/components/cuenta/CitaAcciones";
@@ -154,7 +154,8 @@ async function Portal({ clienteId, nombre, avatarUrl }: { clienteId: string; nom
             </h1>
           </div>
         </div>
-        <ClienteLogout />
+        {/* "Cerrar sesión" vive ahora en el botón de cuenta del header (HeaderCuenta),
+            no acá: era el segundo botón suelto que se quería unificar. */}
       </div>
 
       <PushManager />
