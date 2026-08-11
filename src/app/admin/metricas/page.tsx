@@ -5,7 +5,8 @@ import type { SedeId } from "@/lib/data/types";
 import { cop } from "@/lib/format";
 import { SectionHeader } from "@/components/admin/SectionHeader";
 import { Kpi } from "@/components/admin/Kpi";
-import { CaraBarbero } from "@/components/staff/Elegir";
+import { RankingMetrica } from "@/components/admin/RankingMetrica";
+import { MON } from "@/lib/slots";
 
 export const metadata: Metadata = { title: "Métricas · Admin" };
 
@@ -15,13 +16,21 @@ const PERIODOS: { id: Periodo; label: string }[] = [
   { id: "90d", label: "90 días" },
 ];
 
+// "2026-08-01" → "1 ago": acá se lee día-primero; "08-01" se entendía 8 de enero.
+const fechaCo = (ymd: string) => {
+  const [, m, d] = ymd.split("-").map(Number);
+  return `${d} ${MON[m - 1] ?? ""}`;
+};
+
 /** Variación vs el período anterior. Sin base no hay porcentaje que valga. */
 function Delta({ hoy, antes }: { hoy: number; antes: number }) {
   if (!antes) return <span className="text-muted">sin comparación</span>;
   const pct = Math.round(((hoy - antes) / antes) * 100);
   if (pct === 0) return <span className="text-muted">igual que antes</span>;
+  // La baja va en el token de ALERTA (warn), no en el coral de marca: pintada
+  // igual que los números buenos, un mes en caída no saltaba a la vista.
   return (
-    <span className={pct > 0 ? "text-ok" : "text-accent-soft"}>
+    <span className={pct > 0 ? "font-semibold text-ok" : "font-semibold text-warn"}>
       {pct > 0 ? "▲" : "▼"} {Math.abs(pct)}% vs período anterior
     </span>
   );
@@ -29,66 +38,39 @@ function Delta({ hoy, antes }: { hoy: number; antes: number }) {
 
 /** Barras con divs: no vale traer una librería de gráficos para esto. */
 function Barras({ serie }: { serie: { ymd: string; total: number }[] }) {
-  const max = Math.max(...serie.map((d) => d.total), 1);
-  // Con 90 días no entran 90 etiquetas: se muestran las barras y solo los extremos.
+  // Más de un mes se agrega POR SEMANA: 90 barras de <1px en un celular eran un
+  // hilo decorativo; 13 barras semanales sí se leen (y el title da el detalle).
+  const porSemana = serie.length > 31;
+  const buckets = porSemana
+    ? Array.from({ length: Math.ceil(serie.length / 7) }, (_, i) => {
+        const grupo = serie.slice(i * 7, i * 7 + 7);
+        return { ymd: grupo[0].ymd, total: grupo.reduce((a, d) => a + d.total, 0), semana: true };
+      })
+    : serie.map((d) => ({ ...d, semana: false }));
+  const max = Math.max(...buckets.map((d) => d.total), 1);
+
   return (
     <div>
+      {/* El pico va como leyenda propia: centrado entre las dos fechas parecía
+          la etiqueta de una fecha del medio. */}
+      <div className="mb-1.5 text-right text-xs text-muted">
+        {porSemana ? "por semana · " : ""}pico <b className="tabular-nums text-ink">{cop(max)}</b>
+      </div>
       <div className="flex h-28 items-end gap-[3px]">
-        {serie.map((d) => (
+        {buckets.map((d) => (
           <div
             key={d.ymd}
-            title={`${d.ymd}: ${cop(d.total)}`}
+            title={`${d.semana ? "Semana del " : ""}${fechaCo(d.ymd)}: ${cop(d.total)}`}
             className="flex-1 rounded-t bg-accent/70 transition hover:bg-accent"
             style={{ height: `${Math.max((d.total / max) * 100, d.total > 0 ? 4 : 1.5)}%` }}
           />
         ))}
       </div>
-      <div className="mt-1.5 flex justify-between text-[10.5px] text-muted">
-        <span>{serie[0]?.ymd.slice(5)}</span>
-        <span>pico {cop(max)}</span>
-        <span>{serie.at(-1)?.ymd.slice(5)}</span>
+      <div className="mt-1.5 flex justify-between text-xs text-muted">
+        <span>{serie[0] ? fechaCo(serie[0].ymd) : ""}</span>
+        <span>{serie.at(-1) ? fechaCo(serie.at(-1)!.ymd) : ""}</span>
       </div>
     </div>
-  );
-}
-
-function Ranking({
-  titulo,
-  vacio,
-  filas,
-}: {
-  titulo: string;
-  vacio: string;
-  filas: { nombre: string; valor: string; sub: string; peso: number; fotoUrl?: string | null }[];
-}) {
-  const max = Math.max(...filas.map((f) => f.peso), 1);
-  return (
-    <section className="rounded-2xl border border-line bg-panel p-5">
-      <h3 className="mb-3 font-display text-lg">{titulo}</h3>
-      {filas.length === 0 ? (
-        <p className="text-[12.5px] text-muted">{vacio}</p>
-      ) : (
-        <ul className="space-y-3">
-          {filas.map((f) => (
-            <li key={f.nombre}>
-              <div className="flex items-baseline justify-between gap-3">
-                <span className="flex min-w-0 items-center gap-2">
-                  {/* Solo el ranking de barberos trae cara; en servicios y
-                      productos no hay a quién ponerle. */}
-                  {f.fotoUrl !== undefined && <CaraBarbero b={{ id: f.nombre, nombre: f.nombre, fotoUrl: f.fotoUrl }} size={24} />}
-                  <span className="truncate text-[13.5px] font-semibold text-ink">{f.nombre}</span>
-                </span>
-                <span className="shrink-0 text-[13px] text-ink">{f.valor}</span>
-              </div>
-              <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-elevated">
-                <div className="h-full rounded-full bg-accent/70" style={{ width: `${(f.peso / max) * 100}%` }} />
-              </div>
-              <div className="mt-0.5 text-[11.5px] text-muted">{f.sub}</div>
-            </li>
-          ))}
-        </ul>
-      )}
-    </section>
   );
 }
 
@@ -164,15 +146,13 @@ export default async function MetricasPage({
       ) : (
         <>
           <div className="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
-            <Kpi label="Entró" value={cop(m.plata)} hint={undefined} />
+            {/* El delta vive DENTRO de "Entró en caja": suelto bajo la grilla
+                parecía aplicar a las cuatro tarjetas y solo compara la plata. */}
+            <Kpi label="Entró en caja" value={cop(m.plata)} hint={<Delta hoy={m.plata} antes={m.antes.plata} />} />
             <Kpi label="Cobros" value={String(m.servicios)} accent={false} />
-            <Kpi label="Ticket promedio" value={cop(m.ticket)} accent={false} />
+            <Kpi label="Promedio por cliente" value={cop(m.ticket)} accent={false} />
             <Kpi label="Propinas" value={cop(m.propinas)} accent={false} />
           </div>
-
-          <p className="mt-2.5 text-[12.5px]">
-            <Delta hoy={m.plata} antes={m.antes.plata} />
-          </p>
 
           <section className="mt-6 rounded-2xl border border-line bg-panel p-5">
             <h3 className="mb-3 font-display text-lg">Día por día</h3>
@@ -180,8 +160,9 @@ export default async function MetricasPage({
           </section>
 
           <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            <Ranking
+            <RankingMetrica
               titulo="Quién produce"
+              orden="por plata"
               vacio="Sin cobros asignados a un barbero."
               filas={m.porBarbero.map((b) => ({
                 nombre: b.nombre,
@@ -191,18 +172,20 @@ export default async function MetricasPage({
                 peso: b.plata,
               }))}
             />
-            <Ranking
+            <RankingMetrica
               titulo="Qué piden"
+              orden="por veces pedidas"
               vacio="Los cobros de este período no tienen servicios detallados."
               filas={m.porServicio.map((s) => ({
                 nombre: s.nombre,
                 valor: `${s.veces}×`,
-                sub: cop(s.plata),
+                sub: `deja ${cop(s.plata)}`,
                 peso: s.veces,
               }))}
             />
-            <Ranking
+            <RankingMetrica
               titulo="Qué se vende"
+              orden="por plata"
               vacio="Este período no se vendió ningún producto en el mostrador."
               filas={m.porProducto.map((x) => ({
                 nombre: x.nombre,

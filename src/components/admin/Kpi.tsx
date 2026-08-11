@@ -16,7 +16,8 @@ export function Kpi({
 }: {
   label: string;
   value: string;
-  hint?: string;
+  /** Nodo libre: permite anclar el "▲ 12% vs período anterior" a SU tarjeta. */
+  hint?: React.ReactNode;
   accent?: boolean;
   Icon?: IconType;
   size?: "md" | "sm";
