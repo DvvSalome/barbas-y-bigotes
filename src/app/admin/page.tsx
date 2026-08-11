@@ -667,11 +667,13 @@ export default async function AdminHoy({
                         {fechaCorta(r.fecha)}
                       </span>
                     </span>
-                    {/* La fila no trae id del cliente (la reseña puede ser de un
-                        walk-in), así que el link no puede aterrizar en su ficha:
-                        el label promete exactamente a dónde va. */}
-                    <Link href="/admin/clientes" className={SEC_ACTION}>
-                      Ver clientes
+                    {/* Con ficha → directo a la pestaña "Su opinión" del cliente;
+                        sin ficha (walk-in) el label promete exactamente a dónde va. */}
+                    <Link
+                      href={r.clienteRef ? `/admin/clientes/${r.clienteRef}` : "/admin/clientes"}
+                      className={SEC_ACTION}
+                    >
+                      {r.clienteRef ? "Ver cliente" : "Ver clientes"}
                     </Link>
                   </div>
                 ))}

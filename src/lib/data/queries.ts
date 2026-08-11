@@ -266,6 +266,29 @@ export async function getAusencias(): Promise<Ausencia[]> {
   }));
 }
 
+/** Ausencia con todo (admin): incluye los bloqueos por horas (0054). */
+export type AusenciaAdmin = Ausencia & { motivo: string | null; desdeMin: number | null; hastaMin: number | null };
+
+// TODAS las ausencias/bloqueos de hoy en adelante, para Equipo → Ausencias.
+// (getAusencias queda solo-día-completo porque el wizard la usa para ESCONDER
+// al barbero: un almuerzo no debe sacarlo del catálogo.)
+export async function getAusenciasAdmin(): Promise<AusenciaAdmin[]> {
+  const sb = supabaseServer();
+  const { data } = await sb
+    .from("barbero_ausencias")
+    .select("id,barbero_id,fecha,motivo,desde_min,hasta_min")
+    .gte("fecha", bogotaYmd())
+    .order("fecha");
+  return (data ?? []).map((a: Record<string, unknown>) => ({
+    id: a.id as string,
+    barberoId: a.barbero_id as string,
+    fecha: a.fecha as string,
+    motivo: (a.motivo as string) ?? null,
+    desdeMin: (a.desde_min as number) ?? null,
+    hastaMin: (a.hasta_min as number) ?? null,
+  }));
+}
+
 export type BebidaUpsell = { id: string; nombre: string; precio: number; sede: SedeId };
 
 // Bebidas del paso "¿le sumas una bebida?" del wizard: productos activos marcados
@@ -1686,7 +1709,8 @@ export async function atendidasSinCobrar(sede?: SedeId | null): Promise<Atendida
 
 export type ParaHacer = {
   bajoMinimo: { id: string; nombre: string; stock: number; sede: SedeId }[];
-  malasResenas: { id: string; score: number; comentario: string; barbero: string; sede: SedeId; fecha: string }[];
+  /** clienteRef null = reseña de un walk-in sin ficha (no hay a dónde linkear). */
+  malasResenas: { id: string; score: number; comentario: string; barbero: string; sede: SedeId; fecha: string; clienteRef: string | null }[];
   cuponesPorVencer: { codigo: string; venceEn: string; usos: number; usosMax: number | null }[];
 };
 
@@ -1702,7 +1726,7 @@ export async function paraHacer(sede?: SedeId | null): Promise<ParaHacer> {
   if (sede) pq = pq.eq("sede_id", sede);
   let rq = sb
     .from("resenas_servicio")
-    .select("id,score,comentario,creado_en,sede_id,barberos(nombre)")
+    .select("id,score,comentario,creado_en,sede_id,cliente_ref,barberos(nombre)")
     .lte("score", 3)
     .gte("creado_en", desde7.toISOString())
     .order("creado_en", { ascending: false })
@@ -1734,6 +1758,7 @@ export async function paraHacer(sede?: SedeId | null): Promise<ParaHacer> {
       barbero: (r.barberos as { nombre?: string } | null)?.nombre ?? "—",
       sede: r.sede_id as SedeId,
       fecha: r.creado_en as string,
+      clienteRef: (r.cliente_ref as string) ?? null,
     })),
     cuponesPorVencer: ((cRes.data ?? []) as Record<string, unknown>[]).map((c) => ({
       codigo: c.codigo as string,

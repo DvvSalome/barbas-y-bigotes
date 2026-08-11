@@ -5,8 +5,9 @@ import { useRouter } from "next/navigation";
 import { marcarAusencia, quitarAusencia } from "@/lib/actions";
 import { bogotaYmd } from "@/lib/slots";
 import { ElegirBarbero, CaraBarbero } from "@/components/staff/Elegir";
+import { fmtTime } from "@/lib/slots";
 import type { Barbero, Sede } from "@/lib/data/types";
-import type { Ausencia } from "@/lib/data/queries";
+import type { AusenciaAdmin } from "@/lib/data/queries";
 
 const input =
   "rounded-lg border border-line bg-bg px-3 py-2 text-ink placeholder:text-muted focus:border-accent focus:outline-none";
@@ -24,7 +25,7 @@ export function AusenciasAdmin({
 }: {
   barberos: Barbero[];
   sedes: Sede[];
-  ausencias: Ausencia[];
+  ausencias: AusenciaAdmin[];
 }) {
   const router = useRouter();
   const hoy = bogotaYmd();
@@ -121,7 +122,20 @@ export function AusenciasAdmin({
                   <div className="truncate text-sm font-semibold text-ink">
                     {nombreBarbero(a.barberoId)} <span className="font-normal text-muted">· {fechaLabel(a.fecha)}</span>
                   </div>
-                  <div className="truncate text-xs text-muted">{sedeDeBarbero(a.barberoId)}</div>
+                  {/* Un bloqueo por horas (0054, creado desde el calendario) no es lo
+                      mismo que faltar el día: acá se distinguen con su rango. */}
+                  <div className="truncate text-xs text-muted">
+                    {a.desdeMin != null ? (
+                      <span className="text-warn">
+                        {fmtTime(a.desdeMin)}–{fmtTime(a.hastaMin ?? 0)}
+                        {a.motivo ? ` · ${a.motivo}` : ""}
+                      </span>
+                    ) : (
+                      <>Todo el día{a.motivo ? ` · ${a.motivo}` : ""} · </>
+                    )}
+                    {a.desdeMin != null ? " · " : ""}
+                    {sedeDeBarbero(a.barberoId)}
+                  </div>
                 </div>
                 <button
                   onClick={() => quitar(a.id)}

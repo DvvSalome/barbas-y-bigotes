@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { getBarberos, getSedes, getAusencias } from "@/lib/data/queries";
+import { getBarberos, getSedes, getAusenciasAdmin } from "@/lib/data/queries";
 import { bogotaYmd } from "@/lib/slots";
 import { getBarberosPinEstado, getSedesPinEstado } from "@/lib/barbero-auth";
 import { SectionHeader } from "@/components/admin/SectionHeader";
@@ -16,7 +16,7 @@ export default async function EquipoPage() {
     getSedes(),
     getBarberosPinEstado(),
     getSedesPinEstado(),
-    getAusencias(),
+    getAusenciasAdmin(),
   ]);
   return (
     <div className="max-w-3xl">
