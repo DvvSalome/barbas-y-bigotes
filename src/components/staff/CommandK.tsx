@@ -4,18 +4,21 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { buscarGlobal, type BusquedaGlobal } from "@/lib/actions";
 import { adminNav } from "@/components/admin/AdminNav";
+import { PlusIcon, CashIcon, BoxIcon, ScissorsIcon, ArrowRightIcon, UsersIcon } from "@/components/icons";
 
 // Paleta de comandos del admin (Ctrl/Cmd-K): acciones rápidas, navegación y
 // búsqueda en vivo de clientes/productos. Se abre también con el evento
 // "bb:cmdk" (el botón del topbar lo dispara).
 
-type Item = { key: string; grupo: string; icono: string; label: string; detalle?: string; href: string };
+// icono: SVG del set (los glifos de texto ＋ $ ▣ ✂ se veían toscos y algunos
+// renderizaban como cuadro-tofu en ciertos Android).
+type Item = { key: string; grupo: string; icono: React.ReactNode; label: string; detalle?: string; href: string };
 
 const ACCIONES: Item[] = [
-  { key: "a-reserva", grupo: "Acciones rápidas", icono: "＋", label: "Nueva reserva", href: "/reservar" },
-  { key: "a-venta", grupo: "Acciones rápidas", icono: "$", label: "Venta rápida (sin cita)", href: "/barbero" },
-  { key: "a-caja", grupo: "Acciones rápidas", icono: "▣", label: "Cerrar caja de hoy", href: "/admin/cuadre" },
-  { key: "a-pines", grupo: "Acciones rápidas", icono: "✂", label: "Equipo y PINes", href: "/admin/equipo" },
+  { key: "a-reserva", grupo: "Acciones rápidas", icono: <PlusIcon className="h-3.5 w-3.5" />, label: "Nueva reserva", href: "/reservar" },
+  { key: "a-venta", grupo: "Acciones rápidas", icono: <CashIcon className="h-3.5 w-3.5" />, label: "Venta rápida (sin cita)", href: "/barbero" },
+  { key: "a-caja", grupo: "Acciones rápidas", icono: <BoxIcon className="h-3.5 w-3.5" />, label: "Cerrar caja de hoy", href: "/admin/cuadre" },
+  { key: "a-pines", grupo: "Acciones rápidas", icono: <ScissorsIcon className="h-3.5 w-3.5" />, label: "Equipo y PINes", href: "/admin/equipo" },
 ];
 
 // Sin destinos duplicados: si una acción rápida ya lleva al mismo lugar
@@ -27,7 +30,7 @@ const IR_A: Item[] = adminNav
   .map((n) => ({
     key: `n-${n.href}`,
     grupo: "Ir a",
-    icono: "→",
+    icono: <ArrowRightIcon className="h-3.5 w-3.5" />,
     label: n.label,
     href: n.href,
   }));
@@ -147,7 +150,7 @@ export function CommandK() {
     const clientes: Item[] = resultados.clientes.map((c) => ({
       key: `c-${c.id}`,
       grupo: "Clientes",
-      icono: "◉",
+      icono: <UsersIcon className="h-3.5 w-3.5" />,
       label: c.nombre,
       detalle: c.telefono || undefined,
       href: `/admin/clientes/${c.id}`,
@@ -155,7 +158,7 @@ export function CommandK() {
     const productos: Item[] = resultados.productos.map((p) => ({
       key: `p-${p.id}`,
       grupo: "Productos",
-      icono: "▤",
+      icono: <BoxIcon className="h-3.5 w-3.5" />,
       label: p.nombre,
       detalle: `stock ${p.stock} · ${NOMBRE_SEDE[p.sede] ?? p.sede}`,
       href: "/admin/inventario",

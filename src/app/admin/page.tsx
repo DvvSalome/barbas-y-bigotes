@@ -17,7 +17,7 @@ import {
 import { cop } from "@/lib/format";
 import { fmtTime, CLOSE } from "@/lib/slots";
 import { DesbloquearPinBtn } from "@/components/admin/DesbloquearPinBtn";
-import { AlertIcon } from "@/components/icons";
+import { AlertIcon, ScissorsIcon, CheckIcon, StarIcon, PercentIcon } from "@/components/icons";
 import type { SedeId } from "@/lib/data/types";
 
 export const metadata: Metadata = { title: "Hoy · Admin" };
@@ -466,7 +466,7 @@ export default async function AdminHoy({
             <div className={PANEL}>
               {citas.length === 0 && vencidas.length === 0 && (
                 <div className="px-4 py-6 text-center">
-                  <div className="text-[15px]">✂</div>
+                  <ScissorsIcon className="mx-auto h-4 w-4 text-muted" />
                   <p className="mt-1 text-[13px] font-semibold text-ink">No quedan citas para hoy</p>
                   <p className="text-[11.5px] text-muted">Los walk-ins siguen entrando por el mostrador.</p>
                 </div>
@@ -621,7 +621,7 @@ export default async function AdminHoy({
             </h2>
             {sinTareas ? (
               <div className={`${PANEL} px-4 py-5 text-center`}>
-                <div className="text-[15px]">✓</div>
+                <CheckIcon className="mx-auto h-4 w-4 text-ok" />
                 <p className="mt-1 text-[13px] font-semibold text-ink">Todo al día</p>
                 <p className="text-[11.5px] text-muted">Sin stock bajo, malas calificaciones ni cupones por vencer.</p>
               </div>
@@ -657,7 +657,9 @@ export default async function AdminHoy({
                     key={r.id}
                     className="grid grid-cols-[30px_1fr_auto] items-center gap-2.5 border-b border-line/60 px-4 py-3 last:border-b-0"
                   >
-                    <span className="grid h-7 w-7 place-items-center rounded-lg bg-elevated text-[13px] text-accent-soft">★</span>
+                    <span className="grid h-7 w-7 place-items-center rounded-lg bg-elevated text-accent-soft">
+                      <StarIcon className="h-3.5 w-3.5" />
+                    </span>
                     <span className="min-w-0">
                       <span className="block text-[12.5px] font-semibold text-ink">
                         Calificación de {r.score}★ · {r.barbero}
@@ -683,7 +685,9 @@ export default async function AdminHoy({
                     key={c.codigo}
                     className="grid grid-cols-[30px_1fr_auto] items-center gap-2.5 border-b border-line/60 px-4 py-3 last:border-b-0"
                   >
-                    <span className="grid h-7 w-7 place-items-center rounded-lg bg-elevated text-[13px] text-muted">%</span>
+                    <span className="grid h-7 w-7 place-items-center rounded-lg bg-elevated text-muted">
+                      <PercentIcon className="h-3.5 w-3.5" />
+                    </span>
                     <span className="min-w-0">
                       <span className="block text-[12.5px] font-semibold text-ink">
                         Cupón {c.codigo} vence {fechaCorta(`${c.venceEn}T12:00:00-05:00`)}
