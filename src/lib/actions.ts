@@ -2134,6 +2134,38 @@ export async function agregarNotaCliente(input: { clienteRef: string; nota: stri
   return { ok: true };
 }
 
+// Unir dos fichas repetidas del mismo cliente (badge "Repetida ×N"). El traspaso
+// real lo hace unir_clientes (0056) en UNA transacción; acá van los guards:
+// admin, fichas distintas, y que de verdad parezcan la misma persona (mismo
+// correo o mismo teléfono) — el server no une dos desconocidos por un mal tap.
+export async function unirClientes(input: { origenId: string; destinoId: string }): Promise<ActionResult> {
+  const sb = await supabaseServerAuth();
+  const denied = await requireAdmin(sb);
+  if (denied) return { ok: false, error: denied };
+  if (input.origenId === input.destinoId) return { ok: false, error: "Elegí dos fichas distintas." };
+
+  const admin = supabaseAdmin();
+  const { data: fichas } = await admin
+    .from("clientes")
+    .select("id,email,telefono")
+    .in("id", [input.origenId, input.destinoId]);
+  if (!fichas || fichas.length !== 2) return { ok: false, error: "Alguna de las fichas ya no existe." };
+  const [a, b] = fichas as { id: string; email: string | null; telefono: string | null }[];
+  const mismoEmail = !!a.email && !!b.email && a.email.trim().toLowerCase() === b.email.trim().toLowerCase();
+  const mismoTel = !!a.telefono && !!b.telefono && a.telefono.trim() === b.telefono.trim();
+  if (!mismoEmail && !mismoTel)
+    return { ok: false, error: "Esas fichas no comparten correo ni teléfono; no parecen la misma persona." };
+
+  const { error } = await admin.rpc("unir_clientes", {
+    p_origen: input.origenId,
+    p_destino: input.destinoId,
+  });
+  if (error) return { ok: false, error: errorPublico("unirClientes", error) };
+  revalidatePath("/admin/clientes");
+  revalidatePath(`/admin/clientes/${input.destinoId}`);
+  return { ok: true };
+}
+
 // La "nota de ficha" (columna clientes.notas) se mostraba solo-lectura: se veía
 // pero no había NINGÚN lugar para corregirla. Vacía = se borra.
 export async function actualizarNotaFicha(input: { clienteRef: string; nota: string }): Promise<ActionResult> {
