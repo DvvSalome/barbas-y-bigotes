@@ -9,6 +9,7 @@ import type { CajaSesionSede, MedioPago } from "@/lib/data/queries";
 
 const fld =
   "w-full rounded-lg border border-line bg-bg px-3 py-2 text-ink placeholder:text-muted focus:border-accent focus:outline-none";
+const lbl = "mb-1 block text-[11px] font-semibold uppercase tracking-wide text-muted";
 
 
 
@@ -48,6 +49,7 @@ function CajaCard({ caja, medios }: { caja: CajaSesionSede; medios: MedioPago[] 
   const [nota, setNota] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [cierre, setCierre] = useState<{ diferencia: number; esperado: number; contado: number } | null>(null);
 
   async function abrir(e: React.FormEvent) {
     e.preventDefault();
@@ -65,17 +67,28 @@ function CajaCard({ caja, medios }: { caja: CajaSesionSede; medios: MedioPago[] 
 
   async function cerrar(e: React.FormEvent) {
     e.preventDefault();
+    // Sin esto, cerrar con el campo vacío mandaba Number("")||0 = 0 contado y
+    // dejaba un faltante falso enorme sin vuelta atrás. Si la caja está vacía de
+    // verdad, se escribe 0 a propósito.
+    const n = Number(contado);
+    if (contado.trim() === "" || !Number.isFinite(n) || n < 0) {
+      setErr("Escribí cuánto efectivo contaste en la caja (0 si está vacía).");
+      return;
+    }
     setBusy(true);
     setErr(null);
     const res = await cerrarCaja({
       sesionId: caja.sesionId!,
       sede: caja.sede,
       abiertaEnISO: caja.abiertaEn!,
-      efectivoContado: Number(contado) || 0,
+      efectivoContado: n,
       nota,
     });
     setBusy(false);
     if (res.ok) {
+      // El resultado (cuadró / faltó / sobró) es EL dato del cierre: se muestra
+      // en un panel que sobrevive al refresh, no escondido en "cuadres anteriores".
+      setCierre({ diferencia: res.diferencia ?? 0, esperado: res.esperado ?? 0, contado: n });
       setOpenForm(false);
       setContado("");
       setNota("");
@@ -149,14 +162,34 @@ function CajaCard({ caja, medios }: { caja: CajaSesionSede; medios: MedioPago[] 
         <div className="mt-3 rounded-lg border border-accent/40 bg-accent/10 px-3 py-2 text-sm text-accent-soft">{err}</div>
       )}
 
+      {/* Resultado del cierre: EL dato por el que existe la caja. Sobrevive al
+          refresh y se limpia al volver a abrir/cerrar una forma. */}
+      {cierre && !abierta && (
+        <div
+          className={`mt-3 rounded-lg border px-3 py-2.5 ${
+            cierre.diferencia === 0 ? "border-ok/40 bg-ok/10 text-ok" : "border-warn/45 bg-warn/10 text-warn"
+          }`}
+        >
+          <div className="text-sm font-bold">
+            {cierre.diferencia === 0
+              ? "Caja cerrada · cuadró ✓"
+              : cierre.diferencia > 0
+                ? `Caja cerrada · sobró ${cop(cierre.diferencia)}`
+                : `Caja cerrada · faltó ${cop(-cierre.diferencia)}`}
+          </div>
+          <div className="mt-0.5 text-[11.5px] opacity-90">
+            Esperaba {cop(cierre.esperado)} · contaste {cop(cierre.contado)}
+          </div>
+        </div>
+      )}
+
       {!openForm ? (
         <button
-          onClick={() => setOpenForm(true)}
-          className={`mt-4 w-full rounded-full px-5 py-2.5 text-sm font-semibold uppercase tracking-wide transition ${
-            abierta
-              ? "border border-line text-muted hover:text-ink"
-              : "bg-accent text-on-accent hover:bg-accent-soft"
-          }`}
+          onClick={() => {
+            setCierre(null);
+            setOpenForm(true);
+          }}
+          className="mt-4 w-full rounded-full bg-accent px-5 py-3 text-sm font-semibold uppercase tracking-wide text-on-accent transition hover:bg-accent-soft"
         >
           {abierta ? "Cerrar caja" : "Abrir caja"}
         </button>
@@ -168,32 +201,53 @@ function CajaCard({ caja, medios }: { caja: CajaSesionSede; medios: MedioPago[] 
             {caja.propinaEfectivo > 0 && <> · +{cop(caja.propinaEfectivo)} propinas</>}
             {caja.gastos > 0 && <> · −{cop(caja.gastos)} gastos</>}
           </div>
-          <input
-            type="number"
-            value={contado}
-            onChange={(e) => setContado(e.target.value)}
-            placeholder="Efectivo contado en caja"
-            className={fld}
-          />
+          <div>
+            <label className={lbl}>Efectivo contado en la caja</label>
+            <input
+              type="number"
+              value={contado}
+              onChange={(e) => setContado(e.target.value)}
+              placeholder="Ej: 350000"
+              className={fld}
+            />
+            {contado.trim() !== "" && Number.isFinite(Number(contado)) && (
+              <p
+                className={`mt-1 text-xs font-semibold ${
+                  Number(contado) - esperadoEfectivo === 0 ? "text-ok" : "text-warn"
+                }`}
+              >
+                {(() => {
+                  const d = Number(contado) - esperadoEfectivo;
+                  return d === 0 ? "Cuadra ✓" : d > 0 ? `Sobra ${cop(d)}` : `Falta ${cop(-d)}`;
+                })()}
+              </p>
+            )}
+          </div>
           <input value={nota} onChange={(e) => setNota(e.target.value)} placeholder="Nota de cierre (opcional)" className={fld} />
           <div className="flex gap-2">
-            <button disabled={busy} className="rounded-full bg-accent px-5 py-2 text-xs font-semibold uppercase tracking-wide text-on-accent transition hover:bg-accent-soft disabled:opacity-50">
+            <button disabled={busy} className="rounded-full bg-accent px-5 py-3 text-sm font-semibold uppercase tracking-wide text-on-accent transition hover:bg-accent-soft disabled:opacity-50">
               {busy ? "Cerrando…" : "Confirmar cierre"}
             </button>
-            <button type="button" onClick={() => setOpenForm(false)} className="rounded-full border border-line px-5 py-2 text-xs text-muted">
+            <button type="button" onClick={() => setOpenForm(false)} className="rounded-full border border-line px-5 py-3 text-sm text-muted">
               Cancelar
             </button>
           </div>
         </form>
       ) : (
         <form onSubmit={abrir} className="mt-4 space-y-2.5">
-          <input type="number" value={meta} onChange={(e) => setMeta(e.target.value)} placeholder="Meta del día (COP)" className={fld} />
-          <input type="number" value={apertura} onChange={(e) => setApertura(e.target.value)} placeholder="Base / monto de apertura (opcional)" className={fld} />
+          <div>
+            <label className={lbl}>Meta del día (COP)</label>
+            <input type="number" value={meta} onChange={(e) => setMeta(e.target.value)} placeholder="Ej: 500000" className={fld} />
+          </div>
+          <div>
+            <label className={lbl}>Vueltos con los que arranca el cajón (opcional)</label>
+            <input type="number" value={apertura} onChange={(e) => setApertura(e.target.value)} placeholder="Ej: 50000" className={fld} />
+          </div>
           <div className="flex gap-2">
-            <button disabled={busy} className="rounded-full bg-accent px-5 py-2 text-xs font-semibold uppercase tracking-wide text-on-accent transition hover:bg-accent-soft disabled:opacity-50">
+            <button disabled={busy} className="rounded-full bg-accent px-5 py-3 text-sm font-semibold uppercase tracking-wide text-on-accent transition hover:bg-accent-soft disabled:opacity-50">
               {busy ? "Abriendo…" : "Abrir caja"}
             </button>
-            <button type="button" onClick={() => setOpenForm(false)} className="rounded-full border border-line px-5 py-2 text-xs text-muted">
+            <button type="button" onClick={() => setOpenForm(false)} className="rounded-full border border-line px-5 py-3 text-sm text-muted">
               Cancelar
             </button>
           </div>

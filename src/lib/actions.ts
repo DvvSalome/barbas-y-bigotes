@@ -2114,7 +2114,7 @@ export async function cerrarCaja(input: {
   abiertaEnISO: string;
   efectivoContado: number;
   nota: string;
-}): Promise<ActionResult> {
+}): Promise<CierreCajaResult> {
   const sb = await supabaseServerAuth();
   const denied = await requireAdmin(sb);
   if (denied) return { ok: false, error: denied };
@@ -2137,7 +2137,9 @@ export async function cerrarCaja(input: {
   if (!res.ok) return { ok: false, error: res.error };
   revalidatePath("/admin/cuadre");
   revalidatePath("/admin");
-  return { ok: true };
+  // Devolvemos la diferencia y el esperado para que la UI muestre en el acto si
+  // cuadró (antes se perdía y había que bajar a "cuadres anteriores" a buscarlo).
+  return { ok: true, diferencia: res.diferencia, esperado: res.snap.esperadoEfectivo };
 }
 
 export type CierreCajaResult = {
