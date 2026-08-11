@@ -396,6 +396,45 @@ export async function getAgendaSedeHoy(sedeId: string | null): Promise<AgendaIte
   }));
 }
 
+/** Ítem del calendario admin: la cita + su duración (para dibujar el bloque). */
+export type AgendaDiaItem = AgendaItem & { duracionMin: number };
+
+// Agenda de una sede en un día CUALQUIERA (el calendario del admin navega por
+// fechas, no solo hoy). Mismo contrato de confianza que getAgendaSedeHoy: service
+// role tras el gate de /admin — lectura ya autorizada, no un permiso.
+export async function getAgendaSedeDia(sedeId: string, fechaYmd: string): Promise<AgendaDiaItem[]> {
+  const admin = supabaseAdmin();
+  const { desde, hasta } = bogotaDayRangeDeFecha(fechaYmd);
+  const { data, error } = await admin
+    .from("reservas")
+    .select(
+      "id,inicio,estado,canal,llegada,confirmado_en,sede_id,servicio_id,barbero_id,cliente_ref,nota,servicios(nombre,duracion_min),barberos(nombre),clientes(nombre,telefono)",
+    )
+    .eq("sede_id", sedeId)
+    .gte("inicio", desde.toISOString())
+    .lt("inicio", hasta.toISOString())
+    .order("inicio");
+  if (error) console.error("getAgendaSedeDia:", error.message);
+  return ((data ?? []) as Record<string, unknown>[]).map((r) => ({
+    id: r.id as string,
+    inicio: r.inicio as string,
+    estado: r.estado as string,
+    canal: r.canal as string,
+    llegada: (r.llegada as string) ?? null,
+    sede: r.sede_id as string,
+    barberoId: (r.barbero_id as string) ?? null,
+    barbero: (r.barberos as { nombre?: string } | null)?.nombre ?? "",
+    servicioId: (r.servicio_id as string) ?? null,
+    servicio: (r.servicios as { nombre?: string } | null)?.nombre ?? "",
+    clienteRef: (r.cliente_ref as string) ?? null,
+    cliente: (r.clientes as { nombre?: string } | null)?.nombre ?? "",
+    telefono: (r.clientes as { telefono?: string } | null)?.telefono ?? "",
+    nota: r.nota as string | null,
+    confirmado: r.confirmado_en != null,
+    duracionMin: (r.servicios as { duracion_min?: number } | null)?.duracion_min ?? 30,
+  }));
+}
+
 /** Una venta de hoy con lo que se llevó el cliente. */
 export type VentaHoy = {
   id: string;

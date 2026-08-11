@@ -42,6 +42,8 @@ export function AgendarCitaForm({
   servicios,
   horarioSemanal,
   diasEspeciales,
+  barberoInicial,
+  diaInicial,
   onDone,
   onCancel,
 }: {
@@ -50,13 +52,16 @@ export function AgendarCitaForm({
   servicios: Servicio[];
   horarioSemanal: HorarioSemanal[]; // ya filtrado por la sede
   diasEspeciales: DiaEspecial[]; // ya filtrado por la sede
+  /** Preselección al abrir desde el calendario (columna/día tocados). */
+  barberoInicial?: string;
+  diaInicial?: Date;
   onDone: () => void;
   onCancel: () => void;
 }) {
   // Solo servicios con precio en esta sede (los que se pueden cobrar acá).
   const serviciosSede = useMemo(() => servicios.filter((s) => s.precios[sede as SedeId] != null), [servicios, sede]);
 
-  const [barberoId, setBarberoId] = useState(barberos[0]?.id ?? "");
+  const [barberoId, setBarberoId] = useState(barberoInicial ?? barberos[0]?.id ?? "");
   const [servicioId, setServicioId] = useState(serviciosSede[0]?.id ?? "");
   const [day, setDay] = useState<Date | null>(null);
   const [slot, setSlot] = useState<number | null>(null);
@@ -105,10 +110,11 @@ export function AgendarCitaForm({
       });
   }, [day, barberoId]);
 
-  // Preselecciona el primer día abierto para mostrar la grilla de una.
+  // Preselecciona el día pedido (calendario) o el primer día abierto.
   useEffect(() => {
+    const pref = diaInicial && dias.find((d) => d.toDateString() === diaInicial.toDateString());
     // eslint-disable-next-line react-hooks/set-state-in-effect -- preselección de UX al montar (no cascada real)
-    if (!day && dias.length) setDay(dias[0]);
+    if (!day && dias.length) setDay(pref ?? dias[0]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dias]);
 

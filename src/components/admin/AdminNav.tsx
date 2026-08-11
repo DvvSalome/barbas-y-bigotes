@@ -16,6 +16,7 @@ type Grupo = Hoja & { hijos?: readonly Hoja[] };
 
 const GRUPOS: readonly Grupo[] = [
   { href: "/admin", label: "Hoy" },
+  { href: "/admin/agenda", label: "Agenda" },
   { href: "/admin/metricas", label: "Métricas" },
   { href: "/admin/cuadre", label: "Caja" },
   { href: "/admin/clientes", label: "Clientes" },
@@ -57,9 +58,9 @@ export const adminNav: readonly Hoja[] = [
   ...SECUNDARIAS,
 ];
 
-// Únicas secciones que leen el ?sede= del selector del topbar: Hoy y Métricas
-// filtran sus datos, y Precios lo usa para saber en qué sede se arma el combo.
-const SECCIONES_CON_SEDE = ["/admin", "/admin/metricas", "/admin/precios"] as const;
+// Únicas secciones que leen el ?sede= del selector del topbar: Hoy, Agenda y
+// Métricas filtran sus datos, y Precios lo usa para la sede del combo.
+const SECCIONES_CON_SEDE = ["/admin", "/admin/agenda", "/admin/metricas", "/admin/precios"] as const;
 
 const esRuta = (path: string, href: string) => (href === "/admin" ? path === href : path.startsWith(href));
 
