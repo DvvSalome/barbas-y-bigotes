@@ -8,6 +8,7 @@ import {
   agregarNotaCliente,
   editarNotaCliente,
   borrarNotaCliente,
+  actualizarNotaFicha,
   agregarMovWallet,
   agregarResenaCliente,
   borrarResenaCliente,
@@ -169,7 +170,78 @@ function InfoTab({ d }: { d: Detalle }) {
       <Row k="Teléfono" v={d.telefono || "—"} />
       <Row k="Correo" v={d.email || "—"} />
       <Row k="Cliente desde" v={fecha(d.creadoEn)} />
-      {d.notasFicha ? <Row k="Nota de ficha" v={d.notasFicha} /> : null}
+      <NotaFicha clienteRef={d.id} nota={d.notasFicha} />
+    </div>
+  );
+}
+
+/** Nota FIJA de la ficha (clientes.notas): editable donde se lee. Distinta de la
+ *  pestaña Notas (bitácora con fecha); acá va lo permanente (alergias, gustos). */
+function NotaFicha({ clienteRef, nota }: { clienteRef: string; nota: string | null }) {
+  const router = useRouter();
+  const [editando, setEditando] = useState(false);
+  const [texto, setTexto] = useState(nota ?? "");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  async function guardar() {
+    setBusy(true);
+    setErr(null);
+    const res = await actualizarNotaFicha({ clienteRef, nota: texto });
+    setBusy(false);
+    if (res.ok) {
+      setEditando(false);
+      router.refresh();
+    } else setErr(res.error ?? "No se pudo guardar.");
+  }
+
+  if (!editando) {
+    return (
+      <div className="flex items-start justify-between gap-4">
+        <span className="shrink-0 text-muted">Nota de ficha</span>
+        <button
+          type="button"
+          onClick={() => {
+            setTexto(nota ?? "");
+            setErr(null);
+            setEditando(true);
+          }}
+          className="min-w-0 text-right text-ink transition hover:text-accent-soft"
+          title="Lo permanente del cliente (alergias, gustos); las notas con fecha van en la pestaña Notas"
+        >
+          {nota ? (
+            <>
+              {nota} <span aria-hidden className="text-[11px] text-muted">✎</span>
+            </>
+          ) : (
+            <span className="text-accent-soft">+ Agregar (alergias, gustos…)</span>
+          )}
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      <span className="text-muted">Nota de ficha</span>
+      <textarea value={texto} onChange={(e) => setTexto(e.target.value)} rows={2} maxLength={500} autoFocus className={fld} />
+      <p className="text-[11px] text-muted">Lo permanente (alergias, gustos). Las notas del día a día van en la pestaña Notas.</p>
+      {err && <p className="text-[11px] text-accent-soft">{err}</p>}
+      <div className="flex gap-1.5">
+        <button type="button" onClick={guardar} disabled={busy} className={btn}>
+          {busy ? "Guardando…" : "Guardar"}
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setEditando(false);
+            setErr(null);
+          }}
+          className="rounded-full border border-line px-4 py-2 text-xs text-muted transition hover:text-ink"
+        >
+          Cancelar
+        </button>
+      </div>
     </div>
   );
 }

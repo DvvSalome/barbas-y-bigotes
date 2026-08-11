@@ -2134,6 +2134,19 @@ export async function agregarNotaCliente(input: { clienteRef: string; nota: stri
   return { ok: true };
 }
 
+// La "nota de ficha" (columna clientes.notas) se mostraba solo-lectura: se veía
+// pero no había NINGÚN lugar para corregirla. Vacía = se borra.
+export async function actualizarNotaFicha(input: { clienteRef: string; nota: string }): Promise<ActionResult> {
+  const sb = await supabaseServerAuth();
+  const denied = await requireAdmin(sb);
+  if (denied) return { ok: false, error: denied };
+  const limpio = input.nota.trim().slice(0, 500) || null;
+  const { error } = await sb.from("clientes").update({ notas: limpio }).eq("id", input.clienteRef);
+  if (error) return { ok: false, error: errorPublico("actualizarNotaFicha", error) };
+  revalidatePath(`/admin/clientes/${input.clienteRef}`);
+  return { ok: true };
+}
+
 // Corregir o borrar una nota interna: un tipeo mal no puede quedar para siempre
 // en la ficha. Mismo gate que crearla; clienteRef solo para revalidar la ruta.
 export async function editarNotaCliente(input: { id: string; clienteRef: string; nota: string }): Promise<ActionResult> {
