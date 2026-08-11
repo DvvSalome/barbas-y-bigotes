@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "motion/react";
 import { cop } from "@/lib/format";
@@ -25,8 +25,10 @@ const TABS: { id: Tab; label: string }[] = [
   { id: "notas", label: "Notas" },
   { id: "wallet", label: "Wallet" },
   { id: "fidelidad", label: "Fidelidad" },
-  { id: "resenas", label: "Reseñas" },
-  { id: "calificaciones", label: "Calificaciones" },
+  // Ojo con los nombres: "resenas" = el staff califica AL cliente; "calificaciones" = el cliente
+  // opina de su visita. Las etiquetas visibles los distinguen; los keys internos no cambian.
+  { id: "resenas", label: "Nota del staff" },
+  { id: "calificaciones", label: "Su opinión" },
 ];
 
 function fecha(iso: string) {
@@ -49,8 +51,26 @@ export function ClienteDetalle({
   barberos: Barbero[];
   tarjeta: TarjetaClienteView;
 }) {
-  const [tab, setTab] = useState<Tab>("info");
+  // Arranca en "historial": la info del cliente ya está en el encabezado.
+  const [tab, setTab] = useState<Tab>("historial");
   const d = detalle;
+
+  // Pista de scroll: en celular las pestañas desbordan con el scrollbar oculto,
+  // así que mostramos un degradado a la derecha mientras quede alguna fuera de vista.
+  const tabsRef = useRef<HTMLDivElement>(null);
+  const [hayMasTabs, setHayMasTabs] = useState(false);
+  useEffect(() => {
+    const el = tabsRef.current;
+    if (!el) return;
+    const medir = () => setHayMasTabs(el.scrollLeft + el.clientWidth < el.scrollWidth - 4);
+    medir();
+    el.addEventListener("scroll", medir, { passive: true });
+    window.addEventListener("resize", medir);
+    return () => {
+      el.removeEventListener("scroll", medir);
+      window.removeEventListener("resize", medir);
+    };
+  }, []);
 
   return (
     <div>
@@ -64,7 +84,7 @@ export function ClienteDetalle({
         </div>
         {d.ratingProm !== null && (
           <div className="text-right">
-            <div className="text-xs uppercase tracking-wide text-muted">Calificación</div>
+            <div className="text-xs uppercase tracking-wide text-muted">Nota del staff</div>
             <div className="font-display text-2xl text-accent-soft">★ {d.ratingProm}</div>
           </div>
         )}
@@ -77,28 +97,43 @@ export function ClienteDetalle({
         <Kpi size="sm" label="Última visita" value={d.ultima ? fecha(d.ultima) : "—"} accent={false} />
       </div>
 
-      <div className="mt-8 flex gap-1 overflow-x-auto border-b border-line [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        {TABS.map((t) => (
-          <button
-            key={t.id}
-            onClick={() => setTab(t.id)}
-            className={`relative shrink-0 whitespace-nowrap px-4 py-2.5 text-sm transition ${
-              tab === t.id ? "text-ink" : "text-muted hover:text-ink"
-            }`}
-          >
-            {t.label}
-            {t.id === "notas" && d.notas.length ? ` (${d.notas.length})` : ""}
-            {t.id === "resenas" && d.resenas.length ? ` (${d.resenas.length})` : ""}
-            {t.id === "calificaciones" && d.calificaciones.length ? ` (${d.calificaciones.length})` : ""}
-            {tab === t.id && (
-              <motion.span
-                layoutId="cliente-tab-underline"
-                className="absolute inset-x-2 -bottom-px h-[2px] rounded-full bg-accent"
-                transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
-              />
-            )}
-          </button>
-        ))}
+      <div className="relative mt-8">
+        <div
+          ref={tabsRef}
+          role="tablist"
+          aria-label="Secciones del cliente"
+          className="flex gap-1 overflow-x-auto border-b border-line [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        >
+          {TABS.map((t) => (
+            <button
+              key={t.id}
+              role="tab"
+              aria-selected={tab === t.id}
+              onClick={() => setTab(t.id)}
+              className={`relative min-h-11 shrink-0 whitespace-nowrap px-4 py-2.5 text-sm transition ${
+                tab === t.id ? "text-ink" : "text-muted hover:text-ink"
+              }`}
+            >
+              {t.label}
+              {t.id === "notas" && d.notas.length ? ` (${d.notas.length})` : ""}
+              {t.id === "resenas" && d.resenas.length ? ` (${d.resenas.length})` : ""}
+              {t.id === "calificaciones" && d.calificaciones.length ? ` (${d.calificaciones.length})` : ""}
+              {tab === t.id && (
+                <motion.span
+                  layoutId="cliente-tab-underline"
+                  className="absolute inset-x-2 -bottom-px h-[2px] rounded-full bg-accent"
+                  transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+                />
+              )}
+            </button>
+          ))}
+        </div>
+        {hayMasTabs && (
+          <span
+            aria-hidden
+            className="pointer-events-none absolute inset-y-0 right-0 w-12 bg-gradient-to-l from-bg to-transparent"
+          />
+        )}
       </div>
 
       <div className="mt-6">
@@ -288,7 +323,7 @@ function WalletTab({ d }: { d: Detalle }) {
                 {w.nota ? <span className="text-muted"> · {w.nota}</span> : null}
                 <div className="text-xs text-muted">{fecha(w.fecha)}</div>
               </div>
-              <span className={`shrink-0 ${w.tipo === "recarga" ? "text-ok" : "text-muted"}`}>
+              <span className={`shrink-0 ${w.tipo === "recarga" ? "text-ok" : "text-warn"}`}>
                 {w.tipo === "recarga" ? "+" : "−"}{cop(w.monto)}
               </span>
             </div>
@@ -375,8 +410,8 @@ function FidelidadTab({ d, tarjeta }: { d: Detalle; tarjeta: TarjetaClienteView 
   );
 }
 
-// Postventa: lo que EL CLIENTE opinó del servicio (al revés de "Reseñas",
-// donde el staff califica al cliente). Solo lectura — se crea desde /cuenta.
+// Postventa: lo que EL CLIENTE opinó del servicio (pestaña "Su opinión", al revés
+// de "Nota del staff", donde el staff califica al cliente). Solo lectura — se crea desde /cuenta.
 function CalificacionesTab({ d }: { d: Detalle }) {
   if (!d.calificaciones.length) return <Empty>Este cliente todavía no calificó ninguna visita.</Empty>;
   return (
@@ -432,7 +467,9 @@ function ResenasTab({ d, barberos }: { d: Detalle; barberos: Barbero[] }) {
               type="button"
               key={n}
               onClick={() => setScore(n)}
-              className={`text-2xl transition ${n <= score ? "text-accent" : "text-line"}`}
+              aria-label={`${n} estrella${n === 1 ? "" : "s"}`}
+              aria-pressed={score === n}
+              className={`flex min-h-11 min-w-11 items-center justify-center p-1.5 text-2xl transition ${n <= score ? "text-accent" : "text-line"}`}
             >
               ★
             </button>

@@ -165,8 +165,19 @@ export function BookingWizard({
   const [sedeId, setSedeId] = useState<SedeId | null>(sedeDefault);
   const [servicio, setServicio] = useState<Servicio | null>(null);
   const [servicioFoto, setServicioFoto] = useState<string>("");
-  const [selectedCat, setSelectedCat] = useState<Categoria>("cortes");
+  // Arranca en la primera categoría CON servicios de la sede (antes era siempre
+  // 'cortes': si la sede no tenía cortes, la grilla quedaba vacía sin aviso).
+  const [selectedCat, setSelectedCat] = useState<Categoria>(() => {
+    const conServicios = (Object.keys(categorias) as Categoria[]).filter((c) =>
+      servicios.some((s) => s.categoria === c && (sedeDefault ? s.precios[sedeDefault] != null : true)),
+    );
+    return conServicios.includes("cortes") ? "cortes" : (conServicios[0] ?? "cortes");
+  });
   const [barbero, setBarbero] = useState<Barbero | null>(initialBarbero);
+  // "Cualquier barbero" explícito: distingue "aún no eligió nada" (ninguna
+  // tarjeta marcada) de "eligió que le asignemos el primero libre" (la tarjeta
+  // Cualquiera marcada). Antes la única pista era una frase del subtítulo.
+  const [cualquierBarbero, setCualquierBarbero] = useState(false);
   const [day, setDay] = useState<Date | null>(null);
   const [slot, setSlot] = useState<number | null>(null);
   const [nombre, setNombre] = useState("");
@@ -224,6 +235,17 @@ export function BookingWizard({
     () => (Object.keys(categorias) as Categoria[]).filter((c) => serviciosSede.some((s) => s.categoria === c)),
     [serviciosSede],
   );
+  // Servicios de la categoría activa (para el contador, la grilla y el vacío).
+  const serviciosCat = useMemo(
+    () => serviciosSede.filter((s) => s.categoria === selectedCat),
+    [serviciosSede, selectedCat],
+  );
+  // Si la sede activa no tiene servicios en la categoría elegida (cambio de
+  // sede o rehidratación), saltar a la primera categoría con servicios.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- realinear la categoría al cambiar de sede (no cascada real)
+    if (cats.length && !cats.includes(selectedCat)) setSelectedCat(cats[0]);
+  }, [cats, selectedCat]);
   // Bebidas del upsell filtradas por la sede activa (config por sede, migración 0028).
   const bebidasSede = useMemo(
     () => bebidas.filter((b) => b.sede === sedeId),
@@ -598,7 +620,11 @@ export function BookingWizard({
   // `!= null` (no `!== null`): precios[sedeId] es `undefined` (no null) cuando el
   // servicio no tiene precio en esa sede → antes daba `undefined + 0 = NaN`.
   const total = precioServicio != null ? precioServicio + (bebida && !bebidaIncluida ? bebida.precio : 0) : null;
-  const bebidaTxt = bebida ? ` + ${bebida.nombre.toLowerCase()}${bebidaIncluida ? " (incluida)" : ""}` : "";
+  // La bebida con cargo dice su precio donde se la nombra: antes subía el total
+  // en silencio y el cliente no podía reconstruir la cifra a la vista.
+  const bebidaTxt = bebida
+    ? ` + ${bebida.nombre.toLowerCase()}${bebidaIncluida ? " (incluida)" : ` (+${cop(bebida.precio)})`}`
+    : "";
 
   // Nombre y correo obligatorios para habilitar "Confirmar" en el paso datos.
   // Con sesión Google no se piden: el server usa el email (y nombre) de la sesión.
@@ -891,7 +917,12 @@ export function BookingWizard({
                 <div className="text-[10.5px] font-bold uppercase tracking-[0.12em] text-muted">Total</div>
                 <div className="text-[11px] text-muted">Lo pagas en la barbería.</div>
               </div>
-              {total !== null && <div className="font-display text-[22px] font-extrabold tabular-nums text-accent-soft">{cop(total)}</div>}
+              {total !== null && (
+                <div className="font-display text-[22px] font-extrabold tabular-nums text-accent-soft">
+                  {servicio.desde && <span className="mr-1 text-[12px] font-bold text-muted">desde</span>}
+                  {cop(total)}
+                </div>
+              )}
             </div>
           </div>
 
@@ -1046,35 +1077,50 @@ export function BookingWizard({
                 no entraba NI UNA card de servicio completa (medido). En fila son
                 ~56px. DESKTOP mantiene la grilla del proto (§6.4), donde entran
                 de sobra. Los chips no cambian de estilo, solo de acomodo. */}
-            <div className="scroll-x-limpio -mx-4 flex snap-x snap-mandatory gap-2 overflow-x-auto px-4 pb-1 md:mx-0 md:grid md:snap-none md:grid-cols-[repeat(auto-fit,minmax(230px,1fr))] md:overflow-visible md:px-0 md:pb-0">
-              {cats.map((cat) => {
-                const activa = selectedCat === cat;
-                const n = serviciosSede.filter((s) => s.categoria === cat).length;
-                return (
-                  <button
-                    key={cat}
-                    onClick={() => setSelectedCat(cat)}
-                    className="flex min-h-[44px] shrink-0 snap-start items-center justify-between gap-2 rounded-[10px] px-3 py-2.5 md:shrink"
-                    style={{
-                      background: "linear-gradient(90deg,#211d19,#151311)",
-                      border: `1px solid ${activa ? "rgba(210,63,52,.75)" : "rgba(242,237,228,.14)"}`,
-                    }}
-                  >
-                    <span className={`font-display text-[14px] font-bold uppercase leading-none ${activa ? "text-ink" : "text-muted"}`}>{categorias[cat]}</span>
-                    <span className="shrink-0 text-[10px] text-accent-soft">{n}</span>
-                  </button>
-                );
-              })}
+            <div className="relative">
+              <div className="scroll-x-limpio -mx-4 flex snap-x snap-mandatory gap-2 overflow-x-auto px-4 pb-1 md:mx-0 md:grid md:snap-none md:grid-cols-[repeat(auto-fit,minmax(230px,1fr))] md:overflow-visible md:px-0 md:pb-0">
+                {cats.map((cat) => {
+                  const activa = selectedCat === cat;
+                  const n = serviciosSede.filter((s) => s.categoria === cat).length;
+                  return (
+                    <button
+                      key={cat}
+                      onClick={() => setSelectedCat(cat)}
+                      className="flex min-h-[44px] shrink-0 snap-start items-center justify-between gap-2 rounded-[10px] px-3 py-2.5 md:shrink"
+                      style={{
+                        background: "linear-gradient(90deg,#211d19,#151311)",
+                        border: `1px solid ${activa ? "rgba(210,63,52,.75)" : "rgba(242,237,228,.14)"}`,
+                      }}
+                    >
+                      <span className={`font-display text-[14px] font-bold uppercase leading-none ${activa ? "text-ink" : "text-muted"}`}>{categorias[cat]}</span>
+                      <span className="shrink-0 text-[10px] text-accent-soft">{n}</span>
+                    </button>
+                  );
+                })}
+              </div>
+              {/* Señal de que la fila sigue: sin el fade, nada indicaba que había
+                  más categorías scrolleando a la derecha. Solo móvil (en desktop
+                  es grilla y no scrollea). */}
+              <span
+                aria-hidden
+                className="pointer-events-none absolute inset-y-0 -right-4 w-10 bg-gradient-to-l from-bg to-transparent md:hidden"
+              />
             </div>
 
             <div className="mb-3 mt-6 flex items-center justify-between">
               <span className="text-[10px] font-bold uppercase tracking-[0.24em] text-accent-soft">Servicios disponibles</span>
-              <span className="text-[11px] text-muted">{serviciosSede.filter((s) => s.categoria === selectedCat).length} opciones</span>
+              <span className="text-[11px] text-muted">{serviciosCat.length} opciones</span>
             </div>
 
+            {/* Vacío explícito: la grilla sin filas parecía una pantalla rota. */}
+            {serviciosCat.length === 0 && (
+              <p className="rounded-xl border border-line bg-panel px-4 py-3 text-sm text-muted">
+                No hay servicios en esta categoría. Mira las otras categorías de arriba.
+              </p>
+            )}
+
             <div className="grid grid-cols-2 gap-[9px] md:grid-cols-[repeat(auto-fill,minmax(160px,190px))] md:justify-center md:gap-3">
-              {serviciosSede
-                .filter((s) => s.categoria === selectedCat)
+              {serviciosCat
                 .map((s) => {
                   const sel = servicio?.id === s.id;
                   const foto = s.fotoUrl ?? null;
@@ -1125,7 +1171,17 @@ export function BookingWizard({
                       </div>
                       <div className="mt-auto flex items-center justify-between border-t border-[rgba(242,237,228,0.07)] px-2.5 py-2">
                         <span className="text-[9.5px] font-bold uppercase tracking-[0.12em] text-muted">Precio</span>
-                        <span className="font-display text-[17px] font-extrabold tabular-nums text-accent-soft">{precio != null ? cop(precio) : "—"}</span>
+                        {/* "desde": el precio abierto no se disfraza de cerrado. */}
+                        <span className="font-display text-[17px] font-extrabold tabular-nums text-accent-soft">
+                          {precio != null ? (
+                            <>
+                              {s.desde && <span className="mr-1 text-[10px] font-bold text-muted">desde</span>}
+                              {cop(precio)}
+                            </>
+                          ) : (
+                            "—"
+                          )}
+                        </span>
                       </div>
                     </button>
                   );
@@ -1141,6 +1197,35 @@ export function BookingWizard({
             <p className="mt-1.5 text-xs text-muted">{sedeNombre} · o sigue sin escoger y te asignamos uno.</p>
             {sedeBarberos.length ? (
               <div className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-[repeat(auto-fit,minmax(190px,240px))] md:justify-center">
+                {/* Tarjeta explícita de "Cualquier barbero": antes la única pista
+                    era el subtítulo y Continuar sin elegir funcionaba en silencio.
+                    Marcada = barbero null Y el cliente la tocó (cualquierBarbero). */}
+                <button
+                  onClick={() => {
+                    setBarbero(null);
+                    setCualquierBarbero(true);
+                  }}
+                  className={`relative flex aspect-[3/3.6] flex-col items-center justify-center gap-3 overflow-hidden rounded-[14px] border-2 px-3 text-center transition duration-200 md:hover:-translate-y-1 ${
+                    !barbero && cualquierBarbero ? "border-accent" : "border-line md:hover:border-accent/40"
+                  }`}
+                  style={{
+                    background:
+                      !barbero && cualquierBarbero
+                        ? "radial-gradient(circle at 50% 30%, rgba(210,63,52,.22), #151311 72%)"
+                        : "radial-gradient(circle at 50% 30%, #272119, #0e0d0b 76%)",
+                  }}
+                >
+                  {!barbero && cualquierBarbero && (
+                    <span className="absolute right-2 top-2 flex h-[22px] w-[22px] items-center justify-center rounded-full bg-accent text-[11px] font-extrabold text-on-accent">✓</span>
+                  )}
+                  <span className="grid h-12 w-12 place-items-center rounded-full border border-line bg-elevated">
+                    <ScissorsIcon className="h-5 w-5 text-accent-soft" />
+                  </span>
+                  <span>
+                    <span className="block font-display text-[19px] font-extrabold uppercase leading-tight text-white">Cualquier barbero</span>
+                    <span className="mt-1 block text-[11px] leading-snug text-muted">Te asignamos el primero libre</span>
+                  </span>
+                </button>
                 {sedeBarberos.map((b) => {
                   const sel = barbero?.id === b.id;
                   const ausente = ausenteSet.has(b.id);
@@ -1159,7 +1244,11 @@ export function BookingWizard({
                   return (
                     <button
                       key={b.id}
-                      onClick={() => setBarbero(sel ? null : b)}
+                      onClick={() => {
+                        setBarbero(sel ? null : b);
+                        // Elegir (o soltar) un barbero concreto desmarca "Cualquiera".
+                        setCualquierBarbero(false);
+                      }}
                       className={`group relative aspect-[3/3.6] overflow-hidden rounded-[14px] border-2 text-left transition duration-200 md:hover:-translate-y-1 ${
                         sel ? "border-accent" : "border-line md:hover:border-accent/40"
                       }`}
@@ -1643,7 +1732,19 @@ export function BookingWizard({
                 </div>
 
                 <div className="space-y-2.5 border-t border-line/70 px-4 py-3.5">
-                  <ResumenRow k="Servicio" v={`${servicio.nombre}${bebidaTxt}`} />
+                  {/* Servicio con su precio y la bebida en línea propia con el
+                      suyo: el total de abajo se reconstruye a la vista, nada
+                      sube la cuenta en silencio. */}
+                  <ResumenRow
+                    k="Servicio"
+                    v={`${servicio.nombre}${precioServicio != null ? ` · ${servicio.desde ? "desde " : ""}${cop(precioServicio)}` : ""}`}
+                  />
+                  {bebida && (
+                    <ResumenRow
+                      k="Bebida"
+                      v={bebidaIncluida ? `${bebida.nombre} (incluida)` : `${bebida.nombre} +${cop(bebida.precio)}`}
+                    />
+                  )}
                   <ResumenRow k="Sede" v={sedeNombre} />
                 </div>
 
@@ -1652,6 +1753,7 @@ export function BookingWizard({
                   <div className="flex items-baseline justify-between gap-3 border-t border-line bg-elevated/40 px-4 py-3.5">
                     <span className="text-[11px] font-bold uppercase tracking-[0.16em] text-muted">Total</span>
                     <span className="font-display text-[26px] font-extrabold leading-none tabular-nums text-ink">
+                      {servicio.desde && <span className="mr-1 text-[13px] font-bold text-muted">desde</span>}
                       {cop(total)}
                     </span>
                   </div>
@@ -1693,7 +1795,16 @@ export function BookingWizard({
                   .join(" · ")
               : "Elige un servicio y una hora"}
           </div>
-          <div className="font-display text-[24px] font-extrabold tabular-nums leading-none text-ink">{total !== null ? cop(total) : "—"}</div>
+          <div className="font-display text-[24px] font-extrabold tabular-nums leading-none text-ink">
+            {total !== null ? (
+              <>
+                {servicio?.desde && <span className="mr-1 text-[12px] font-bold text-muted">desde</span>}
+                {cop(total)}
+              </>
+            ) : (
+              "—"
+            )}
+          </div>
         </div>
         <button
           onClick={avanzar}

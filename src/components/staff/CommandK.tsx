@@ -18,13 +18,19 @@ const ACCIONES: Item[] = [
   { key: "a-pines", grupo: "Acciones rápidas", icono: "✂", label: "Equipo y PINes", href: "/admin/equipo" },
 ];
 
-const IR_A: Item[] = adminNav.map((n) => ({
-  key: `n-${n.href}`,
-  grupo: "Ir a",
-  icono: "→",
-  label: n.label,
-  href: n.href,
-}));
+// Sin destinos duplicados: si una acción rápida ya lleva al mismo lugar
+// (p. ej. "Equipo y PINes" → /admin/equipo), se omite el ítem gemelo de "Ir a".
+const HREFS_DE_ACCION = new Set(ACCIONES.map((a) => a.href));
+
+const IR_A: Item[] = adminNav
+  .filter((n) => !HREFS_DE_ACCION.has(n.href))
+  .map((n) => ({
+    key: `n-${n.href}`,
+    grupo: "Ir a",
+    icono: "→",
+    label: n.label,
+    href: n.href,
+  }));
 
 const SIN_RESULTADOS: BusquedaGlobal = { clientes: [], productos: [] };
 
@@ -208,7 +214,7 @@ export function CommandK() {
       <div
         role="dialog"
         aria-modal="true"
-        aria-label="Buscar o hacer algo"
+        aria-label="Buscar cliente, producto o sección"
         className="w-full max-w-[560px] overflow-hidden rounded-2xl border border-line bg-elevated shadow-[var(--shadow-pop)]"
       >
         <input
@@ -216,19 +222,25 @@ export function CommandK() {
           value={q}
           onChange={(e) => cambiarQ(e.target.value)}
           onKeyDown={onInputKey}
-          placeholder="Escribe para buscar acciones, clientes, productos…"
+          placeholder="Buscar cliente, producto o sección…"
           autoComplete="off"
+          role="combobox"
+          aria-label="Buscar cliente, producto o sección"
+          aria-expanded={items.length > 0}
+          aria-controls="cmdk-listbox"
+          aria-autocomplete="list"
+          aria-activedescendant={items.length > 0 ? `cmdk-opcion-${selActivo}` : undefined}
           className="w-full border-b border-line bg-transparent px-4.5 py-4 text-[15px] text-ink placeholder:text-muted focus:outline-none"
         />
-        <div className="max-h-[46vh] overflow-y-auto p-2">
+        <div id="cmdk-listbox" role="listbox" aria-label="Resultados" className="max-h-[46vh] overflow-y-auto p-2">
           {items.length === 0 ? (
             <p className="px-3 py-6 text-center text-sm text-muted">
               {buscando ? "Buscando…" : `Nada para “${q.trim()}”.`}
             </p>
           ) : (
             grupos.map((g) => (
-              <div key={g.nombre} className="pb-1">
-                <div className="px-2.5 pb-1 pt-2 text-[10.5px] font-bold uppercase tracking-[0.14em] text-muted">
+              <div key={g.nombre} role="group" aria-label={g.nombre} className="pb-1">
+                <div aria-hidden="true" className="px-2.5 pb-1 pt-2 text-[10.5px] font-bold uppercase tracking-[0.14em] text-muted">
                   {g.nombre}
                 </div>
                 {g.items.map((it, j) => {
@@ -239,9 +251,12 @@ export function CommandK() {
                       key={it.key}
                       type="button"
                       tabIndex={-1}
+                      id={`cmdk-opcion-${i}`}
+                      role="option"
+                      aria-selected={activo}
                       onClick={() => ejecutar(it)}
                       onMouseMove={() => setSel(i)}
-                      className={`flex w-full items-center gap-3 rounded-lg px-2.5 py-2 text-left text-[13.5px] transition ${
+                      className={`flex min-h-11 w-full items-center gap-3 rounded-lg px-2.5 py-2 text-left text-[13.5px] transition ${
                         activo ? "bg-accent/15 text-ink" : "text-ink/80"
                       }`}
                     >
@@ -262,7 +277,8 @@ export function CommandK() {
             <p className="px-2.5 py-1.5 text-[11px] text-muted">Buscando clientes y productos…</p>
           )}
         </div>
-        <div className="flex gap-4 border-t border-line px-4 py-2.5 text-[11px] text-muted">
+        {/* Atajos de teclado: en táctil no aplican, se ocultan. */}
+        <div className="hidden gap-4 border-t border-line px-4 py-2.5 text-[11px] text-muted sm:flex">
           <span>↑↓ navegar</span>
           <span>↵ ir</span>
           <span>esc cerrar</span>

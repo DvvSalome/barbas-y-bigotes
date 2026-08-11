@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { subirFotoServicio } from "@/lib/actions";
+import { subirFotoServicio, quitarFotoServicio } from "@/lib/actions";
 import { achicarFoto } from "@/lib/imagen-cliente";
 import { ProductoThumb } from "@/components/staff/ProductoThumb";
 import { CamIcon } from "@/components/icons";
@@ -24,6 +24,23 @@ export function FotoServicio({
   const inputRef = useRef<HTMLInputElement>(null);
   const [subiendo, setSubiendo] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  // Quitar con confirmación de dos toques: el primero pregunta, el segundo borra.
+  const [confirmando, setConfirmando] = useState(false);
+  const [quitando, setQuitando] = useState(false);
+
+  async function quitar() {
+    if (!confirmando) {
+      setConfirmando(true);
+      return;
+    }
+    setQuitando(true);
+    setErr(null);
+    const res = await quitarFotoServicio(servicioId);
+    setQuitando(false);
+    setConfirmando(false);
+    if (res.ok) router.refresh();
+    else setErr(res.error ?? "No se pudo quitar la foto.");
+  }
 
   async function onChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -67,6 +84,21 @@ export function FotoServicio({
         </span>
       </button>
       <input ref={inputRef} type="file" accept="image/*" onChange={onChange} className="hidden" />
+      {/* Quitar (solo si hay foto): dos toques — pregunta y borra. Al salir el
+          mouse/foco sin confirmar, vuelve a su estado normal. */}
+      {fotoUrl && !subiendo && (
+        <button
+          type="button"
+          onClick={quitar}
+          onBlur={() => setConfirmando(false)}
+          disabled={quitando}
+          className={`mt-0.5 text-[10px] font-semibold transition disabled:opacity-50 ${
+            confirmando ? "text-warn" : "text-muted hover:text-ink"
+          }`}
+        >
+          {quitando ? "Quitando…" : confirmando ? "¿Seguro? Toca de nuevo" : "Quitar foto"}
+        </button>
+      )}
       {subiendo && <span className="mt-1 text-[10px] text-muted">Subiendo…</span>}
       {err && <span className="mt-1 max-w-36 text-center text-[10px] leading-tight text-accent-soft">{err}</span>}
     </span>

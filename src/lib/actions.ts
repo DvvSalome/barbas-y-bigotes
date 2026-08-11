@@ -621,6 +621,27 @@ export async function subirFotoServicio(formData: FormData): Promise<ActionResul
   return { ok: true };
 }
 
+// Quitar la foto del servicio: borra las variantes del bucket y limpia el
+// campo — la tarjeta del wizard vuelve al placeholder neutro. Reversible
+// subiendo otra foto, por eso no pide más ceremonia que el confirm de la UI.
+export async function quitarFotoServicio(servicioId: string): Promise<ActionResult> {
+  const sb = await supabaseServerAuth();
+  const denied = await requireAdmin(sb);
+  if (denied) return { ok: false, error: denied };
+  const admin = supabaseAdmin();
+  const { data: srv } = await admin.from("servicios").select("id").eq("id", servicioId).maybeSingle();
+  if (!srv) return { ok: false, error: "Servicio no encontrado." };
+  // Todas las extensiones posibles: el path se arma id.ext y pudo variar entre subidas.
+  const paths = ["jpg", "png", "webp", "avif"].map((e) => `${servicioId}.${e}`);
+  const { error: rmErr } = await admin.storage.from("servicios").remove(paths);
+  if (rmErr) errorPublico("quitarFotoServicio storage", rmErr); // best-effort: el campo es la verdad
+  const { error } = await admin.from("servicios").update({ foto_url: null }).eq("id", servicioId);
+  if (error) return { ok: false, error: errorPublico("quitarFotoServicio", error) };
+  revalidatePath("/admin/precios");
+  revalidatePath("/reservar");
+  return { ok: true };
+}
+
 // Descripción del servicio (una frase de qué incluye): la ve el cliente al
 // reservar. Vacía = se borra (vuelve a "sin descripción").
 export async function actualizarDescripcionServicio(servicioId: string, texto: string): Promise<ActionResult> {

@@ -68,6 +68,21 @@ function compacto(n: number) {
   return cop(n);
 }
 
+// Variación de la semana contra la anterior: flecha + % para que el "vs" diga
+// si subió o bajó sin restar de cabeza. Con la semana pasada en $0 no hay
+// porcentaje honesto que mostrar.
+function variacionSemana(actual: number, anterior: number) {
+  if (anterior <= 0) return null;
+  const pct = Math.round(((actual - anterior) / anterior) * 100);
+  const sube = pct >= 0;
+  return {
+    flecha: sube ? "▲" : "▼",
+    clase: sube ? "text-ok" : "text-warn",
+    srTexto: sube ? "subió" : "bajó",
+    etiqueta: `${Math.abs(pct)}%`,
+  };
+}
+
 function iniciales(nombre: string) {
   return nombre
     .split(" ")
@@ -149,6 +164,7 @@ export default async function AdminHoy({
   const rango = mx - mn || 1;
   const puntos = valores.map((v, i) => [8 + i * (284 / (valores.length - 1)), 48 - ((v - mn) / rango) * 38] as const);
   const ultimo = puntos[puntos.length - 1];
+  const variacion = variacionSemana(serie.semana, serie.semanaAnterior);
 
   const cajasAbiertas = caja.filter((c) => c.estado === "abierta").length;
 
@@ -187,8 +203,14 @@ export default async function AdminHoy({
               aparte. En móvil va debajo de la plata. */}
           <div className="hidden shrink-0 items-end gap-3 lg:flex">
             <div className="text-right">
-              <div className="font-display text-[15px] font-extrabold leading-none text-ink tabular-nums">
-                {compacto(serie.semana)}
+              <div className="flex items-baseline justify-end gap-1.5 font-display text-[15px] font-extrabold leading-none text-ink tabular-nums">
+                <span>{compacto(serie.semana)}</span>
+                {variacion && (
+                  <span className={`text-[11px] ${variacion.clase}`}>
+                    <span aria-hidden>{variacion.flecha}</span>
+                    <span className="sr-only">{variacion.srTexto}</span> {variacion.etiqueta}
+                  </span>
+                )}
               </div>
               <div className="mt-1 text-[11px] text-muted tabular-nums">vs {compacto(serie.semanaAnterior)} semana pasada</div>
             </div>
@@ -267,7 +289,14 @@ export default async function AdminHoy({
             <circle cx={ultimo[0].toFixed(1)} cy={ultimo[1].toFixed(1)} r="4" fill="var(--accent-soft)" />
           </svg>
           <div className="shrink-0 text-right text-[11px] text-muted tabular-nums">
-            <span className="font-display text-[14px] font-extrabold text-ink">{compacto(serie.semana)}</span> esta semana
+            <span className="font-display text-[14px] font-extrabold text-ink">{compacto(serie.semana)}</span>{" "}
+            {variacion && (
+              <span className={`font-bold ${variacion.clase}`}>
+                <span aria-hidden>{variacion.flecha}</span>
+                <span className="sr-only">{variacion.srTexto}</span> {variacion.etiqueta}
+              </span>
+            )}{" "}
+            esta semana
             <br />
             vs {compacto(serie.semanaAnterior)} la pasada
           </div>
@@ -331,7 +360,7 @@ export default async function AdminHoy({
             <h2 className={`${SEC} mb-2.5`}>
               <span>Ahora mismo</span>
               <Link href="/admin/equipo" className={SEC_ACTION}>
-                Gestionar PINes
+                Ver equipo
               </Link>
             </h2>
 
@@ -430,7 +459,7 @@ export default async function AdminHoy({
           <section aria-label="Siguientes citas">
             <h2 className={`${SEC} mb-2.5`}>
               <span>Lo que viene</span>
-              <Link href="/barbero" className={SEC_ACTION}>
+              <Link href="/admin/agenda" className={SEC_ACTION}>
                 Ver agenda completa
               </Link>
             </h2>
@@ -461,7 +490,7 @@ export default async function AdminHoy({
                       Debía entrar {horaBogota(c.inicio)} · sin registrar
                     </span>
                   </span>
-                  <span className="text-[10px] font-extrabold tracking-[0.06em] text-muted">{TAG_SEDE[c.sede] ?? c.sede}</span>
+                  <span className="text-[11px] font-extrabold tracking-[0.06em] text-muted">{TAG_SEDE[c.sede] ?? c.sede}</span>
                 </div>
               ))}
 
@@ -479,7 +508,7 @@ export default async function AdminHoy({
                       {c.servicio} · {c.barbero}
                     </span>
                   </span>
-                  <span className="text-[10px] font-extrabold tracking-[0.06em] text-muted">{TAG_SEDE[c.sede] ?? c.sede}</span>
+                  <span className="text-[11px] font-extrabold tracking-[0.06em] text-muted">{TAG_SEDE[c.sede] ?? c.sede}</span>
                 </div>
               ))}
             </div>
@@ -563,14 +592,16 @@ export default async function AdminHoy({
                   <span className="text-right tabular-nums">
                     <span className="block font-display text-[15px] font-extrabold text-ink">{cop(c.total)}</span>
                     {c.estado === "abierta" && (
-                      <span className="mt-0.5 inline-flex items-center gap-1 text-[10px] font-extrabold uppercase tracking-[0.06em] text-warn">
+                      <span className="mt-0.5 inline-flex items-center gap-1 text-[12px] font-extrabold uppercase tracking-[0.06em] text-warn">
                         <span className="h-1.5 w-1.5 rounded-full bg-warn" />
                         Abierta
                       </span>
                     )}
+                    {/* El resultado del cuadre es el dato que el dueño vino a ver:
+                        legible sin lupa, y la diferencia (plata faltante) en warn. */}
                     {c.estado === "cerrada" && c.diferencia !== null && (
                       <span
-                        className={`mt-0.5 inline-block text-[10px] font-extrabold uppercase tracking-[0.06em] ${
+                        className={`mt-0.5 inline-block text-[12px] font-extrabold uppercase tracking-[0.06em] ${
                           c.diferencia === 0 ? "text-ok" : "text-warn"
                         }`}
                       >
@@ -636,8 +667,11 @@ export default async function AdminHoy({
                         {fechaCorta(r.fecha)}
                       </span>
                     </span>
+                    {/* La fila no trae id del cliente (la reseña puede ser de un
+                        walk-in), así que el link no puede aterrizar en su ficha:
+                        el label promete exactamente a dónde va. */}
                     <Link href="/admin/clientes" className={SEC_ACTION}>
-                      Leer
+                      Ver clientes
                     </Link>
                   </div>
                 ))}

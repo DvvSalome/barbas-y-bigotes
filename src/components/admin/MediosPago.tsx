@@ -16,6 +16,9 @@ export function MediosPago({ medios }: { medios: MedioPago[] }) {
   const [nombre, setNombre] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  // Slug del medio esperando confirmación para desactivarse. Desactivar apaga
+  // el botón en el mostrador al instante, así que nunca va en un solo toque.
+  const [confirmando, setConfirmando] = useState<string | null>(null);
 
   async function agregar(e: React.FormEvent) {
     e.preventDefault();
@@ -34,6 +37,7 @@ export function MediosPago({ medios }: { medios: MedioPago[] }) {
     setErr(null);
     const res = await toggleMedioPago(slug, activo);
     setBusy(false);
+    setConfirmando(null);
     if (res.ok) router.refresh();
     else setErr(res.error ?? "No se pudo actualizar");
   }
@@ -53,24 +57,53 @@ export function MediosPago({ medios }: { medios: MedioPago[] }) {
           <p className="text-sm text-muted">Sin medios de pago cargados (¿aplicaste la migración 0016?).</p>
         ) : (
           medios.map((m) => (
-            <div
-              key={m.slug}
-              className="flex items-center justify-between gap-2 rounded-xl border border-line bg-bg px-4 py-2.5 text-sm"
-            >
-              <div className="min-w-0">
-                <span className={m.activo ? "" : "text-muted line-through"}>{m.nombre}</span>
-                <span className="ml-2 text-[10px] uppercase tracking-wide text-muted">{m.slug}</span>
+            <div key={m.slug} className="rounded-xl border border-line bg-bg px-4 py-2.5 text-sm">
+              <div className="flex items-center justify-between gap-2">
+                <div className="min-w-0">
+                  <span className={m.activo ? "" : "text-muted line-through"}>{m.nombre}</span>
+                  <span className="ml-2 text-[10px] uppercase tracking-wide text-muted">{m.slug}</span>
+                </div>
+                {/* Botón con la consecuencia escrita, no un badge de estado.
+                    Activar es directo; desactivar pide confirmar abajo. */}
+                {confirmando !== m.slug && (
+                  <button
+                    type="button"
+                    onClick={() => (m.activo ? setConfirmando(m.slug) : toggle(m.slug, true))}
+                    disabled={busy}
+                    className={`min-h-11 shrink-0 rounded-full border px-4 text-xs font-semibold transition disabled:opacity-50 ${
+                      m.activo ? "border-ok/40 bg-ok/10 text-ok" : "border-line bg-ink/10 text-muted"
+                    }`}
+                  >
+                    {m.activo ? "Se puede cobrar" : "No se cobra"}
+                  </button>
+                )}
               </div>
-              <button
-                type="button"
-                onClick={() => toggle(m.slug, !m.activo)}
-                disabled={busy}
-                className={`shrink-0 rounded-full px-3 py-1 text-[10px] font-semibold uppercase tracking-wide transition disabled:opacity-50 ${
-                  m.activo ? "bg-ok/15 text-ok" : "bg-ink/10 text-muted"
-                }`}
-              >
-                {m.activo ? "Activo" : "Inactivo"}
-              </button>
+
+              {confirmando === m.slug && (
+                <div className="mt-2 rounded-lg border border-warn/40 bg-warn/10 px-3 py-2.5">
+                  <p className="text-[13px]">
+                    ¿Desactivar <b>{m.nombre}</b>? El mostrador no podrá cobrar con este medio.
+                  </p>
+                  <div className="mt-2 flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => toggle(m.slug, false)}
+                      disabled={busy}
+                      className="min-h-11 flex-1 rounded-full bg-warn/15 px-4 text-xs font-semibold uppercase tracking-wide text-warn transition disabled:opacity-50"
+                    >
+                      {busy ? "Guardando…" : "Desactivar"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setConfirmando(null)}
+                      disabled={busy}
+                      className="min-h-11 flex-1 rounded-full border border-line px-4 text-xs font-semibold uppercase tracking-wide text-ink transition disabled:opacity-50"
+                    >
+                      Dejarlo
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           ))
         )}

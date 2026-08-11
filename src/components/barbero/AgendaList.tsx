@@ -162,6 +162,14 @@ export function AgendaList({
   const [historyFor, setHistoryFor] = useState<string | null>(null);
   const [history, setHistory] = useState<HistItem[] | null>(null);
   const [busy, setBusy] = useState(false);
+  // Resultado de la propuesta de adelanto, por reserva. Antes era un alert():
+  // congelaba el mostrador y rompía la estética del panel. Ahora es una cajita
+  // dentro de la fila expandida, al lado del botón que la disparó.
+  const [adelantoMsg, setAdelantoMsg] = useState<{ id: string; ok: boolean; texto: string } | null>(null);
+  // Aviso "quedó en lista de espera" del walk-in. Vive ACÁ y no en el WalkinForm:
+  // al encolar, el form se resetea para el siguiente cliente y un estado local
+  // moriría con sus campos; el mensaje tiene que quedar a la vista.
+  const [esperaMsg, setEsperaMsg] = useState<string | null>(null);
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const freeSlots = agenda.filter((item) => ["cancelada", "no_show"].includes(item.estado));
 
@@ -210,13 +218,14 @@ export function AgendaList({
 
   const ofrecerAdelanto = async (r: AgendaItem, inicioISO: string) => {
     setBusy(true);
+    setAdelantoMsg(null);
     const res = await proponerAdelanto({ reservaId: r.id, inicioISO });
     setBusy(false);
     if (res.ok) {
-      alert("Propuesta de adelanto enviada al cliente.");
+      setAdelantoMsg({ id: r.id, ok: true, texto: "Propuesta de adelanto enviada al cliente." });
       router.refresh();
     } else {
-      alert(res.error);
+      setAdelantoMsg({ id: r.id, ok: false, texto: res.error ?? "No se pudo enviar la propuesta." });
     }
   };
 
@@ -291,6 +300,7 @@ export function AgendaList({
         onCobrar={abrirCobro}
         onWalkin={(barberoId) => {
           setWalkinBarbero(barberoId);
+          setEsperaMsg(null);
           setWalkinOpen(true);
         }}
       />
@@ -310,7 +320,10 @@ export function AgendaList({
               return (
                 <div key={r.id} className="overflow-hidden rounded-2xl border border-line bg-panel">
                   <button
-                    onClick={() => setExpandedRow(abierto ? null : r.id)}
+                    onClick={() => {
+                      setExpandedRow(abierto ? null : r.id);
+                      setAdelantoMsg(null);
+                    }}
                     className="flex w-full items-center gap-3 px-3.5 py-3 text-left transition hover:bg-ink/[0.02]"
                   >
                     <span className="w-12 shrink-0 font-display text-lg font-bold tabular-nums text-accent-soft">
@@ -374,6 +387,17 @@ export function AgendaList({
                           </button>
                         )}
                       </div>
+                      {adelantoMsg?.id === r.id && (
+                        <div
+                          className={`mt-2.5 rounded-lg border px-3 py-2 text-sm ${
+                            adelantoMsg.ok
+                              ? "border-ok/40 bg-ok/10 text-ok"
+                              : "border-accent/40 bg-accent/10 text-accent-soft"
+                          }`}
+                        >
+                          {adelantoMsg.texto}
+                        </div>
+                      )}
                       {historyFor === r.id && historialPanel()}
                     </div>
                   )}
@@ -429,6 +453,13 @@ export function AgendaList({
             preciosServicios={preciosServicios}
             sedeFija={mostrador.sedeId}
             barberoInicial={walkinBarbero}
+            avisoEspera={esperaMsg}
+            onEncolado={(msg) => {
+              // La hoja queda abierta con el aviso a la vista; el form ya se
+              // reseteó solo para anotar al siguiente cliente.
+              setEsperaMsg(msg);
+              router.refresh();
+            }}
             onDone={() => {
               setWalkinOpen(false);
               setWalkinBarbero("");
@@ -507,7 +538,7 @@ export function AgendaList({
             </button>
           ))}
           <button
-            onClick={() => { setWalkinBarbero(""); setWalkinOpen(true); }}
+            onClick={() => { setWalkinBarbero(""); setEsperaMsg(null); setWalkinOpen(true); }}
             className="min-h-14 flex-1 rounded-xl bg-[linear-gradient(180deg,var(--cta-1),var(--cta-2))] text-[14.5px] font-bold text-on-accent shadow-[0_10px_24px_-10px_rgba(210,63,52,0.7)] transition hover:brightness-105"
           >
             + Cliente
@@ -570,6 +601,8 @@ function WalkinForm({
   preciosServicios,
   sedeFija,
   barberoInicial,
+  avisoEspera,
+  onEncolado,
   onDone,
   onCancel,
 }: {
@@ -581,6 +614,10 @@ function WalkinForm({
   sedeFija?: string | null;
   /** Barbero ya elegido (se abrió desde su fila en la tira de libres). */
   barberoInicial?: string;
+  /** Aviso "quedó en espera": lo guarda el padre para que sobreviva al reseteo del form. */
+  avisoEspera?: string | null;
+  /** El walk-in cayó en lista de espera: el padre guarda el aviso y refresca. */
+  onEncolado: (msg: string) => void;
   onDone: () => void;
   onCancel: () => void;
 }) {
@@ -594,24 +631,37 @@ function WalkinForm({
   const [servicioId, setServicioId] = useState("");
   const [fidelizar, setFidelizar] = useState(true);
   const [saving, setSaving] = useState(false);
+  // Error del alta, inline junto al botón. Antes era un alert() que bloqueaba
+  // la pantalla del mostrador con el cliente parado enfrente.
+  const [err, setErr] = useState<string | null>(null);
   const sedeBarberos = barberos.filter((b) => b.sede === sede);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!barberoId) {
-      alert("Elige el barbero");
+      setErr("Elige el barbero.");
       return;
     }
+    setErr(null);
     setSaving(true);
     const res = await registrarWalkin({ sede, barberoId, servicioId, clienteNombre: nombre, telefono: tel, fidelizar });
     setSaving(false);
     if (res.ok) {
       if (res.encolado) {
         const hasta = res.esperaHasta ? ` (~${hora(res.esperaHasta)})` : "";
-        alert(`El barbero está ocupado. ${nombre.trim() || "El cliente"} quedó en la lista de espera${hasta}.`);
+        // El aviso vive en el padre (sobrevive a este reseteo) y la hoja queda
+        // abierta: se limpia el form para anotar al siguiente cliente.
+        onEncolado(`El barbero está ocupado. ${nombre.trim() || "El cliente"} quedó en la lista de espera${hasta}.`);
+        setNombre("");
+        setTel("");
+        setServicioId("");
+        setBarberoId("");
+        return;
       }
       onDone();
-    } else alert(res.error);
+    } else {
+      setErr(res.error ?? "No se pudo registrar el walk-in.");
+    }
   }
 
   return (
@@ -683,6 +733,16 @@ function WalkinForm({
         <input type="checkbox" checked={fidelizar} onChange={(e) => setFidelizar(e.target.checked)} className="accent-accent" />
         Inscribir en fidelización (gana puntos por la visita)
       </label>
+      {avisoEspera && (
+        <div className="rounded-lg border border-ok/40 bg-ok/10 px-3 py-2 text-sm text-ok sm:col-span-2">
+          {avisoEspera}
+        </div>
+      )}
+      {err && (
+        <div className="rounded-lg border border-accent/40 bg-accent/10 px-3 py-2 text-sm text-accent-soft sm:col-span-2">
+          {err}
+        </div>
+      )}
       <div className="flex gap-2 sm:col-span-2">
         <button disabled={saving} className="rounded-full bg-accent px-6 py-2.5 text-sm font-semibold uppercase tracking-wide text-on-accent transition hover:bg-accent-soft disabled:opacity-50">
           {saving ? "Agregando…" : "Agregar a la agenda"}

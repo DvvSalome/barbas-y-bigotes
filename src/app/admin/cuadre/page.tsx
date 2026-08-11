@@ -95,7 +95,12 @@ export default async function CuadrePage() {
         </div>
       )}
 
-      <h2 className="mt-10 text-xs uppercase tracking-[0.3em] text-accent">Corte del día</h2>
+      <h2 className="mt-10 text-xs uppercase tracking-[0.3em] text-accent">Corte del día (solo lo de hoy)</h2>
+      {/* La tarjeta de caja de arriba acumula desde la apertura (puede abarcar
+          varios días); sin esta aclaración los dos totales parecen contradecirse. */}
+      <p className="mt-1 text-xs text-muted">
+        La caja de arriba suma todo lo recaudado desde que se abrió; acá se cuenta únicamente lo de hoy.
+      </p>
 
       {/* UNA sola forma para todos los anchos. Antes esto se escribía dos veces
           (tarjetas para móvil + tabla de 8 columnas para escritorio): el mismo
