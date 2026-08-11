@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { cop } from "@/lib/format";
 import {
   registrarWalkin,
@@ -79,7 +79,7 @@ const iniciales = (n: string) => {
 };
 
 /** Pestañas del mostrador: lo vivo, la cola y el cierre. */
-type TabMostrador = "turnos" | "espera" | "cierre";
+type TabMostrador = "turnos" | "calendario" | "espera" | "cierre";
 
 export function AgendaList({
   agenda,
@@ -95,6 +95,7 @@ export function AgendaList({
   diasEspeciales = [],
   esperaSlot,
   cierreSlot,
+  calendarioSlot,
   esperaCount = 0,
 }: {
   agenda: AgendaItem[];
@@ -124,15 +125,22 @@ export function AgendaList({
   esperaSlot?: React.ReactNode;
   /** Cierre del día: qué se llevó cada cliente + caja (server components). */
   cierreSlot?: React.ReactNode;
+  /** Calendario del día (grilla × barbero); sin sede definida no se pasa. */
+  calendarioSlot?: React.ReactNode;
   /** Cuántos esperan ahora: la insignia de la pestaña. */
   esperaCount?: number;
 }) {
   const router = useRouter();
+  const search = useSearchParams();
   // El mostrador era UNA página de ~3.000px: agenda, formularios, espera, caja y
-  // cierre apilados. De pie y con un dedo eso es scroll a ciegas. Ahora son tres
+  // cierre apilados. De pie y con un dedo eso es scroll a ciegas. Ahora son
   // pestañas en una barra FIJA abajo (donde cae el pulgar en una pantalla táctil)
   // y los formularios suben como hoja desde el borde inferior.
-  const [tab, setTab] = useState<TabMostrador>("turnos");
+  // ?tab=calendario: la navegación por fechas del calendario recarga la página
+  // (links con ?fecha=); sin esto, cada cambio de día te devolvía a "Turnos".
+  const [tab, setTab] = useState<TabMostrador>(() =>
+    search.get("tab") === "calendario" && calendarioSlot ? "calendario" : "turnos",
+  );
   const [walkinOpen, setWalkinOpen] = useState(false);
   // Barbero preseleccionado al abrir el walk-in desde la tira de libres.
   const [walkinBarbero, setWalkinBarbero] = useState<string>("");
@@ -381,6 +389,7 @@ export function AgendaList({
 
       <div className={`mx-auto w-full max-w-2xl ${tab === "espera" ? "" : "hidden"}`}>{esperaSlot}</div>
       <div className={tab === "cierre" ? "" : "hidden"}>{cierreSlot}</div>
+      <div className={tab === "calendario" ? "" : "hidden"}>{calendarioSlot}</div>
 
       {/* HOJAS que suben desde abajo. En una pantalla táctil de pie, un
           formulario incrustado a mitad del scroll obliga a buscarlo; la hoja
@@ -475,6 +484,8 @@ export function AgendaList({
           {(
             [
               { id: "turnos", label: "Turnos", badge: 0 },
+              // La pestaña Agenda (calendario × barbero) solo existe con sede definida.
+              ...(calendarioSlot ? [{ id: "calendario", label: "Agenda", badge: 0 }] : []),
               { id: "espera", label: "Espera", badge: esperaCount },
               { id: "cierre", label: "Cierre", badge: 0 },
             ] as { id: TabMostrador; label: string; badge: number }[]

@@ -12,11 +12,15 @@ import {
   getCajaSede,
   getCajaDesglose,
   getAgendaSedeHoy,
+  getAgendaSedeDia,
   getVentasSedeHoy,
   getHorarioSemanal,
   getDiasEspeciales,
 } from "@/lib/data/queries";
+import { bogotaYmd } from "@/lib/slots";
+import type { SedeId } from "@/lib/data/types";
 import { AgendaList } from "@/components/barbero/AgendaList";
+import { AgendaDia } from "@/components/admin/AgendaDia";
 import { CobradosHoy } from "@/components/barbero/CobradosHoy";
 import { AvisosBarbero } from "@/components/barbero/AvisosBarbero";
 import { EsperaPanel } from "@/components/barbero/EsperaPanel";
@@ -25,7 +29,12 @@ import { RealtimeRefresh } from "@/components/motion/RealtimeRefresh";
 
 export const metadata: Metadata = { title: "Mostrador" };
 
-export default async function BarberoPage() {
+export default async function BarberoPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ fecha?: string; tab?: string }>;
+}) {
+  const sp = await searchParams;
   const staff = await getStaffContext();
   // Gate PROPIO de la pagina, no solo del layout: Next renderiza layout y pagina
   // en paralelo, asi que el redirect() del layout NO frena los fetches de aca a
@@ -65,9 +74,13 @@ export default async function BarberoPage() {
   // (el server la fija desde reservas.barbero_id, no desde quién está logueado).
   // Lectura con service role ya autorizada acá: el barbero pertenece a esa sede
   // por definición, y el dueño ve las dos.
-  const [agendaSede, ventasSede] = await Promise.all([
+  // Calendario (pestaña Agenda): el día pedido por ?fecha=, hoy por defecto.
+  const hoy = bogotaYmd();
+  const fechaCal = /^\d{4}-\d{2}-\d{2}$/.test(sp.fecha ?? "") ? sp.fecha! : hoy;
+  const [agendaSede, ventasSede, agendaCal] = await Promise.all([
     getAgendaSedeHoy(sedeBarbero),
     getVentasSedeHoy(sedeBarbero),
+    sedeBarbero ? getAgendaSedeDia(sedeBarbero, fechaCal) : Promise.resolve(null),
   ]);
   // El "cobrado hoy" sale de las mismas ventas que la lista de abajo: un solo
   // viaje, y el número del encabezado siempre cuadra con lo que se ve detallado.
@@ -121,6 +134,22 @@ export default async function BarberoPage() {
         horarioSemanal={sedeBarbero ? horarioSemanal.filter((h) => h.sede === sedeBarbero) : []}
         diasEspeciales={sedeBarbero ? diasEspeciales.filter((d) => d.sede === sedeBarbero) : []}
         esperaCount={espera.length}
+        calendarioSlot={
+          // Solo con sede definida (el dueño tiene su calendario en /admin/agenda).
+          sedeBarbero && agendaCal ? (
+            <AgendaDia
+              sede={sedeBarbero as SedeId}
+              fecha={fechaCal}
+              hoy={hoy}
+              agenda={agendaCal}
+              barberos={mostrador.barberosSede}
+              servicios={servicios}
+              horarioSemanal={horarioSemanal.filter((h) => h.sede === sedeBarbero)}
+              diasEspeciales={diasEspeciales.filter((d) => d.sede === sedeBarbero)}
+              hrefBase="/barbero?tab=calendario"
+            />
+          ) : undefined
+        }
         esperaSlot={
           <EsperaPanel
             espera={espera}

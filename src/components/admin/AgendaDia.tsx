@@ -59,6 +59,7 @@ export function AgendaDia({
   servicios,
   horarioSemanal,
   diasEspeciales,
+  hrefBase,
 }: {
   sede: SedeId;
   fecha: string; // YYYY-MM-DD del día mostrado
@@ -68,6 +69,8 @@ export function AgendaDia({
   servicios: Servicio[];
   horarioSemanal: HorarioSemanal[]; // ya filtrados por la sede
   diasEspeciales: DiaEspecial[]; // ya filtrados por la sede
+  /** Base de los links de fecha (puede traer query). Default: la agenda del admin. */
+  hrefBase?: string;
 }) {
   const router = useRouter();
   const [sheet, setSheet] = useState<{ barberoId?: string } | null>(null);
@@ -88,7 +91,8 @@ export function AgendaDia({
     return () => clearInterval(t);
   }, [esHoy]);
 
-  const href = (f: string) => `/admin/agenda?sede=${sede}&fecha=${f}`;
+  const base = hrefBase ?? `/admin/agenda?sede=${sede}`;
+  const href = (f: string) => `${base}${base.includes("?") ? "&" : "?"}fecha=${f}`;
   const btnNav =
     "grid h-11 w-11 place-items-center rounded-full border border-line text-ink transition hover:border-accent/40";
 
