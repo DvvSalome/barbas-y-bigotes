@@ -77,8 +77,9 @@ function iniciales(nombre: string) {
 
 // Label de sección: 11px 700 uppercase ls .14em, color muted.
 const SEC = "flex items-baseline justify-between text-[11px] font-bold uppercase tracking-[0.14em] text-muted";
-// Link de acción a la derecha del label (rojo suave, 12px 600).
-const SEC_ACTION = "text-xs font-semibold normal-case tracking-normal text-accent-soft transition hover:text-ink";
+// Link de acción a la derecha del label (rojo suave, 12px 600). min-h-11 + padding:
+// antes era texto de 12px sin área táctil, imposible de acertar en el celular.
+const SEC_ACTION = "inline-flex items-center min-h-11 px-2 text-xs font-semibold normal-case tracking-normal text-accent-soft transition hover:text-ink";
 // Superficie de panel. Un solo vocabulario para todas las listas de la pantalla.
 const PANEL = "overflow-hidden rounded-2xl border border-line bg-panel";
 // Opacidades del token --bar para distinguir medios de pago sin inventar colores

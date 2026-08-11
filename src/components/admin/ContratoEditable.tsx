@@ -72,7 +72,7 @@ export function ContratoEditable({
           setEditando(true);
         }}
         title={`Toca para cambiar el contrato de ${nombre}`}
-        className="group inline-flex items-center gap-2 rounded-lg px-2 py-1 transition hover:bg-elevated"
+        className="inline-flex items-center gap-2 rounded-lg px-2.5 py-2 transition hover:bg-elevated"
       >
         {tipo === "porcentaje" ? (
           <span className="inline-flex items-center gap-1.5">
@@ -91,9 +91,9 @@ export function ContratoEditable({
             </span>
           </span>
         )}
-        <span aria-hidden className="text-[10px] text-muted opacity-0 transition group-hover:opacity-100">
-          ✎
-        </span>
+        {/* ✎ SIEMPRE visible: en el celular no hay hover, así que el chip del
+            contrato parecía una etiqueta muerta y el dueño no sabía que se toca. */}
+        <span aria-hidden className="text-[11px] text-muted">✎</span>
       </button>
     );
   }
@@ -168,7 +168,7 @@ export function ContratoEditable({
           type="button"
           onClick={guardar}
           disabled={guardando}
-          className="rounded-full bg-accent px-4 py-1.5 text-[12px] font-bold uppercase tracking-wide text-on-accent transition hover:bg-accent-soft disabled:opacity-50"
+          className="rounded-full bg-accent px-4 py-2.5 text-[12px] font-bold uppercase tracking-wide text-on-accent transition hover:bg-accent-soft disabled:opacity-50"
         >
           {guardando ? "Guardando…" : "Guardar"}
         </button>
@@ -178,7 +178,7 @@ export function ContratoEditable({
             setEditando(false);
             setError(null);
           }}
-          className="rounded-full border border-line px-4 py-1.5 text-[12px] text-muted transition hover:text-ink"
+          className="rounded-full border border-line px-4 py-2.5 text-[12px] text-muted transition hover:text-ink"
         >
           Cancelar
         </button>
