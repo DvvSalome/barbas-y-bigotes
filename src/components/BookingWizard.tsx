@@ -37,7 +37,10 @@ const TITULOS: Record<Exclude<Step, "ok">, string> = {
 };
 
 // Detalle corto + foto de frente por sede (contenido estático del proto §6.3 / §7).
-const SEDE_INFO: Record<string, { detalle: string; frente: string }> = {
+// frente null = sede sin foto conocida (una sede NUEVA creada desde el admin):
+// se pinta un bloque neutro con su inicial — nunca la fachada de OTRA sede,
+// que hacía que el local nuevo "mintiera" con la cara de Parque Venezuela.
+const SEDE_INFO: Record<string, { detalle: string; frente: string | null }> = {
   "parque-venezuela": { detalle: "Cra 65 · Barranquilla", frente: "/sedes/parque-venezuela-frente.jpg" },
   "plaza-de-la-paz": { detalle: "Centro · Barranquilla", frente: "/sedes/plaza-de-la-paz-frente.jpg" },
 };
@@ -1031,7 +1034,7 @@ export function BookingWizard({
             <div className="mt-5 flex flex-col gap-3 md:grid md:grid-cols-[repeat(auto-fit,minmax(340px,1fr))] md:gap-4">
               {sedes.map((s) => {
                 const sel = sedeId === s.id;
-                const info = SEDE_INFO[s.id] ?? { detalle: s.direccion ?? "Barranquilla", frente: "/sedes/parque-venezuela-frente.jpg" };
+                const info = SEDE_INFO[s.id] ?? { detalle: s.direccion ?? "Barranquilla", frente: null };
                 return (
                   <button
                     key={s.id}
@@ -1039,10 +1042,16 @@ export function BookingWizard({
                       setSedeId(s.id);
                       setBarbero(null);
                     }}
-                    className="bb-foto-skeleton relative h-[130px] w-full overflow-hidden rounded-2xl text-left md:h-[300px]"
+                    className={`relative h-[130px] w-full overflow-hidden rounded-2xl text-left md:h-[300px] ${info.frente ? "bb-foto-skeleton" : "bg-elevated"}`}
                     style={{ border: `2px solid ${sel ? "#d23f34" : "rgba(242,237,228,.12)"}` }}
                   >
-                    <Image src={info.frente} alt={s.nombre} fill sizes="(max-width:768px) 100vw, 50vw" className="object-cover" />
+                    {info.frente ? (
+                      <Image src={info.frente} alt={s.nombre} fill sizes="(max-width:768px) 100vw, 50vw" className="object-cover" />
+                    ) : (
+                      <span aria-hidden className="absolute inset-0 flex items-center justify-center font-display text-6xl text-muted/25">
+                        {s.nombre.charAt(0).toUpperCase()}
+                      </span>
+                    )}
                     <div className="absolute inset-0" style={{ background: "linear-gradient(180deg, transparent 25%, rgba(12,11,10,.88) 100%)" }} />
                     {sel && (
                       <span className="absolute right-3 top-3 flex h-6 w-6 items-center justify-center rounded-full bg-accent text-[12px] font-extrabold text-on-accent">✓</span>
