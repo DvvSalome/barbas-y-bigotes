@@ -132,7 +132,10 @@ export function InventarioPanel({ productos, sedes }: { productos: Producto[]; s
               {/* "En reserva" no significaba nada: es si se ofrece como bebida
                   en el último paso de la reserva. Ahora lo dice con palabras. */}
               <div className="flex items-center justify-between gap-2 border-t border-line/60 pt-2.5">
-                <span className="text-[11.5px] text-muted">Ofrecer al reservar</span>
+                <span className="text-[11.5px] text-muted">
+                  Ofrecer al reservar
+                  <span className="block text-[10px] text-muted/70">Aparece al final de la reserva del cliente</span>
+                </span>
                 <UpsellToggle productoId={p.id} enUpsell={p.enUpsell} />
               </div>
             </article>

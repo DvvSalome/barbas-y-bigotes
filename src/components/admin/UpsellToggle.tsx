@@ -30,7 +30,7 @@ export function UpsellToggle({ productoId, enUpsell }: { productoId: string; enU
       disabled={pending}
       aria-pressed={on}
       title={on ? "Se le ofrece al cliente al final de la reserva" : "No se le ofrece al reservar"}
-      className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold transition disabled:opacity-50 ${
+      className={`inline-flex items-center gap-1.5 rounded-full px-3 py-2 text-xs font-semibold transition disabled:opacity-50 ${
         on
           ? "bg-accent/15 text-accent-soft ring-1 ring-accent/40"
           : "border border-line text-muted hover:text-ink"

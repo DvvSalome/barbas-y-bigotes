@@ -13,7 +13,9 @@ export function PrecioEditable({ productoId, precio }: { productoId: string; pre
   const [editing, setEditing] = useState(false);
   const [val, setVal] = useState(String(precio));
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState(false);
+  // Mensaje de error (null = sin error). Antes era un booleano + un title de
+  // hover invisible en el celular; ahora el motivo se muestra inline.
+  const [error, setError] = useState<string | null>(null);
 
   async function guardar() {
     // Borrar el campo dejaba Number("")=0 → se guardaba el producto GRATIS;
@@ -21,12 +23,11 @@ export function PrecioEditable({ productoId, precio }: { productoId: string; pre
     // decimal y no-numérico; además exigimos > 0 (un producto no vale $0).
     const n = sanearCop(val);
     if (n === null || n <= 0) {
-      // Input inválido: no guardamos y restauramos el valor previo a la vista.
       setVal(String(precio));
-      setError(true);
+      setError("Poné un precio en pesos, mayor a $0, sin decimales.");
       return;
     }
-    setError(false);
+    setError(null);
     if (n === precio) {
       setEditing(false);
       return;
@@ -38,7 +39,9 @@ export function PrecioEditable({ productoId, precio }: { productoId: string; pre
       setEditing(false);
       router.refresh();
     } else {
-      alert(res.error ?? "No se pudo guardar el precio.");
+      // Antes un alert() nativo (patrón único que rompía la estética); ahora el
+      // error va inline como en el resto del inventario.
+      setError(res.error ?? "No se pudo guardar el precio.");
     }
   }
 
@@ -48,52 +51,64 @@ export function PrecioEditable({ productoId, precio }: { productoId: string; pre
         type="button"
         onClick={() => {
           setVal(String(precio));
-          setError(false);
+          setError(null);
           setEditing(true);
         }}
-        title="Toca para editar el precio"
-        className="group inline-flex items-center gap-1 tabular-nums underline decoration-dotted decoration-line underline-offset-4 transition hover:decoration-accent"
+        aria-label="Tocar para editar el precio"
+        className="inline-flex items-center gap-1 tabular-nums underline decoration-dotted decoration-line underline-offset-4 transition hover:decoration-accent"
       >
         {cop(precio)}
-        <span aria-hidden className="text-[10px] text-muted opacity-0 transition group-hover:opacity-100">✎</span>
+        {/* Lápiz SIEMPRE visible: en el celular no hay hover, así que si estaba
+            oculto el dueño no sabía que el precio se toca para cambiarlo. */}
+        <span aria-hidden className="text-[11px] text-muted">✎</span>
       </button>
     );
   }
 
   return (
-    <span className="inline-flex items-center gap-1">
-      <input
-        type="number"
-        min={1}
-        step={1}
-        autoFocus
-        value={val}
-        onChange={(e) => { setVal(e.target.value); if (error) setError(false); }}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") guardar();
-          if (e.key === "Escape") setEditing(false);
-        }}
-        aria-invalid={error}
-        title={error ? "Poné un precio válido en pesos (mayor a $0, sin decimales)." : undefined}
-        className={`w-24 rounded-lg border bg-bg px-2 py-1 text-sm text-ink tabular-nums focus:outline-none ${error ? "border-red-500" : "border-accent"}`}
-      />
-      <button
-        type="button"
-        onClick={guardar}
-        disabled={saving}
-        aria-label="Guardar precio"
-        className="grid h-7 w-7 place-items-center rounded-full bg-accent text-xs font-bold text-on-accent transition hover:bg-accent-soft disabled:opacity-50"
-      >
-        ✓
-      </button>
-      <button
-        type="button"
-        onClick={() => setEditing(false)}
-        aria-label="Cancelar edición"
-        className="grid h-7 w-7 place-items-center rounded-full border border-line text-xs text-muted transition hover:text-ink"
-      >
-        ×
-      </button>
+    <span className="inline-flex flex-col items-start gap-1">
+      <span className="inline-flex flex-wrap items-center gap-1.5">
+        <input
+          type="number"
+          min={1}
+          step={1}
+          autoFocus
+          value={val}
+          onChange={(e) => {
+            setVal(e.target.value);
+            if (error) setError(null);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") guardar();
+            if (e.key === "Escape") setEditing(false);
+          }}
+          aria-invalid={!!error}
+          className={`w-24 rounded-lg border bg-bg px-2 py-1 text-sm text-ink tabular-nums focus:outline-none ${
+            error ? "border-red-500" : "border-accent"
+          }`}
+        />
+        <button
+          type="button"
+          onClick={guardar}
+          disabled={saving}
+          aria-label="Guardar precio"
+          className="grid h-11 w-11 place-items-center rounded-full bg-accent text-sm font-bold text-on-accent transition hover:bg-accent-soft disabled:opacity-50"
+        >
+          ✓
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setEditing(false);
+            setError(null);
+          }}
+          aria-label="Cancelar edición"
+          className="grid h-11 w-11 place-items-center rounded-full border border-line text-sm text-muted transition hover:text-ink"
+        >
+          ×
+        </button>
+      </span>
+      {error && <span className="text-[11px] leading-tight text-accent-soft">{error}</span>}
     </span>
   );
 }

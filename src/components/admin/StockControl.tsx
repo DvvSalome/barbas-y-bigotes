@@ -52,7 +52,14 @@ export function StockControl({
   if (modo) {
     return (
       <div className="flex flex-col gap-1.5">
-        <div className="flex items-center gap-1.5">
+        {/* En el celular no hay hover: la diferencia clave (sumar vs fijar) se dice
+            con palabras, no en un title. Evita descuadrar el stock por confusión. */}
+        <p className="text-[11px] font-semibold text-ink">
+          {modo === "entrada"
+            ? `¿Cuántas ENTRARON? (se suman a ${stock})`
+            : "¿Cuántas hay REALMENTE? (fija el total contado)"}
+        </p>
+        <div className="flex flex-wrap items-center gap-1.5">
           <input
             type="number"
             min={modo === "entrada" ? 1 : 0}
@@ -76,7 +83,7 @@ export function StockControl({
             onClick={enviar}
             disabled={guardando}
             aria-label="Guardar"
-            className="grid h-7 w-7 place-items-center rounded-full bg-accent text-xs font-bold text-on-accent transition hover:bg-accent-soft disabled:opacity-50"
+            className="grid h-11 w-11 place-items-center rounded-full bg-accent text-sm font-bold text-on-accent transition hover:bg-accent-soft disabled:opacity-50"
           >
             ✓
           </button>
@@ -87,7 +94,7 @@ export function StockControl({
               setError(null);
             }}
             aria-label="Cancelar"
-            className="grid h-7 w-7 place-items-center rounded-full border border-line text-xs text-muted transition hover:text-ink"
+            className="grid h-11 w-11 place-items-center rounded-full border border-line text-sm text-muted transition hover:text-ink"
           >
             ×
           </button>
@@ -116,7 +123,7 @@ export function StockControl({
           setVal("");
         }}
         title="Llegó mercancía: suma unidades al stock"
-        className="rounded-full border border-accent/40 bg-accent/[0.07] px-2.5 py-1 text-[11.5px] font-bold text-accent-soft transition hover:bg-accent/15"
+        className="rounded-full border border-accent/40 bg-accent/[0.07] px-3 py-2 text-[11.5px] font-bold text-accent-soft transition hover:bg-accent/15"
       >
         + Entró
       </button>
@@ -127,7 +134,7 @@ export function StockControl({
           setVal(String(stock));
         }}
         title="Conté y hay otra cantidad"
-        className="rounded-full border border-line px-2.5 py-1 text-[11.5px] text-muted transition hover:text-ink"
+        className="rounded-full border border-line px-3 py-2 text-[11.5px] text-muted transition hover:text-ink"
       >
         Corregir
       </button>

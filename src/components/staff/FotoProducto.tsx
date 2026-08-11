@@ -7,8 +7,10 @@ import { achicarFoto } from "@/lib/imagen-cliente";
 import { ProductoThumb } from "@/components/staff/ProductoThumb";
 import { CamIcon } from "@/components/icons";
 
-// Thumb del producto + botón de cámara: al elegir archivo se sube al toque
-// (sin paso extra de "guardar"). Solo admin: la action valida el rol.
+// Thumb del producto + acción de foto: TODO el thumb es tocable (no un botón de
+// 22px escondido) y hay una etiqueta visible "Cambiar/Subir foto" — en el celular
+// no hay hover, así que el title de antes no se veía nunca. Solo admin: la action
+// valida el rol. Al elegir archivo se sube al toque (sin paso extra de "guardar").
 export function FotoProducto({
   productoId,
   nombre,
@@ -24,6 +26,8 @@ export function FotoProducto({
   const inputRef = useRef<HTMLInputElement>(null);
   const [subiendo, setSubiendo] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+
+  const abrir = () => inputRef.current?.click();
 
   async function onChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -52,23 +56,35 @@ export function FotoProducto({
   }
 
   return (
-    <span className="relative inline-flex flex-col">
-      <span className={`relative inline-flex ${subiendo ? "opacity-50" : ""}`}>
+    <span className="relative inline-flex flex-col items-center gap-1">
+      {/* Todo el thumb abre el selector: objetivo táctil grande, no un ícono de 22px */}
+      <button
+        type="button"
+        onClick={abrir}
+        disabled={subiendo}
+        aria-label={fotoUrl ? `Cambiar foto de ${nombre}` : `Subir foto de ${nombre}`}
+        className={`relative inline-flex rounded-xl transition ${subiendo ? "opacity-50" : "hover:opacity-90"}`}
+      >
         <ProductoThumb nombre={nombre} fotoUrl={fotoUrl} size={size} />
-        <button
-          type="button"
-          onClick={() => inputRef.current?.click()}
-          disabled={subiendo}
-          aria-label={fotoUrl ? `Cambiar foto de ${nombre}` : `Subir foto de ${nombre}`}
-          title={fotoUrl ? "Cambiar foto" : "Subir foto"}
-          className="absolute -bottom-1.5 -right-1.5 grid h-5.5 w-5.5 place-items-center rounded-full border border-line bg-elevated text-muted transition hover:text-ink disabled:cursor-default"
+        {/* Badge de cámara sólido (accent) → se ve incluso sobre fotos oscuras */}
+        <span
+          aria-hidden
+          className="absolute -bottom-1.5 -right-1.5 grid h-6 w-6 place-items-center rounded-full border-2 border-panel bg-accent text-on-accent shadow"
         >
-          <CamIcon className="h-3 w-3" />
-        </button>
-      </span>
+          <CamIcon className="h-3.5 w-3.5" />
+        </span>
+      </button>
+      {/* Etiqueta visible: dice qué hace sin depender del hover */}
+      <button
+        type="button"
+        onClick={abrir}
+        disabled={subiendo}
+        className="text-[10.5px] font-semibold text-accent-soft transition hover:text-accent disabled:opacity-50"
+      >
+        {subiendo ? "Subiendo…" : fotoUrl ? "Cambiar foto" : "Subir foto"}
+      </button>
       <input ref={inputRef} type="file" accept="image/*" onChange={onChange} className="hidden" />
-      {subiendo && <span className="mt-1 text-[10px] text-muted">Subiendo…</span>}
-      {err && <span className="mt-1 max-w-40 text-[10px] leading-tight text-accent-soft">{err}</span>}
+      {err && <span className="max-w-40 text-center text-[10px] leading-tight text-accent-soft">{err}</span>}
     </span>
   );
 }
