@@ -1133,6 +1133,87 @@ export async function agendarCita(input: {
   return { ok: true };
 }
 
+// Mover una cita a otra hora y/u otro barbero (calendario del mostrador/admin).
+// Misma batería de guards que agendarCita — ventana del día, ausencia, solape —
+// pero el solape EXCLUYE la propia cita (moverla 30 min "choca" consigo misma).
+export async function moverCita(input: {
+  reservaId: string;
+  inicioISO: string;
+  barberoId?: string; // omitido = se queda con su barbero
+}): Promise<ActionResult> {
+  const sb = await supabaseServerAuth();
+  const denied = await requireStaff(sb);
+  if (denied) return { ok: false, error: denied };
+  const staff = await getStaffContext();
+  if (!puedeMostrador(staff.rol)) return { ok: false, error: "No autorizado" };
+
+  const admin = supabaseAdmin();
+  const { data: rsv } = await admin
+    .from("reservas")
+    .select("sede_id,barbero_id,servicio_id,estado")
+    .eq("id", input.reservaId)
+    .maybeSingle();
+  if (!rsv) return { ok: false, error: "Reserva no encontrada" };
+  const r = rsv as { sede_id: string; barbero_id: string | null; servicio_id: string; estado: string };
+  if (!(await staffPuedeOperarSede(staff, r.sede_id))) return { ok: false, error: "Esa cita es de otra sede." };
+  // Solo se mueve lo que todavía no pasó por la silla.
+  if (!["pendiente", "confirmada"].includes(r.estado))
+    return { ok: false, error: "Esa cita ya no se puede mover (está en curso o terminada)." };
+
+  const barberoId = input.barberoId ?? r.barbero_id;
+  if (!barberoId) return { ok: false, error: "Elegí a qué barbero pasa la cita." };
+  if ((await sedeDeBarbero(barberoId)) !== r.sede_id)
+    return { ok: false, error: "Ese barbero no es de la sede de la cita." };
+
+  const inicio = new Date(input.inicioISO);
+  if (isNaN(inicio.getTime())) return { ok: false, error: "Hora inválida." };
+  if (inicio.getTime() <= Date.now()) return { ok: false, error: "Esa hora ya pasó. Elegí una a futuro." };
+
+  const { data: serv } = await admin.from("servicios").select("duracion_min").eq("id", r.servicio_id).maybeSingle();
+  const dur = (serv as { duracion_min?: number } | null)?.duracion_min ?? 30;
+  const fin = new Date(inicio.getTime() + dur * 60000);
+
+  const ventana = await ventanaDeDia(admin, r.sede_id, bogotaYmd(inicio));
+  if (!ventana.abierta) return { ok: false, error: "Ese día la sede no atiende. Elegí otra fecha." };
+  if (!slotEnVentana(minutoDelDiaBogota(inicio), dur, ventana))
+    return { ok: false, error: "Ese horario está fuera del horario de atención." };
+
+  const { data: aus } = await admin
+    .from("barbero_ausencias")
+    .select("id")
+    .eq("barbero_id", barberoId)
+    .eq("fecha", bogotaYmd(inicio))
+    .limit(1);
+  if (aus && aus.length) return { ok: false, error: "Ese barbero no atiende ese día. Elegí otro." };
+  const { data: clash } = await admin
+    .from("reservas")
+    .select("id")
+    .eq("barbero_id", barberoId)
+    .neq("id", input.reservaId)
+    .not("estado", "in", "(cancelada,no_show)")
+    .lt("inicio", fin.toISOString())
+    .gt("fin", inicio.toISOString())
+    .limit(1);
+  if (clash && clash.length) return { ok: false, error: "Ese horario ya fue tomado. Elegí otro." };
+
+  // Condicional al estado movible: si en la carrera alguien la cobró o canceló,
+  // 0 filas y no se pisa nada.
+  const { data: upd, error } = await admin
+    .from("reservas")
+    .update({ inicio: inicio.toISOString(), fin: fin.toISOString(), barbero_id: barberoId })
+    .eq("id", input.reservaId)
+    .in("estado", ["pendiente", "confirmada"])
+    .select("id");
+  if (error) {
+    if (error.code === "23P01") return { ok: false, error: "Ese horario ya fue tomado. Elegí otro." };
+    return { ok: false, error: errorPublico("moverCita", error) };
+  }
+  if (!upd || upd.length === 0) return { ok: false, error: "Esa cita cambió de estado; refrescá y volvé a intentar." };
+  revalidatePath("/barbero");
+  revalidatePath("/admin/agenda");
+  return { ok: true };
+}
+
 export async function actualizarReserva(
   reservaId: string,
   patch: { estado?: string; llegada?: string },

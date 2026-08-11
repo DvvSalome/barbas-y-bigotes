@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AgendarCitaForm } from "@/components/barbero/AgendarCitaForm";
+import { MoverCitaForm } from "@/components/admin/MoverCitaForm";
 import { CaraBarbero } from "@/components/staff/Elegir";
 import { DOW, MON, fmtTime, horarioEfectivo } from "@/lib/slots";
 import type { Barbero, Servicio, SedeId } from "@/lib/data/types";
@@ -74,6 +75,9 @@ export function AgendaDia({
 }) {
   const router = useRouter();
   const [sheet, setSheet] = useState<{ barberoId?: string } | null>(null);
+  // Detalle de una cita tocada (+ modo mover dentro del mismo sheet).
+  const [detalle, setDetalle] = useState<AgendaDiaItem | null>(null);
+  const [moviendo, setMoviendo] = useState(false);
   const [ahoraMin, setAhoraMin] = useState(minutoBogota);
 
   const esHoy = fecha === hoy;
@@ -204,16 +208,21 @@ export function AgendaDia({
                       const est = estiloDe(c.estado);
                       const alto = Math.max(30, c.duracionMin * PX_MIN - 3);
                       return (
-                        <div
+                        <button
                           key={c.id}
-                          className={`absolute inset-x-1 overflow-hidden rounded-lg border px-2 py-1 text-[11px] leading-tight shadow-sm ${est.card}`}
+                          type="button"
+                          onClick={() => {
+                            setMoviendo(false);
+                            setDetalle(c);
+                          }}
+                          className={`absolute inset-x-1 overflow-hidden rounded-lg border px-2 py-1 text-left text-[11px] leading-tight shadow-sm transition hover:brightness-110 ${est.card}`}
                           style={{ top: (ini - abre) * PX_MIN + 1, height: alto }}
                           title={`${fmtTime(ini)} · ${c.cliente || "Sin nombre"} · ${c.servicio} (${est.label})`}
                         >
                           <span className="font-bold tabular-nums">{fmtTime(ini)}</span>{" "}
                           <span className="font-semibold">{c.cliente || "Sin nombre"}</span>
                           <span className="block truncate opacity-80">{c.servicio}</span>
-                        </div>
+                        </button>
                       );
                     })}
 
@@ -260,6 +269,78 @@ export function AgendaDia({
               }}
               onCancel={() => setSheet(null)}
             />
+          </div>
+        </div>
+      )}
+
+      {/* Detalle de la cita tocada: info + mover (solo si aún no pasó por la silla) */}
+      {detalle && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-0 sm:items-center sm:p-6" onClick={() => setDetalle(null)}>
+          <div
+            className="max-h-[92dvh] w-full overflow-y-auto rounded-t-3xl border border-line bg-panel p-5 sm:max-w-lg sm:rounded-3xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="font-display text-xl">{moviendo ? "Mover cita" : "Detalle de la cita"}</h3>
+              <button onClick={() => setDetalle(null)} aria-label="Cerrar" className="grid h-11 w-11 place-items-center rounded-full border border-line text-muted transition hover:text-ink">
+                ×
+              </button>
+            </div>
+
+            {!moviendo ? (
+              <div className="space-y-3">
+                <div className="rounded-2xl border border-line bg-elevated p-4">
+                  <div className="flex items-baseline justify-between gap-2">
+                    <span className="font-display text-2xl tabular-nums">{fmtTime(minutoDeISO(detalle.inicio))}</span>
+                    <span className={`rounded-full border px-2.5 py-1 text-[10.5px] font-bold uppercase tracking-wide ${estiloDe(detalle.estado).card}`}>
+                      {estiloDe(detalle.estado).label}
+                    </span>
+                  </div>
+                  <div className="mt-2 text-[15px] font-semibold text-ink">{detalle.cliente || "Sin nombre"}</div>
+                  <div className="text-sm text-muted">
+                    {detalle.servicio} · {detalle.duracionMin} min · {detalle.barbero}
+                  </div>
+                  {detalle.nota && <p className="mt-2 rounded-lg bg-bg px-3 py-2 text-xs text-muted">{detalle.nota}</p>}
+                </div>
+
+                {detalle.telefono && (
+                  <a
+                    href={`https://wa.me/57${detalle.telefono.replace(/\D/g, "")}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex min-h-11 items-center justify-center rounded-full border border-line text-sm font-semibold text-ink transition hover:border-accent/40"
+                  >
+                    Escribirle por WhatsApp
+                  </a>
+                )}
+
+                {["pendiente", "confirmada"].includes(detalle.estado) ? (
+                  <button
+                    onClick={() => setMoviendo(true)}
+                    className="w-full rounded-full bg-accent px-5 py-3 text-sm font-bold uppercase tracking-wide text-on-accent transition hover:bg-accent-soft"
+                  >
+                    Mover de hora o de barbero
+                  </button>
+                ) : (
+                  <p className="text-center text-xs text-muted">
+                    Esta cita ya {detalle.estado === "en_curso" ? "está en la silla" : "terminó"}; no se mueve.
+                  </p>
+                )}
+              </div>
+            ) : (
+              <MoverCitaForm
+                cita={detalle}
+                barberos={barberos}
+                horarioSemanal={horarioSemanal}
+                diasEspeciales={diasEspeciales}
+                onDone={() => {
+                  setDetalle(null);
+                  setMoviendo(false);
+                  router.refresh();
+                }}
+                onCancel={() => setMoviendo(false)}
+              />
+            )}
           </div>
         </div>
       )}
