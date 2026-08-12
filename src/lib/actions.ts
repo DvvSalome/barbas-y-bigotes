@@ -2013,12 +2013,13 @@ export async function completarReserva(input: {
 export type BusquedaGlobal = {
   clientes: { id: string; nombre: string; telefono: string }[];
   productos: { id: string; nombre: string; stock: number; sede: string }[];
+  servicios: { id: string; nombre: string; duracionMin: number }[];
 };
 
-// Busca clientes (nombre/teléfono) y productos (nombre) para la paleta de
-// comandos. Solo admin: expone PII de clientes de ambas sedes.
+// Busca clientes (nombre/teléfono), productos y SERVICIOS (nombre) para la
+// paleta de comandos. Solo admin: expone PII de clientes de ambas sedes.
 export async function buscarGlobal(q: string): Promise<BusquedaGlobal> {
-  const vacio: BusquedaGlobal = { clientes: [], productos: [] };
+  const vacio: BusquedaGlobal = { clientes: [], productos: [], servicios: [] };
   const s = (q ?? "").trim();
   if (s.length < 2) return vacio;
   const sb = await supabaseServerAuth();
@@ -2026,7 +2027,7 @@ export async function buscarGlobal(q: string): Promise<BusquedaGlobal> {
   if (denied) return vacio;
   // Sin metacaracteres de ilike ni comas (separador del .or() de PostgREST).
   const like = `%${s.replace(/[%_,()]/g, "")}%`;
-  const [cliRes, prodRes] = await Promise.all([
+  const [cliRes, prodRes, servRes] = await Promise.all([
     sb
       .from("clientes")
       .select("id,nombre,telefono")
@@ -2034,6 +2035,7 @@ export async function buscarGlobal(q: string): Promise<BusquedaGlobal> {
       .order("nombre")
       .limit(5),
     sb.from("productos").select("id,nombre,stock,sede_id").ilike("nombre", like).order("nombre").limit(5),
+    sb.from("servicios").select("id,nombre,duracion_min").eq("activo", true).ilike("nombre", like).order("nombre").limit(5),
   ]);
   return {
     clientes: ((cliRes.data ?? []) as Record<string, unknown>[]).map((c) => ({
@@ -2046,6 +2048,11 @@ export async function buscarGlobal(q: string): Promise<BusquedaGlobal> {
       nombre: p.nombre as string,
       stock: (p.stock as number) ?? 0,
       sede: p.sede_id as string,
+    })),
+    servicios: ((servRes.data ?? []) as Record<string, unknown>[]).map((sv) => ({
+      id: sv.id as string,
+      nombre: sv.nombre as string,
+      duracionMin: (sv.duracion_min as number) ?? 30,
     })),
   };
 }

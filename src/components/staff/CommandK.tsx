@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { buscarGlobal, type BusquedaGlobal } from "@/lib/actions";
 import { adminNav } from "@/components/admin/AdminNav";
 import { PlusIcon, CashIcon, BoxIcon, ScissorsIcon, ArrowRightIcon, UsersIcon } from "@/components/icons";
+import { bogotaYmd } from "@/lib/slots";
 
 // Paleta de comandos del admin (Ctrl/Cmd-K): acciones rápidas, navegación y
 // búsqueda en vivo de clientes/productos. Se abre también con el evento
@@ -35,7 +36,7 @@ const IR_A: Item[] = adminNav
     href: n.href,
   }));
 
-const SIN_RESULTADOS: BusquedaGlobal = { clientes: [], productos: [] };
+const SIN_RESULTADOS: BusquedaGlobal = { clientes: [], productos: [], servicios: [] };
 
 const NOMBRE_SEDE: Record<string, string> = {
   "parque-venezuela": "Parque Venezuela",
@@ -55,6 +56,10 @@ export function CommandK() {
 
   // Para devolverle el foco a quien abrió la paleta (botón del topbar, etc.).
   const focoPrevio = useRef<HTMLElement | null>(null);
+  // Fecha de "mañana" (Bogotá) congelada AL ABRIR: la regla de pureza de React
+  // no permite Date.now() en render, y además así la acción no cambia de
+  // destino si la paleta queda abierta cruzando la medianoche.
+  const [mananaYmd, setMananaYmd] = useState("");
 
   const abrir = useCallback(() => {
     // Invalida búsquedas pendientes de una apertura anterior.
@@ -65,6 +70,7 @@ export function CommandK() {
     setSel(0);
     setResultados(SIN_RESULTADOS);
     setBuscando(false);
+    setMananaYmd(bogotaYmd(new Date(Date.now() + 86_400_000)));
     setOpen(true);
     // El input existe recién tras pintar el overlay.
     requestAnimationFrame(() => inputRef.current?.focus());
@@ -146,7 +152,15 @@ export function CommandK() {
 
   const items = useMemo<Item[]>(() => {
     const s = q.trim().toLowerCase();
-    const fijos = [...ACCIONES, ...IR_A].filter((i) => !s || i.label.toLowerCase().includes(s));
+    // La fecha viene congelada del handler de abrir (regla de pureza de React).
+    const manana: Item = {
+      key: "a-agenda-manana",
+      grupo: "Acciones rápidas",
+      icono: <ArrowRightIcon className="h-3.5 w-3.5" />,
+      label: "Agenda de mañana",
+      href: mananaYmd ? `/admin/agenda?fecha=${mananaYmd}` : "/admin/agenda",
+    };
+    const fijos = [...ACCIONES, manana, ...IR_A].filter((i) => !s || i.label.toLowerCase().includes(s));
     const clientes: Item[] = resultados.clientes.map((c) => ({
       key: `c-${c.id}`,
       grupo: "Clientes",
@@ -163,8 +177,16 @@ export function CommandK() {
       detalle: `stock ${p.stock} · ${NOMBRE_SEDE[p.sede] ?? p.sede}`,
       href: "/admin/inventario",
     }));
-    return [...fijos, ...clientes, ...productos];
-  }, [q, resultados]);
+    const serviciosItems: Item[] = resultados.servicios.map((sv) => ({
+      key: `s-${sv.id}`,
+      grupo: "Servicios",
+      icono: <ScissorsIcon className="h-3.5 w-3.5" />,
+      label: sv.nombre,
+      detalle: `${sv.duracionMin} min`,
+      href: "/admin/precios",
+    }));
+    return [...fijos, ...clientes, ...productos, ...serviciosItems];
+  }, [q, resultados, mananaYmd]);
 
   // Índice activo acotado en render (la lista cambia con cada búsqueda).
   const selActivo = items.length === 0 ? 0 : Math.min(sel, items.length - 1);
