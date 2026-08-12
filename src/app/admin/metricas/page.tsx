@@ -6,6 +6,7 @@ import { cop } from "@/lib/format";
 import { SectionHeader } from "@/components/admin/SectionHeader";
 import { Kpi } from "@/components/admin/Kpi";
 import { RankingMetrica } from "@/components/admin/RankingMetrica";
+import { CashIcon, ScissorsIcon, UsersIcon, TagIcon } from "@/components/icons";
 import { MON } from "@/lib/slots";
 
 export const metadata: Metadata = { title: "Métricas · Admin" };
@@ -56,7 +57,7 @@ function Barras({ serie }: { serie: { ymd: string; total: number }[] }) {
       <div className="mb-1.5 text-right text-xs text-muted">
         {porSemana ? "por semana · " : ""}pico <b className="tabular-nums text-ink">{cop(max)}</b>
       </div>
-      <div className="flex h-28 items-end gap-[3px]">
+      <div className="flex h-36 items-end gap-[3px]">
         {buckets.map((d) => (
           <div
             key={d.ymd}
@@ -148,10 +149,10 @@ export default async function MetricasPage({
           <div className="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
             {/* El delta vive DENTRO de "Entró en caja": suelto bajo la grilla
                 parecía aplicar a las cuatro tarjetas y solo compara la plata. */}
-            <Kpi label="Entró en caja" value={cop(m.plata)} hint={<Delta hoy={m.plata} antes={m.antes.plata} />} />
-            <Kpi label="Cobros" value={String(m.servicios)} accent={false} />
-            <Kpi label="Promedio por cliente" value={cop(m.ticket)} accent={false} />
-            <Kpi label="Propinas" value={cop(m.propinas)} accent={false} />
+            <Kpi label="Entró en caja" value={cop(m.plata)} Icon={CashIcon} hint={<Delta hoy={m.plata} antes={m.antes.plata} />} />
+            <Kpi label="Cobros" value={String(m.servicios)} Icon={ScissorsIcon} accent={false} />
+            <Kpi label="Promedio por cliente" value={cop(m.ticket)} Icon={UsersIcon} accent={false} />
+            <Kpi label="Propinas" value={cop(m.propinas)} Icon={TagIcon} accent={false} />
           </div>
 
           <section className="mt-6 rounded-2xl border border-line bg-panel p-5">
@@ -198,14 +199,24 @@ export default async function MetricasPage({
 
           <section className="mt-4 rounded-2xl border border-line bg-panel p-5">
             <h3 className="font-display text-lg">Clientes</h3>
-            <p className="mt-1 text-[12.5px] text-muted">
-              De {m.clientes.total} {m.clientes.total === 1 ? "cliente atendido" : "clientes atendidos"} con ficha,{" "}
-              <b className="text-ink">{m.clientes.repiten}</b> ya habían venido antes y{" "}
-              <b className="text-ink">{nuevos}</b> {nuevos === 1 ? "es nuevo" : "son nuevos"}.
-              {m.clientes.total > 0 && (
-                <> Que vuelvan es lo que sostiene la barbería; los nuevos son lo que la hace crecer.</>
-              )}
-            </p>
+            {/* Mini-cuadros, no un párrafo: los tres números se leen de un golpe. */}
+            <div className="mt-3 grid grid-cols-3 gap-3">
+              {[
+                { n: m.clientes.total, l: "atendidos con ficha", tono: "text-ink" },
+                { n: m.clientes.repiten, l: "ya habían venido", tono: "text-accent-soft" },
+                { n: nuevos, l: nuevos === 1 ? "es nuevo" : "son nuevos", tono: "text-ok" },
+              ].map((k) => (
+                <div key={k.l} className="rounded-xl border border-line bg-elevated px-3 py-2.5">
+                  <div className={`font-display text-2xl font-bold tabular-nums ${k.tono}`}>{k.n}</div>
+                  <div className="text-[11px] leading-tight text-muted">{k.l}</div>
+                </div>
+              ))}
+            </div>
+            {m.clientes.total > 0 && (
+              <p className="mt-2.5 text-[12px] text-muted">
+                Que vuelvan es lo que sostiene la barbería; los nuevos son lo que la hace crecer.
+              </p>
+            )}
           </section>
         </>
       )}
