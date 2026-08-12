@@ -254,6 +254,9 @@ export default async function AdminHoy({
                     width: `${(m.total / Math.max(1, plata.total)) * 100}%`,
                     background: "var(--bar)",
                     opacity: TONO_MEDIO[i] ?? 0.15,
+                    // Separador entre segmentos: con 5 opacidades del mismo color,
+                    // dos medios parecidos se fundían en uno solo.
+                    borderLeft: i > 0 ? "2px solid var(--bg)" : undefined,
                   }}
                 />
               ))}
@@ -267,6 +270,10 @@ export default async function AdminHoy({
                   />
                   <span className="text-muted">{m.nombre}</span>
                   <span className="font-semibold text-ink">{cop(m.total)}</span>
+                  {/* El % hace legible la barra sin depender de distinguir tonos */}
+                  <span className="text-[11px] text-muted">
+                    {Math.round((m.total / Math.max(1, plata.total)) * 100)}%
+                  </span>
                 </span>
               ))}
             </div>

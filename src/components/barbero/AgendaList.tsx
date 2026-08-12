@@ -997,6 +997,9 @@ function CheckoutForm({
             cambia nunca. Sede nueva → generar su QR en public/qr/. */}
         {resumen.resenaUrl && (
           <div className="mt-3 flex items-center gap-3 rounded-xl border border-line bg-bg/60 p-3">
+            {/* eslint-disable-next-line @next/next/no-img-element -- SVG local estático:
+                next/image bloquea SVG por defecto (dangerouslyAllowSVG) y no
+                optimizaría nada; el warning de LCP no aplica a un QR de 104px. */}
             <img
               src={`/qr/resena-${sede}.svg`}
               alt="Código QR para dejar la reseña en Google"
