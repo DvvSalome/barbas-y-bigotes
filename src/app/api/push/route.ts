@@ -3,21 +3,10 @@
 // HTTP que pega acá con el header x-push-secret y el push equivalente.
 // El emisor real es src/lib/push.ts (web-push); esta ruta solo autentica y valida.
 
-import { createHash, timingSafeEqual } from "node:crypto";
 import { pushACliente } from "@/lib/push";
+import { secretoCronValido as secretoValido } from "@/lib/cron-secret";
 
 export const dynamic = "force-dynamic";
-
-// Comparación en tiempo constante. Se hashean ambos lados porque
-// timingSafeEqual exige buffers del mismo largo (y así tampoco se filtra
-// el largo del secreto por el error).
-function secretoValido(recibido: string | null): boolean {
-  const esperado = process.env.PUSH_CRON_SECRET;
-  if (!esperado || !recibido) return false;
-  const a = createHash("sha256").update(recibido).digest();
-  const b = createHash("sha256").update(esperado).digest();
-  return timingSafeEqual(a, b);
-}
 
 export async function POST(request: Request) {
   if (!secretoValido(request.headers.get("x-push-secret"))) {

@@ -136,11 +136,14 @@ export function AgendaList({
   // cierre apilados. De pie y con un dedo eso es scroll a ciegas. Ahora son
   // pestañas en una barra FIJA abajo (donde cae el pulgar en una pantalla táctil)
   // y los formularios suben como hoja desde el borde inferior.
-  // ?tab=calendario: la navegación por fechas del calendario recarga la página
-  // (links con ?fecha=); sin esto, cada cambio de día te devolvía a "Turnos".
-  const [tab, setTab] = useState<TabMostrador>(() =>
-    search.get("tab") === "calendario" && calendarioSlot ? "calendario" : "turnos",
-  );
+  // ?tab= abre una pestaña directa: el calendario lo usa al navegar por fechas
+  // (links con ?fecha=) y el push de "caja abierta" aterriza en ?tab=cierre.
+  const [tab, setTab] = useState<TabMostrador>(() => {
+    const t = search.get("tab");
+    if (t === "calendario" && calendarioSlot) return "calendario";
+    if (t === "espera" || t === "cierre") return t;
+    return "turnos";
+  });
   const [walkinOpen, setWalkinOpen] = useState(false);
   // Barbero preseleccionado al abrir el walk-in desde la tira de libres.
   const [walkinBarbero, setWalkinBarbero] = useState<string>("");
