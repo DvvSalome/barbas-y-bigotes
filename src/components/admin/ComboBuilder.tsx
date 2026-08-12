@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { crearCombo } from "@/lib/actions";
 import { cop } from "@/lib/format";
@@ -165,16 +166,18 @@ export function ComboBuilder({
         />
       </div>
 
-      {/* Partes por categoría (no una nube plana) */}
+      {/* Partes por categoría como TARJETAS CON FOTO (las mismas de "Servicios
+          y precios" / el wizard): las píldoras de texto pelado se sentían de
+          hoja de cálculo. Sin foto subida → placeholder neutro con tijera. */}
       {grupos.length === 0 && (
         <p className="mt-3 text-sm text-muted">Nada coincide con “{q}”. Probá con otro nombre.</p>
       )}
       {grupos.map((g) => (
-        <div key={g.cat} className="mt-3">
-          <div className="mb-1.5 text-[10.5px] font-bold uppercase tracking-[0.12em] text-muted">
+        <div key={g.cat} className="mt-4">
+          <div className="mb-2 text-[10.5px] font-bold uppercase tracking-[0.12em] text-muted">
             {etiquetas[g.cat]}
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
             {g.items.map((p) => {
               const on = partes.has(p.id);
               return (
@@ -183,13 +186,34 @@ export function ComboBuilder({
                   type="button"
                   aria-pressed={on}
                   onClick={() => togglePart(p.id)}
-                  className={`inline-flex min-h-[44px] items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-[12.5px] transition ${
-                    on ? "border-accent/75 bg-accent/[0.14] text-ink" : "border-line text-muted hover:text-ink"
+                  className={`overflow-hidden rounded-xl border text-left transition ${
+                    on ? "border-accent bg-accent/10 shadow-[0_0_0_1px_var(--accent)]" : "border-line bg-bg hover:border-accent/40"
                   }`}
                 >
-                  <span className="font-medium">{shortName(p.nombre)}</span>
-                  <span className={`tabular-nums ${on ? "text-accent-soft" : "text-muted"}`}>
-                    +{cop(p.precios[sedeActiva] ?? 0)}
+                  <span className="relative block aspect-[5/3] w-full overflow-hidden">
+                    {p.fotoUrl ? (
+                      <Image src={p.fotoUrl} alt="" fill sizes="(max-width:640px) 50vw, 190px" className="object-cover" />
+                    ) : (
+                      <span className="absolute inset-0 flex items-center justify-center bg-elevated text-2xl text-muted/35" aria-hidden>
+                        ✂
+                      </span>
+                    )}
+                    {on && (
+                      <span className="absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-accent text-[12px] font-extrabold text-on-accent">
+                        ✓
+                      </span>
+                    )}
+                  </span>
+                  <span className="block px-2.5 py-2">
+                    <span className="block truncate text-[12.5px] font-semibold leading-tight text-ink">
+                      {shortName(p.nombre)}
+                    </span>
+                    <span className="mt-0.5 flex items-baseline justify-between gap-1">
+                      <span className="text-[12px] font-bold tabular-nums text-accent-soft">
+                        +{cop(p.precios[sedeActiva] ?? 0)}
+                      </span>
+                      <span className="text-[10.5px] text-muted">{p.duracionMin} min</span>
+                    </span>
                   </span>
                 </button>
               );
@@ -203,12 +227,46 @@ export function ComboBuilder({
         type="button"
         aria-pressed={conBebida}
         onClick={() => aplicar(partes, !conBebida)}
-        className={`mt-3 inline-flex min-h-[44px] items-center gap-2 rounded-full border px-4 py-1.5 text-[12.5px] font-bold transition ${
+        className={`mt-4 inline-flex min-h-[44px] items-center gap-2 rounded-full border px-4 py-1.5 text-[12.5px] font-bold transition ${
           conBebida ? "border-ok/50 bg-ok/10 text-ok" : "border-line text-muted hover:text-ink"
         }`}
       >
         {conBebida ? "✓ " : ""}Incluye bebida · +{cop(BEBIDA)}
       </button>
+
+      {/* Tu combo: lo elegido siempre a la vista (con las categorías colapsadas
+          por el scroll, lo seleccionado quedaba lejos); tocar una ficha la quita. */}
+      {cantidad >= 1 && (
+        <div className="mt-4 border-t border-line pt-3">
+          <div className="mb-1.5 text-[10.5px] font-bold uppercase tracking-[0.12em] text-muted">
+            Tu combo · {cantidad} {cantidad === 1 ? "servicio" : "servicios"}
+            {conBebida ? " + bebida" : ""} · tocá una ficha para quitarla
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {seleccion.map((p) => (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => togglePart(p.id)}
+                title={`Quitar ${shortName(p.nombre)}`}
+                className="inline-flex min-h-[40px] items-center gap-2 rounded-full border border-accent/50 bg-accent/10 py-1 pl-1 pr-3 text-xs font-semibold text-ink transition hover:bg-accent/20"
+              >
+                <span className="relative h-8 w-8 shrink-0 overflow-hidden rounded-full">
+                  {p.fotoUrl ? (
+                    <Image src={p.fotoUrl} alt="" fill sizes="32px" className="object-cover" />
+                  ) : (
+                    <span className="flex h-full w-full items-center justify-center bg-elevated text-[13px] text-muted/50" aria-hidden>
+                      ✂
+                    </span>
+                  )}
+                </span>
+                {shortName(p.nombre)}
+                <span aria-hidden className="text-muted">×</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Resumen (cuando hay al menos una parte) */}
       {cantidad >= 1 && (
