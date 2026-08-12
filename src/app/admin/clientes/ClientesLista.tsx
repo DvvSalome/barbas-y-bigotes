@@ -10,18 +10,20 @@ import type { ClienteRow } from "@/lib/data/queries";
 
 const DIAS_DORMIDO = 60;
 
-type Filtro = "todos" | "gastan" | "dormidos";
+type Filtro = "todos" | "gastan" | "dormidos" | "repetidas";
 
 const FILTROS: { id: Filtro; label: string }[] = [
   { id: "todos", label: "Todos" },
   { id: "gastan", label: "Los que más gastan" },
   { id: "dormidos", label: `No vuelven hace ${DIAS_DORMIDO} días` },
+  { id: "repetidas", label: "Fichas repetidas" },
 ];
 
 const VACIO: Record<Filtro, string> = {
   todos: "Todavía no hay clientes registrados.",
   gastan: "Todavía nadie tiene compras registradas.",
   dormidos: `Nadie lleva más de ${DIAS_DORMIDO} días sin volver.`,
+  repetidas: "No hay fichas repetidas: la base está limpia ✓",
 };
 
 function fechaCorta(iso: string | null) {
@@ -73,12 +75,30 @@ export function ClientesLista({ clientes }: { clientes: ClienteRow[] }) {
       const corte = new Date().getTime() - DIAS_DORMIDO * 86_400_000;
       r = r.filter((c) => c.ultima !== null && new Date(c.ultima).getTime() < corte);
     }
+    if (filtro === "repetidas") {
+      r = r.filter((c) => (c.email ? (duplicados.get(c.email.trim().toLowerCase()) ?? 0) > 1 : false));
+    }
     return r;
-  }, [clientes, q, filtro]);
+  }, [clientes, q, filtro, duplicados]);
+
+  // El CRM de un vistazo (panel derecho de escritorio): cada cuadro filtra.
+  const stats = useMemo(() => {
+    const corte = new Date().getTime() - DIAS_DORMIDO * 86_400_000;
+    return {
+      gastan: clientes.filter((c) => c.facturado > 0).length,
+      facturadoTotal: clientes.reduce((a, c) => a + c.facturado, 0),
+      dormidos: clientes.filter((c) => c.ultima !== null && new Date(c.ultima).getTime() < corte).length,
+      repetidas: [...duplicados.values()].filter((n) => n > 1).length,
+    };
+  }, [clientes, duplicados]);
 
   return (
     <>
-      <div className="mt-6 flex flex-col gap-3">
+      {/* DOS PANELES en escritorio: la lista a la izquierda y "el CRM de un
+          vistazo" fijo a la derecha (cuadros que filtran). En móvil, los chips. */}
+      <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_300px] lg:items-start">
+        <div className="min-w-0">
+      <div className="flex flex-col gap-3">
         <div className="relative max-w-md">
           <SearchIcon className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
           <input
@@ -91,7 +111,8 @@ export function ClientesLista({ clientes }: { clientes: ClienteRow[] }) {
           />
         </div>
 
-        <div className="flex flex-wrap gap-2">
+        {/* Chips solo en móvil: en escritorio filtra el panel derecho */}
+        <div className="flex flex-wrap gap-2 lg:hidden">
           {FILTROS.map((f) => (
             <button
               key={f.id}
@@ -192,6 +213,45 @@ export function ClientesLista({ clientes }: { clientes: ClienteRow[] }) {
           </ul>
         </>
       )}
+        </div>
+
+        {/* El CRM de un vistazo: cuadros que FILTRAN (escritorio) */}
+        <aside className="hidden lg:sticky lg:top-28 lg:block">
+          <h2 className="mb-2.5 text-[11px] font-bold uppercase tracking-[0.14em] text-muted">De un vistazo</h2>
+          <div className="grid gap-2.5">
+            {(
+              [
+                { id: "todos" as Filtro, n: String(clientes.length), l: "clientes en total", sub: `${cop(stats.facturadoTotal)} facturados` },
+                { id: "gastan" as Filtro, n: String(stats.gastan), l: "con compras", sub: "de mayor a menor gasto" },
+                { id: "dormidos" as Filtro, n: String(stats.dormidos), l: `no vuelven hace ${DIAS_DORMIDO}+ días`, sub: "para recuperar", alerta: stats.dormidos > 0 },
+                { id: "repetidas" as Filtro, n: String(stats.repetidas), l: "correos con fichas repetidas", sub: stats.repetidas > 0 ? "tocá para verlas y unirlas" : "base limpia ✓", alerta: stats.repetidas > 0 },
+              ]
+            ).map((k) => {
+              const activo = filtro === k.id;
+              return (
+                <button
+                  key={k.id}
+                  type="button"
+                  aria-pressed={activo}
+                  onClick={() => {
+                    setFiltro(k.id);
+                    setQ("");
+                  }}
+                  className={`rounded-2xl border px-4 py-3 text-left transition ${
+                    activo ? "border-accent bg-accent/10" : "border-line bg-panel hover:border-accent/40"
+                  }`}
+                >
+                  <div className={`font-display text-2xl font-bold tabular-nums ${k.alerta ? "text-warn" : "text-accent-soft"}`}>
+                    {k.n}
+                  </div>
+                  <div className="text-[12px] font-semibold leading-tight text-ink">{k.l}</div>
+                  <div className="text-[11px] text-muted">{k.sub}</div>
+                </button>
+              );
+            })}
+          </div>
+        </aside>
+      </div>
 
       {unirGrupo && (
         <UnirFichasSheet

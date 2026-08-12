@@ -9,7 +9,7 @@ export default async function ClientesPage() {
   const clientes = await getClientes();
 
   return (
-    <div className="max-w-5xl">
+    <div className="max-w-6xl">
       <SectionHeader
         eyebrow="Base de datos"
         title="Clientes"
