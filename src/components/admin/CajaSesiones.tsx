@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { abrirCaja, cerrarCaja } from "@/lib/actions";
+import { sfxExito, sfxAlerta } from "@/lib/sfx";
 import { cop, horaBogota, fechaCortaBogota, diasDesde } from "@/lib/format";
 import { CashIcon } from "@/components/icons";
 import type { CajaSesionSede, MedioPago } from "@/lib/data/queries";
@@ -86,6 +87,9 @@ function CajaCard({ caja, medios }: { caja: CajaSesionSede; medios: MedioPago[] 
     });
     setBusy(false);
     if (res.ok) {
+      // El veredicto SUENA además de verse: cuadró = éxito, descuadró = alerta.
+      if ((res.diferencia ?? 0) === 0) sfxExito();
+      else sfxAlerta();
       // El resultado (cuadró / faltó / sobró) es EL dato del cierre: se muestra
       // en un panel que sobrevive al refresh, no escondido en "cuadres anteriores".
       setCierre({ diferencia: res.diferencia ?? 0, esperado: res.esperado ?? 0, contado: n });

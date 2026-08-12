@@ -15,6 +15,7 @@ import {
 import { calcularCobro } from "@/lib/cobro";
 import { CERQUILLO_EXCLUIDOS, type BeneficioTarjeta } from "@/lib/tarjeta";
 import { categorias } from "@/lib/data/seed";
+import { sfxCobro, sfxExito } from "@/lib/sfx";
 import type { Categoria } from "@/lib/data/types";
 import { ProductoThumb } from "@/components/staff/ProductoThumb";
 import { MedioLogo } from "@/components/staff/MedioLogo";
@@ -460,6 +461,7 @@ export function AgendaList({
             onEncolado={(msg) => {
               // La hoja queda abierta con el aviso a la vista; el form ya se
               // reseteó solo para anotar al siguiente cliente.
+              sfxExito();
               setEsperaMsg(msg);
               router.refresh();
             }}
@@ -952,7 +954,9 @@ function CheckoutForm({
       idemToken,
     });
     setSaving(false);
-    if (res.ok)
+    if (res.ok) {
+      // La caja "suena" al cobrar: el equipo lo oye sin mirar la pantalla.
+      sfxCobro();
       setResumen({
         total: res.total ?? 0,
         descuento: res.descuento ?? 0,
@@ -961,7 +965,7 @@ function CheckoutForm({
         tarjeta: res.tarjeta,
         resenaUrl: res.resenaUrl,
       });
-    else setErr(res.error ?? "No se pudo completar");
+    } else setErr(res.error ?? "No se pudo completar");
   }
 
   if (resumen) {

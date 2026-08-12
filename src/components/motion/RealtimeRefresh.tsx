@@ -3,36 +3,10 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabaseBrowser } from "@/lib/supabase/client";
+// El ding vivía acá; ahora es parte de la familia de SFX (src/lib/sfx.ts).
+import { sfxNuevaReserva as ding } from "@/lib/sfx";
 
 export type RtSub = { table: string; filter?: string };
-
-// Ding de dos notas por Web Audio (sin archivo de audio) + vibración. Si el
-// navegador aún bloquea el audio (sin gesto previo), falla en silencio: el
-// refresh de la agenda igual muestra la cita nueva.
-function ding() {
-  try {
-    const w = window as Window & { __bbDing?: AudioContext };
-    w.__bbDing ??= new AudioContext();
-    const ctx = w.__bbDing;
-    if (ctx.state === "suspended") ctx.resume().catch(() => {});
-    const t = ctx.currentTime;
-    [880, 1174.66].forEach((freq, i) => {
-      const o = ctx.createOscillator();
-      const g = ctx.createGain();
-      o.type = "sine";
-      o.frequency.value = freq;
-      g.gain.setValueAtTime(0.0001, t + i * 0.13);
-      g.gain.exponentialRampToValueAtTime(0.14, t + i * 0.13 + 0.02);
-      g.gain.exponentialRampToValueAtTime(0.0001, t + i * 0.13 + 0.4);
-      o.connect(g).connect(ctx.destination);
-      o.start(t + i * 0.13);
-      o.stop(t + i * 0.13 + 0.45);
-    });
-    navigator.vibrate?.(120);
-  } catch {
-    // AudioContext no disponible o bloqueado: no pasa nada.
-  }
-}
 
 // Escucha postgres_changes (RLS-filtrado por la sesión) y dispara router.refresh()
 // debounced. Refresh-only: NUNCA usa el payload → la data siempre viene del fetch

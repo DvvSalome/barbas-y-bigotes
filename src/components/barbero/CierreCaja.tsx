@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { cerrarCajaSede } from "@/lib/actions";
 import { sanearCop } from "@/lib/admin-reglas";
+import { sfxExito, sfxAlerta } from "@/lib/sfx";
 import { cop, horaBogota, fechaCortaBogota, diasDesde } from "@/lib/format";
 import type { CajaSedeEstado, CajaDesglose } from "@/lib/data/queries";
 
@@ -109,6 +110,9 @@ export function CierreCaja({
     const res = await cerrarCajaSede({ efectivoContado: contadoNum, nota });
     setSaving(false);
     if (res.ok) {
+      // El veredicto del día SUENA: cuadró = éxito, descuadró = alerta.
+      if ((res.diferencia ?? 0) === 0) sfxExito();
+      else sfxAlerta();
       setHecho({ total: res.total ?? 0, diferencia: res.diferencia ?? 0 });
       router.refresh();
     } else {
