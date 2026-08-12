@@ -943,8 +943,11 @@ export function BookingWizard({
           </h2>
 
           <p className="mx-auto mt-3 max-w-[30ch] text-[13.5px] text-muted" style={{ animation: "bbrise .5s ease-out .35s both" }}>
-            Ya quedó agendada, {nombre.trim() || "crack"}. Te enviamos el comprobante y el recordatorio al correo
-            {email.trim() ? ` ${email.trim()}` : ""}. Sede {sedeNombre}.
+            {/* Tras un reload el snapshot no trae nombre/correo (sin PII): la frase
+                del correo solo sale si tenemos el correo, para no dejarla coja. */}
+            Ya quedó agendada{nombre.trim() ? `, ${nombre.trim()}` : ""}.
+            {email.trim() ? ` Te enviamos el comprobante y el recordatorio al correo ${email.trim()}.` : " Te llega el comprobante y el recordatorio al correo."}{" "}
+            Sede {sedeNombre}.
           </p>
 
           <div className="mt-6 rounded-2xl border border-line bg-panel text-left" style={{ animation: "bbrise .5s ease-out .45s both" }}>
