@@ -15,11 +15,16 @@ export function FotoSede({
   nombre,
   direccion,
   fotoUrl,
+  fotoRespaldo,
 }: {
   sedeId: string;
   nombre: string;
   direccion?: string;
+  /** Foto propia subida por el admin (DB). */
   fotoUrl?: string | null;
+  /** Fachada DE FÁBRICA (la del código): se muestra si no hay propia, porque es
+   *  lo que el cliente ve hoy en la reserva — la tarjeta no debe verse vacía. */
+  fotoRespaldo?: string | null;
 }) {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -72,8 +77,14 @@ export function FotoSede({
         aria-label={fotoUrl ? `Cambiar la foto de ${nombre}` : `Subir la foto de ${nombre}`}
         className={`relative block aspect-[5/2] w-full overflow-hidden text-left transition ${subiendo ? "opacity-50" : "hover:opacity-90"}`}
       >
-        {fotoUrl ? (
-          <Image src={fotoUrl} alt={nombre} fill sizes="(max-width:640px) 100vw, 420px" className="object-cover" />
+        {(fotoUrl ?? fotoRespaldo) ? (
+          <Image
+            src={(fotoUrl ?? fotoRespaldo)!}
+            alt={nombre}
+            fill
+            sizes="(max-width:640px) 100vw, 420px"
+            className="object-cover"
+          />
         ) : (
           <span className="absolute inset-0 flex items-center justify-center bg-elevated font-display text-5xl text-muted/25" aria-hidden>
             {nombre.charAt(0).toUpperCase()}
@@ -92,7 +103,12 @@ export function FotoSede({
         <span className="min-w-0">
           <span className="block truncate text-sm font-semibold text-ink">{nombre}</span>
           <span className="block truncate text-[11.5px] text-muted">
-            {direccion || "Sin dirección"} · esta foto la ve el cliente al reservar
+            {direccion || "Sin dirección"} ·{" "}
+            {fotoUrl
+              ? "foto tuya — la ve el cliente al reservar"
+              : fotoRespaldo
+                ? "foto de fábrica — subí una propia para reemplazarla"
+                : "sin foto aún — el cliente ve un bloque neutro"}
           </span>
         </span>
         <span className="flex shrink-0 items-center gap-1.5">

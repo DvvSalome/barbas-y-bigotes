@@ -4,6 +4,7 @@ import { SectionHeader } from "@/components/admin/SectionHeader";
 import { HorarioSemanalAdmin } from "@/components/admin/HorarioSemanalAdmin";
 import { DiasEspecialesAdmin } from "@/components/admin/DiasEspecialesAdmin";
 import { FotoSede } from "@/components/admin/FotoSede";
+import { SEDE_INFO } from "@/lib/data/sede-info";
 
 export const metadata: Metadata = { title: "Horarios · Admin" };
 
@@ -28,7 +29,14 @@ export default async function HorariosPage() {
         <h2 className="mb-3 text-xs uppercase tracking-[0.3em] text-accent">La foto de cada sede</h2>
         <div className="grid gap-3 sm:grid-cols-2">
           {sedes.map((s) => (
-            <FotoSede key={s.id} sedeId={s.id} nombre={s.nombre} direccion={s.direccion} fotoUrl={s.fotoUrl} />
+            <FotoSede
+              key={s.id}
+              sedeId={s.id}
+              nombre={s.nombre}
+              direccion={s.direccion}
+              fotoUrl={s.fotoUrl}
+              fotoRespaldo={SEDE_INFO[s.id]?.frente ?? null}
+            />
           ))}
         </div>
       </div>

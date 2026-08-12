@@ -36,14 +36,9 @@ const TITULOS: Record<Exclude<Step, "ok">, string> = {
   datos: "Tus datos",
 };
 
-// Detalle corto + foto de frente por sede (contenido estático del proto §6.3 / §7).
-// frente null = sede sin foto conocida (una sede NUEVA creada desde el admin):
-// se pinta un bloque neutro con su inicial — nunca la fachada de OTRA sede,
-// que hacía que el local nuevo "mintiera" con la cara de Parque Venezuela.
-const SEDE_INFO: Record<string, { detalle: string; frente: string | null }> = {
-  "parque-venezuela": { detalle: "Cra 65 · Barranquilla", frente: "/sedes/parque-venezuela-frente.jpg" },
-  "plaza-de-la-paz": { detalle: "Centro · Barranquilla", frente: "/sedes/plaza-de-la-paz-frente.jpg" },
-};
+// Detalle + fachada de fábrica por sede: compartido con el admin (FotoSede)
+// para que la tarjeta de allá muestre LO MISMO que ve el cliente acá.
+import { SEDE_INFO } from "@/lib/data/sede-info";
 
 // Fotos de servicio: SOLO la foto real subida por el admin (0055). Antes se
 // ciclaban 4 fotos genéricas por índice y a "Cejas" le tocaba un corte: parecía
