@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import {
   getSedes,
@@ -33,7 +34,7 @@ export const metadata: Metadata = { title: "Mostrador" };
 export default async function BarberoPage({
   searchParams,
 }: {
-  searchParams: Promise<{ fecha?: string; tab?: string }>;
+  searchParams: Promise<{ fecha?: string; tab?: string; sede?: string }>;
 }) {
   const sp = await searchParams;
   const staff = await getStaffContext();
@@ -76,14 +77,17 @@ export default async function BarberoPage({
   // Lectura con service role ya autorizada acá: el barbero pertenece a esa sede
   // por definición, y el dueño ve las dos.
   // Calendario (pestaña Agenda): el día pedido por ?fecha=, hoy por defecto.
+  // El DUEÑO (sin sede propia) también lo ve: elige la sede con ?sede= (pills
+  // arriba del calendario); por defecto la primera. El calendario es POR sede.
   const hoy = bogotaYmd();
   const fechaCal = /^\d{4}-\d{2}-\d{2}$/.test(sp.fecha ?? "") ? sp.fecha! : hoy;
-  const idsSede = sedeBarbero ? barberos.filter((b) => b.sede === sedeBarbero).map((b) => b.id) : [];
+  const sedeCal = sedeBarbero ?? ((sedes.find((s) => s.id === sp.sede)?.id ?? sedes[0]?.id ?? null) as string | null);
+  const idsSedeCal = sedeCal ? barberos.filter((b) => b.sede === sedeCal).map((b) => b.id) : [];
   const [agendaSede, ventasSede, agendaCal, bloqueosCal] = await Promise.all([
     getAgendaSedeHoy(sedeBarbero),
     getVentasSedeHoy(sedeBarbero),
-    sedeBarbero ? getAgendaSedeDia(sedeBarbero, fechaCal) : Promise.resolve(null),
-    sedeBarbero ? getBloqueosDia(idsSede, fechaCal) : Promise.resolve([]),
+    sedeCal ? getAgendaSedeDia(sedeCal, fechaCal) : Promise.resolve(null),
+    sedeCal ? getBloqueosDia(idsSedeCal, fechaCal) : Promise.resolve([]),
   ]);
   // El "cobrado hoy" sale de las mismas ventas que la lista de abajo: un solo
   // viaje, y el número del encabezado siempre cuadra con lo que se ve detallado.
@@ -138,20 +142,39 @@ export default async function BarberoPage({
         diasEspeciales={sedeBarbero ? diasEspeciales.filter((d) => d.sede === sedeBarbero) : []}
         esperaCount={espera.length}
         calendarioSlot={
-          // Solo con sede definida (el dueño tiene su calendario en /admin/agenda).
-          sedeBarbero && agendaCal ? (
-            <AgendaDia
-              sede={sedeBarbero as SedeId}
-              fecha={fechaCal}
-              hoy={hoy}
-              agenda={agendaCal}
-              bloqueos={bloqueosCal}
-              barberos={mostrador.barberosSede}
-              servicios={servicios}
-              horarioSemanal={horarioSemanal.filter((h) => h.sede === sedeBarbero)}
-              diasEspeciales={diasEspeciales.filter((d) => d.sede === sedeBarbero)}
-              hrefBase="/barbero?tab=calendario"
-            />
+          // Para TODOS los perfiles del mostrador: sede/barbero ven su sede; el
+          // DUEÑO (sin sede propia) elige con las pills de arriba (?sede=).
+          sedeCal && agendaCal ? (
+            <div>
+              {!sedeBarbero && sedes.length > 1 && (
+                <div className="mb-3 flex gap-1.5" role="tablist" aria-label="Sede del calendario">
+                  {sedes.map((s) => (
+                    <Link
+                      key={s.id}
+                      href={`/barbero?tab=calendario&sede=${s.id}&fecha=${fechaCal}`}
+                      aria-current={s.id === sedeCal ? "page" : undefined}
+                      className={`flex min-h-11 items-center rounded-lg px-3.5 text-[12.5px] font-semibold transition ${
+                        s.id === sedeCal ? "bg-accent/15 text-accent-soft" : "text-muted hover:text-ink"
+                      }`}
+                    >
+                      {s.nombre}
+                    </Link>
+                  ))}
+                </div>
+              )}
+              <AgendaDia
+                sede={sedeCal as SedeId}
+                fecha={fechaCal}
+                hoy={hoy}
+                agenda={agendaCal}
+                bloqueos={bloqueosCal}
+                barberos={barberos.filter((b) => b.sede === sedeCal)}
+                servicios={servicios}
+                horarioSemanal={horarioSemanal.filter((h) => h.sede === sedeCal)}
+                diasEspeciales={diasEspeciales.filter((d) => d.sede === sedeCal)}
+                hrefBase={`/barbero?tab=calendario&sede=${sedeCal}`}
+              />
+            </div>
           ) : undefined
         }
         esperaSlot={
