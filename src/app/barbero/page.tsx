@@ -14,12 +14,13 @@ import {
   getCajaDesglose,
   getAgendaSedeHoy,
   getAgendaSedeDia,
+  getAgendaSedeRango,
   getBloqueosDia,
   getVentasSedeHoy,
   getHorarioSemanal,
   getDiasEspeciales,
 } from "@/lib/data/queries";
-import { bogotaYmd } from "@/lib/slots";
+import { bogotaYmd, dowDeFecha } from "@/lib/slots";
 import type { SedeId } from "@/lib/data/types";
 import { AgendaList } from "@/components/barbero/AgendaList";
 import { AgendaDia } from "@/components/admin/AgendaDia";
@@ -34,7 +35,7 @@ export const metadata: Metadata = { title: "Mostrador" };
 export default async function BarberoPage({
   searchParams,
 }: {
-  searchParams: Promise<{ fecha?: string; tab?: string; sede?: string }>;
+  searchParams: Promise<{ fecha?: string; tab?: string; sede?: string; vista?: string }>;
 }) {
   const sp = await searchParams;
   const staff = await getStaffContext();
@@ -82,12 +83,19 @@ export default async function BarberoPage({
   const hoy = bogotaYmd();
   const fechaCal = /^\d{4}-\d{2}-\d{2}$/.test(sp.fecha ?? "") ? sp.fecha! : hoy;
   const sedeCal = sedeBarbero ?? ((sedes.find((s) => s.id === sp.sede)?.id ?? sedes[0]?.id ?? null) as string | null);
+  const vistaCal = sp.vista === "semana" ? ("semana" as const) : ("dia" as const);
+  const lunesCal = (() => {
+    const d = new Date(`${fechaCal}T12:00:00Z`);
+    d.setUTCDate(d.getUTCDate() - ((dowDeFecha(fechaCal) + 6) % 7));
+    return d.toISOString().slice(0, 10);
+  })();
   const idsSedeCal = sedeCal ? barberos.filter((b) => b.sede === sedeCal).map((b) => b.id) : [];
-  const [agendaSede, ventasSede, agendaCal, bloqueosCal] = await Promise.all([
+  const [agendaSede, ventasSede, agendaCal, bloqueosCal, agendaSemanaCal] = await Promise.all([
     getAgendaSedeHoy(sedeBarbero),
     getVentasSedeHoy(sedeBarbero),
     sedeCal ? getAgendaSedeDia(sedeCal, fechaCal) : Promise.resolve(null),
     sedeCal ? getBloqueosDia(idsSedeCal, fechaCal) : Promise.resolve([]),
+    sedeCal && vistaCal === "semana" ? getAgendaSedeRango(sedeCal, lunesCal, 7) : Promise.resolve([]),
   ]);
   // El "cobrado hoy" sale de las mismas ventas que la lista de abajo: un solo
   // viaje, y el número del encabezado siempre cuadra con lo que se ve detallado.
@@ -168,6 +176,8 @@ export default async function BarberoPage({
                 hoy={hoy}
                 agenda={agendaCal}
                 bloqueos={bloqueosCal}
+                vista={vistaCal}
+                agendaSemana={agendaSemanaCal}
                 barberos={barberos.filter((b) => b.sede === sedeCal)}
                 servicios={servicios}
                 horarioSemanal={horarioSemanal.filter((h) => h.sede === sedeCal)}

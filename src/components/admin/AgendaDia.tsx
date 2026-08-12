@@ -8,7 +8,7 @@ import { MoverCitaForm } from "@/components/admin/MoverCitaForm";
 import { BloquearHorasForm } from "@/components/admin/BloquearHorasForm";
 import { quitarBloqueo } from "@/lib/actions";
 import { CaraBarbero } from "@/components/staff/Elegir";
-import { DOW, MON, fmtTime, horarioEfectivo } from "@/lib/slots";
+import { DOW, MON, fmtTime, horarioEfectivo, dowDeFecha, bogotaYmd } from "@/lib/slots";
 import type { Barbero, Servicio, SedeId } from "@/lib/data/types";
 import type { AgendaDiaItem, BloqueoDia, HorarioSemanal, DiaEspecial } from "@/lib/data/queries";
 
@@ -64,6 +64,8 @@ export function AgendaDia({
   horarioSemanal,
   diasEspeciales,
   hrefBase,
+  vista,
+  agendaSemana = [],
 }: {
   sede: SedeId;
   fecha: string; // YYYY-MM-DD del día mostrado
@@ -77,8 +79,13 @@ export function AgendaDia({
   diasEspeciales: DiaEspecial[]; // ya filtrados por la sede
   /** Base de los links de fecha (puede traer query). Default: la agenda del admin. */
   hrefBase?: string;
+  /** "semana" = grilla de 7 días (compacta); "dia" = columnas por barbero. */
+  vista?: "dia" | "semana";
+  /** La agenda de los 7 días de la semana de `fecha` (solo en vista semana). */
+  agendaSemana?: AgendaDiaItem[];
 }) {
   const router = useRouter();
+  const vistaActiva = vista ?? "dia";
   const [sheet, setSheet] = useState<{ barberoId?: string } | null>(null);
   // Detalle de una cita tocada (+ modo mover dentro del mismo sheet).
   const [detalle, setDetalle] = useState<AgendaDiaItem | null>(null);
@@ -106,7 +113,12 @@ export function AgendaDia({
   }, [esHoy]);
 
   const base = hrefBase ?? `/admin/agenda?sede=${sede}`;
-  const href = (f: string) => `${base}${base.includes("?") ? "&" : "?"}fecha=${f}`;
+  const href = (f: string, v: "dia" | "semana" = vistaActiva) =>
+    `${base}${base.includes("?") ? "&" : "?"}fecha=${f}${v === "semana" ? "&vista=semana" : ""}`;
+  // En vista semana, ‹ › saltan de a 7 días.
+  const paso = vistaActiva === "semana" ? 7 : 1;
+  // Lunes de la semana de `fecha` (dow 0=Dom..6=Sáb → lunes primero).
+  const lunes = ymdMas(fecha, -((dowDeFecha(fecha) + 6) % 7));
   const btnNav =
     "grid h-11 w-11 place-items-center rounded-full border border-line text-ink transition hover:border-accent/40";
 
@@ -114,15 +126,21 @@ export function AgendaDia({
     <div className="mt-5">
       {/* Navegación de día + leyenda de colores */}
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <Link href={href(ymdMas(fecha, -1))} aria-label="Día anterior" className={btnNav}>
+        <div className="flex flex-wrap items-center gap-2">
+          <Link href={href(ymdMas(fecha, -paso))} aria-label={vistaActiva === "semana" ? "Semana anterior" : "Día anterior"} className={btnNav}>
             ‹
           </Link>
           <div className="min-w-[130px] text-center">
-            <div className="font-display text-xl leading-tight">{esHoy ? "Hoy" : labelFecha(fecha)}</div>
-            {esHoy && <div className="text-[11px] text-muted">{labelFecha(fecha)}</div>}
+            <div className="font-display text-xl leading-tight">
+              {vistaActiva === "semana"
+                ? `${labelFecha(lunes)} – ${labelFecha(ymdMas(lunes, 6))}`
+                : esHoy
+                  ? "Hoy"
+                  : labelFecha(fecha)}
+            </div>
+            {vistaActiva === "dia" && esHoy && <div className="text-[11px] text-muted">{labelFecha(fecha)}</div>}
           </div>
-          <Link href={href(ymdMas(fecha, 1))} aria-label="Día siguiente" className={btnNav}>
+          <Link href={href(ymdMas(fecha, paso))} aria-label={vistaActiva === "semana" ? "Semana siguiente" : "Día siguiente"} className={btnNav}>
             ›
           </Link>
           {!esHoy && (
@@ -130,6 +148,21 @@ export function AgendaDia({
               Volver a hoy
             </Link>
           )}
+          {/* Conmutador Día / Semana (como WeiBook) */}
+          <div className="ml-1 flex gap-0.5 rounded-[9px] border border-line bg-panel p-[3px]" role="group" aria-label="Vista">
+            {(["dia", "semana"] as const).map((v) => (
+              <Link
+                key={v}
+                href={href(fecha, v)}
+                aria-current={vistaActiva === v ? "page" : undefined}
+                className={`flex min-h-9 items-center rounded-md px-3 text-xs font-semibold transition ${
+                  vistaActiva === v ? "bg-elevated text-ink shadow-[inset_0_0_0_1px_var(--line)]" : "text-muted hover:text-ink"
+                }`}
+              >
+                {v === "dia" ? "Día" : "Semana"}
+              </Link>
+            ))}
+          </div>
         </div>
         <div className="flex gap-2">
           <button
@@ -156,7 +189,63 @@ export function AgendaDia({
         ))}
       </div>
 
-      {!ventana.abierta ? (
+      {vistaActiva === "semana" ? (
+        /* SEMANA: panorama compacto de los 7 días; tocar un día (o una cita)
+           abre su vista Día. Las citas van con su color de estado. */
+        <div className="mt-4 overflow-x-auto rounded-2xl border border-line bg-panel">
+          <div className="grid min-w-[840px] grid-cols-7 divide-x divide-line/60">
+            {Array.from({ length: 7 }, (_, i) => ymdMas(lunes, i)).map((ymd) => {
+              const abiertaDia = horarioEfectivo(ymd, horarioSemanal, diasEspeciales).abierta;
+              const citasDia = agendaSemana
+                .filter((a) => bogotaYmd(new Date(a.inicio)) === ymd)
+                .sort((a, b) => a.inicio.localeCompare(b.inicio));
+              const esHoyCol = ymd === hoy;
+              return (
+                <div key={ymd} className={`min-h-[260px] ${abiertaDia ? "" : "bg-bg/50 opacity-60"}`}>
+                  <Link
+                    href={href(ymd, "dia")}
+                    title="Ver el día completo"
+                    className={`block border-b border-line/60 px-2 py-2 text-center transition hover:bg-elevated ${
+                      esHoyCol ? "bg-accent/10" : ""
+                    }`}
+                  >
+                    <span
+                      className={`block text-[10.5px] font-bold uppercase tracking-wide ${
+                        esHoyCol ? "text-accent-soft" : "text-muted"
+                      }`}
+                    >
+                      {DOW[dowDeFecha(ymd)]}
+                    </span>
+                    <span className="block font-display text-lg leading-tight">{Number(ymd.slice(8))}</span>
+                  </Link>
+                  <div className="space-y-1 p-1.5">
+                    {!abiertaDia ? (
+                      <p className="px-1 py-2 text-center text-[10.5px] text-muted">Cerrado</p>
+                    ) : citasDia.length === 0 ? (
+                      <p className="px-1 py-2 text-center text-[10.5px] text-muted/60">—</p>
+                    ) : (
+                      citasDia.map((c) => {
+                        const est = estiloDe(c.estado);
+                        return (
+                          <Link
+                            key={c.id}
+                            href={href(ymd, "dia")}
+                            title={`${fmtTime(minutoDeISO(c.inicio))} · ${c.cliente || "Sin nombre"} · ${c.servicio} · ${c.barbero} (${est.label})`}
+                            className={`block truncate rounded-md border px-1.5 py-1 text-[10.5px] leading-tight ${est.card}`}
+                          >
+                            <span className="font-bold tabular-nums">{fmtTime(minutoDeISO(c.inicio))}</span>{" "}
+                            {c.cliente?.split(" ")[0] || "Cliente"}
+                          </Link>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ) : !ventana.abierta ? (
         <div className="mt-6 rounded-2xl border border-line bg-panel px-4 py-10 text-center">
           <p className="text-sm font-semibold text-ink">Ese día la sede está cerrada</p>
           <p className="mt-1 text-xs text-muted">Se cambia en Equipo → Horarios (día especial).</p>

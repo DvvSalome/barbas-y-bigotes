@@ -433,8 +433,14 @@ export type AgendaDiaItem = AgendaItem & { duracionMin: number };
 // fechas, no solo hoy). Mismo contrato de confianza que getAgendaSedeHoy: service
 // role tras el gate de /admin — lectura ya autorizada, no un permiso.
 export async function getAgendaSedeDia(sedeId: string, fechaYmd: string): Promise<AgendaDiaItem[]> {
+  return getAgendaSedeRango(sedeId, fechaYmd, 1);
+}
+
+// Rango de días (la vista SEMANA del calendario): un solo viaje para los 7 días.
+export async function getAgendaSedeRango(sedeId: string, desdeYmd: string, dias: number): Promise<AgendaDiaItem[]> {
   const admin = supabaseAdmin();
-  const { desde, hasta } = bogotaDayRangeDeFecha(fechaYmd);
+  const { desde } = bogotaDayRangeDeFecha(desdeYmd);
+  const hasta = new Date(desde.getTime() + dias * 86_400_000);
   const { data, error } = await admin
     .from("reservas")
     .select(
@@ -444,7 +450,7 @@ export async function getAgendaSedeDia(sedeId: string, fechaYmd: string): Promis
     .gte("inicio", desde.toISOString())
     .lt("inicio", hasta.toISOString())
     .order("inicio");
-  if (error) console.error("getAgendaSedeDia:", error.message);
+  if (error) console.error("getAgendaSedeRango:", error.message);
   return ((data ?? []) as Record<string, unknown>[]).map((r) => ({
     id: r.id as string,
     inicio: r.inicio as string,
