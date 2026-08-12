@@ -62,6 +62,13 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 // restaura. El MISMO snapshot se reescribe en cada cambio de paso, así un F5 o
 // el Atrás del navegador a mitad del wizard tampoco pierden lo elegido.
 const RESUME_KEY = "bb-reserva-reanudar";
+// La CONFIRMACIÓN también sobrevive a un reload: un deploy en caliente (Next
+// recarga la página por "version skew" de los server actions), la actualización
+// del PWA o un F5 justo después de confirmar borraban la pantalla "¡Listo!" —
+// la reserva SÍ existía pero el cliente no veía nada y podía reservar DOBLE.
+// Cazado en el E2E del 12-ago. Sin PII (nombre/correo no se guardan).
+const OK_KEY = "bb-reserva-lista";
+const OK_TTL_MS = 15 * 60000;
 // Vale 30 min: cubre el redirect de Google y un refresco/Atrás a mitad del wizard.
 const RESUME_TTL_MS = 30 * 60000;
 
@@ -366,6 +373,47 @@ export function BookingWizard({
   // medias desde sessionStorage; (2) detectar la sesión del cliente para el
   // paso datos ("Reservando como …").
   useEffect(() => {
+    // PRIMERO: ¿hay una confirmación reciente que un reload se comió? Se
+    // restaura la pantalla ¡Listo! con su token de deshacer — nunca el form
+    // (evita la doble reserva del cliente que cree que falló).
+    try {
+      const rawOk = sessionStorage.getItem(OK_KEY);
+      if (rawOk) {
+        const o = JSON.parse(rawOk) as {
+          t?: number;
+          token?: string | null;
+          sedeId?: SedeId | null;
+          servicioId?: string;
+          barberoId?: string | null;
+          dayISO?: string | null;
+          slot?: number | null;
+          bebida?: Bebida | null;
+          bebidaIncluida?: boolean;
+          servicioFoto?: string;
+        };
+        if (o.t && Date.now() - o.t < OK_TTL_MS) {
+          const sv = servicios.find((x) => x.id === o.servicioId) ?? null;
+          const d = o.dayISO ? new Date(o.dayISO) : null;
+          if (sv && d && !isNaN(d.getTime()) && o.slot != null && o.sedeId) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect -- rehidratación al montar (reload post-confirmación)
+            setSedeId(o.sedeId);
+            setServicio(sv);
+            if (o.servicioFoto) setServicioFoto(o.servicioFoto);
+            setBarbero(barberos.find((x) => x.id === o.barberoId) ?? null);
+            setDay(d);
+            setSlot(o.slot);
+            setBebida(o.bebida ?? null);
+            setBebidaIncluida(!!o.bebidaIncluida);
+            setReservaToken(o.token ?? null);
+            setStep("ok");
+            return;
+          }
+        }
+        sessionStorage.removeItem(OK_KEY); // vencida o incompleta
+      }
+    } catch {
+      // Snapshot corrupto: seguimos con el flujo normal.
+    }
     try {
       const raw = sessionStorage.getItem(RESUME_KEY);
       if (raw) {
@@ -394,7 +442,7 @@ export function BookingWizard({
           let destino: Step = s.step && ORDEN.includes(s.step) ? s.step : "servicio";
           if ((destino === "horario" || destino === "datos") && !sv) destino = "servicio";
           if (destino === "datos" && (!diaOk || s.slot == null)) destino = sv ? "horario" : "servicio";
-          // eslint-disable-next-line react-hooks/set-state-in-effect -- hidratación al montar desde sessionStorage (F5/Atrás o redirect de Google)
+           
           if (s.sedeId) setSedeId(s.sedeId);
           if (sv) {
             setServicio(sv);
@@ -782,6 +830,25 @@ export function BookingWizard({
     });
     setSaving(false);
     if (res.ok) {
+      // Persistir la confirmación ANTES de pintarla: si un reload (deploy/PWA/F5)
+      // llega en este instante, al remontar se restaura la pantalla ¡Listo!.
+      try {
+        sessionStorage.setItem(
+          OK_KEY,
+          JSON.stringify({
+            t: Date.now(),
+            token: res.token ?? null,
+            sedeId,
+            servicioId: servicio.id,
+            barberoId: elegido.id,
+            dayISO: day.toISOString(),
+            slot,
+            bebida,
+            bebidaIncluida,
+            servicioFoto,
+          }),
+        );
+      } catch {}
       setReservaToken(res.token ?? null);
       setBarbero(elegido);
       setStep("ok");
@@ -790,6 +857,13 @@ export function BookingWizard({
     setErrorMsg(res.error ?? "No se pudo reservar");
     volverAHorario();
   }
+
+  // Salir de la confirmación por un CTA la da por vista: no se re-muestra.
+  const limpiarOk = () => {
+    try {
+      sessionStorage.removeItem(OK_KEY);
+    } catch {}
+  };
 
   // Deshecha desde la confirmación: el cliente notó un dato mal y canceló. No sale
   // el correo de confirmación (la vista v_confirmaciones_pendientes excluye las
@@ -930,14 +1004,20 @@ export function BookingWizard({
             {sesion ? (
               <>
                 <button
-                  onClick={() => router.push("/cuenta")}
+                  onClick={() => {
+                    limpiarOk();
+                    router.push("/cuenta");
+                  }}
                   className="flex min-h-[50px] flex-[1.3] items-center justify-center rounded-2xl font-display text-[15px] font-extrabold uppercase tracking-wide text-on-accent"
                   style={{ background: GRAD_CTA }}
                 >
                   Ver mi cuenta
                 </button>
                 <button
-                  onClick={() => router.push("/")}
+                  onClick={() => {
+                    limpiarOk();
+                    router.push("/");
+                  }}
                   className="flex flex-1 items-center justify-center rounded-2xl border border-[rgba(242,237,228,0.16)] px-3 text-[13px] text-muted"
                 >
                   Volver al inicio
@@ -945,7 +1025,10 @@ export function BookingWizard({
               </>
             ) : (
               <button
-                onClick={() => router.push("/")}
+                onClick={() => {
+                  limpiarOk();
+                  router.push("/");
+                }}
                 className="flex min-h-[50px] flex-1 items-center justify-center rounded-2xl font-display text-[15px] font-extrabold uppercase tracking-wide text-on-accent"
                 style={{ background: GRAD_CTA }}
               >
@@ -964,8 +1047,10 @@ export function BookingWizard({
                   setCancelando(true);
                   const r = await cancelarReservaReciente(reservaToken);
                   setCancelando(false);
-                  if (r.ok) setCancelada(true);
-                  else setCancelError(r.error ?? "No se pudo cancelar. Intenta de nuevo.");
+                  if (r.ok) {
+                    limpiarOk(); // deshecha: un reload no debe revivir el "¡Listo!"
+                    setCancelada(true);
+                  } else setCancelError(r.error ?? "No se pudo cancelar. Intenta de nuevo.");
                 }}
                 disabled={cancelando}
                 className="text-[12.5px] text-muted underline underline-offset-2 transition hover:text-ink disabled:opacity-50"
