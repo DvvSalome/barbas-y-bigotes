@@ -14,7 +14,7 @@ export default async function CuponesPage() {
         title="Cupones"
         description="Códigos de descuento que se aplican al cobrar en la app del barbero."
       />
-      <div className="mt-8">
+      <div className="mt-5">
         <CuponesAdmin cupones={cupones} />
       </div>
     </div>

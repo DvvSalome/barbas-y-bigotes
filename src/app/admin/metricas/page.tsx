@@ -97,14 +97,14 @@ export default async function MetricasPage({
   const nuevos = m.clientes.total - m.clientes.repiten;
 
   return (
-    <div>
+    <div className="max-w-6xl">
       <SectionHeader
         eyebrow="Negocio"
         title="Métricas"
         description="Cómo viene el negocio, no cómo viene el día. Para el día está la pantalla de inicio."
       />
 
-      <div className="mt-4 flex flex-wrap items-center gap-2">
+      <div className="mt-5 flex flex-wrap items-center gap-2">
         {PERIODOS.map((x) => (
           <Link
             key={x.id}

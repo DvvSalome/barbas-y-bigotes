@@ -30,7 +30,7 @@ export default async function ComisionesPage() {
         }
       />
 
-      <p className="mt-4 text-[13px] text-muted">
+      <p className="mt-5 text-[13px] text-muted">
         Toca el contrato de un barbero para cambiarlo. Aplica desde el próximo cobro; lo ya cobrado no se
         recalcula.
       </p>

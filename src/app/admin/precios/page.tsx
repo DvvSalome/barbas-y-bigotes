@@ -69,7 +69,7 @@ export default async function PreciosPage({
           <PreciosLista servicios={servicios} sedes={sedes} etiquetas={categorias} />
         </section>
 
-        <aside className="lg:sticky lg:top-28 lg:max-h-[calc(100dvh-8.5rem)] lg:overflow-y-auto lg:rounded-3xl">
+        <aside className="lg:sticky lg:top-28 lg:max-h-[calc(100dvh-8.5rem)] lg:overflow-y-auto">
           <h2 className="mb-3 inline-flex items-center rounded-full border border-accent/30 bg-accent/5 px-4 py-1.5 font-display text-lg">
             Armador de combos
           </h2>

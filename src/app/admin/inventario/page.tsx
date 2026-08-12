@@ -9,7 +9,7 @@ export default async function InventarioPage() {
   const [productos, sedes] = await Promise.all([getProductos(), getSedes()]);
 
   return (
-    <div className="max-w-5xl">
+    <div className="max-w-6xl">
       <SectionHeader
         eyebrow="Catálogo"
         title="Productos y stock"
