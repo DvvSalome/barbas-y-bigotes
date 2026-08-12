@@ -44,6 +44,7 @@ export function AgendarCitaForm({
   diasEspeciales,
   barberoInicial,
   diaInicial,
+  slotInicial,
   onDone,
   onCancel,
 }: {
@@ -52,9 +53,12 @@ export function AgendarCitaForm({
   servicios: Servicio[];
   horarioSemanal: HorarioSemanal[]; // ya filtrado por la sede
   diasEspeciales: DiaEspecial[]; // ya filtrado por la sede
-  /** Preselección al abrir desde el calendario (columna/día tocados). */
+  /** Preselección al abrir desde el calendario (columna/día/hora tocados). */
   barberoInicial?: string;
   diaInicial?: Date;
+  /** Minuto-del-día tocado en la grilla (estilo Google Calendar): la hora ya
+   *  viene elegida; si está ocupada, la grilla lo muestra y se elige otra. */
+  slotInicial?: number;
   onDone: () => void;
   onCancel: () => void;
 }) {
@@ -64,7 +68,7 @@ export function AgendarCitaForm({
   const [barberoId, setBarberoId] = useState(barberoInicial ?? barberos[0]?.id ?? "");
   const [servicioId, setServicioId] = useState(serviciosSede[0]?.id ?? "");
   const [day, setDay] = useState<Date | null>(null);
-  const [slot, setSlot] = useState<number | null>(null);
+  const [slot, setSlot] = useState<number | null>(slotInicial ?? null);
   const [nombre, setNombre] = useState("");
   const [telefono, setTelefono] = useState("");
   const [email, setEmail] = useState("");

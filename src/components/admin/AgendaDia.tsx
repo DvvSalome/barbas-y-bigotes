@@ -24,13 +24,15 @@ import type { AgendaDiaItem, BloqueoDia, HorarioSemanal, DiaEspecial } from "@/l
 const PX_MIN = 1.1;
 
 // Color por estado — tokens del panel, no colores inventados (DESIGN.md).
+// Estilo Google Calendar: banda de color a la IZQUIERDA + fondo suave del
+// mismo tono; el estado se lee por la banda aunque el bloque sea chiquito.
 const ESTILO_ESTADO: Record<string, { card: string; label: string }> = {
-  pendiente: { card: "border-dashed border-line bg-elevated text-ink", label: "Pendiente" },
-  confirmada: { card: "border-accent/55 bg-accent/10 text-ink", label: "Confirmada" },
-  en_curso: { card: "border-ok/60 bg-ok/10 text-ink", label: "En curso" },
-  completada: { card: "border-ok/30 bg-ok/[0.04] text-muted", label: "Completada" },
-  cancelada: { card: "border-line/50 bg-transparent text-muted line-through opacity-60", label: "Cancelada" },
-  no_show: { card: "border-warn/55 bg-warn/10 text-warn", label: "No vino" },
+  pendiente: { card: "border-l-[3px] border-y border-r border-l-muted/60 border-line/60 border-dashed bg-elevated text-ink", label: "Pendiente" },
+  confirmada: { card: "border-l-[3px] border-y border-r border-l-accent border-accent/25 bg-accent/10 text-ink", label: "Confirmada" },
+  en_curso: { card: "border-l-[3px] border-y border-r border-l-ok border-ok/25 bg-ok/10 text-ink", label: "En curso" },
+  completada: { card: "border-l-[3px] border-y border-r border-l-ok/50 border-ok/15 bg-ok/[0.04] text-muted", label: "Completada" },
+  cancelada: { card: "border-l-[3px] border-y border-r border-l-line border-line/40 bg-transparent text-muted line-through opacity-60", label: "Cancelada" },
+  no_show: { card: "border-l-[3px] border-y border-r border-l-warn border-warn/25 bg-warn/10 text-warn", label: "No vino" },
 };
 const estiloDe = (estado: string) => ESTILO_ESTADO[estado] ?? ESTILO_ESTADO.pendiente;
 
@@ -90,7 +92,7 @@ export function AgendaDia({
 }) {
   const router = useRouter();
   const vistaActiva = vista ?? "dia";
-  const [sheet, setSheet] = useState<{ barberoId?: string } | null>(null);
+  const [sheet, setSheet] = useState<{ barberoId?: string; slot?: number } | null>(null);
   // Detalle de una cita tocada (+ modo mover dentro del mismo sheet).
   const [detalle, setDetalle] = useState<AgendaDiaItem | null>(null);
   const [moviendo, setMoviendo] = useState(false);
@@ -284,7 +286,7 @@ export function AgendaDia({
         /* SEMANA: panorama compacto de los 7 días; tocar un día (o una cita)
            abre su vista Día. Las citas van con su color de estado. */
         <div className="mt-4 overflow-x-auto rounded-2xl border border-line bg-panel">
-          <div className="grid min-w-[840px] grid-cols-7 divide-x divide-line/60">
+          <div className="grid min-w-[700px] grid-cols-7 divide-x divide-line/60">
             {Array.from({ length: 7 }, (_, i) => ymdMas(lunes, i)).map((ymd) => {
               const abiertaDia = horarioEfectivo(ymd, horarioSemanal, diasEspeciales).abierta;
               const citasDia = agendaSemana
@@ -307,7 +309,14 @@ export function AgendaDia({
                     >
                       {DOW[dowDeFecha(ymd)]}
                     </span>
-                    <span className="block font-display text-lg leading-tight">{Number(ymd.slice(8))}</span>
+                    {/* Hoy con su círculo lleno (firma Google Calendar) */}
+                    <span
+                      className={`mx-auto grid h-7 w-7 place-items-center font-display text-lg leading-none ${
+                        esHoyCol ? "rounded-full bg-accent text-on-accent" : ""
+                      }`}
+                    >
+                      {Number(ymd.slice(8))}
+                    </span>
                   </Link>
                   <div className="space-y-1 p-1.5">
                     {!abiertaDia ? (
@@ -352,7 +361,9 @@ export function AgendaDia({
           ref={scrollRef}
           className="mt-4 max-h-[62dvh] overflow-auto rounded-2xl border border-line bg-panel lg:max-h-[calc(100dvh-15rem)]"
         >
-          <div style={{ minWidth: 64 + barberos.length * 168 }}>
+          {/* 148px por barbero: en un celular caben ~2 columnas y el resto va
+              con scroll lateral (horas y cabecera quedan fijas). */}
+          <div style={{ minWidth: 64 + barberos.length * 148 }}>
             {/* Cabecera: quién es cada columna (fija arriba al scrollear) */}
             <div className="sticky top-0 z-20 grid border-b border-line bg-panel" style={{ gridTemplateColumns: `64px repeat(${barberos.length}, 1fr)` }}>
               <div />
@@ -382,6 +393,14 @@ export function AgendaDia({
                     {fmtTime(m)}
                   </span>
                 ))}
+                {/* El punto del AHORA en el canal de horas (firma Google Calendar) */}
+                {esHoy && ahoraMin >= abre && ahoraMin <= cierra && (
+                  <span
+                    aria-hidden
+                    className="absolute right-0 z-10 h-2.5 w-2.5 -translate-y-1/2 translate-x-1/2 rounded-full bg-accent shadow"
+                    style={{ top: (ahoraMin - abre) * PX_MIN }}
+                  />
+                )}
               </div>
 
               {barberos.map((b, colIdx) => {
@@ -390,21 +409,31 @@ export function AgendaDia({
                 return (
                   <div
                     key={b.id}
-                    className="relative border-l border-line/60"
+                    className="relative cursor-pointer border-l border-line/60"
                     style={{ height: altoDia }}
                     onClick={(e) => {
-                      // Tocar un hueco vacío de la columna → agendar con ese barbero.
-                      if (e.target === e.currentTarget) setSheet({ barberoId: b.id });
+                      // Tocar un hueco → agendar con ese barbero A ESA HORA
+                      // (estilo Google Calendar: la hora tocada ya viene elegida).
+                      if (e.target !== e.currentTarget) return;
+                      const rect = e.currentTarget.getBoundingClientRect();
+                      const min = abre + Math.floor((e.clientY - rect.top) / (PX_MIN * 30)) * 30;
+                      setSheet({ barberoId: b.id, slot: Math.min(cierra - 30, Math.max(abre, min)) });
                     }}
                   >
-                    {/* Rayas de hora (guía visual) */}
+                    {/* Rayas de hora + medias horas punteadas (guía visual) */}
                     {horas.map((m) => (
-                      <span
-                        key={m}
-                        aria-hidden
-                        className="pointer-events-none absolute inset-x-0 border-t border-line/40"
-                        style={{ top: (m - abre) * PX_MIN }}
-                      />
+                      <span key={m} aria-hidden>
+                        <span
+                          className="pointer-events-none absolute inset-x-0 border-t border-line/40"
+                          style={{ top: (m - abre) * PX_MIN }}
+                        />
+                        {m + 30 < cierra && (
+                          <span
+                            className="pointer-events-none absolute inset-x-0 border-t border-dashed border-line/20"
+                            style={{ top: (m + 30 - abre) * PX_MIN }}
+                          />
+                        )}
+                      </span>
                     ))}
 
                     {/* Bloqueos (gris): almuerzo/diligencia o el día entero. Tocar → quitar. */}
@@ -465,13 +494,21 @@ export function AgendaDia({
                           }}
                           title={`${fmtTime(ini)} · ${c.cliente || "Sin nombre"} · ${c.servicio} (${est.label})${movible ? " — arrastrá para mover" : ""}`}
                         >
-                          <span className="font-bold tabular-nums">
-                            {arrastrando ? fmtTime(Math.min(cierra - c.duracionMin, Math.max(abre, ini + drag!.dMin))) : fmtTime(ini)}
-                          </span>{" "}
-                          <span className="font-semibold">{c.cliente || "Sin nombre"}</span>
-                          {/* En bloques de 30 min (grilla compacta) la 2ª línea no cabe:
-                              el servicio vive en el title y en el detalle. */}
-                          {alto >= 40 && <span className="block truncate opacity-80">{c.servicio}</span>}
+                          {/* Estilo Google: el NOMBRE manda; hora y servicio debajo
+                              cuando el bloque tiene alto (si no, viven en el title). */}
+                          <span className="block truncate font-semibold">
+                            {arrastrando && (
+                              <span className="mr-1 font-bold tabular-nums">
+                                {fmtTime(Math.min(cierra - c.duracionMin, Math.max(abre, ini + drag!.dMin)))}
+                              </span>
+                            )}
+                            {c.cliente || "Sin nombre"}
+                          </span>
+                          {alto >= 40 && (
+                            <span className="block truncate text-[10px] tabular-nums opacity-75">
+                              {fmtTime(ini)} – {fmtTime(ini + c.duracionMin)} · {c.servicio}
+                            </span>
+                          )}
                         </button>
                       );
                     })}
@@ -513,6 +550,7 @@ export function AgendaDia({
               diasEspeciales={diasEspeciales}
               barberoInicial={sheet.barberoId}
               diaInicial={new Date(`${fecha}T12:00:00-05:00`)}
+              slotInicial={sheet.slot}
               onDone={() => {
                 setSheet(null);
                 router.refresh();
