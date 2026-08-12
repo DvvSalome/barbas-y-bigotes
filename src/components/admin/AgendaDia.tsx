@@ -380,8 +380,10 @@ export function AgendaDia({
               ))}
             </div>
 
-            {/* Cuerpo: horas + columnas con bloques */}
-            <div ref={cuerpoRef} className="grid" style={{ gridTemplateColumns: `64px repeat(${barberos.length}, 1fr)` }}>
+            {/* Cuerpo: horas + columnas con bloques. py-3: sin ese aire, la
+                etiqueta de la primera hora quedaba mordida por la cabecera fija
+                y la del cierre se cortaba contra el borde de abajo. */}
+            <div ref={cuerpoRef} className="grid py-3" style={{ gridTemplateColumns: `64px repeat(${barberos.length}, 1fr)` }}>
               {/* Columna de horas (fija a la izquierda al scrollear de lado) */}
               <div className="sticky left-0 z-10 bg-panel" style={{ height: altoDia }}>
                 {horas.map((m) => (
@@ -393,6 +395,13 @@ export function AgendaDia({
                     {fmtTime(m)}
                   </span>
                 ))}
+                {/* La hora de CIERRE también se etiqueta (el día no termina en el aire) */}
+                <span
+                  className="absolute right-2 -translate-y-1/2 text-[10.5px] tabular-nums text-muted"
+                  style={{ top: (cierra - abre) * PX_MIN }}
+                >
+                  {fmtTime(cierra)}
+                </span>
                 {/* El punto del AHORA en el canal de horas (firma Google Calendar) */}
                 {esHoy && ahoraMin >= abre && ahoraMin <= cierra && (
                   <span
@@ -409,7 +418,7 @@ export function AgendaDia({
                 return (
                   <div
                     key={b.id}
-                    className="relative cursor-pointer border-l border-line/60"
+                    className="relative cursor-pointer border-b border-l border-line/40 border-l-line/60"
                     style={{ height: altoDia }}
                     onClick={(e) => {
                       // Tocar un hueco → agendar con ese barbero A ESA HORA
