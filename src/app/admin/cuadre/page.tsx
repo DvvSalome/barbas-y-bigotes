@@ -60,10 +60,30 @@ export default async function CuadrePage() {
   const totalPendiente = pendientes.reduce((a, p) => a + p.monto, 0);
 
   return (
-    <div className="max-w-5xl">
+    <div className="max-w-7xl">
       <SectionHeader eyebrow="Hoy" title="Cuadre de caja" description={<span className="capitalize">{fecha}</span>} />
 
-      <div className="mt-8">
+      {/* El pulso de la plata en cuadros, de un vistazo y sin scroll */}
+      <div className="mt-5 grid grid-cols-2 gap-3 sm:max-w-2xl sm:grid-cols-4">
+        {[
+          { n: cop(cuadre.total.ingresos), l: "entró hoy", tono: "text-accent-soft" },
+          { n: cop(totalPendiente), l: "pendiente por cobrar", tono: totalPendiente > 0 ? "text-warn" : "text-muted" },
+          { n: cop(cuadre.total.gastos), l: "gastos de hoy", tono: "text-ink" },
+          { n: cop(cuadre.total.neto), l: "queda neto", tono: "text-ok" },
+        ].map((k) => (
+          <div key={k.l} className="rounded-2xl border border-line bg-panel px-3.5 py-3">
+            <div className={`font-display text-xl font-bold tabular-nums ${k.tono}`}>{k.n}</div>
+            <div className="text-[11px] leading-tight text-muted">{k.l}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* DOS PANELES en escritorio: a la izquierda lo que se MIRA (cajas, corte
+          del día); a la derecha, FIJO, lo que se HACE (gasto, adelanto, medios).
+          En móvil se apila en el mismo orden de siempre. */}
+      <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_400px] lg:items-start">
+        <section className="min-w-0">
+      <div>
         <CajaSesiones cajas={cajas} medios={medios} />
       </div>
 
@@ -95,7 +115,7 @@ export default async function CuadrePage() {
         </div>
       )}
 
-      <h2 className="mt-10 text-xs uppercase tracking-[0.3em] text-accent">Corte del día (solo lo de hoy)</h2>
+      <h2 className="mt-8 text-xs uppercase tracking-[0.3em] text-accent">Corte del día (solo lo de hoy)</h2>
       {/* La tarjeta de caja de arriba acumula desde la apertura (puede abarcar
           varios días); sin esta aclaración los dos totales parecen contradecirse. */}
       <p className="mt-1 text-xs text-muted">
@@ -106,55 +126,61 @@ export default async function CuadrePage() {
           (tarjetas para móvil + tabla de 8 columnas para escritorio): el mismo
           contenido mantenido en dos lugares, y la tabla leía como planilla
           contable cuando lo que se busca acá es "cuánto entró y cuánto queda". */}
-      <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="mt-3 grid gap-3 sm:grid-cols-2">
         {cuadre.porSede.map((s) => (
           <CorteSede key={s.sede} nombre={s.nombre} d={s} />
         ))}
         <CorteSede nombre="Las dos sedes" d={cuadre.total} destacado />
       </div>
+        </section>
 
-      <div className="mt-8">
-        <CuadreForms sedes={sedes} barberos={barberos} />
+        {/* Panel de ACCIONES, fijo a la derecha con su propio scroll */}
+        <aside className="lg:sticky lg:top-28 lg:max-h-[calc(100dvh-8.5rem)] lg:overflow-y-auto">
+          <CuadreForms sedes={sedes} barberos={barberos} />
+          <div className="mt-6">
+            <MediosPago medios={medios} />
+          </div>
+        </aside>
       </div>
 
-      <div className="mt-8">
-        <MediosPago medios={medios} />
-      </div>
+      {/* Las bitácoras del día, a lo ancho y lado a lado */}
+      {(cuadre.gastosHoy.length > 0 || adelantos.length > 0) && (
+        <div className="mt-8 grid gap-6 md:grid-cols-2">
+          {cuadre.gastosHoy.length > 0 && (
+            <div>
+              <h2 className="mb-3 text-xs uppercase tracking-[0.3em] text-accent">Gastos de hoy</h2>
+              <ul className="divide-y divide-line/60 overflow-hidden rounded-2xl border border-line bg-panel">
+                {cuadre.gastosHoy.map((g) => (
+                  <li key={g.id} className="flex items-center justify-between gap-3 px-4 py-3 text-sm">
+                    <span className="min-w-0">
+                      <span className="block font-medium">{g.categoria}</span>
+                      {g.descripcion && <span className="block text-xs text-muted">{g.descripcion}</span>}
+                    </span>
+                    <span className="shrink-0 tabular-nums text-muted">−{cop(g.monto)}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
-      {cuadre.gastosHoy.length > 0 && (
-        <div className="mt-8">
-          <h2 className="mb-3 text-xs uppercase tracking-[0.3em] text-accent">Gastos de hoy</h2>
-
-          <ul className="divide-y divide-line/60 overflow-hidden rounded-2xl border border-line bg-panel">
-            {cuadre.gastosHoy.map((g) => (
-              <li key={g.id} className="flex items-center justify-between gap-3 px-4 py-3 text-sm">
-                <span className="min-w-0">
-                  <span className="block font-medium">{g.categoria}</span>
-                  {g.descripcion && <span className="block text-xs text-muted">{g.descripcion}</span>}
-                </span>
-                <span className="shrink-0 tabular-nums text-muted">−{cop(g.monto)}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      {/* Rastro visible del adelanto: sin esta lista, registrar uno no se veía
-          en ninguna parte y el dueño dudaba si guardó (o lo metía dos veces). */}
-      {adelantos.length > 0 && (
-        <div className="mt-8">
-          <h2 className="mb-3 text-xs uppercase tracking-[0.3em] text-accent">Adelantos de hoy</h2>
-          <ul className="divide-y divide-line/60 overflow-hidden rounded-2xl border border-line bg-panel">
-            {adelantos.map((a) => (
-              <li key={a.id} className="flex items-center justify-between gap-3 px-4 py-3 text-sm">
-                <span className="min-w-0">
-                  <span className="block font-medium">{a.barbero}</span>
-                  {a.nota && <span className="block text-xs text-muted">{a.nota}</span>}
-                </span>
-                <span className="shrink-0 tabular-nums text-muted">−{cop(a.monto)}</span>
-              </li>
-            ))}
-          </ul>
+          {/* Rastro visible del adelanto: sin esta lista, registrar uno no se veía
+              en ninguna parte y el dueño dudaba si guardó (o lo metía dos veces). */}
+          {adelantos.length > 0 && (
+            <div>
+              <h2 className="mb-3 text-xs uppercase tracking-[0.3em] text-accent">Adelantos de hoy</h2>
+              <ul className="divide-y divide-line/60 overflow-hidden rounded-2xl border border-line bg-panel">
+                {adelantos.map((a) => (
+                  <li key={a.id} className="flex items-center justify-between gap-3 px-4 py-3 text-sm">
+                    <span className="min-w-0">
+                      <span className="block font-medium">{a.barbero}</span>
+                      {a.nota && <span className="block text-xs text-muted">{a.nota}</span>}
+                    </span>
+                    <span className="shrink-0 tabular-nums text-muted">−{cop(a.monto)}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
       )}
 

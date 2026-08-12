@@ -85,7 +85,8 @@ export function CuadreForms({ sedes, barberos }: { sedes: Sede[]; barberos: Barb
   }
 
   return (
-    <div className="grid gap-5 md:grid-cols-2">
+    // Apiladas: las formas viven en el panel derecho (angosto) del cuadre.
+    <div className="grid gap-5">
       <form onSubmit={submitGasto} className="space-y-3 rounded-2xl border border-line bg-panel p-5">
         <h3 className="flex items-center gap-2 font-display text-xl">
           <TagIcon className="h-4 w-4 text-accent" /> Registrar gasto
