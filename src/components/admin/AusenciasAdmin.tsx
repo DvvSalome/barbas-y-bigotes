@@ -74,8 +74,9 @@ export function AusenciasAdmin({
 
   return (
     <div>
-      <form onSubmit={agregar} className="grid gap-3 rounded-2xl border border-line bg-panel p-5 sm:grid-cols-4">
-        <h3 className="font-display text-lg sm:col-span-4">Marcar ausencia</h3>
+      {/* Apilado en una columna: vive en el panel derecho (angosto) de Equipo. */}
+      <form onSubmit={agregar} className="grid gap-3 rounded-2xl border border-line bg-panel p-5">
+        <h3 className="font-display text-lg">Marcar ausencia</h3>
         <ElegirBarbero
           barberos={barberos.map((b) => ({ id: b.id, nombre: b.nombre, fotoUrl: b.fotoUrl }))}
           value={barberoId}
@@ -87,14 +88,14 @@ export function AusenciasAdmin({
           value={motivo}
           onChange={(e) => setMotivo(e.target.value)}
           placeholder="Motivo (opcional)"
-          className={`${input} sm:col-span-2`}
+          className={input}
         />
         {err && (
-          <div className="rounded-lg border border-accent/40 bg-accent/10 px-3 py-2 text-sm text-accent-soft sm:col-span-4">
+          <div className="rounded-lg border border-accent/40 bg-accent/10 px-3 py-2 text-sm text-accent-soft">
             {err}
           </div>
         )}
-        <div className="sm:col-span-4">
+        <div>
           <button
             disabled={saving}
             className="rounded-full bg-accent px-6 py-2.5 text-sm font-semibold uppercase tracking-wide text-on-accent transition hover:bg-accent-soft disabled:opacity-50"

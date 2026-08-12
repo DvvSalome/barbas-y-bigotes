@@ -19,38 +19,39 @@ export default async function EquipoPage() {
     getAusenciasAdmin(),
   ]);
   return (
-    <div className="max-w-3xl">
+    <div className="max-w-6xl">
       <SectionHeader
         eyebrow="Acceso"
         title="Quién entra a la app"
         description="El PIN del mostrador lo usa todo el equipo del local; el de cada barbero es personal. Los dos entran desde /login."
       />
 
-      {/* Primero el mostrador: es la forma normal de entrar en el local. */}
-      <div className="mt-5">
-        <h2 className="mb-3 text-xs uppercase tracking-[0.3em] text-accent">PIN del mostrador</h2>
-        <SedePinAdmin sedes={sedes} estado={estadoSedes} />
-      </div>
+      {/* DOS PANELES en escritorio (patrón del panel): a la izquierda el ACCESO
+          (PIN del mostrador + PIN de cada barbero); a la derecha, FIJAS, las
+          ausencias — se marca quién falta viendo al equipo, sin bajar una
+          columna eterna. En móvil se apila en el mismo orden de siempre. */}
+      <div className="mt-5 grid gap-6 lg:grid-cols-[minmax(0,1fr)_400px] lg:items-start">
+        <section className="min-w-0">
+          <h2 className="mb-3 text-xs uppercase tracking-[0.3em] text-accent">PIN del mostrador</h2>
+          <SedePinAdmin sedes={sedes} estado={estadoSedes} />
 
-      <h2 className="mb-3 mt-8 text-xs uppercase tracking-[0.3em] text-accent">PIN de cada barbero</h2>
-      <div>
-        <EquipoPinAdmin
-          barberos={barberos}
-          sedes={sedes}
-          estado={estado}
-          ausentesHoy={ausencias.filter((a) => a.fecha === bogotaYmd()).map((a) => a.barberoId)}
-        />
-      </div>
+          <h2 className="mb-3 mt-8 text-xs uppercase tracking-[0.3em] text-accent">PIN de cada barbero</h2>
+          <EquipoPinAdmin
+            barberos={barberos}
+            sedes={sedes}
+            estado={estado}
+            ausentesHoy={ausencias.filter((a) => a.fecha === bogotaYmd()).map((a) => a.barberoId)}
+          />
+        </section>
 
-      <div className="mt-10">
-        <SectionHeader
-          eyebrow="Disponibilidad"
-          title="Ausencias"
-          description="Si un barbero no va un día, marcalo acá: deja de aparecer para reservar esa fecha y no se le pueden agendar citas nuevas."
-        />
-        <div className="mt-5">
+        <aside className="lg:sticky lg:top-28 lg:max-h-[calc(100dvh-8.5rem)] lg:overflow-y-auto">
+          <h2 className="mb-3 text-xs uppercase tracking-[0.3em] text-accent">Ausencias</h2>
+          <p className="mb-4 text-[12.5px] text-muted">
+            Si un barbero no va un día, marcalo acá: deja de aparecer para reservar esa fecha. Los bloqueos por horas
+            (almuerzo) se crean desde el calendario y también se listan abajo.
+          </p>
           <AusenciasAdmin barberos={barberos} sedes={sedes} ausencias={ausencias} />
-        </div>
+        </aside>
       </div>
 
       {/* El horario de la sede (semana + días especiales) se movió a su propia
