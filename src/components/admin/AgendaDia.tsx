@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AgendarCitaForm } from "@/components/barbero/AgendarCitaForm";
 import { MoverCitaForm } from "@/components/admin/MoverCitaForm";
 import { BloquearHorasForm } from "@/components/admin/BloquearHorasForm";
-import { quitarBloqueo } from "@/lib/actions";
+import { quitarBloqueo, moverCita } from "@/lib/actions";
+import { instanteBogota } from "@/lib/slots";
 import { CaraBarbero } from "@/components/staff/Elegir";
 import { DOW, MON, fmtTime, horarioEfectivo, dowDeFecha, bogotaYmd } from "@/lib/slots";
 import type { Barbero, Servicio, SedeId } from "@/lib/data/types";
@@ -96,6 +97,69 @@ export function AgendaDia({
   const [quitando, setQuitando] = useState(false);
   const [errBloqueo, setErrBloqueo] = useState<string | null>(null);
   const [ahoraMin, setAhoraMin] = useState(minutoBogota);
+  // Arrastre con MOUSE (escritorio): en táctil queda tocar → "Mover" (más
+  // fiable que un drag con el pulgar sobre una grilla que scrollea).
+  const cuerpoRef = useRef<HTMLDivElement>(null);
+  const [drag, setDrag] = useState<{
+    cita: AgendaDiaItem;
+    col: number; // columna (índice de barbero) de origen
+    ini: number; // minuto de inicio original
+    dCols: number; // desplazamiento de columnas (snapped)
+    dMin: number; // desplazamiento en minutos (snapped a 30)
+    movio: boolean;
+  } | null>(null);
+  const [guardandoDrag, setGuardandoDrag] = useState(false);
+  const [errDrag, setErrDrag] = useState<string | null>(null);
+  // Tras un arrastre real, el navegador dispara igual un click sobre el bloque:
+  // se suprime UNA vez para que no se abra el detalle encima del movimiento.
+  const suprimirClickRef = useRef(false);
+
+  function empezarDrag(e: React.PointerEvent, cita: AgendaDiaItem, col: number, ini: number) {
+    // Solo mouse, solo citas movibles, y nunca en medio de un guardado.
+    if (e.pointerType !== "mouse" || e.button !== 0 || guardandoDrag) return;
+    if (!["pendiente", "confirmada"].includes(cita.estado)) return;
+    const startX = e.clientX;
+    const startY = e.clientY;
+    const anchoCol = cuerpoRef.current ? (cuerpoRef.current.clientWidth - 64) / barberos.length : 0;
+    setErrDrag(null);
+    setDrag({ cita, col, ini, dCols: 0, dMin: 0, movio: false });
+
+    const onMove = (ev: PointerEvent) => {
+      const dx = ev.clientX - startX;
+      const dy = ev.clientY - startY;
+      const movio = Math.abs(dx) > 6 || Math.abs(dy) > 6;
+      const dCols = anchoCol > 0 ? Math.round(dx / anchoCol) : 0;
+      const dMin = Math.round(dy / (PX_MIN * 30)) * 30;
+      setDrag((d) => (d ? { ...d, dCols, dMin, movio: d.movio || movio } : d));
+      if (movio) ev.preventDefault();
+    };
+    const onUp = async () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      // setDrag con función para leer el estado final sin carreras.
+      setDrag((d) => {
+        if (!d) return null;
+        if (!d.movio) return null; // click simple: lo abre el onClick nativo
+        suprimirClickRef.current = true;
+        const nuevaCol = Math.min(barberos.length - 1, Math.max(0, d.col + d.dCols));
+        const nuevoMin = Math.min(cierra - d.cita.duracionMin, Math.max(abre, d.ini + d.dMin));
+        if (nuevaCol === d.col && nuevoMin === d.ini) return null; // no se movió de verdad
+        setGuardandoDrag(true);
+        moverCita({
+          reservaId: d.cita.id,
+          inicioISO: instanteBogota(fecha, nuevoMin).toISOString(),
+          barberoId: barberos[nuevaCol].id,
+        }).then((res) => {
+          setGuardandoDrag(false);
+          if (res.ok) router.refresh();
+          else setErrDrag(res.error ?? "No se pudo mover la cita.");
+        });
+        return null;
+      });
+    };
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+  }
 
   const esHoy = fecha === hoy;
   const ventana = horarioEfectivo(fecha, horarioSemanal, diasEspeciales);
@@ -187,7 +251,19 @@ export function AgendaDia({
             {v.label}
           </span>
         ))}
+        <span className="hidden lg:inline text-muted/70">· con el mouse: arrastrá una cita para moverla</span>
       </div>
+
+      {/* Resultado del arrastre (guardando / error del server) */}
+      {(errDrag || guardandoDrag) && (
+        <div
+          className={`mt-2 rounded-xl border px-3.5 py-2 text-sm ${
+            errDrag ? "border-accent/40 bg-accent/10 text-accent-soft" : "border-line bg-panel text-muted"
+          }`}
+        >
+          {errDrag ?? "Moviendo la cita…"}
+        </div>
+      )}
 
       {vistaActiva === "semana" ? (
         /* SEMANA: panorama compacto de los 7 días; tocar un día (o una cita)
@@ -274,7 +350,7 @@ export function AgendaDia({
             </div>
 
             {/* Cuerpo: horas + columnas con bloques */}
-            <div className="grid" style={{ gridTemplateColumns: `64px repeat(${barberos.length}, 1fr)` }}>
+            <div ref={cuerpoRef} className="grid" style={{ gridTemplateColumns: `64px repeat(${barberos.length}, 1fr)` }}>
               {/* Columna de horas */}
               <div className="relative" style={{ height: altoDia }}>
                 {horas.map((m) => (
@@ -288,7 +364,7 @@ export function AgendaDia({
                 ))}
               </div>
 
-              {barberos.map((b) => {
+              {barberos.map((b, colIdx) => {
                 const citas = agenda.filter((a) => a.barberoId === b.id);
                 const misBloqueos = bloqueos.filter((x) => x.barberoId === b.id);
                 return (
@@ -337,19 +413,41 @@ export function AgendaDia({
                       const ini = minutoDeISO(c.inicio);
                       const est = estiloDe(c.estado);
                       const alto = Math.max(30, c.duracionMin * PX_MIN - 3);
+                      const arrastrando = drag?.movio && drag.cita.id === c.id;
+                      const movible = ["pendiente", "confirmada"].includes(c.estado);
                       return (
                         <button
                           key={c.id}
                           type="button"
+                          onPointerDown={(e) => empezarDrag(e, c, colIdx, ini)}
                           onClick={() => {
+                            if (suprimirClickRef.current) {
+                              suprimirClickRef.current = false;
+                              return;
+                            }
                             setMoviendo(false);
                             setDetalle(c);
                           }}
-                          className={`absolute inset-x-1 overflow-hidden rounded-lg border px-2 py-1 text-left text-[11px] leading-tight shadow-sm transition hover:brightness-110 ${est.card}`}
-                          style={{ top: (ini - abre) * PX_MIN + 1, height: alto }}
-                          title={`${fmtTime(ini)} · ${c.cliente || "Sin nombre"} · ${c.servicio} (${est.label})`}
+                          className={`absolute inset-x-1 overflow-hidden rounded-lg border px-2 py-1 text-left text-[11px] leading-tight shadow-sm ${
+                            arrastrando
+                              ? "z-30 cursor-grabbing opacity-90 shadow-xl ring-2 ring-accent"
+                              : `transition hover:brightness-110 ${movible ? "lg:cursor-grab" : ""}`
+                          } ${est.card}`}
+                          style={{
+                            top: (ini - abre) * PX_MIN + 1,
+                            height: alto,
+                            // Vista previa del arrastre: columnas de igual ancho →
+                            // 100% por columna; vertical snapeado a 30 min.
+                            transform: arrastrando
+                              ? `translate(${drag!.dCols * 100}%, ${drag!.dMin * PX_MIN}px)`
+                              : undefined,
+                            touchAction: "auto",
+                          }}
+                          title={`${fmtTime(ini)} · ${c.cliente || "Sin nombre"} · ${c.servicio} (${est.label})${movible ? " — arrastrá para mover" : ""}`}
                         >
-                          <span className="font-bold tabular-nums">{fmtTime(ini)}</span>{" "}
+                          <span className="font-bold tabular-nums">
+                            {arrastrando ? fmtTime(Math.min(cierra - c.duracionMin, Math.max(abre, ini + drag!.dMin))) : fmtTime(ini)}
+                          </span>{" "}
                           <span className="font-semibold">{c.cliente || "Sin nombre"}</span>
                           <span className="block truncate opacity-80">{c.servicio}</span>
                         </button>
