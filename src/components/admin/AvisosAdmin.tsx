@@ -99,7 +99,9 @@ export function AvisosAdmin({ ajustes }: { ajustes: AjustesAvisos }) {
           <button
             onClick={guardar}
             disabled={saving || sinCambios}
-            className="rounded-full bg-[linear-gradient(180deg,var(--cta-1),var(--cta-2))] px-6 py-2.5 text-sm font-semibold uppercase tracking-wide text-on-accent transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-40"
+            // bg-accent plano: el MISMO botón "Guardar" que usan las demás
+            // secciones del admin (el degradado era un one-off que desentonaba).
+            className="rounded-full bg-accent px-6 py-2.5 text-sm font-semibold uppercase tracking-wide text-on-accent transition hover:bg-accent-soft disabled:cursor-not-allowed disabled:opacity-40"
           >
             {saving ? "Guardando…" : "Guardar"}
           </button>

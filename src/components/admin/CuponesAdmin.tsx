@@ -66,7 +66,10 @@ export function CuponesAdmin({ cupones }: { cupones: Cupon[] }) {
   }
 
   return (
-    <div className="grid gap-6 md:grid-cols-2">
+    // Patrón del panel: lo que se MIRA (cupones) a la izquierda; lo que se HACE
+    // (crear cupón) fijo a la derecha en escritorio. En móvil el form va primero.
+    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px] lg:items-start">
+      <aside className="order-first lg:order-last lg:sticky lg:top-28">
       <form onSubmit={crear} className="space-y-3 rounded-2xl border border-line bg-panel p-5">
         <h3 className="flex items-center gap-2 font-display text-xl">
           <TicketIcon className="h-4 w-4 text-accent" /> Nuevo cupón
@@ -91,8 +94,9 @@ export function CuponesAdmin({ cupones }: { cupones: Cupon[] }) {
           {busy ? "Creando…" : "Crear cupón"}
         </button>
       </form>
+      </aside>
 
-      <div>
+      <div className="min-w-0">
         <h3 className="mb-3 font-display text-xl">Cupones ({cupones.length})</h3>
         {toggleErr && <div className="mb-2 rounded-lg border border-accent/40 bg-accent/10 px-3 py-2 text-sm text-accent-soft">{toggleErr}</div>}
         {cupones.length === 0 ? (

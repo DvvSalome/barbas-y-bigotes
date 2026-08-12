@@ -8,7 +8,7 @@ export const metadata: Metadata = { title: "Cupones · Admin" };
 export default async function CuponesPage() {
   const cupones = await getCupones();
   return (
-    <div className="max-w-4xl">
+    <div className="max-w-6xl">
       <SectionHeader
         eyebrow="Promociones"
         title="Cupones"
