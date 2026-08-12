@@ -1,6 +1,8 @@
 "use server";
 
+import { headers } from "next/headers";
 import { sedes, servicios, barberos, categorias } from "@/lib/data/seed";
+import { permitir } from "@/lib/rate-limit";
 
 export type ChatMessage = {
   role: "user" | "assistant" | "system";
@@ -27,6 +29,18 @@ function sanearMensajes(messages: ChatMessage[]): ChatMessage[] {
 }
 
 export async function chatConAsistente(messages: ChatMessage[]): Promise<{ text: string }> {
+  // Rate limit por IP (deuda #1 de la auditoría E2E): sin esto, un bucle contra
+  // esta action quemaba tokens del LLM sin freno. 8/min y 40/hora sobra para
+  // una conversación humana de reserva; el exceso recibe un mensaje amable sin
+  // tocar el modelo. Además un techo global por instancia como red de fondo.
+  const h = await headers();
+  const ip = (h.get("x-forwarded-for") ?? "").split(",")[0].trim() || "sin-ip";
+  if (!permitir(`ia:${ip}`, { porMinuto: 8, porHora: 40 }) || !permitir("ia:global", { porMinuto: 60, porHora: 600 })) {
+    return {
+      text: "Uy, me están llegando muchos mensajes seguidos 😅. Dame un minutico y volvemos a hablar — o si prefieres, reserva directo con los botones de arriba.",
+    };
+  }
+
   const nvidiaKey = process.env.NVIDIA_API_KEY || process.env.NVAPI_KEY;
   const geminiKey = process.env.GEMINI_API_KEY;
 
