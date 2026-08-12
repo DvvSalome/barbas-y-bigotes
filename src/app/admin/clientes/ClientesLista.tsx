@@ -49,6 +49,9 @@ export function ClientesLista({ clientes }: { clientes: ClienteRow[] }) {
   const [filtro, setFiltro] = useState<Filtro>("todos");
   // Grupo de fichas repetidas abierto para unir (email en minúsculas), o null.
   const [unirGrupo, setUnirGrupo] = useState<string | null>(null);
+  // La lista no se hace infinita: se muestran tandas de 60 con "Mostrar más"
+  // (con cientos de clientes, renderizarlos todos ponía lento el celular).
+  const [visibles, setVisibles] = useState(60);
 
   // Fichas repetidas del mismo correo. El fix de reservas evita que se creen
   // nuevas, pero las viejas siguen ahí y el dueño no tenía forma de verlas:
@@ -99,16 +102,27 @@ export function ClientesLista({ clientes }: { clientes: ClienteRow[] }) {
       <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_300px] lg:items-start">
         <div className="min-w-0">
       <div className="flex flex-col gap-3">
-        <div className="relative max-w-md">
-          <SearchIcon className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
-          <input
-            type="search"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="Buscar por nombre, teléfono o correo…"
-            aria-label="Buscar cliente"
-            className="w-full rounded-xl border border-line bg-bg px-4 py-2.5 pl-10 text-ink placeholder:text-muted focus:border-accent focus:outline-none"
-          />
+        <div className="flex items-center gap-2">
+          <div className="relative max-w-md flex-1">
+            <SearchIcon className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
+            <input
+              type="search"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Buscar por nombre, teléfono o correo…"
+              aria-label="Buscar cliente"
+              className="w-full rounded-xl border border-line bg-bg px-4 py-2.5 pl-10 text-ink placeholder:text-muted focus:border-accent focus:outline-none"
+            />
+          </div>
+          {/* Descarga de la base (CSV con ; — Excel Colombia): mismo patrón que Métricas. */}
+          {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- es una DESCARGA (route handler con Content-Disposition), no navegación: <Link> haría fetch RSC */}
+          <a
+            href="/admin/clientes/csv"
+            className="flex min-h-11 shrink-0 items-center gap-1.5 rounded-xl border border-line px-4 text-[13px] font-semibold text-muted transition hover:border-ink/25 hover:text-ink"
+            aria-label="Descargar la base de clientes en Excel"
+          >
+            ↓ Excel
+          </a>
         </div>
 
         {/* Chips solo en móvil: en escritorio filtra el panel derecho */}
@@ -149,7 +163,7 @@ export function ClientesLista({ clientes }: { clientes: ClienteRow[] }) {
               Un cliente sin compras no tiene números que mostrar; lo que
               necesita el dueño es distinguirlo de un habitual. */}
           <ul className="mt-3 divide-y divide-line/60 overflow-hidden rounded-2xl border border-line bg-panel">
-            {lista.map((c) => {
+            {lista.slice(0, visibles).map((c) => {
               const dup = c.email ? duplicados.get(c.email.toLowerCase()) ?? 0 : 0;
               return (
                 <li key={c.id}>
@@ -211,6 +225,16 @@ export function ClientesLista({ clientes }: { clientes: ClienteRow[] }) {
               );
             })}
           </ul>
+
+          {lista.length > visibles && (
+            <button
+              type="button"
+              onClick={() => setVisibles((v) => v + 60)}
+              className="mt-3 flex min-h-11 w-full items-center justify-center rounded-xl border border-line text-[13px] font-semibold text-muted transition hover:text-ink"
+            >
+              Mostrar más ({lista.length - visibles} restantes)
+            </button>
+          )}
         </>
       )}
         </div>
