@@ -117,43 +117,48 @@ export function PreciosLista({
                     {etiquetas[grupo] ?? grupo}
                   </h2>
                 )}
-                <ul className="divide-y divide-line/60 overflow-hidden rounded-2xl border border-line bg-panel">
+                {/* Tarjetas, no filas de planilla: cada servicio es un cuadro con
+                    su foto, su descripción y sus precios — respira y se toca bien. */}
+                <ul className="grid gap-2.5 2xl:grid-cols-2">
                   {filas.map((s) => {
                     const inactivo = s.activo === false;
                     return (
                       <li
                         key={s.id}
-                        className={`flex flex-wrap items-center gap-x-3 gap-y-2 px-3.5 py-3 ${
-                          inactivo ? "opacity-55" : ""
+                        className={`rounded-2xl border bg-panel p-3.5 transition hover:border-accent/30 ${
+                          inactivo ? "border-line/60 opacity-60" : "border-line"
                         }`}
                       >
-                        {/* Foto + descripción: es LO QUE VE EL CLIENTE al reservar,
-                            y se administra acá, junto al precio. */}
-                        <span className="shrink-0">
-                          <FotoServicio servicioId={s.id} nombre={s.nombre} fotoUrl={s.fotoUrl} />
-                        </span>
-                        <span className="min-w-[45%] flex-1 text-[13.5px] font-semibold text-ink">
-                          {s.nombre}
-                          {s.desde && <span className="text-[11px] font-normal text-muted"> (desde)</span>}
-                          <span className="ml-2 text-[11.5px] font-normal text-muted">
-                            {s.duracionMin} min
+                        <div className="flex items-start gap-3">
+                          {/* Foto + descripción: es LO QUE VE EL CLIENTE al reservar,
+                              y se administra acá, junto al precio. */}
+                          <span className="shrink-0">
+                            <FotoServicio servicioId={s.id} nombre={s.nombre} fotoUrl={s.fotoUrl} size={52} />
                           </span>
-                          {inactivo && (
-                            <span className="ml-2 rounded-full border border-line px-2 py-0.5 text-[10px] uppercase tracking-wide text-muted">
-                              Fuera del catálogo
+                          <span className="min-w-0 flex-1">
+                            <span className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                              <span className="text-[14px] font-semibold leading-tight text-ink">{s.nombre}</span>
+                              {s.desde && <span className="text-[11px] text-muted">(desde)</span>}
+                              <span className="text-[11.5px] text-muted">{s.duracionMin} min</span>
+                              {inactivo && (
+                                <span className="rounded-full border border-line px-2 py-0.5 text-[10px] uppercase tracking-wide text-muted">
+                                  Fuera del catálogo
+                                </span>
+                              )}
                             </span>
-                          )}
-                          <DescripcionServicio servicioId={s.id} descripcion={s.descripcion} />
-                        </span>
+                            <DescripcionServicio servicioId={s.id} descripcion={s.descripcion} />
+                          </span>
+                          <span className="shrink-0">
+                            <ServicioActivoToggle id={s.id} activo={!inactivo} />
+                          </span>
+                        </div>
 
-                        {/* El precio como ficha con el nombre de la sede encima:
-                            en la tabla, la columna de la 2ª sede se salía de la
-                            pantalla en los combos y no se veía. */}
-                        <span className="flex flex-wrap gap-2">
+                        {/* Precios por sede como fichas, al pie del cuadro */}
+                        <div className="mt-3 flex flex-wrap gap-2 border-t border-line/50 pt-2.5">
                           {sedes.map((sd) => (
                             <span
                               key={sd.id}
-                              className="rounded-lg border border-line bg-elevated px-2.5 py-1 text-right"
+                              className="flex-1 rounded-lg border border-line bg-elevated px-2.5 py-1.5 text-right"
                             >
                               <span className="block text-[9.5px] uppercase tracking-wide text-muted">
                                 {sd.nombre.split(" ")[0]}
@@ -166,11 +171,7 @@ export function PreciosLista({
                               />
                             </span>
                           ))}
-                        </span>
-
-                        <span className="shrink-0">
-                          <ServicioActivoToggle id={s.id} activo={!inactivo} />
-                        </span>
+                        </div>
                       </li>
                     );
                   })}

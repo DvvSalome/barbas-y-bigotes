@@ -177,7 +177,9 @@ export function ComboBuilder({
           <div className="mb-2 text-[10.5px] font-bold uppercase tracking-[0.12em] text-muted">
             {etiquetas[g.cat]}
           </div>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+          {/* 2 columnas fijas: el armador ahora vive en un panel angosto a la
+              derecha (escritorio) o a lo ancho (móvil); 2 siempre caben bien. */}
+          <div className="grid grid-cols-2 gap-2">
             {g.items.map((p) => {
               const on = partes.has(p.id);
               return (
