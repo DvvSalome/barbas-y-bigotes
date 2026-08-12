@@ -634,10 +634,13 @@ export function AgendaDia({
                 barberos={barberos}
                 horarioSemanal={horarioSemanal}
                 diasEspeciales={diasEspeciales}
-                onDone={() => {
+                onDone={(nuevoYmd) => {
                   setDetalle(null);
                   setMoviendo(false);
-                  router.refresh();
+                  // El calendario SALTA a donde quedó la cita: si se movió a otro
+                  // día, quedarse mirando el día viejo la hacía "desaparecer".
+                  if (nuevoYmd !== fecha) router.push(href(nuevoYmd, "dia"));
+                  else router.refresh();
                 }}
                 onCancel={() => setMoviendo(false)}
               />

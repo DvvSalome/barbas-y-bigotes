@@ -38,7 +38,8 @@ export function MoverCitaForm({
   barberos: Barbero[]; // de la sede de la cita
   horarioSemanal: HorarioSemanal[];
   diasEspeciales: DiaEspecial[];
-  onDone: () => void;
+  /** Recibe el YYYY-MM-DD destino: el calendario salta a donde quedó la cita. */
+  onDone: (nuevoYmd: string) => void;
   onCancel: () => void;
 }) {
   const [barberoId, setBarberoId] = useState(cita.barberoId ?? barberos[0]?.id ?? "");
@@ -88,8 +89,13 @@ export function MoverCitaForm({
   }, [day, barberoId]);
 
   useEffect(() => {
+    // Preselecciona EL DÍA DE LA CITA, no el primero disponible: arrancar en
+    // "Hoy" hacía que mover una cita del jueves la mandara a HOY sin querer
+    // (le pasó al dueño: la movió "a las 4:30"... de otro día).
+    const diaCita = new Date(cita.inicio);
+    const pref = dias.find((d) => d.toDateString() === diaCita.toDateString());
     // eslint-disable-next-line react-hooks/set-state-in-effect -- preselección de UX al montar (no cascada real)
-    if (!day && dias.length) setDay(dias[0]);
+    if (!day && dias.length) setDay(pref ?? dias[0]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dias]);
 
@@ -106,7 +112,7 @@ export function MoverCitaForm({
       barberoId,
     });
     setSaving(false);
-    if (res.ok) onDone();
+    if (res.ok) onDone(ymdLocal(day));
     else setErr(res.error ?? "No se pudo mover.");
   }
 
