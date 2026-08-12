@@ -7,11 +7,12 @@ import type { Sede, SedeId, Servicio, Barbero, Producto, Categoria, TipoContrato
 
 export async function getSedes(): Promise<Sede[]> {
   const sb = supabaseServer();
-  const { data } = await sb.from("sedes").select("id,nombre,direccion").order("nombre");
+  const { data } = await sb.from("sedes").select("id,nombre,direccion,foto_url").order("nombre");
   return (data ?? []).map((s) => ({
     id: s.id as SedeId,
     nombre: s.nombre,
     direccion: s.direccion ?? undefined,
+    fotoUrl: (s.foto_url as string | null) ?? null,
   }));
 }
 

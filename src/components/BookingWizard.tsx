@@ -1034,7 +1034,12 @@ export function BookingWizard({
             <div className="mt-5 flex flex-col gap-3 md:grid md:grid-cols-[repeat(auto-fit,minmax(340px,1fr))] md:gap-4">
               {sedes.map((s) => {
                 const sel = sedeId === s.id;
-                const info = SEDE_INFO[s.id] ?? { detalle: s.direccion ?? "Barranquilla", frente: null };
+                // La foto de la DB (subida en Admin → Horarios, 0058) MANDA; el
+                // mapa hardcodeado queda de respaldo para las dos sedes fundadoras.
+                const info = {
+                  detalle: SEDE_INFO[s.id]?.detalle ?? s.direccion ?? "Barranquilla",
+                  frente: s.fotoUrl ?? SEDE_INFO[s.id]?.frente ?? null,
+                };
                 return (
                   <button
                     key={s.id}

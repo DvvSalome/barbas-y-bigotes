@@ -4,6 +4,8 @@ export interface Sede {
   id: SedeId;
   nombre: string;
   direccion?: string;
+  /** Fachada subida por el admin (bucket 'sedes'); la ve el cliente al reservar (0058). */
+  fotoUrl?: string | null;
 }
 
 export type Categoria =

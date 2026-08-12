@@ -621,6 +621,63 @@ export async function subirFotoServicio(formData: FormData): Promise<ActionResul
   return { ok: true };
 }
 
+// Foto de la SEDE (fachada del wizard, 0058): mismo pipeline blindado que
+// productos/servicios (allowlist MIME + firma de bytes + bucket público).
+export async function subirFotoSede(formData: FormData): Promise<ActionResult> {
+  const sb = await supabaseServerAuth();
+  const denied = await requireAdmin(sb);
+  if (denied) return { ok: false, error: denied };
+
+  const sedeId = String(formData.get("sedeId") ?? "").trim();
+  const file = formData.get("foto");
+  if (!sedeId || !(file instanceof File) || file.size === 0)
+    return { ok: false, error: "Elige una imagen." };
+  if (!["image/jpeg", "image/png", "image/webp", "image/avif"].includes(file.type))
+    return { ok: false, error: "La imagen tiene que ser JPG, PNG, WebP o AVIF." };
+  if (file.size > FOTO_MAX_BYTES) return { ok: false, error: "La imagen no puede pesar más de 2MB." };
+  const cabecera = new Uint8Array(await file.slice(0, 16).arrayBuffer());
+  if (!pareceImagen(cabecera))
+    return { ok: false, error: "Ese archivo no es una imagen válida." };
+
+  const admin = supabaseAdmin();
+  const { data: sede } = await admin.from("sedes").select("id").eq("id", sedeId).maybeSingle();
+  if (!sede) return { ok: false, error: "Sede no encontrada." };
+
+  const ext = extDeMime(file.type);
+  const path = `${sedeId}.${ext}`;
+  const { error: upErr } = await admin.storage
+    .from("sedes")
+    .upload(path, file, { upsert: true, contentType: file.type });
+  if (upErr)
+    return { ok: false, error: errorPublico("subirFotoSede upload", upErr, "No se pudo subir la foto. Intenta de nuevo.") };
+  const { error: rmErr } = await admin.storage.from("sedes").remove(variantesObsoletas(sedeId, ext));
+  if (rmErr) errorPublico("subirFotoSede limpieza", rmErr);
+
+  const { data: pub } = admin.storage.from("sedes").getPublicUrl(path);
+  const url = `${pub.publicUrl}?v=${Date.now()}`;
+  const { error: updErr } = await admin.from("sedes").update({ foto_url: url }).eq("id", sedeId);
+  if (updErr) return { ok: false, error: errorPublico("subirFotoSede update", updErr) };
+
+  revalidatePath("/admin/horarios");
+  revalidatePath("/reservar");
+  return { ok: true };
+}
+
+export async function quitarFotoSede(sedeId: string): Promise<ActionResult> {
+  const sb = await supabaseServerAuth();
+  const denied = await requireAdmin(sb);
+  if (denied) return { ok: false, error: denied };
+  const admin = supabaseAdmin();
+  const paths = ["jpg", "png", "webp", "avif"].map((e) => `${sedeId}.${e}`);
+  const { error: rmErr } = await admin.storage.from("sedes").remove(paths);
+  if (rmErr) errorPublico("quitarFotoSede storage", rmErr); // best-effort: el campo es la verdad
+  const { error } = await admin.from("sedes").update({ foto_url: null }).eq("id", sedeId);
+  if (error) return { ok: false, error: errorPublico("quitarFotoSede", error) };
+  revalidatePath("/admin/horarios");
+  revalidatePath("/reservar");
+  return { ok: true };
+}
+
 // Quitar la foto del servicio: borra las variantes del bucket y limpia el
 // campo — la tarjeta del wizard vuelve al placeholder neutro. Reversible
 // subiendo otra foto, por eso no pide más ceremonia que el confirm de la UI.
