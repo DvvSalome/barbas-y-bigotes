@@ -18,7 +18,10 @@ import type { AgendaDiaItem, BloqueoDia, HorarioSemanal, DiaEspecial } from "@/l
 // Todo se dibuja con la MISMA fuente de horario que el wizard (horarioEfectivo):
 // si la sede abre 10-18 ese día, la grilla va de 10 a 18.
 
-const PX_MIN = 1.7; // alto en px de un minuto (30 min ≈ 51px, bloque tocable)
+// Alto de un minuto. 1.1 = jornada de 11h en ~730px (antes 1.7 ≈ 1.120px: el
+// dueño la sintió "demasiado alta"). Un bloque de 30 min queda de ~33px: se
+// toca bien y el detalle completo vive en el sheet.
+const PX_MIN = 1.1;
 
 // Color por estado — tokens del panel, no colores inventados (DESIGN.md).
 const ESTILO_ESTADO: Record<string, { card: string; label: string }> = {
@@ -100,6 +103,7 @@ export function AgendaDia({
   // Arrastre con MOUSE (escritorio): en táctil queda tocar → "Mover" (más
   // fiable que un drag con el pulgar sobre una grilla que scrollea).
   const cuerpoRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
   const [drag, setDrag] = useState<{
     cita: AgendaDiaItem;
     col: number; // columna (índice de barbero) de origen
@@ -175,6 +179,17 @@ export function AgendaDia({
     const t = setInterval(() => setAhoraMin(minutoBogota()), 60_000);
     return () => clearInterval(t);
   }, [esHoy]);
+
+  // Al abrir (o cambiar de día), el scroll interno aterriza donde importa:
+  // hoy → un poco antes de "ahora"; otro día → la primera cita (o arriba).
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el || vistaActiva !== "dia") return;
+    const primera = agenda.length ? Math.min(...agenda.map((a) => minutoDeISO(a.inicio))) : abre;
+    const objetivo = esHoy ? minutoBogota() : primera;
+    el.scrollTop = Math.max(0, (objetivo - abre) * PX_MIN - 120);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fecha, vistaActiva]);
 
   const base = hrefBase ?? `/admin/agenda?sede=${sede}`;
   const href = (f: string, v: "dia" | "semana" = vistaActiva) =>
@@ -331,10 +346,15 @@ export function AgendaDia({
           Esta sede no tiene barberos activos.
         </div>
       ) : (
-        <div className="mt-4 overflow-x-auto rounded-2xl border border-line bg-panel">
+        /* Scroll PROPIO: el calendario ya no estira la página entera; la cabecera
+           de barberos y la columna de horas quedan fijas mientras se navega. */
+        <div
+          ref={scrollRef}
+          className="mt-4 max-h-[62dvh] overflow-auto rounded-2xl border border-line bg-panel lg:max-h-[calc(100dvh-15rem)]"
+        >
           <div style={{ minWidth: 64 + barberos.length * 168 }}>
-            {/* Cabecera: quién es cada columna */}
-            <div className="grid border-b border-line" style={{ gridTemplateColumns: `64px repeat(${barberos.length}, 1fr)` }}>
+            {/* Cabecera: quién es cada columna (fija arriba al scrollear) */}
+            <div className="sticky top-0 z-20 grid border-b border-line bg-panel" style={{ gridTemplateColumns: `64px repeat(${barberos.length}, 1fr)` }}>
               <div />
               {barberos.map((b) => (
                 <button
@@ -351,8 +371,8 @@ export function AgendaDia({
 
             {/* Cuerpo: horas + columnas con bloques */}
             <div ref={cuerpoRef} className="grid" style={{ gridTemplateColumns: `64px repeat(${barberos.length}, 1fr)` }}>
-              {/* Columna de horas */}
-              <div className="relative" style={{ height: altoDia }}>
+              {/* Columna de horas (fija a la izquierda al scrollear de lado) */}
+              <div className="sticky left-0 z-10 bg-panel" style={{ height: altoDia }}>
                 {horas.map((m) => (
                   <span
                     key={m}
@@ -449,7 +469,9 @@ export function AgendaDia({
                             {arrastrando ? fmtTime(Math.min(cierra - c.duracionMin, Math.max(abre, ini + drag!.dMin))) : fmtTime(ini)}
                           </span>{" "}
                           <span className="font-semibold">{c.cliente || "Sin nombre"}</span>
-                          <span className="block truncate opacity-80">{c.servicio}</span>
+                          {/* En bloques de 30 min (grilla compacta) la 2ª línea no cabe:
+                              el servicio vive en el title y en el detalle. */}
+                          {alto >= 40 && <span className="block truncate opacity-80">{c.servicio}</span>}
                         </button>
                       );
                     })}
