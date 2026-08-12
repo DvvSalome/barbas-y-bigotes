@@ -353,7 +353,7 @@ export default async function AdminHoy({
       {/* Móvil: pila por prioridad (qué pasa ahora → qué viene → caja → pendientes
           → lectura de 30 días). Escritorio: operación a la izquierda, plata y
           pendientes en el lateral. */}
-      <div className="mt-5 flex flex-col gap-6 lg:grid lg:grid-cols-12 lg:items-start lg:gap-x-4 lg:gap-y-5">
+      <div className="mt-5 flex flex-col gap-6 lg:grid lg:grid-cols-12 lg:items-start lg:gap-x-6 lg:gap-y-5">
         <div className="order-1 flex flex-col gap-6 lg:order-none lg:col-span-7 lg:gap-5">
           {/* ── Ahora mismo ─────────────────────────────────── */}
           <section aria-label="Equipo ahora">
@@ -555,7 +555,9 @@ export default async function AdminHoy({
           </section>
 
         {/* ── Lateral ───────────────────────────────────────── */}
-        <div className="order-2 flex flex-col gap-6 lg:order-none lg:col-span-5 lg:gap-5">
+        {/* Sticky en escritorio: la caja y los pendientes (lo accionable) se
+            quedan a la vista mientras se recorre la columna operativa. */}
+        <div className="order-2 flex flex-col gap-6 lg:sticky lg:top-28 lg:order-none lg:col-span-5 lg:max-h-[calc(100dvh-8.5rem)] lg:gap-5 lg:overflow-y-auto">
           {/* Caja */}
           <section aria-label="Caja">
             <h2 className={`${SEC} mb-2.5`}>
