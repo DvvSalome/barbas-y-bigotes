@@ -64,7 +64,9 @@ export default async function PreciosPage({
       {/* DOS PANELES en escritorio: la lista a la izquierda y el armador FIJO a
           la derecha (sticky con su propio scroll) — se arma el combo viendo el
           catálogo, sin peregrinar hasta el fondo de la página. En móvil se apilan. */}
-      <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_400px] lg:items-start">
+      {/* minmax(0,1fr) también en móvil: sin él la columna es `auto` y CUALQUIER
+          hijo ancho (una fila de chips que scrollea) estira la página entera. */}
+      <div className="mt-6 grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[minmax(0,1fr)_400px] lg:items-start">
         <section>
           <PreciosLista servicios={servicios} sedes={sedes} etiquetas={categorias} />
         </section>

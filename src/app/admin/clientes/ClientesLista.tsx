@@ -192,7 +192,7 @@ export function ClientesLista({ clientes }: { clientes: ClienteRow[] }) {
                               e.stopPropagation();
                               setUnirGrupo(c.email!.trim().toLowerCase());
                             }}
-                            className="inline-flex min-h-11 shrink-0 items-center rounded-full bg-warn/15 px-3 text-[10px] font-bold uppercase tracking-wide text-warn transition hover:bg-warn/25"
+                            className="relative inline-flex shrink-0 items-center rounded-full bg-warn/15 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-warn transition after:absolute after:-inset-y-[9px] after:inset-x-0 after:content-[''] hover:bg-warn/25"
                           >
                             Repetida ×{dup} · Unir
                           </button>

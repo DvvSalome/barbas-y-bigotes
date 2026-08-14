@@ -42,7 +42,9 @@ export function DescripcionServicio({ servicioId, descripcion }: { servicioId: s
             {descripcion} <span aria-hidden className="text-[10px]">✎</span>
           </>
         ) : (
-          <span className="text-accent-soft">+ Agregar descripción (la ve el cliente al reservar)</span>
+          <span className="text-accent-soft">
+            + Descripción<span className="hidden sm:inline"> (la ve el cliente al reservar)</span>
+          </span>
         )}
       </button>
     );

@@ -53,6 +53,44 @@ function labelFecha(ymd: string): string {
   return `${DOW[dow]} ${d} ${MON[m - 1]}`;
 }
 
+/**
+ * Reparte en CARRILES las citas que se pisan dentro de una misma columna. El
+ * candado `reservas_no_overlap` de la BD no cubre canceladas ni no-shows, así
+ * que un "no vino" de las 9 y el walk-in que entró en su lugar caen en el mismo
+ * hueco: antes se dibujaban una ENCIMA de la otra y la de abajo desaparecía.
+ * Cada grupo de citas encadenadas se parte en tantas columnas como haga falta
+ * (mismo criterio que Google Calendar).
+ */
+function conCarriles(citas: AgendaDiaItem[]) {
+  const ord = [...citas].sort(
+    (a, b) => minutoDeISO(a.inicio) - minutoDeISO(b.inicio) || b.duracionMin - a.duracionMin,
+  );
+  const salida: { c: AgendaDiaItem; carril: number; de: number }[] = [];
+  let grupo: typeof salida = [];
+  let finGrupo = -1;
+  const cerrarGrupo = () => {
+    const total = grupo.reduce((m, x) => Math.max(m, x.carril + 1), 1);
+    grupo.forEach((x) => (x.de = total));
+    grupo = [];
+    finGrupo = -1;
+  };
+  for (const c of ord) {
+    const ini = minutoDeISO(c.inicio);
+    if (grupo.length && ini >= finGrupo) cerrarGrupo();
+    const ocupados = new Set(
+      grupo.filter((x) => minutoDeISO(x.c.inicio) + x.c.duracionMin > ini).map((x) => x.carril),
+    );
+    let carril = 0;
+    while (ocupados.has(carril)) carril++;
+    const item = { c, carril, de: 1 };
+    grupo.push(item);
+    salida.push(item);
+    finGrupo = Math.max(finGrupo, ini + c.duracionMin);
+  }
+  if (grupo.length) cerrarGrupo();
+  return salida;
+}
+
 function ymdMas(ymd: string, dias: number): string {
   const d = new Date(`${ymd}T12:00:00Z`);
   d.setUTCDate(d.getUTCDate() + dias);
@@ -126,7 +164,10 @@ export function AgendaDia({
     if (!["pendiente", "confirmada"].includes(cita.estado)) return;
     const startX = e.clientX;
     const startY = e.clientY;
-    const anchoCol = cuerpoRef.current ? (cuerpoRef.current.clientWidth - 64) / barberos.length : 0;
+    // El canal de horas ya no mide siempre 64px (en móvil son 48): se mide la
+    // columna real en vez de restar un número a mano.
+    const gut = cuerpoRef.current?.firstElementChild?.clientWidth ?? 64;
+    const anchoCol = cuerpoRef.current ? (cuerpoRef.current.clientWidth - gut) / barberos.length : 0;
     setErrDrag(null);
     setDrag({ cita, col, ini, dCols: 0, dMin: 0, movio: false });
 
@@ -365,18 +406,24 @@ export function AgendaDia({
           ref={scrollRef}
           className="mt-4 max-h-[62dvh] overflow-auto rounded-2xl border border-line bg-panel lg:max-h-[calc(100dvh-15rem)]"
         >
-          {/* 148px por barbero: en un celular caben ~2 columnas y el resto va
-              con scroll lateral (horas y cabecera quedan fijas). */}
-          <div style={{ minWidth: 64 + barberos.length * 148 }}>
+          {/* Ancho de columna por breakpoint: con 148px fijos, una sede de TRES
+              barberos mostraba dos y medio en el celular y el tercero se
+              descubría solo si se arrastraba de lado. Con 96px entran los tres
+              en 375px; de cuatro en adelante vuelve el scroll lateral (con las
+              horas y la cabecera fijas). */}
+          <div
+            className="[--col:96px] [--gut:48px] sm:[--col:148px] sm:[--gut:64px]"
+            style={{ minWidth: `calc(var(--gut) + ${barberos.length} * var(--col))` }}
+          >
             {/* Cabecera: quién es cada columna (fija arriba al scrollear) */}
-            <div className="sticky top-0 z-20 grid border-b border-line bg-panel" style={{ gridTemplateColumns: `64px repeat(${barberos.length}, 1fr)` }}>
+            <div className="sticky top-0 z-20 grid border-b border-line bg-panel" style={{ gridTemplateColumns: `var(--gut) repeat(${barberos.length}, minmax(var(--col), 1fr))` }}>
               <div />
               {barberos.map((b) => (
                 <button
                   key={b.id}
                   onClick={() => setSheet({ barberoId: b.id })}
                   title={`Agendar cita con ${b.nombre}`}
-                  className="flex min-h-11 items-center justify-center gap-2 border-l border-line/60 px-2 py-2.5 transition hover:bg-elevated"
+                  className="flex min-h-11 items-center justify-center gap-1.5 border-l border-line/60 px-1 py-2.5 transition hover:bg-elevated sm:gap-2 sm:px-2"
                 >
                   <CaraBarbero b={b} size={28} />
                   <span className="truncate text-[12.5px] font-bold text-ink">{b.nombre.split(" ")[0]}</span>
@@ -387,24 +434,28 @@ export function AgendaDia({
             {/* Cuerpo: horas + columnas con bloques. py-3: sin ese aire, la
                 etiqueta de la primera hora quedaba mordida por la cabecera fija
                 y la del cierre se cortaba contra el borde de abajo. */}
-            <div ref={cuerpoRef} className="grid py-3" style={{ gridTemplateColumns: `64px repeat(${barberos.length}, 1fr)` }}>
+            <div ref={cuerpoRef} className="grid py-3" style={{ gridTemplateColumns: `var(--gut) repeat(${barberos.length}, minmax(var(--col), 1fr))` }}>
               {/* Columna de horas (fija a la izquierda al scrollear de lado) */}
               <div className="sticky left-0 z-10 bg-panel" style={{ height: altoDia }}>
                 {horas.map((m) => (
                   <span
                     key={m}
-                    className="absolute right-2 -translate-y-1/2 text-[10.5px] tabular-nums text-muted"
+                    className="absolute right-1.5 -translate-y-1/2 text-[10.5px] tabular-nums text-muted sm:right-2"
                     style={{ top: (m - abre) * PX_MIN }}
                   >
-                    {fmtTime(m)}
+                    {/* "9 am" en el celular: con el canal de 48px, "9:00 am" se
+                        montaba sobre la primera columna. */}
+                    <span className="sm:hidden">{fmtTime(m).replace(":00", "")}</span>
+                    <span className="hidden sm:inline">{fmtTime(m)}</span>
                   </span>
                 ))}
                 {/* La hora de CIERRE también se etiqueta (el día no termina en el aire) */}
                 <span
-                  className="absolute right-2 -translate-y-1/2 text-[10.5px] tabular-nums text-muted"
+                  className="absolute right-1.5 -translate-y-1/2 text-[10.5px] tabular-nums text-muted sm:right-2"
                   style={{ top: (cierra - abre) * PX_MIN }}
                 >
-                  {fmtTime(cierra)}
+                  <span className="sm:hidden">{fmtTime(cierra).replace(":00", "")}</span>
+                  <span className="hidden sm:inline">{fmtTime(cierra)}</span>
                 </span>
                 {/* El punto del AHORA en el canal de horas (firma Google Calendar) */}
                 {esHoy && ahoraMin >= abre && ahoraMin <= cierra && (
@@ -471,7 +522,7 @@ export function AgendaDia({
                       );
                     })}
 
-                    {citas.map((c) => {
+                    {conCarriles(citas).map(({ c, carril, de }) => {
                       const ini = minutoDeISO(c.inicio);
                       const est = estiloDe(c.estado);
                       const alto = Math.max(30, c.duracionMin * PX_MIN - 3);
@@ -490,7 +541,7 @@ export function AgendaDia({
                             setMoviendo(false);
                             setDetalle(c);
                           }}
-                          className={`absolute inset-x-1 overflow-hidden rounded-lg border px-2 py-1 text-left text-[11px] leading-tight shadow-sm ${
+                          className={`absolute overflow-hidden rounded-lg border px-1.5 py-1 text-left text-[11px] leading-tight shadow-sm sm:px-2 ${
                             arrastrando
                               ? "z-30 cursor-grabbing opacity-90 shadow-xl ring-2 ring-accent"
                               : `transition hover:brightness-110 ${movible ? "lg:cursor-grab" : ""}`
@@ -498,10 +549,13 @@ export function AgendaDia({
                           style={{
                             top: (ini - abre) * PX_MIN + 1,
                             height: alto,
-                            // Vista previa del arrastre: columnas de igual ancho →
-                            // 100% por columna; vertical snapeado a 30 min.
+                            // Carril dentro de la columna (1 solo = ancho completo).
+                            left: `calc(${(carril / de) * 100}% + 4px)`,
+                            width: `calc(${100 / de}% - 8px)`,
+                            // Vista previa del arrastre: un salto de columna son
+                            // `de` anchos de bloque (el bloque mide 1/de de la columna).
                             transform: arrastrando
-                              ? `translate(${drag!.dCols * 100}%, ${drag!.dMin * PX_MIN}px)`
+                              ? `translate(${drag!.dCols * de * 100}%, ${drag!.dMin * PX_MIN}px)`
                               : undefined,
                             touchAction: "auto",
                           }}
@@ -515,7 +569,11 @@ export function AgendaDia({
                                 {fmtTime(Math.min(cierra - c.duracionMin, Math.max(abre, ini + drag!.dMin)))}
                               </span>
                             )}
-                            {c.cliente || "Sin nombre"}
+                            {/* Primer nombre en el celular: en una columna de 96px el
+                                nombre completo se corta en "Cliente De…" y no
+                                identifica a nadie. */}
+                            <span className="sm:hidden">{c.cliente?.split(" ")[0] || "Sin nombre"}</span>
+                            <span className="hidden sm:inline">{c.cliente || "Sin nombre"}</span>
                           </span>
                           {alto >= 40 && (
                             <span className="block truncate text-[10px] tabular-nums opacity-75">

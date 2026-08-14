@@ -89,7 +89,9 @@ export function PreciosLista({
           />
         </div>
 
-        <div className="flex flex-wrap gap-2">
+        {/* Una fila que scrollea, no cuatro apiladas: en 375px estos chips se
+            comían media pantalla antes del primer servicio. */}
+        <div className="flex w-full min-w-0 gap-2 overflow-x-auto pb-1 sm:flex-wrap sm:overflow-visible [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           <Chip activo={cat === "todas"} onClick={() => setCat("todas")}>
             Todos <b className="ml-1 font-semibold text-muted">{servicios.length}</b>
           </Chip>
@@ -199,7 +201,7 @@ function Chip({
       type="button"
       onClick={onClick}
       aria-pressed={activo}
-      className={`min-h-9 rounded-full border px-3.5 text-[12px] font-semibold transition ${
+      className={`inline-flex min-h-11 shrink-0 items-center whitespace-nowrap rounded-full border px-3.5 text-[12px] font-semibold transition ${
         activo
           ? "border-accent bg-accent/15 text-accent-soft"
           : "border-line text-muted hover:border-accent/40 hover:text-ink"
