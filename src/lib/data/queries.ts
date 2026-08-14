@@ -2291,3 +2291,53 @@ export async function pulsoDelDia(sede?: SedeId | null): Promise<PulsoDia> {
     citasHoy: vivas.length,
   };
 }
+
+export type TestimonioPublico = {
+  id: string;
+  score: number;
+  comentario: string;
+  barbero: string;
+  sede: string;
+  fecha: string;
+};
+
+/**
+ * Reseñas REALES para la home. Existe porque los testimonios del sitio eran
+ * inventados ("Carlos M.", "Andrés R.", "Julián P." con frases escritas a mano):
+ * publicidad falsa en un sitio comercial, y encima con reseñas de verdad
+ * durmiendo en la base.
+ *
+ * Sin nombre de cliente: `resenas_servicio` no lo guarda, así que se publica el
+ * comentario, la nota, el barbero y la sede — nada que identifique a nadie.
+ * Se muestran solo las de 4★ o más: elegir qué testimonios poner en la vitrina
+ * propia es normal; lo que Google prohíbe es filtrar a QUIÉN se le pide reseña,
+ * y eso el correo postventa no lo hace (va a todos por igual).
+ *
+ * supabaseAdmin porque la tabla no abre lectura a anónimos y esta página es
+ * pública: la consulta acota a mano lo que sale (sin ids de cliente, sin correos).
+ */
+export async function getTestimoniosPublicos(limite = 3): Promise<TestimonioPublico[]> {
+  const admin = supabaseAdmin();
+  const desde = new Date(Date.now() - 365 * 24 * 3600_000).toISOString();
+  const { data, error } = await admin
+    .from("resenas_servicio")
+    .select("id,score,comentario,creado_en,barberos(nombre),sedes(nombre)")
+    .not("comentario", "is", null)
+    .neq("comentario", "")
+    .gte("score", 4)
+    .gte("creado_en", desde)
+    .order("creado_en", { ascending: false })
+    .limit(limite);
+  if (error) {
+    console.error("getTestimoniosPublicos:", error.message);
+    return [];
+  }
+  return ((data ?? []) as Record<string, unknown>[]).map((r) => ({
+    id: String(r.id),
+    score: Number(r.score),
+    comentario: String(r.comentario ?? "").trim(),
+    barbero: (r.barberos as { nombre?: string } | null)?.nombre ?? "",
+    sede: (r.sedes as { nombre?: string } | null)?.nombre ?? "",
+    fecha: String(r.creado_en ?? ""),
+  }));
+}
