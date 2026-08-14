@@ -6,6 +6,9 @@ import { useRouter } from "next/navigation";
 import { AgendarCitaForm } from "@/components/barbero/AgendarCitaForm";
 import { MoverCitaForm } from "@/components/admin/MoverCitaForm";
 import { BloquearHorasForm } from "@/components/admin/BloquearHorasForm";
+import { AvisarWhatsApp } from "@/components/admin/AvisarWhatsApp";
+import { mensajeCitaMovida } from "@/lib/whatsapp";
+import { SEDE_INFO } from "@/lib/data/sede-info";
 import { quitarBloqueo, moverCita } from "@/lib/actions";
 import { instanteBogota } from "@/lib/slots";
 import { CaraBarbero } from "@/components/staff/Elegir";
@@ -134,6 +137,9 @@ export function AgendaDia({
   // Detalle de una cita tocada (+ modo mover dentro del mismo sheet).
   const [detalle, setDetalle] = useState<AgendaDiaItem | null>(null);
   const [moviendo, setMoviendo] = useState(false);
+  // Aviso al cliente después de mover: hasta ahora la cita cambiaba de hora y
+  // el cliente se enteraba llegando a la vieja.
+  const [avisar, setAvisar] = useState<{ titulo: string; telefono: string | null; mensaje: string } | null>(null);
   // Bloquear horas: sheet de creación y bloqueo tocado (para quitarlo).
   const [bloqueoSheet, setBloqueoSheet] = useState<{ barberoId?: string } | null>(null);
   const [bloqueoSel, setBloqueoSel] = useState<BloqueoDia | null>(null);
@@ -198,14 +204,31 @@ export function AgendaDia({
           barberoId: barberos[nuevaCol].id,
         }).then((res) => {
           setGuardandoDrag(false);
-          if (res.ok) router.refresh();
-          else setErrDrag(res.error ?? "No se pudo mover la cita.");
+          if (res.ok) {
+            prepararAviso(d.cita, fecha, nuevoMin, barberos[nuevaCol].id);
+            router.refresh();
+          } else setErrDrag(res.error ?? "No se pudo mover la cita.");
         });
         return null;
       });
     };
     window.addEventListener("pointermove", onMove);
     window.addEventListener("pointerup", onUp);
+  }
+
+  // Arma el aviso de "movimos tu cita" con los datos que ya tenemos en pantalla.
+  function prepararAviso(cita: AgendaDiaItem, ymd: string, min: number, barberoId: string) {
+    const b = barberos.find((x) => x.id === barberoId);
+    setAvisar({
+      titulo: "Cita movida ✓",
+      telefono: cita.telefono ?? null,
+      mensaje: mensajeCitaMovida({
+        cliente: cita.cliente,
+        cuando: `${ymd === hoy ? "hoy" : labelFecha(ymd)} a las ${fmtTime(min)}`,
+        barbero: b?.nombre ?? "tu barbero",
+        sede: SEDE_INFO[sede]?.nombre ?? "la barbería",
+      }),
+    });
   }
 
   const esHoy = fecha === hoy;
@@ -765,17 +788,33 @@ export function AgendaDia({
                 barberos={barberos}
                 horarioSemanal={horarioSemanal}
                 diasEspeciales={diasEspeciales}
-                onDone={(nuevoYmd) => {
+                onDone={(destino) => {
+                  prepararAviso(detalle, destino.ymd, destino.slot, destino.barberoId);
                   setDetalle(null);
                   setMoviendo(false);
                   // El calendario SALTA a donde quedó la cita: si se movió a otro
                   // día, quedarse mirando el día viejo la hacía "desaparecer".
-                  if (nuevoYmd !== fecha) router.push(href(nuevoYmd, "dia"));
+                  if (destino.ymd !== fecha) router.push(href(destino.ymd, "dia"));
                   else router.refresh();
                 }}
                 onCancel={() => setMoviendo(false)}
               />
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Avisarle al cliente que le movimos la cita. Sale solo al guardar: si
+          esperáramos a que alguien se acuerde, no sale nunca. */}
+      {avisar && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-4 sm:items-center">
+          <div className="w-full max-w-sm">
+            <AvisarWhatsApp
+              titulo={avisar.titulo}
+              telefono={avisar.telefono}
+              mensaje={avisar.mensaje}
+              onListo={() => setAvisar(null)}
+            />
           </div>
         </div>
       )}

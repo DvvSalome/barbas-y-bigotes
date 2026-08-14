@@ -39,7 +39,8 @@ export function MoverCitaForm({
   horarioSemanal: HorarioSemanal[];
   diasEspeciales: DiaEspecial[];
   /** Recibe el YYYY-MM-DD destino: el calendario salta a donde quedó la cita. */
-  onDone: (nuevoYmd: string) => void;
+  /** Dónde quedó la cita: el llamador arma con esto el aviso al cliente. */
+  onDone: (destino: { ymd: string; slot: number; barberoId: string }) => void;
   onCancel: () => void;
 }) {
   const [barberoId, setBarberoId] = useState(cita.barberoId ?? barberos[0]?.id ?? "");
@@ -112,7 +113,7 @@ export function MoverCitaForm({
       barberoId,
     });
     setSaving(false);
-    if (res.ok) onDone(ymdLocal(day));
+    if (res.ok) onDone({ ymd: ymdLocal(day), slot, barberoId });
     else setErr(res.error ?? "No se pudo mover.");
   }
 
