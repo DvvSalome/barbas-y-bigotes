@@ -55,7 +55,7 @@ export function PrecioEditable({ productoId, precio }: { productoId: string; pre
           setEditing(true);
         }}
         aria-label="Tocar para editar el precio"
-        className="inline-flex items-center gap-1 tabular-nums underline decoration-dotted decoration-line underline-offset-4 transition hover:decoration-accent"
+        className="inline-flex min-h-11 items-center gap-1 tabular-nums underline decoration-dotted decoration-line underline-offset-4 transition hover:decoration-accent"
       >
         {cop(precio)}
         {/* Lápiz SIEMPRE visible: en el celular no hay hover, así que si estaba
@@ -83,7 +83,7 @@ export function PrecioEditable({ productoId, precio }: { productoId: string; pre
             if (e.key === "Escape") setEditing(false);
           }}
           aria-invalid={!!error}
-          className={`w-24 rounded-lg border bg-bg px-2 py-1 text-sm text-ink tabular-nums focus:outline-none ${
+          className={`min-h-11 w-24 rounded-lg border bg-bg px-2 text-sm text-ink tabular-nums focus:outline-none ${
             error ? "border-red-500" : "border-accent"
           }`}
         />

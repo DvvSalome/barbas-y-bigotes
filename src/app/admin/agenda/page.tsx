@@ -59,8 +59,17 @@ export default async function AgendaPage({
     <div className="max-w-6xl">
       <SectionHeader
         eyebrow="Agenda"
-        title={`Agenda de ${sedeNombre}`}
-        description="El día completo de la sede: cada columna es un barbero, cada bloque una cita. Toca un barbero (o un hueco) para agendar."
+        title="Agenda"
+        // La sede ya la dicen las pastillas de acá abajo (antes el título era el
+        // único lugar donde figuraba). El instructivo es de leer una vez: en el
+        // celular se comía tres renglones sobre el calendario, que es lo que se
+        // viene a ver.
+        description={
+          <span className="hidden sm:inline">
+            El día completo de {sedeNombre}: cada columna es un barbero, cada bloque una cita. Toca un
+            barbero (o un hueco) para agendar.
+          </span>
+        }
       />
       {/* Cambiar de sede acá se hacía SOLO desde el selector del topbar, que en
           el celular vive dentro del menú (dos toques y a ciegas). La agenda es

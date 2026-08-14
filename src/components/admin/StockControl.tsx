@@ -123,7 +123,7 @@ export function StockControl({
           setVal("");
         }}
         title="Llegó mercancía: suma unidades al stock"
-        className="rounded-full border border-accent/40 bg-accent/[0.07] px-3 py-2 text-[11.5px] font-bold text-accent-soft transition hover:bg-accent/15"
+        className="inline-flex min-h-11 items-center rounded-full border border-accent/40 bg-accent/[0.07] px-3.5 text-[11.5px] font-bold text-accent-soft transition hover:bg-accent/15"
       >
         + Entró
       </button>
@@ -134,7 +134,7 @@ export function StockControl({
           setVal(String(stock));
         }}
         title="Conté y hay otra cantidad"
-        className="rounded-full border border-line px-3 py-2 text-[11.5px] text-muted transition hover:text-ink"
+        className="inline-flex min-h-11 items-center rounded-full border border-line px-3.5 text-[11.5px] text-muted transition hover:text-ink"
       >
         Corregir
       </button>

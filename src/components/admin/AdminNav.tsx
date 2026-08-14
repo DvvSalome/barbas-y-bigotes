@@ -174,7 +174,7 @@ export function AdminSubTabs() {
               key={h.href}
               href={sede ? `${h.href}?sede=${sede}` : h.href}
               aria-current={act ? "page" : undefined}
-              className={`whitespace-nowrap rounded-full border px-3.5 py-1.5 text-[12.5px] font-semibold transition ${
+              className={`inline-flex min-h-11 items-center whitespace-nowrap rounded-full border px-3.5 text-[12.5px] font-semibold transition ${
                 act
                   ? "border-accent/45 bg-accent/10 text-accent-soft"
                   : "border-line text-muted hover:border-accent/30 hover:text-ink"

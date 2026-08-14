@@ -92,7 +92,7 @@ export function FotoServicio({
           onClick={quitar}
           onBlur={() => setConfirmando(false)}
           disabled={quitando}
-          className={`mt-0.5 text-[10px] font-semibold transition disabled:opacity-50 ${
+          className={`inline-flex min-h-11 items-center px-2 text-[10px] font-semibold transition disabled:opacity-50 ${
             confirmando ? "text-warn" : "text-muted hover:text-ink"
           }`}
         >

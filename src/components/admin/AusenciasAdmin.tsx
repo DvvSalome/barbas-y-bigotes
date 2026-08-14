@@ -10,7 +10,7 @@ import type { Barbero, Sede } from "@/lib/data/types";
 import type { AusenciaAdmin } from "@/lib/data/queries";
 
 const input =
-  "rounded-lg border border-line bg-bg px-3 py-2 text-ink placeholder:text-muted focus:border-accent focus:outline-none";
+  "min-h-11 rounded-lg border border-line bg-bg px-3 py-2 text-ink placeholder:text-muted focus:border-accent focus:outline-none";
 
 // Formatea YYYY-MM-DD a "vie 18 jul" sin líos de timezone (la fecha ya es local).
 function fechaLabel(ymd: string) {

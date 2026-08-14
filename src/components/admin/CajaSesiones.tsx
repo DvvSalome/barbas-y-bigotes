@@ -116,11 +116,10 @@ function CajaCard({ caja, medios }: { caja: CajaSesionSede; medios: MedioPago[] 
           }`}
         >
           <span className={`h-1.5 w-1.5 rounded-full ${abierta ? "bg-ok" : "bg-muted"}`} />
-          {abierta
-            ? dias === 0
-              ? `Abierta · ${horaBogota(caja.abiertaEn!)}`
-              : `Abierta desde el ${fechaCortaBogota(caja.abiertaEn!)}`
-            : "Cerrada"}
+          {/* Sin fecha cuando lleva días: el chip es nowrap dentro de una tarjeta
+              overflow-hidden y en 375px se comía el final ("…20 DE"). La fecha
+              cabe entera en el aviso de abajo, que es donde hay renglón. */}
+          {abierta ? (dias === 0 ? `Abierta · ${horaBogota(caja.abiertaEn!)}` : "Abierta") : "Cerrada"}
         </span>
       </div>
 
@@ -129,8 +128,8 @@ function CajaCard({ caja, medios }: { caja: CajaSesionSede; medios: MedioPago[] 
           hora. Ahora lo dice y ofrece cerrarla. */}
       {abierta && dias > 0 && (
         <p className="mt-3 rounded-lg border border-warn/35 bg-warn/[0.08] px-3 py-2 text-[12.5px] text-warn">
-          Lleva {dias === 1 ? "1 día" : `${dias} días`} sin cerrar: lo de abajo suma todo ese
-          período, no solo hoy.
+          Lleva {dias === 1 ? "1 día" : `${dias} días`} sin cerrar (abrió el{" "}
+          {fechaCortaBogota(caja.abiertaEn!)}): lo de abajo suma todo ese período, no solo hoy.
         </p>
       )}
 

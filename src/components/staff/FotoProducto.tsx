@@ -74,15 +74,12 @@ export function FotoProducto({
           <CamIcon className="h-3.5 w-3.5" />
         </span>
       </button>
-      {/* Etiqueta visible: dice qué hace sin depender del hover */}
-      <button
-        type="button"
-        onClick={abrir}
-        disabled={subiendo}
-        className="text-[10.5px] font-semibold text-accent-soft transition hover:text-accent disabled:opacity-50"
-      >
+      {/* Etiqueta visible: dice qué hace sin depender del hover. Es TEXTO, no un
+          segundo botón: como botón medía 16px de alto (target imposible) y
+          duplicaba el del thumb, que ya es grande. */}
+      <span className={`text-[10.5px] font-semibold text-accent-soft ${subiendo ? "opacity-50" : ""}`}>
         {subiendo ? "Subiendo…" : fotoUrl ? "Cambiar foto" : "Subir foto"}
-      </button>
+      </span>
       <input ref={inputRef} type="file" accept="image/*" onChange={onChange} className="hidden" />
       {err && <span className="max-w-40 text-center text-[10px] leading-tight text-accent-soft">{err}</span>}
     </span>

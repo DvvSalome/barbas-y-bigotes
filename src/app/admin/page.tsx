@@ -14,7 +14,7 @@ import {
   getPostventaResumen,
   getCierresHoy,
 } from "@/lib/data/queries";
-import { cop, horaBogota, fechaCortaBogota, diasDesde } from "@/lib/format";
+import { cop, horaBogota, diasDesde } from "@/lib/format";
 import { fmtTime, CLOSE } from "@/lib/slots";
 import { DesbloquearPinBtn } from "@/components/admin/DesbloquearPinBtn";
 import { AlertIcon, ScissorsIcon, CheckIcon, StarIcon, PercentIcon } from "@/components/icons";
@@ -581,12 +581,13 @@ export default async function AdminHoy({
                     <span className="block truncate text-[12px] text-muted">
                       {/* Una caja de días acá decía solo la hora ("Abierta desde 1:41 am") y
                           se leía como si fuera de hoy — el mismo engaño que ya se arregló en
-                          el chip del topbar y en el cierre del mostrador. */}
+                          el chip del topbar y en el cierre del mostrador. Corto a propósito:
+                          en 375px esta línea trunca, y la fecha exacta está en el cuadre. */}
                       {c.estado === "abierta" &&
                         (() => {
                           const d = diasDesde(c.hora as string);
                           if (d === 0) return `Abierta desde ${horaBogota(c.hora as string)}`;
-                          return `Abierta el ${fechaCortaBogota(c.hora as string)} · ${d === 1 ? "1 día" : `${d} días`} sin cerrar`;
+                          return `Abierta hace ${d === 1 ? "1 día" : `${d} días`}`;
                         })()}
                       {c.estado === "cerrada" &&
                         `Cerrada ${horaBogota(c.hora as string)}${c.cerradaPor ? ` · ${c.cerradaPor}` : ""}`}

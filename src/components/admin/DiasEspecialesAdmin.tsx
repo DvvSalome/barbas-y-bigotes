@@ -8,7 +8,7 @@ import type { Sede } from "@/lib/data/types";
 import type { DiaEspecial } from "@/lib/data/queries";
 
 const input =
-  "rounded-lg border border-line bg-bg px-3 py-2 text-ink placeholder:text-muted focus:border-accent focus:outline-none";
+  "min-h-11 rounded-lg border border-line bg-bg px-3 py-2 text-ink placeholder:text-muted focus:border-accent focus:outline-none";
 
 // YYYY-MM-DD a "dom 20 jul" sin líos de huso (la fecha ya es civil, no instante).
 function fechaLabel(ymd: string) {

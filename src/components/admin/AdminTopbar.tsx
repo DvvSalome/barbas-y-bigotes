@@ -109,7 +109,7 @@ export function AdminTopbar({ email, sedes, caja }: { email: string; sedes: Sede
           aria-haspopup="dialog"
           aria-label="Buscar o hacer algo (Ctrl K)"
           onClick={() => window.dispatchEvent(new CustomEvent("bb:cmdk"))}
-          className="flex min-w-24 flex-1 items-center gap-2 rounded-[9px] border border-line bg-panel px-3 py-1.5 text-[13px] text-muted transition hover:border-ink/25 hover:text-ink/80 sm:max-w-[380px]"
+          className="flex min-h-11 min-w-24 flex-1 items-center gap-2 rounded-[9px] border border-line bg-panel px-3 text-[13px] text-muted transition hover:border-ink/25 hover:text-ink/80 sm:max-w-[380px]"
         >
           <SearchIcon className="h-3.5 w-3.5 shrink-0" />
           {/* En mobile era una píldora vacía (solo la lupa): al menos tiene que decir "Buscar". */}
@@ -121,34 +121,24 @@ export function AdminTopbar({ email, sedes, caja }: { email: string; sedes: Sede
           </kbd>
         </button>
 
-        {/* Una caja abierta de días se leía igual que la de hoy (solo la hora):
-            el chip pasa a alerta y dice cuántos días lleva. */}
+        {/* Estado de la caja. Cuando lleva DÍAS abierta no se dibuja: abajo va la
+            franja completa con el mismo mensaje, y tener las dos era decir lo
+            mismo dos veces gastando una fila entera del celular. */}
         {(() => {
           const dias = caja.abierta && caja.desde ? diasDesde(caja.desde) : 0;
-          const vieja = dias > 0;
+          if (dias > 0) return null;
           return (
             <Link
               href="/admin/cuadre"
-              className={`flex items-center gap-1.5 whitespace-nowrap rounded-full border px-3 py-1 text-xs font-semibold transition ${
-                vieja
-                  ? "border-warn/45 text-warn"
-                  : caja.abierta
-                    ? "border-ok/35 text-ok"
-                    : "border-line text-muted hover:text-ink"
+              className={`flex min-h-11 items-center gap-1.5 whitespace-nowrap rounded-full border px-3.5 text-xs font-semibold transition ${
+                caja.abierta ? "border-ok/35 text-ok" : "border-line text-muted hover:text-ink"
               }`}
             >
-              <span
-                className={`h-[7px] w-[7px] rounded-full ${
-                  vieja ? "bg-warn" : caja.abierta ? "bg-ok" : "bg-muted"
-                }`}
-              />
-              {/* La antigüedad manda: "1 de 2 abiertas" TAPABA el "hace N días". */}
+              <span className={`h-[7px] w-[7px] rounded-full ${caja.abierta ? "bg-ok" : "bg-muted"}`} />
               {caja.abierta
-                ? vieja
-                  ? `Caja sin cerrar hace ${dias === 1 ? "1 día" : `${dias} días`}`
-                  : caja.sedesCount > 1 && caja.abiertasCount < caja.sedesCount
-                    ? `Caja: ${caja.abiertasCount} de ${caja.sedesCount} abiertas`
-                    : `Caja abierta${caja.desde ? ` · ${horaBogota(caja.desde)}` : ""}`
+                ? caja.sedesCount > 1 && caja.abiertasCount < caja.sedesCount
+                  ? `Caja: ${caja.abiertasCount} de ${caja.sedesCount} abiertas`
+                  : `Caja abierta${caja.desde ? ` · ${horaBogota(caja.desde)}` : ""}`
                 : "Caja cerrada"}
             </Link>
           );
@@ -165,7 +155,7 @@ export function AdminTopbar({ email, sedes, caja }: { email: string; sedes: Sede
         return (
           <Link
             href="/admin/cuadre"
-            className="block border-t border-warn/30 bg-warn/10 px-4 py-2.5 text-center text-[13px] font-bold text-warn transition hover:bg-warn/15"
+            className="flex min-h-11 items-center justify-center border-t border-warn/30 bg-warn/10 px-4 py-2 text-center text-[13px] font-bold text-warn transition hover:bg-warn/15"
           >
             La caja lleva {dias === 1 ? "1 día" : `${dias} días`} sin cerrar — toca para cerrarla →
           </Link>

@@ -211,7 +211,9 @@ export function AgendaDia({
           <Link href={href(ymdMas(fecha, -paso))} aria-label={vistaActiva === "semana" ? "Semana anterior" : "Día anterior"} className={btnNav}>
             ‹
           </Link>
-          <div className="min-w-[130px] text-center">
+          {/* 96px en el celular: con 130 fijos, "Volver a hoy" no entraba en la
+              fila y se llevaba un renglón entero él solo. */}
+          <div className="min-w-[96px] text-center sm:min-w-[130px]">
             <div className="font-display text-xl leading-tight">
               {vistaActiva === "semana"
                 ? `${labelFecha(lunes)} – ${labelFecha(ymdMas(lunes, 6))}`
@@ -225,18 +227,22 @@ export function AgendaDia({
             ›
           </Link>
           {!esHoy && (
-            <Link href={href(hoy)} className="ml-1 rounded-full border border-accent/40 px-3.5 py-2 text-xs font-bold text-accent-soft transition hover:bg-accent/10">
+            <Link href={href(hoy)} className="ml-1 inline-flex min-h-11 items-center rounded-full border border-accent/40 px-3.5 text-xs font-bold text-accent-soft transition hover:bg-accent/10">
               Volver a hoy
             </Link>
           )}
-          {/* Conmutador Día / Semana (como WeiBook) */}
-          <div className="ml-1 flex gap-0.5 rounded-[9px] border border-line bg-panel p-[3px]" role="group" aria-label="Vista">
+        </div>
+        {/* Vista y acciones juntas: en 375px el conmutador colgado del navegador
+            de fecha empujaba la fila de botones a un tercer renglón, y el
+            calendario —lo único que se viene a ver— arrancaba fuera de pantalla. */}
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex gap-0.5 rounded-[9px] border border-line bg-panel p-[3px]" role="group" aria-label="Vista">
             {(["dia", "semana"] as const).map((v) => (
               <Link
                 key={v}
                 href={href(fecha, v)}
                 aria-current={vistaActiva === v ? "page" : undefined}
-                className={`flex min-h-9 items-center rounded-md px-3 text-xs font-semibold transition ${
+                className={`flex min-h-11 items-center rounded-md px-3.5 text-xs font-semibold transition ${
                   vistaActiva === v ? "bg-elevated text-ink shadow-[inset_0_0_0_1px_var(--line)]" : "text-muted hover:text-ink"
                 }`}
               >
@@ -244,17 +250,15 @@ export function AgendaDia({
               </Link>
             ))}
           </div>
-        </div>
-        <div className="flex gap-2">
           <button
             onClick={() => setBloqueoSheet({})}
-            className="rounded-full border border-line px-4 py-2.5 text-xs font-bold uppercase tracking-wide text-muted transition hover:text-ink"
+            className="inline-flex min-h-11 items-center rounded-full border border-line px-4 text-xs font-bold uppercase tracking-wide text-muted transition hover:text-ink"
           >
             Bloquear
           </button>
           <button
             onClick={() => setSheet({})}
-            className="rounded-full bg-accent px-5 py-2.5 text-xs font-bold uppercase tracking-wide text-on-accent transition hover:bg-accent-soft"
+            className="inline-flex min-h-11 items-center rounded-full bg-accent px-5 text-xs font-bold uppercase tracking-wide text-on-accent transition hover:bg-accent-soft"
           >
             + Cita
           </button>

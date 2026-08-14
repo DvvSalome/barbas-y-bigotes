@@ -60,7 +60,7 @@ export function PrecioSedeEditable({
           setEditando(true);
         }}
         title={`Toca para editar el precio en ${etiqueta}`}
-        className="group inline-flex items-center gap-1.5 rounded-lg px-1.5 py-0.5 tabular-nums transition hover:bg-elevated"
+        className="group inline-flex min-h-11 items-center gap-1.5 rounded-lg px-2 tabular-nums transition hover:bg-elevated"
       >
         {precio != null ? (
           <span className="font-semibold text-ink underline decoration-dotted decoration-line underline-offset-4 transition group-hover:decoration-accent">
