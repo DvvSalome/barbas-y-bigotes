@@ -1,6 +1,6 @@
 import { type SupabaseClient } from "@supabase/supabase-js";
 import { supabaseServer, supabaseServerAuth, supabaseAdmin } from "@/lib/supabase/server";
-import { bogotaDayRange, bogotaDayRangeDeFecha, bogotaYmd, rangoPeriodo, type Periodo } from "@/lib/slots";
+import { bogotaDayRange, bogotaDayRangeDeFecha, bogotaYmd, horarioEfectivo, rangoPeriodo, type Periodo } from "@/lib/slots";
 import { totalesPorMedio, snapshotDinero, type TotalesPorMedio } from "@/lib/cobro";
 import { CERQUILLO_EXCLUIDOS, estadoTarjeta, TARJETA_SIZE, type BeneficioTarjeta } from "@/lib/tarjeta";
 import type { Sede, SedeId, Servicio, Barbero, Producto, Categoria, TipoContrato } from "./types";
@@ -2206,4 +2206,88 @@ export async function getVentasParaCsv(p: Periodo = "mes", sede?: SedeId | null)
   const { data, error } = await q;
   if (error) console.error("getVentasParaCsv:", error.message);
   return (data ?? []) as Record<string, unknown>[];
+}
+
+export type PulsoDia = {
+  /** Plata y cobros de HOY por barbero (solo aparecen los que cobraron algo). */
+  porBarbero: Record<string, { plata: number; cobros: number }>;
+  /**
+   * Qué tan llena está la jornada: minutos ya agendados sobre los minutos que
+   * el equipo tiene disponibles hoy. El denominador respeta el horario REAL de
+   * cada sede (0048) — con horario editable, dar por hecho 9-20 mentiría los
+   * días de cierre temprano o feriado.
+   */
+  ocupacion: { agendado: number; disponible: number; ratio: number };
+  /** Citas de hoy que siguen en pie (canceladas fuera). */
+  citasHoy: number;
+};
+
+/**
+ * El pulso del día para el tablero: plata por barbero y ocupación de la jornada.
+ * Reutiliza las lecturas de horario que ya existen en vez de re-derivar la
+ * ventana del día (regla del repo: la fuente única es horarioEfectivo).
+ */
+export async function pulsoDelDia(sede?: SedeId | null): Promise<PulsoDia> {
+  const sb = await supabaseServerAuth();
+  const { desde, hasta } = bogotaDayRange();
+  const hoy = bogotaYmd();
+
+  let qVentas = sb
+    .from("ventas")
+    .select("barbero_id,total")
+    .gte("creado_en", desde.toISOString())
+    .lt("creado_en", hasta.toISOString());
+  if (sede) qVentas = qVentas.eq("sede_id", sede);
+
+  let qReservas = sb
+    .from("reservas")
+    .select("inicio,fin,estado,sede_id")
+    .gte("inicio", desde.toISOString())
+    .lt("inicio", hasta.toISOString());
+  if (sede) qReservas = qReservas.eq("sede_id", sede);
+
+  const [ventasRes, reservasRes, barberos, semanal, especiales] = await Promise.all([
+    qVentas,
+    qReservas,
+    getBarberos(),
+    getHorarioSemanal(),
+    getDiasEspeciales(),
+  ]);
+  if (ventasRes.error) console.error("pulsoDelDia ventas:", ventasRes.error.message);
+  if (reservasRes.error) console.error("pulsoDelDia reservas:", reservasRes.error.message);
+
+  const porBarbero: PulsoDia["porBarbero"] = {};
+  for (const v of (ventasRes.data ?? []) as { barbero_id: string | null; total: number }[]) {
+    if (!v.barbero_id) continue; // venta de mostrador sin barbero: suma al total, no a nadie
+    const acc = (porBarbero[v.barbero_id] ??= { plata: 0, cobros: 0 });
+    acc.plata += v.total;
+    acc.cobros += 1;
+  }
+
+  const vivas = ((reservasRes.data ?? []) as { inicio: string; fin: string; estado: string }[]).filter(
+    (r) => r.estado !== "cancelada",
+  );
+  const agendado = vivas.reduce(
+    (a, r) => a + Math.max(0, (Date.parse(r.fin) - Date.parse(r.inicio)) / 60_000),
+    0,
+  );
+
+  // Denominador: por cada sede en juego, sus barberos activos × su ventana de hoy.
+  const sedes = sede ? [sede] : [...new Set(barberos.map((b) => b.sede))];
+  let disponible = 0;
+  for (const s of sedes) {
+    const v = horarioEfectivo(
+      hoy,
+      semanal.filter((h) => h.sede === s),
+      especiales.filter((e) => e.sede === s),
+    );
+    if (!v.abierta) continue;
+    disponible += barberos.filter((b) => b.sede === s).length * (v.cierraMin - v.abreMin);
+  }
+
+  return {
+    porBarbero,
+    ocupacion: { agendado, disponible, ratio: disponible > 0 ? agendado / disponible : 0 },
+    citasHoy: vivas.length,
+  };
 }

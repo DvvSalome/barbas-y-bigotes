@@ -89,7 +89,7 @@ export function AdminTopbar({ email, sedes, caja }: { email: string; sedes: Sede
 
   return (
     <header className="sticky top-0 z-40 border-b border-line bg-bg/90 backdrop-blur-md">
-      <div className="mx-auto flex w-full max-w-[1180px] flex-wrap items-center gap-x-3 gap-y-2 px-4 py-2.5 sm:px-5">
+      <div className="mx-auto flex w-full max-w-[1400px] flex-wrap items-center gap-x-3 gap-y-2 px-4 py-2.5 sm:px-5">
         <Link href="/admin" aria-label="Barbas & Bigotes" className="shrink-0 transition hover:opacity-95">
           <Image
             src="/brand/logo-lockup.png"

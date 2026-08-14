@@ -42,7 +42,7 @@ export default async function AdminLayout({
         ]}
       />
       <AdminTopbar email={user.email ?? ""} sedes={sedes} caja={caja} />
-      <main className="mx-auto w-full max-w-[1180px] flex-1 px-4 pb-20 pt-6 sm:px-5">{children}</main>
+      <main className="mx-auto w-full max-w-[1400px] flex-1 px-4 pb-20 pt-6 sm:px-5">{children}</main>
       <CommandK />
     </div>
   );

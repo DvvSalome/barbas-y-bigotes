@@ -128,7 +128,7 @@ export function AdminTabs() {
       aria-label="Secciones"
       onScroll={medirSobra}
       style={{ maskImage: desvanecido, WebkitMaskImage: desvanecido }}
-      className="mx-auto flex w-full max-w-[1180px] gap-0.5 overflow-x-auto px-4 sm:px-5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      className="mx-auto flex w-full max-w-[1400px] gap-0.5 overflow-x-auto px-4 sm:px-5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
     >
       {[...GRUPOS, ...SECUNDARIAS].map((n) => {
         const act = activo?.href === n.href;
@@ -165,7 +165,7 @@ export function AdminSubTabs() {
     <div className="border-b border-line/60 bg-panel/40">
       <nav
         aria-label={`Secciones de ${grupo.label}`}
-        className="mx-auto flex w-full max-w-[1180px] gap-1.5 overflow-x-auto px-4 py-2 sm:px-5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="mx-auto flex w-full max-w-[1400px] gap-1.5 overflow-x-auto px-4 py-2 sm:px-5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
         {grupo.hijos.map((h) => {
           const act = esRuta(path, h.href);

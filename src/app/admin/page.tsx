@@ -13,6 +13,7 @@ import {
   serie7Dias,
   getPostventaResumen,
   getCierresHoy,
+  pulsoDelDia,
 } from "@/lib/data/queries";
 import { cop, horaBogota, diasDesde } from "@/lib/format";
 import { fmtTime, CLOSE } from "@/lib/slots";
@@ -39,6 +40,37 @@ const FOTO_SEDE: Record<string, string> = {
 
 function fechaCorta(iso: string) {
   return new Date(iso).toLocaleDateString("es-CO", { timeZone: "America/Bogota", day: "numeric", month: "short" });
+}
+
+/**
+ * Los 7 días en barras. La polilínea de 1px que había no se leía: con ventas
+ * parejas era una raya horizontal y con un solo día de venta, un pico sin
+ * contexto. Hoy se distingue por color, no por posición.
+ */
+function Barras7({ dias, className }: { dias: { ymd: string; total: number }[]; className?: string }) {
+  const max = Math.max(1, ...dias.map((d) => d.total));
+  const paso = 300 / dias.length;
+  return (
+    <svg viewBox="0 0 300 56" preserveAspectRatio="none" aria-label="Ingresos de los últimos 7 días" className={className}>
+      {dias.map((d, i) => {
+        const alto = Math.max(2, (d.total / max) * 46);
+        const hoy = i === dias.length - 1;
+        return (
+          <rect
+            key={d.ymd}
+            x={i * paso + 3}
+            y={52 - alto}
+            width={paso - 6}
+            height={alto}
+            rx="2"
+            fill={hoy ? "var(--accent-soft)" : "var(--bar)"}
+            opacity={hoy ? 1 : 0.45}
+          />
+        );
+      })}
+      <line x1="0" y1="53.5" x2="300" y2="53.5" stroke="var(--line)" strokeWidth="1" />
+    </svg>
+  );
 }
 
 // Cuánto se pasó de su hora, en la unidad más corta que quepa en un chip.
@@ -107,7 +139,7 @@ export default async function AdminHoy({
   const sedeParam = typeof sp.sede === "string" ? sp.sede : undefined;
   const sede = sedeParam && sedeParam in NOMBRE_SEDE ? (sedeParam as SedeId) : null;
 
-  const [plata, equipo, citas, vencidas, sinCobrar, tareas, serie, postventa, caja] = await Promise.all([
+  const [plata, equipo, citas, vencidas, sinCobrar, tareas, serie, postventa, caja, pulso] = await Promise.all([
     ventasHoyPorMedio(sede),
     equipoAhora(sede),
     citasSiguientes(sede),
@@ -117,6 +149,7 @@ export default async function AdminHoy({
     serie7Dias(sede),
     getPostventaResumen(sede ?? undefined),
     getCierresHoy(sede),
+    pulsoDelDia(sede),
   ]);
 
   const fecha = new Date().toLocaleDateString("es-CO", {
@@ -144,13 +177,6 @@ export default async function AdminHoy({
   const libres = equipo.filter((b) => !b.enSilla && !b.pinBloqueado);
   const enSillaCount = equipo.filter((b) => b.enSilla).length;
 
-  // Sparkline: mismo mapeo del mockup (300x56, margen 8).
-  const valores = serie.dias.map((d) => d.total);
-  const mx = Math.max(...valores);
-  const mn = Math.min(...valores);
-  const rango = mx - mn || 1;
-  const puntos = valores.map((v, i) => [8 + i * (284 / (valores.length - 1)), 48 - ((v - mn) / rango) * 38] as const);
-  const ultimo = puntos[puntos.length - 1];
   const variacion = variacionSemana(serie.semana, serie.semanaAnterior);
 
   const cajasAbiertas = caja.filter((c) => c.estado === "abierta").length;
@@ -201,17 +227,7 @@ export default async function AdminHoy({
               </div>
               <div className="mt-1 text-[11px] text-muted tabular-nums">vs {compacto(serie.semanaAnterior)} semana pasada</div>
             </div>
-            <svg viewBox="0 0 300 56" preserveAspectRatio="none" aria-label="Ingresos de los últimos 7 días" className="h-9 w-[150px]">
-              <polyline
-                fill="none"
-                stroke="var(--bar)"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                points={puntos.map((p) => `${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(" ")}
-              />
-              <circle cx={ultimo[0].toFixed(1)} cy={ultimo[1].toFixed(1)} r="4" fill="var(--accent-soft)" />
-            </svg>
+            <Barras7 dias={serie.dias} className="h-9 w-[160px]" />
           </div>
         </div>
 
@@ -271,17 +287,7 @@ export default async function AdminHoy({
 
         {/* Tendencia en móvil */}
         <div className="mt-4 flex items-center gap-3 lg:hidden">
-          <svg viewBox="0 0 300 56" preserveAspectRatio="none" aria-hidden className="h-8 flex-1">
-            <polyline
-              fill="none"
-              stroke="var(--bar)"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              points={puntos.map((p) => `${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(" ")}
-            />
-            <circle cx={ultimo[0].toFixed(1)} cy={ultimo[1].toFixed(1)} r="4" fill="var(--accent-soft)" />
-          </svg>
+          <Barras7 dias={serie.dias} className="h-8 flex-1" />
           <div className="shrink-0 text-right text-[11px] text-muted tabular-nums">
             <span className="font-display text-[14px] font-extrabold text-ink">{compacto(serie.semana)}</span>{" "}
             {variacion && (
@@ -298,6 +304,28 @@ export default async function AdminHoy({
       </header>
 
       <div className="border-t border-line" />
+
+      {/* ── El pulso del día ────────────────────────────────
+          Seis números que antes no estaban en ninguna pantalla (ticket
+          promedio, ocupación, plata parada sin cobrar) o vivían escondidos en
+          una línea de texto. En el celular van de a dos; en escritorio, los
+          seis en una fila que por fin usa el ancho del monitor. */}
+      <section aria-label="Pulso del día" className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
+        {[
+          { l: "Entró hoy", v: cop(plata.total), s: plata.medios.length > 0 ? `${plata.medios.length} ${plata.medios.length === 1 ? "medio" : "medios"} de pago` : "todavía sin cobros", tono: "text-accent-soft" },
+          { l: "Atenciones", v: String(plata.atenciones), s: `${pulso.citasHoy} ${pulso.citasHoy === 1 ? "cita agendada" : "citas agendadas"} hoy`, tono: "text-ink" },
+          { l: "Ticket promedio", v: plata.atenciones > 0 ? cop(Math.round(plata.total / plata.atenciones)) : "—", s: "por cliente cobrado", tono: "text-ink" },
+          { l: "Propinas", v: cop(plata.propinas), s: plata.total > 0 ? `${Math.round((plata.propinas / plata.total) * 100)}% de lo cobrado` : "van aparte del corte", tono: "text-ok" },
+          { l: "Agenda llena", v: `${Math.round(pulso.ocupacion.ratio * 100)}%`, s: pulso.ocupacion.disponible > 0 ? `${Math.round(pulso.ocupacion.agendado / 60)} h de ${Math.round(pulso.ocupacion.disponible / 60)} h del equipo` : "hoy no se abre", tono: pulso.ocupacion.ratio >= 0.6 ? "text-ok" : "text-ink" },
+          { l: "Sin cobrar", v: cop(montoSinCobrar), s: sinCobrar.length === 0 ? "todo pasó por caja" : `${sinCobrar.length} ${sinCobrar.length === 1 ? "cita cerrada" : "citas cerradas"} sin cobro`, tono: montoSinCobrar > 0 ? "text-warn" : "text-muted" },
+        ].map((k) => (
+          <div key={k.l} className={`${PANEL} px-3.5 py-3`}>
+            <div className="text-[10.5px] font-bold uppercase tracking-[0.12em] text-muted">{k.l}</div>
+            <div className={`mt-1 font-display text-[22px] font-extrabold leading-none tabular-nums ${k.tono}`}>{k.v}</div>
+            <div className="mt-1 text-[11px] leading-tight text-muted">{k.s}</div>
+          </div>
+        ))}
+      </section>
 
       {/* ── Atendidas sin cobrar ───────────────────────────────
           Plata que ya se fue y no aparece en ninguna otra lista. Solo si hay. */}
@@ -363,89 +391,100 @@ export default async function AdminHoy({
                 No hay barberos activos{sede ? " en esta sede" : ""}.
               </div>
             ) : (
-              <div className={PANEL}>
-                {/* Resumen: la única línea que hace falta cuando no pasa nada. */}
-                <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2.5 px-4 py-3">
-                  <span className="text-[13px] text-muted">
-                    {enSillaCount === 0 ? (
-                      "Nadie en silla ahora mismo"
-                    ) : (
-                      <>
-                        <span className="font-semibold text-ink tabular-nums">
-                          {enSillaCount} de {equipo.length}
-                        </span>{" "}
-                        atendiendo
-                      </>
-                    )}
-                  </span>
-                  {libres.length > 0 && (
-                    <div className="flex items-center gap-2.5">
-                      <div className="flex -space-x-1.5">
-                        {libres.slice(0, 6).map((b) => (
-                          <span
-                            key={b.id}
-                            title={`${b.nombre} · libre`}
-                            className="relative grid h-7 w-7 place-items-center overflow-hidden rounded-full bg-elevated text-[9.5px] font-bold text-muted ring-2 ring-panel"
-                          >
+              <>
+                <p className="mb-2.5 text-[12.5px] text-muted">
+                  {enSillaCount === 0 ? (
+                    "Nadie en silla ahora mismo"
+                  ) : (
+                    <>
+                      <span className="font-semibold text-ink tabular-nums">
+                        {enSillaCount} de {equipo.length}
+                      </span>{" "}
+                      atendiendo
+                    </>
+                  )}
+                  {libres.length > 0 && <span className="text-ok"> · {libres.length} libres</span>}
+                </p>
+
+                {/* Una TARJETA por barbero. Antes eran seis caras de 28px en una
+                    tira: no se sabía quién produce, quién está libre ni desde
+                    cuándo. Ahora cada uno muestra su estado y su plata del día
+                    —el número que el dueño quiere de verdad— y el que se pasó de
+                    hora se pinta solo. */}
+                <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                  {[...conAtencion, ...libres].map((b) => {
+                    const pasadoDeHora = !!b.enSilla && new Date(b.enSilla.fin).getTime() < ahora;
+                    const suyo = pulso.porBarbero[b.id];
+                    return (
+                      <div
+                        key={b.id}
+                        className={`rounded-2xl border bg-panel p-3.5 transition ${
+                          pasadoDeHora
+                            ? "border-accent/50 bg-accent/[0.06]"
+                            : b.enSilla
+                              ? "border-ok/30"
+                              : "border-line"
+                        }`}
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <span className="relative grid h-11 w-11 shrink-0 place-items-center overflow-hidden rounded-full bg-elevated text-[13px] font-bold text-ink">
                             {b.fotoUrl ? (
-                              <Image src={b.fotoUrl} alt={b.nombre} width={28} height={28} className="h-full w-full object-cover" />
+                              <Image src={b.fotoUrl} alt={b.nombre} width={44} height={44} className="h-full w-full object-cover" />
                             ) : (
                               iniciales(b.nombre)
                             )}
                           </span>
-                        ))}
-                      </div>
-                      <span className="text-[12px] text-ok">{libres.length} libres</span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Filas solo para lo que pide una mirada. */}
-                {conAtencion.map((b) => {
-                  const pasadoDeHora = !!b.enSilla && new Date(b.enSilla.fin).getTime() < ahora;
-                  return (
-                    <div
-                      key={b.id}
-                      className={`grid grid-cols-[36px_1fr_auto] items-center gap-3 border-t border-line/60 px-4 py-2.5 ${
-                        pasadoDeHora ? "bg-accent/[0.06]" : ""
-                      }`}
-                    >
-                      <span className="relative grid h-9 w-9 place-items-center overflow-hidden rounded-full bg-elevated text-xs font-bold text-ink">
-                        {b.fotoUrl ? (
-                          <Image src={b.fotoUrl} alt={b.nombre} width={36} height={36} className="h-full w-full object-cover" />
-                        ) : (
-                          iniciales(b.nombre)
-                        )}
-                      </span>
-                      <span className="min-w-0">
-                        <span className="block truncate text-[13.5px] font-semibold text-ink">{b.nombre}</span>
-                        <span className="block truncate text-[11.5px] text-muted">
-                          {b.enSilla ? `${b.enSilla.servicio} · ${b.enSilla.cliente}` : NOMBRE_SEDE[b.sede] ?? b.sede}
-                        </span>
-                      </span>
-                      <span className="flex items-center gap-2">
-                        {b.pinBloqueado && (
-                          <>
-                            <span className="whitespace-nowrap rounded-full border border-warn/40 px-2.5 py-[3px] text-[10.5px] font-bold text-warn">
-                              PIN bloqueado
-                            </span>
-                            <DesbloquearPinBtn barberoId={b.id} />
-                          </>
-                        )}
-                        {b.enSilla && (
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate text-[14px] font-bold leading-tight text-ink">{b.nombre}</span>
+                            <span className="block truncate text-[11px] text-muted">{NOMBRE_SEDE[b.sede] ?? b.sede}</span>
+                          </span>
                           <span
-                            className={`whitespace-nowrap rounded-full border px-2.5 py-[3px] text-[10.5px] font-bold ${
-                              pasadoDeHora ? "border-accent bg-accent/15 text-accent-soft" : "border-accent/40 text-accent-soft"
+                            className={`shrink-0 whitespace-nowrap rounded-full border px-2 py-[3px] text-[10px] font-bold uppercase tracking-wide ${
+                              pasadoDeHora
+                                ? "border-accent bg-accent/15 text-accent-soft"
+                                : b.enSilla
+                                  ? "border-ok/40 text-ok"
+                                  : "border-line text-muted"
                             }`}
                           >
-                            {pasadoDeHora ? `Sin cerrar · +${atraso(b.enSilla.fin, ahora)}` : `Sale ${horaBogota(b.enSilla.fin)}`}
+                            {pasadoDeHora ? `+${atraso(b.enSilla!.fin, ahora)}` : b.enSilla ? "En silla" : "Libre"}
                           </span>
+                        </div>
+
+                        <p className="mt-2.5 truncate text-[12px] text-ink/85">
+                          {b.enSilla ? (
+                            <>
+                              {b.enSilla.cliente} · {b.enSilla.servicio}
+                              <span className="text-muted">
+                                {pasadoDeHora ? " · debía salir " : " · sale "}
+                                {horaBogota(b.enSilla.fin)}
+                              </span>
+                            </>
+                          ) : (
+                            <span className="text-muted">Silla libre</span>
+                          )}
+                        </p>
+
+                        <div className="mt-2.5 flex items-baseline justify-between border-t border-line/60 pt-2.5">
+                          <span className="text-[11.5px] text-muted tabular-nums">
+                            {suyo ? `${suyo.cobros} ${suyo.cobros === 1 ? "cobro" : "cobros"} hoy` : "sin cobros hoy"}
+                          </span>
+                          <span className="font-display text-[15px] font-extrabold text-ink tabular-nums">
+                            {cop(suyo?.plata ?? 0)}
+                          </span>
+                        </div>
+
+                        {b.pinBloqueado && (
+                          <div className="mt-2.5 flex items-center justify-between gap-2 rounded-lg border border-warn/40 bg-warn/[0.08] px-2.5 py-1.5">
+                            <span className="text-[11px] font-bold text-warn">PIN bloqueado</span>
+                            <DesbloquearPinBtn barberoId={b.id} />
+                          </div>
                         )}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
             )}
           </section>
 
