@@ -56,7 +56,7 @@ export default async function AgendaPage({
   ]);
 
   return (
-    <div className="max-w-6xl">
+    <div>
       <SectionHeader
         eyebrow="Agenda"
         title="Agenda"
@@ -78,7 +78,7 @@ export default async function AgendaPage({
         <div
           role="group"
           aria-label="Sede de la agenda"
-          className="mt-3 flex gap-0.5 rounded-[9px] border border-line bg-panel p-[3px]"
+          className="mt-3 flex gap-0.5 rounded-[9px] border border-line bg-panel p-[3px] sm:w-fit"
         >
           {sedes.map((s) => {
             const activa = s.id === sede;
@@ -87,7 +87,8 @@ export default async function AgendaPage({
                 key={s.id}
                 href={`/admin/agenda?sede=${s.id}&fecha=${fecha}${vista === "semana" ? "&vista=semana" : ""}`}
                 aria-current={activa ? "page" : undefined}
-                className={`flex min-h-10 flex-1 items-center justify-center whitespace-nowrap rounded-md px-3 text-xs font-semibold transition ${
+                // En el celular las dos se reparten el ancho; en PC medían 1140px entre ambas.
+                className={`flex min-h-10 flex-1 items-center justify-center whitespace-nowrap rounded-md px-3 text-xs font-semibold transition sm:flex-none sm:px-7 ${
                   activa
                     ? "bg-elevated text-ink shadow-[inset_0_0_0_1px_var(--line)]"
                     : "text-muted hover:text-ink"
