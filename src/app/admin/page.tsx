@@ -18,7 +18,7 @@ import {
 import { cop, horaBogota, diasDesde } from "@/lib/format";
 import { fmtTime, CLOSE } from "@/lib/slots";
 import { DesbloquearPinBtn } from "@/components/admin/DesbloquearPinBtn";
-import { AlertIcon, ScissorsIcon, CheckIcon, StarIcon, PercentIcon } from "@/components/icons";
+import { AlertIcon, ScissorsIcon, CheckIcon, StarIcon, PercentIcon, CashIcon, TicketIcon, GridIcon } from "@/components/icons";
 import type { SedeId } from "@/lib/data/types";
 
 export const metadata: Metadata = { title: "Hoy · Admin" };
@@ -112,7 +112,13 @@ function iniciales(nombre: string) {
 }
 
 // Label de sección: 11px 700 uppercase ls .14em, color muted.
-const SEC = "flex items-baseline justify-between text-[11px] font-bold uppercase tracking-[0.14em] text-muted";
+const SEC =
+  "flex items-baseline justify-between text-[11px] font-bold uppercase tracking-[0.14em] text-muted " +
+  // Marca roja al inicio del título: las secciones se leen como capítulos.
+  "[&>span:first-of-type]:relative [&>span:first-of-type]:pl-3 [&>span:first-of-type]:before:absolute " +
+  "[&>span:first-of-type]:before:left-0 [&>span:first-of-type]:before:top-1/2 [&>span:first-of-type]:before:h-3 " +
+  "[&>span:first-of-type]:before:w-[3px] [&>span:first-of-type]:before:-translate-y-1/2 " +
+  "[&>span:first-of-type]:before:rounded-full [&>span:first-of-type]:before:bg-accent [&>span:first-of-type]:before:content-['']";
 // Link de acción a la derecha del label (rojo suave, 12px 600). min-h-11 + padding:
 // antes era texto de 12px sin área táctil, imposible de acertar en el celular.
 const SEC_ACTION = "inline-flex items-center min-h-11 px-2 text-xs font-semibold normal-case tracking-normal text-accent-soft transition hover:text-ink";
@@ -187,7 +193,17 @@ export default async function AdminHoy({
           Encabezado y plata son la MISMA unidad, no una card flotante encima de
           otra (anti-referencia de PRODUCT.md: la plantilla hero-métrica). Vive
           sobre el fondo de la página y cierra con una línea. */}
-      <header className="pb-4">
+      {/* ── La banda del día, con la cara de la barbería ────
+          Era un título sobre fondo negro, igual que las otras ocho cajas. Ahora
+          entra por la puerta del local: el filo barber pole y la foto de la sede
+          tras un velo, el mismo encabezado que ya usan los correos. */}
+      <header className="relative -mx-4 -mt-6 mb-5 overflow-hidden border-b border-line sm:-mx-5">
+        <div aria-hidden className="bb-poste h-1" />
+        <div
+          className="bb-velo relative bg-cover bg-center"
+          style={{ backgroundImage: `url(${FOTO_SEDE[sede ?? "parque-venezuela"] ?? "/sedes/parque-venezuela-frente.jpg"})` }}
+        >
+          <div className="relative z-10 px-4 pb-5 pt-5 sm:px-5">
         <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-2">
           <div>
             <h1 className="font-display text-[24px] font-extrabold uppercase leading-none text-ink lg:text-[30px]">
@@ -301,9 +317,9 @@ export default async function AdminHoy({
             vs {compacto(serie.semanaAnterior)} la pasada
           </div>
         </div>
+          </div>
+        </div>
       </header>
-
-      <div className="border-t border-line" />
 
       {/* ── El pulso del día ────────────────────────────────
           Seis números que antes no estaban en ninguna pantalla (ticket
@@ -312,17 +328,31 @@ export default async function AdminHoy({
           seis en una fila que por fin usa el ancho del monitor. */}
       <section aria-label="Pulso del día" className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
         {[
-          { l: "Entró hoy", v: cop(plata.total), s: plata.medios.length > 0 ? `${plata.medios.length} ${plata.medios.length === 1 ? "medio" : "medios"} de pago` : "todavía sin cobros", tono: "text-accent-soft" },
-          { l: "Atenciones", v: String(plata.atenciones), s: `${pulso.citasHoy} ${pulso.citasHoy === 1 ? "cita agendada" : "citas agendadas"} hoy`, tono: "text-ink" },
-          { l: "Ticket promedio", v: plata.atenciones > 0 ? cop(Math.round(plata.total / plata.atenciones)) : "—", s: "por cliente cobrado", tono: "text-ink" },
-          { l: "Propinas", v: cop(plata.propinas), s: plata.total > 0 ? `${Math.round((plata.propinas / plata.total) * 100)}% de lo cobrado` : "van aparte del corte", tono: "text-ok" },
-          { l: "Agenda llena", v: `${Math.round(pulso.ocupacion.ratio * 100)}%`, s: pulso.ocupacion.disponible > 0 ? `${Math.round(pulso.ocupacion.agendado / 60)} h de ${Math.round(pulso.ocupacion.disponible / 60)} h del equipo` : "hoy no se abre", tono: pulso.ocupacion.ratio >= 0.6 ? "text-ok" : "text-ink" },
-          { l: "Sin cobrar", v: cop(montoSinCobrar), s: sinCobrar.length === 0 ? "todo pasó por caja" : `${sinCobrar.length} ${sinCobrar.length === 1 ? "cita cerrada" : "citas cerradas"} sin cobro`, tono: montoSinCobrar > 0 ? "text-warn" : "text-muted" },
+          { l: "Entró hoy", v: cop(plata.total), s: plata.medios.length > 0 ? `${plata.medios.length} ${plata.medios.length === 1 ? "medio" : "medios"} de pago` : "todavía sin cobros", tono: "text-accent-soft", Icono: CashIcon, aro: "border-accent/35 text-accent-soft" },
+          { l: "Atenciones", v: String(plata.atenciones), s: `${pulso.citasHoy} ${pulso.citasHoy === 1 ? "cita agendada" : "citas agendadas"} hoy`, tono: "text-ink", Icono: ScissorsIcon, aro: "border-line text-muted" },
+          { l: "Ticket promedio", v: plata.atenciones > 0 ? cop(Math.round(plata.total / plata.atenciones)) : "—", s: "por cliente cobrado", tono: "text-ink", Icono: TicketIcon, aro: "border-line text-muted" },
+          { l: "Propinas", v: cop(plata.propinas), s: plata.total > 0 ? `${Math.round((plata.propinas / plata.total) * 100)}% de lo cobrado` : "van aparte del corte", tono: "text-ok", Icono: PercentIcon, aro: "border-ok/35 text-ok" },
+          { l: "Agenda llena", v: `${Math.round(pulso.ocupacion.ratio * 100)}%`, s: pulso.ocupacion.disponible > 0 ? `${Math.round(pulso.ocupacion.agendado / 60)} h de ${Math.round(pulso.ocupacion.disponible / 60)} h del equipo` : "hoy no se abre", tono: pulso.ocupacion.ratio >= 0.6 ? "text-ok" : "text-ink", Icono: GridIcon, aro: "border-line text-muted", barra: pulso.ocupacion.ratio },
+          { l: "Sin cobrar", v: cop(montoSinCobrar), s: sinCobrar.length === 0 ? "todo pasó por caja" : `${sinCobrar.length} ${sinCobrar.length === 1 ? "cita cerrada" : "citas cerradas"} sin cobro`, tono: montoSinCobrar > 0 ? "text-warn" : "text-muted", Icono: AlertIcon, aro: montoSinCobrar > 0 ? "border-warn/40 text-warn" : "border-line text-muted" },
         ].map((k) => (
-          <div key={k.l} className={`${PANEL} px-3.5 py-3`}>
-            <div className="text-[10.5px] font-bold uppercase tracking-[0.12em] text-muted">{k.l}</div>
-            <div className={`mt-1 font-display text-[22px] font-extrabold leading-none tabular-nums ${k.tono}`}>{k.v}</div>
-            <div className="mt-1 text-[11px] leading-tight text-muted">{k.s}</div>
+          <div key={k.l} className={`${PANEL} bb-relieve px-3.5 py-3`}>
+            <div className="flex items-start justify-between gap-2">
+              <div className="text-[10.5px] font-bold uppercase tracking-[0.12em] text-muted">{k.l}</div>
+              <span className={`grid h-7 w-7 shrink-0 place-items-center rounded-full border ${k.aro}`}>
+                <k.Icono className="h-3.5 w-3.5" />
+              </span>
+            </div>
+            <div className={`mt-1.5 font-display text-[24px] font-extrabold leading-none tabular-nums ${k.tono}`}>{k.v}</div>
+            {/* La ocupación además se ve: un número suelto no dice si 40% es mucho. */}
+            {k.barra !== undefined && (
+              <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-line/60">
+                <span
+                  className={`block h-full rounded-full ${k.barra >= 0.6 ? "bg-ok" : "bg-accent-soft"}`}
+                  style={{ width: `${Math.min(100, Math.round(k.barra * 100))}%` }}
+                />
+              </div>
+            )}
+            <div className="mt-1.5 text-[11px] leading-tight text-muted">{k.s}</div>
           </div>
         ))}
       </section>

@@ -513,3 +513,35 @@ body {
     display: none;
   }
 }
+
+/* ─────────────────────────────────────────────────────────────
+   Identidad del PANEL. El admin se veía "un montón de módulos":
+   ocho cajas iguales, borde de 1px, todo del mismo gris. Estas tres
+   piezas son las MISMAS que ya usan los correos de la barbería (que
+   sí se ven de la marca), traídas a la pantalla.
+   ───────────────────────────────────────────────────────────── */
+
+/* Barber pole: la firma de la casa. Va como filo de 4px arriba de un bloque. */
+.bb-poste {
+  background: repeating-linear-gradient(
+    115deg,
+    var(--accent) 0 14px,
+    var(--ink) 14px 28px,
+    var(--bg) 28px 42px
+  );
+}
+
+/* Panel con relieve: un degradado apenas perceptible + luz arriba. Sustituye
+   al rectángulo plano cuando la tarjeta es "de las importantes". */
+.bb-relieve {
+  background-image: linear-gradient(180deg, rgba(242, 237, 228, 0.045), rgba(242, 237, 228, 0) 60%);
+  box-shadow: inset 0 1px 0 rgba(242, 237, 228, 0.07);
+}
+
+/* Cabecera con foto de la sede tras un velo, como el encabezado del correo. */
+.bb-velo::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, var(--bg) 30%, rgba(12, 11, 10, 0.9) 62%, rgba(12, 11, 10, 0.82));
+}
