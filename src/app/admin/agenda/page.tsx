@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 
 import {
   getSedes,
@@ -61,6 +62,34 @@ export default async function AgendaPage({
         title={`Agenda de ${sedeNombre}`}
         description="El día completo de la sede: cada columna es un barbero, cada bloque una cita. Toca un barbero (o un hueco) para agendar."
       />
+      {/* Cambiar de sede acá se hacía SOLO desde el selector del topbar, que en
+          el celular vive dentro del menú (dos toques y a ciegas). La agenda es
+          por sede: la elección va a la vista, al lado del título. */}
+      {sedes.length > 1 && (
+        <div
+          role="group"
+          aria-label="Sede de la agenda"
+          className="mt-3 flex gap-0.5 rounded-[9px] border border-line bg-panel p-[3px]"
+        >
+          {sedes.map((s) => {
+            const activa = s.id === sede;
+            return (
+              <Link
+                key={s.id}
+                href={`/admin/agenda?sede=${s.id}&fecha=${fecha}${vista === "semana" ? "&vista=semana" : ""}`}
+                aria-current={activa ? "page" : undefined}
+                className={`flex min-h-10 flex-1 items-center justify-center whitespace-nowrap rounded-md px-3 text-xs font-semibold transition ${
+                  activa
+                    ? "bg-elevated text-ink shadow-[inset_0_0_0_1px_var(--line)]"
+                    : "text-muted hover:text-ink"
+                }`}
+              >
+                {s.nombre}
+              </Link>
+            );
+          })}
+        </div>
+      )}
       <AgendaDia
         sede={sede}
         fecha={fecha}

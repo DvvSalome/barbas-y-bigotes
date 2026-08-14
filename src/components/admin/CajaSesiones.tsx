@@ -141,7 +141,7 @@ function CajaCard({ caja, medios }: { caja: CajaSesionSede; medios: MedioPago[] 
           </div>
           <div className="font-display text-3xl text-accent-soft">{cop(caja.ingresos)}</div>
           <div className="mt-0.5 text-xs text-muted">
-            {desglose ? `${desglose} · ` : ""}{caja.citas} citas
+            {desglose ? `${desglose} · ` : ""}{caja.citas === 1 ? "1 cita" : `${caja.citas} citas`}
           </div>
         </div>
         {abierta && caja.metaDia > 0 && (

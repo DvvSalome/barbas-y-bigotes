@@ -14,7 +14,7 @@ import {
   getPostventaResumen,
   getCierresHoy,
 } from "@/lib/data/queries";
-import { cop } from "@/lib/format";
+import { cop, horaBogota, fechaCortaBogota, diasDesde } from "@/lib/format";
 import { fmtTime, CLOSE } from "@/lib/slots";
 import { DesbloquearPinBtn } from "@/components/admin/DesbloquearPinBtn";
 import { AlertIcon, ScissorsIcon, CheckIcon, StarIcon, PercentIcon } from "@/components/icons";
@@ -36,19 +36,6 @@ const FOTO_SEDE: Record<string, string> = {
   "parque-venezuela": "/sedes/parque-venezuela-frente.jpg",
   "plaza-de-la-paz": "/sedes/plaza-de-la-paz-frente.jpg",
 };
-
-function horaBogota(iso: string) {
-  const [h, m] = new Intl.DateTimeFormat("en-GB", {
-    timeZone: "America/Bogota",
-    hour: "2-digit",
-    minute: "2-digit",
-    hourCycle: "h23",
-  })
-    .format(new Date(iso))
-    .split(":")
-    .map(Number);
-  return `${((h + 11) % 12) + 1}:${m.toString().padStart(2, "0")}${h < 12 ? "a" : "p"}`;
-}
 
 function fechaCorta(iso: string) {
   return new Date(iso).toLocaleDateString("es-CO", { timeZone: "America/Bogota", day: "numeric", month: "short" });
@@ -387,7 +374,7 @@ export default async function AdminHoy({
                         <span className="font-semibold text-ink tabular-nums">
                           {enSillaCount} de {equipo.length}
                         </span>{" "}
-                        {enSillaCount === 1 ? "atendiendo" : "atendiendo"}
+                        atendiendo
                       </>
                     )}
                   </span>
@@ -592,7 +579,15 @@ export default async function AdminHoy({
                   <span className="min-w-0">
                     <span className="block text-[13.5px] font-semibold text-ink">{NOMBRE_SEDE[c.sede] ?? c.nombre}</span>
                     <span className="block truncate text-[12px] text-muted">
-                      {c.estado === "abierta" && `Abierta desde ${horaBogota(c.hora as string)}`}
+                      {/* Una caja de días acá decía solo la hora ("Abierta desde 1:41 am") y
+                          se leía como si fuera de hoy — el mismo engaño que ya se arregló en
+                          el chip del topbar y en el cierre del mostrador. */}
+                      {c.estado === "abierta" &&
+                        (() => {
+                          const d = diasDesde(c.hora as string);
+                          if (d === 0) return `Abierta desde ${horaBogota(c.hora as string)}`;
+                          return `Abierta el ${fechaCortaBogota(c.hora as string)} · ${d === 1 ? "1 día" : `${d} días`} sin cerrar`;
+                        })()}
                       {c.estado === "cerrada" &&
                         `Cerrada ${horaBogota(c.hora as string)}${c.cerradaPor ? ` · ${c.cerradaPor}` : ""}`}
                       {c.estado === "sin_abrir" && "Sin abrir · se abre sola con la primera venta"}

@@ -4,7 +4,7 @@ import { Suspense } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
-import { AdminTabs, AdminSubTabs, seccionFiltraPorSede } from "@/components/admin/AdminNav";
+import { AdminTabs, AdminSubTabs, seccionFiltraPorSede, seccionExigeSede } from "@/components/admin/AdminNav";
 import { PerfilMenu } from "@/components/staff/PerfilMenu";
 import { SearchIcon } from "@/components/icons";
 import { horaBogota, diasDesde } from "@/lib/format";
@@ -28,11 +28,14 @@ function SedeSelector({ sedes }: { sedes: Sede[] }) {
   const pathname = usePathname();
   const search = useSearchParams();
   const filtra = seccionFiltraPorSede(pathname);
-  const actual = filtra ? search.get("sede") : null;
+  // En la agenda no existe "Ambas": sin ?sede= la pantalla ya está mostrando la
+  // primera sede, así que el segmentado la marca en vez de mentir.
+  const exigeSede = seccionExigeSede(pathname);
+  const actual = filtra ? (search.get("sede") ?? (exigeSede ? (sedes[0]?.id ?? null) : null)) : null;
   // Etiqueta corta en el celular ("Parque"/"Plaza"): los nombres completos no
   // encogían (whitespace-nowrap) y el segmentado se salía de la pantalla.
   const opciones: { id: string | null; nombre: string; corto: string }[] = [
-    { id: null, nombre: "Ambas sedes", corto: "Ambas" },
+    ...(exigeSede ? [] : [{ id: null, nombre: "Ambas sedes", corto: "Ambas" }]),
     ...sedes.map((s) => ({ id: s.id as string, nombre: s.nombre, corto: s.nombre.split(" ")[0] })),
   ];
 

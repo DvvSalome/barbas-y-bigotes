@@ -61,7 +61,7 @@ export default async function CuadrePage() {
 
   return (
     <div className="max-w-7xl">
-      <SectionHeader eyebrow="Hoy" title="Cuadre de caja" description={<span className="capitalize">{fecha}</span>} />
+      <SectionHeader eyebrow="Hoy" title="Cuadre de caja" description={<span className="first-letter:uppercase">{fecha}</span>} />
 
       {/* El pulso de la plata en cuadros, de un vistazo y sin scroll */}
       <div className="mt-5 grid grid-cols-2 gap-3 sm:max-w-2xl sm:grid-cols-4">
@@ -218,7 +218,7 @@ export default async function CuadrePage() {
                     {cop(c.ingresos)}
                   </span>
                   <span className="block text-[11.5px] text-muted">
-                    {c.citas} citas
+                    {c.citas === 1 ? "1 cita" : `${c.citas} citas`}
                     {c.gastos > 0 && ` · gastos −${cop(c.gastos)}`}
                     {c.metaDia ? ` · meta ${cop(c.metaDia)}` : ""}
                   </span>
@@ -268,7 +268,7 @@ function CorteSede({
     >
       <div className="flex items-baseline justify-between gap-2">
         <span className="font-display text-[17px] font-bold uppercase leading-tight">{nombre}</span>
-        <span className="text-[11.5px] text-muted">{d.citas} citas</span>
+        <span className="text-[11.5px] text-muted">{d.citas === 1 ? "1 cita" : `${d.citas} citas`}</span>
       </div>
 
       <div className="mt-3 font-display text-[26px] font-bold leading-none tabular-nums text-accent-soft">

@@ -68,6 +68,11 @@ export function seccionFiltraPorSede(path: string) {
   return SECCIONES_CON_SEDE.some((href) => esRuta(path, href));
 }
 
+// La agenda es SIEMPRE de una sede (una columna por barbero de esa sede): sin
+// ?sede= cae en la primera, así que ofrecer "Ambas" marcaba una opción que la
+// pantalla no puede cumplir (decía "Ambas" mostrando Parque Venezuela).
+export const seccionExigeSede = (path: string) => esRuta(path, "/admin/agenda");
+
 /** El grupo al que pertenece la ruta actual (marca la pestaña y da los hijos). */
 function grupoDe(path: string): Grupo | undefined {
   return GRUPOS.find((g) => (g.hijos ? g.hijos.some((h) => esRuta(path, h.href)) : esRuta(path, g.href)));
