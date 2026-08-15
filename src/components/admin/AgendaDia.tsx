@@ -7,9 +7,9 @@ import { AgendarCitaForm } from "@/components/barbero/AgendarCitaForm";
 import { MoverCitaForm } from "@/components/admin/MoverCitaForm";
 import { BloquearHorasForm } from "@/components/admin/BloquearHorasForm";
 import { AvisarWhatsApp } from "@/components/admin/AvisarWhatsApp";
-import { mensajeCitaMovida } from "@/lib/whatsapp";
+import { mensajeCitaMovida, mensajeCitaCancelada } from "@/lib/whatsapp";
 import { SEDE_INFO } from "@/lib/data/sede-info";
-import { quitarBloqueo, moverCita } from "@/lib/actions";
+import { quitarBloqueo, moverCita, actualizarReserva } from "@/lib/actions";
 import { instanteBogota } from "@/lib/slots";
 import { CaraBarbero } from "@/components/staff/Elegir";
 import { DOW, MON, fmtTime, horarioEfectivo, dowDeFecha, bogotaYmd } from "@/lib/slots";
@@ -137,6 +137,9 @@ export function AgendaDia({
   // Detalle de una cita tocada (+ modo mover dentro del mismo sheet).
   const [detalle, setDetalle] = useState<AgendaDiaItem | null>(null);
   const [moviendo, setMoviendo] = useState(false);
+  // Cancelar desde el calendario: hasta ahora había que irse al mostrador.
+  const [confirmaCancel, setConfirmaCancel] = useState(false);
+  const [cancelando, setCancelando] = useState(false);
   // Aviso al cliente después de mover: hasta ahora la cita cambiaba de hora y
   // el cliente se enteraba llegando a la vieja.
   const [avisar, setAvisar] = useState<{ titulo: string; telefono: string | null; mensaje: string } | null>(null);
@@ -770,12 +773,52 @@ export function AgendaDia({
                 )}
 
                 {["pendiente", "confirmada"].includes(detalle.estado) ? (
-                  <button
-                    onClick={() => setMoviendo(true)}
-                    className="w-full rounded-full bg-accent px-5 py-3 text-sm font-bold uppercase tracking-wide text-on-accent transition hover:bg-accent-soft"
-                  >
-                    Mover de hora o de barbero
-                  </button>
+                  <>
+                    <button
+                      onClick={() => setMoviendo(true)}
+                      className="w-full rounded-full bg-accent px-5 py-3 text-sm font-bold uppercase tracking-wide text-on-accent transition hover:bg-accent-soft"
+                    >
+                      Mover de hora o de barbero
+                    </button>
+                    {/* Cancelar vivía SOLO en el mostrador: desde el calendario había
+                        que cambiar de pantalla. Dos toques (mismo patrón que quitar
+                        foto o unir fichas) porque no tiene deshacer, y al soltarlo
+                        sale el aviso de WhatsApp — el correo ya sale solo (0059). */}
+                    <button
+                      onClick={async () => {
+                        if (!confirmaCancel) {
+                          setConfirmaCancel(true);
+                          return;
+                        }
+                        setCancelando(true);
+                        const res = await actualizarReserva(detalle.id, { estado: "cancelada" });
+                        setCancelando(false);
+                        setConfirmaCancel(false);
+                        if (!res.ok) {
+                          setErrDrag(res.error ?? "No se pudo cancelar.");
+                          return;
+                        }
+                        setAvisar({
+                          titulo: "Cita cancelada ✓",
+                          telefono: detalle.telefono ?? null,
+                          mensaje: mensajeCitaCancelada({
+                            cliente: detalle.cliente,
+                            cuando: `${esHoy ? "hoy" : labelFecha(fecha)} a las ${fmtTime(minutoDeISO(detalle.inicio))}`,
+                            sede: SEDE_INFO[sede]?.nombre ?? "la barbería",
+                          }),
+                        });
+                        setDetalle(null);
+                        router.refresh();
+                      }}
+                      onBlur={() => setConfirmaCancel(false)}
+                      disabled={cancelando}
+                      className={`w-full rounded-full border px-5 py-3 text-sm font-bold uppercase tracking-wide transition disabled:opacity-50 ${
+                        confirmaCancel ? "border-warn bg-warn/10 text-warn" : "border-line text-muted hover:text-ink"
+                      }`}
+                    >
+                      {cancelando ? "Cancelando…" : confirmaCancel ? "¿Seguro? Toca de nuevo" : "Cancelar cita"}
+                    </button>
+                  </>
                 ) : (
                   <p className="text-center text-xs text-muted">
                     Esta cita ya {detalle.estado === "en_curso" ? "está en la silla" : "terminó"}; no se mueve.
