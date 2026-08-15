@@ -32,6 +32,40 @@ const nextConfig: NextConfig = {
           { key: "X-Frame-Options", value: "SAMEORIGIN" },
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
           { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
+          // CSP. NO es la estricta con nonce: App Router mete scripts inline
+          // (hidratación, streaming) y firmarlos exige middleware en TODAS las
+          // rutas — hoy `proxy.ts` solo corre en las privadas y ampliarlo mete
+          // latencia en cada visita pública. Lo que sí cierra esta versión es lo
+          // que un XSS necesita para hacer daño de verdad:
+          //  · connect-src — a dónde puede MANDAR datos (robar una sesión pasa
+          //    por acá). Solo el propio sitio, Supabase y Sentry.
+          //  · form-action — a dónde puede enviarse un formulario.
+          //  · base-uri — evita que inyecten <base> y reescriban todas las URL.
+          //  · object-src — nada de Flash/embed heredado.
+          //  · frame-ancestors — anti clickjacking (reemplaza a X-Frame-Options
+          //    en navegadores modernos; se deja el viejo por compatibilidad).
+          // Al subir a nonce, quitar 'unsafe-inline' de script-src.
+          {
+            key: "Content-Security-Policy",
+            value: [
+              "default-src 'self'",
+              "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+              "style-src 'self' 'unsafe-inline'",
+              "img-src 'self' data: blob: https://wvmdsxznujklgfezqtfy.supabase.co https://lh3.googleusercontent.com",
+              "font-src 'self' data:",
+              "media-src 'self' blob:",
+              "connect-src 'self' https://wvmdsxznujklgfezqtfy.supabase.co wss://wvmdsxznujklgfezqtfy.supabase.co https://*.ingest.sentry.io https://*.ingest.us.sentry.io",
+              "worker-src 'self' blob:",
+              "manifest-src 'self'",
+              // El mapa de la sección Ubicación es un embed de Google Maps.
+              "frame-src 'self' https://www.google.com https://maps.google.com",
+              "frame-ancestors 'self'",
+              "base-uri 'self'",
+              "form-action 'self'",
+              "object-src 'none'",
+              "upgrade-insecure-requests",
+            ].join("; "),
+          },
         ],
       },
     ];
