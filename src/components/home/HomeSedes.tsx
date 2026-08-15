@@ -7,20 +7,19 @@ import Link from "next/link";
   Server component.
 */
 
-const SEDES = [
-  {
-    id: "parque-venezuela",
-    nombre: "Parque Venezuela",
-    detalle: "Cra 65",
-    foto: "/sedes/parque-venezuela-frente.jpg",
-  },
-  {
-    id: "plaza-de-la-paz",
-    nombre: "Plaza de la Paz",
-    detalle: "Centro",
-    foto: "/sedes/plaza-de-la-paz-frente.jpg",
-  },
-];
+// La dirección NO se escribe acá: era la cuarta copia del mismo dato y decía
+// "Cra 65" para una sede que queda en la Calle 88. Sale de SEDE_INFO, que ya es
+// la fuente que usa el wizard — se corrige en un lugar y cambia en todos.
+import { SEDE_INFO } from "@/lib/data/sede-info";
+
+const SEDES = (["parque-venezuela", "plaza-de-la-paz"] as const).map((id) => ({
+  id,
+  nombre: SEDE_INFO[id].nombre,
+  // Solo la calle: el "· Barranquilla" de SEDE_INFO sobra en una tarjeta que ya
+  // está bajo el título "Sedes en Barranquilla".
+  detalle: SEDE_INFO[id].detalle.split(" · ")[0],
+  foto: SEDE_INFO[id].frente ?? "",
+}));
 
 export function HomeSedes() {
   return (
