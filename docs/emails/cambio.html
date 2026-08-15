@@ -1,0 +1,66 @@
+<!-- Plantilla de correo · LA BARBERÍA MOVIÓ O CANCELÓ LA CITA
+     Copia versionada. La fuente en ejecución es el workflow de n8n
+     "avisos de cambio de cita" (nodo Enviar aviso); si editás una, editá la otra.
+     Datos: los que devuelve el RPC tomar_avisos_cambio() (migración 0059).
+     Asunto sugerido (expresión en n8n): segun el tipo, "Movimos tu cita" o
+     "Cancelamos tu cita".
+     Cron: cada 5 min.
+     Ojo: las «expresiones» son expresiones de n8n. No escribir el símbolo de
+     llaves dobles ni en los comentarios: n8n las evalúa igual y el envío revienta
+     (ya pasó tres veces: recordatorio, cupo y confirmación). -->
+<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><meta name="color-scheme" content="dark"><meta name="supported-color-schemes" content="dark"></head><body style="margin:0;padding:0;background:#060504;background-image:linear-gradient(#060504,#060504);">
+<div style="margin:0;padding:24px 12px;background:#060504;background-image:linear-gradient(#060504,#060504);">
+<div style="max-width:600px;margin:0 auto;font-family:Arial,Helvetica,sans-serif;color:#f2ede4;">
+<div style="background:#0c0b0a;background-image:linear-gradient(#0c0b0a,#0c0b0a);border:1px solid rgba(242,237,228,.12);border-radius:18px;overflow:hidden;">
+<div style="height:5px;background:repeating-linear-gradient(115deg,#d23f34 0 14px,#f2ede4 14px 28px,#12100e 28px 42px);"></div>
+<div style="background:#0a0908 url('https://barbasybigotes.com/sedes/parque-venezuela-interior.jpg') center/cover no-repeat;">
+<div style="background:rgba(10,9,8,.85);background-image:linear-gradient(rgba(10,9,8,.85),rgba(10,9,8,.85));padding:32px 24px 26px;text-align:center;">
+<img src="https://barbasybigotes.com/brand/logo-lockup.png" alt="Barbas &amp; Bigotes" height="46" style="height:46px;width:auto;">
+<div style="margin-top:8px;font-size:10px;text-transform:uppercase;letter-spacing:.34em;color:#cfc7ba;">Barber&iacute;a cl&aacute;sica &middot; Barranquilla</div>
+</div>
+</div>
+<div style="padding:32px 28px;text-align:center;">
+<span style="display:inline-block;border-radius:999px;padding:6px 14px;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;background:rgba(251,191,36,.12);border:1px solid rgba(251,191,36,.32);color:#fbbf24;">&#9679; TIPO_BADGE</span>
+<h2 style="margin:16px 0 10px;font-family:'Barlow Condensed',Arial,sans-serif;font-size:32px;font-weight:800;text-transform:uppercase;line-height:1;color:#f2ede4;">TITULO</h2>
+<p style="margin:0 auto 22px;max-width:44ch;font-size:14px;color:#9c958a;line-height:1.6;">BAJADA</p>
+
+<!-- LO NUEVO (solo cuando la cita se movió) -->
+<div style="border:1px solid rgba(210,63,52,.3);background:rgba(210,63,52,.06);border-radius:14px;padding:16px 18px;text-align:left;">
+<div style="font-size:10.5px;text-transform:uppercase;letter-spacing:.12em;color:#e8675c;">Tu nueva fecha y hora</div>
+<div style="margin-top:3px;font-family:'Barlow Condensed',Arial,sans-serif;font-size:26px;font-weight:800;color:#f2ede4;">CUANDO</div>
+</div>
+
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:10px;"><tr>
+<td width="49%" style="border:1px solid rgba(242,237,228,.1);background:#151311;background-image:linear-gradient(#151311,#151311);border-radius:14px;padding:14px 16px;">
+<div style="font-size:10.5px;text-transform:uppercase;letter-spacing:.12em;color:#9c958a;">Servicio</div>
+<div style="margin-top:3px;font-size:14px;font-weight:700;color:#f2ede4;">SERVICIO</div>
+</td>
+<td width="2%"></td>
+<td width="49%" style="border:1px solid rgba(242,237,228,.1);background:#151311;background-image:linear-gradient(#151311,#151311);border-radius:14px;padding:14px 16px;">
+<div style="font-size:10.5px;text-transform:uppercase;letter-spacing:.12em;color:#9c958a;">Sede</div>
+<div style="margin-top:3px;font-size:14px;font-weight:700;color:#f2ede4;">SEDE</div>
+<div style="margin-top:2px;font-size:11.5px;color:#9c958a;">DIRECCION</div>
+</td></tr></table>
+
+<div style="margin-top:10px;border:1px solid rgba(242,237,228,.1);background:#151311;background-image:linear-gradient(#151311,#151311);border-radius:16px;padding:18px 20px;text-align:left;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
+<td width="58" valign="middle"><img src="BARBERO_FOTO" width="52" height="52" alt="" style="width:52px;height:52px;border-radius:50%;object-fit:cover;border:2px solid rgba(210,63,52,.6);display:block;"></td>
+<td valign="middle" style="padding-left:14px;">
+<div style="font-size:11px;text-transform:uppercase;letter-spacing:.12em;color:#9c958a;">Te atiende</div>
+<div style="font-family:'Barlow Condensed',Arial,sans-serif;font-size:24px;font-weight:800;text-transform:uppercase;color:#f2ede4;line-height:1.1;">BARBERO</div>
+</td></tr></table>
+</div>
+
+<a href="CTA_URL" style="display:block;margin-top:20px;text-align:center;background:linear-gradient(180deg,#e8675c,#d23f34);color:#fbf7f0;border-radius:13px;padding:16px;font-family:'Barlow Condensed',Arial,sans-serif;font-size:17px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;text-decoration:none;">CTA_TEXTO</a>
+<p style="margin:14px 0 0;font-size:12px;color:#9c958a;">&iquest;No te sirve? Escribinos por WhatsApp y lo acomodamos.</p>
+</div>
+<div style="border-top:1px solid rgba(242,237,228,.08);background:#0a0908;background-image:linear-gradient(#0a0908,#0a0908);padding:24px;text-align:center;">
+<img src="https://barbasybigotes.com/brand/logo-face-transparent.png" alt="" height="30" style="height:30px;width:auto;opacity:.8;">
+<div style="margin-top:8px;font-size:11.5px;color:#9c958a;">Parque Venezuela &middot; Plaza de la Paz</div>
+<div style="margin-top:8px;font-size:11px;color:rgba(156,149,138,.6);">Barbas &amp; Bigotes Barbershop &middot; Barranquilla, CO<br>Recib&iacute;s este correo porque ten&eacute;s una reserva con nosotros.</div>
+<div style="margin-top:8px;font-size:11px;"><a href="https://instagram.com/barbasybigotes.baq" style="color:#9c958a;text-decoration:none;">Instagram</a> &middot; <a href="https://wa.me/573006734799" style="color:#9c958a;text-decoration:none;">WhatsApp</a></div>
+</div>
+</div>
+</div>
+</div>
+</body></html>
