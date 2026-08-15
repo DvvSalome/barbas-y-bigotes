@@ -1382,7 +1382,16 @@ export async function moverCita(input: {
   // 0 filas y no se pisa nada.
   const { data: upd, error } = await admin
     .from("reservas")
-    .update({ inicio: inicio.toISOString(), fin: fin.toISOString(), barbero_id: barberoId })
+    .update({
+      inicio: inicio.toISOString(),
+      fin: fin.toISOString(),
+      barbero_id: barberoId,
+      // Encola el correo "te movimos la cita" (0059). Va en el MISMO update que
+      // la hora: en dos viajes, si el segundo falla, la cita queda movida y el
+      // cliente sin enterarse — exactamente el agujero que esto viene a tapar.
+      aviso_cambio: "movida",
+      aviso_cambio_en: new Date().toISOString(),
+    })
     .eq("id", input.reservaId)
     .in("estado", ["pendiente", "confirmada"])
     .select("id");
@@ -1442,8 +1451,14 @@ export async function actualizarReserva(
   // Armado del update campo por campo (no pasar el patch crudo): así ningún
   // campo inesperado del POST llega a la tabla. La llegada es una etiqueta de
   // texto que la UI manda como 'a_tiempo'; se acota a los valores conocidos.
-  const cambios: { estado?: string; llegada?: string } = {};
+  const cambios: { estado?: string; llegada?: string; aviso_cambio?: string; aviso_cambio_en?: string } = {};
   if (patch.estado !== undefined) cambios.estado = patch.estado;
+  // Cancelación POR LA BARBERÍA: encola el correo además del push. El push solo
+  // llega a quien instaló la app; sin el correo, cancelar era casi silencioso.
+  if (patch.estado === "cancelada") {
+    cambios.aviso_cambio = "cancelada";
+    cambios.aviso_cambio_en = new Date().toISOString();
+  }
   if (patch.llegada !== undefined) {
     if (!["a_tiempo", "tarde"].includes(patch.llegada))
       return { ok: false, error: "Llegada inválida." };
