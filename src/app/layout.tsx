@@ -109,7 +109,24 @@ if(el.getBoundingClientRect().top<h*0.9){mostrar(el)}else{io.observe(el)}}};
 /* El script corre en el <head>, así que el <body> todavía no existe: hay que
    esperar al DOM. Si el armado falla, se quita la clase y TODO queda visible —
    nunca dejar contenido escondido por culpa de un adorno. */
-var correr=function(){try{mirar()}catch(e){d.classList.remove("js-reveal")}};
+var correr=function(){try{
+mirar();
+/* mirar() corría UNA vez: lo que entraba al DOM después (una sección que
+   streamea tarde, un componente cliente que monta al final) nunca quedaba
+   observado y se quedaba en opacity:0 PARA SIEMPRE — fondo negro sin texto.
+   Se vuelve a mirar ante cualquier cambio del DOM. */
+if("MutationObserver"in window){
+var pedido=0;
+new MutationObserver(function(){if(pedido)return;pedido=requestAnimationFrame(function(){pedido=0;try{mirar()}catch(e){}})})
+.observe(document.body,{childList:true,subtree:true});}
+/* Red de seguridad: a los 6 s, todo lo que siga escondido Y esté en pantalla se
+   muestra sí o sí. Si a esa altura algo no apareció es un error nuestro, y el
+   visitante no tiene por qué pagarlo mirando un hueco negro. */
+setTimeout(function(){try{
+var n=document.querySelectorAll("[data-reveal]:not(.reveal-visible)"),h=window.innerHeight||0;
+for(var i=0;i<n.length;i++){var r=n[i].getBoundingClientRect();if(r.top<h&&r.bottom>0)n[i].classList.add("reveal-visible")}
+}catch(e){d.classList.remove("js-reveal")}},6000);
+}catch(e){d.classList.remove("js-reveal")}};
 /* Marcar los [data-reveal] (setAttribute + reveal-visible) DESPUÉS de que React
    hidrate. Si el DOM se muta antes, su className/atributos dejan de matchear el
    vdom y React tira un aviso rojo de hidratación en TODA ruta pública. Ningún
