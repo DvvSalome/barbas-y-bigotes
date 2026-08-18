@@ -1,6 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
+import { permitir } from "@/lib/rate-limit";
 import {
   sanearCop,
   sanearCantidad,
@@ -859,6 +861,31 @@ export async function actualizarPerfilBarbero(input: {
   return { ok: true };
 }
 
+// Techos del formulario público. Reservar dispara un correo de confirmación
+// desde reservas@ HACIA LA DIRECCIÓN QUE ESCRIBA QUIEN RESERVA: sin freno, un
+// bot puede usar el sitio para mandarle correo a desconocidos con nuestro
+// dominio, y eso termina en lista negra (y en el buzón suspendido, como el
+// 18-ago). Ningún cliente de verdad reserva 3 veces en un minuto.
+const RESERVA_POR_IP = { porMinuto: 3, porHora: 10 };
+// Techo global por hora, contado en la BASE (el de memoria es por instancia
+// serverless, así que no es un techo de verdad). 25/hora es holgadísimo para
+// 3 sillas en dos sedes; si se llega ahí, algo raro está pasando y prefiero
+// que el mostrador tome las citas por teléfono un rato.
+const RESERVAS_APP_POR_HORA = 25;
+
+/** true = seguir. Corta el abuso ANTES de tocar la base o mandar un correo. */
+async function permiteReservaPublica(sb: SupabaseClient): Promise<boolean> {
+  const h = await headers();
+  const ip = (h.get("x-forwarded-for") ?? "").split(",")[0].trim() || "sin-ip";
+  if (!permitir(`reserva:${ip}`, RESERVA_POR_IP)) return false;
+  const { count } = await sb
+    .from("reservas")
+    .select("id", { count: "exact", head: true })
+    .eq("canal", "app")
+    .gte("creado_en", new Date(Date.now() - 3_600_000).toISOString());
+  return (count ?? 0) < RESERVAS_APP_POR_HORA;
+}
+
 // Reserva desde el sitio público (sin sesión) → service role.
 export async function createReserva(input: {
   sede: string;
@@ -871,6 +898,14 @@ export async function createReserva(input: {
   nota?: string;
 }): Promise<ActionResult> {
   const sb = supabaseAdmin();
+  // Primero de todo: es una action pública, o sea un POST que cualquiera puede
+  // invocar sin pasar por el wizard.
+  if (!(await permiteReservaPublica(sb))) {
+    return {
+      ok: false,
+      error: "Estamos recibiendo muchas reservas seguidas. Esperá un minuto y volvé a intentar, o escribinos por WhatsApp y te la agendamos nosotros.",
+    };
+  }
   const inicio = new Date(input.inicioISO);
   // inicioISO inválido (NaN) → error claro, no dejar que reviente con 500 al hacer
   // toISOString() más abajo. Y la cita tiene que ser a futuro (nada de fechas pasadas).
