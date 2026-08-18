@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<title>Manual interno · Barbas &amp; Bigotes</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" />
+<style>
+:root{
+  --paper:#fcfaf6; --paper-2:#f6f1e7;
+  --ink:#2a2622; --ink-2:#4a4239; --muted:#8a8073;
+  --gold:#b8923f; --rojo:#b8382d;
+  --hair:rgba(184,146,63,.22); --hair-2:rgba(74,66,57,.10);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+html,body{background:#ede4d2;color:var(--ink);font-family:'Inter',system-ui,sans-serif;font-size:13.5px;line-height:1.65}
+.page{width:210mm;min-height:297mm;padding:15mm 17mm 12mm;margin:14px auto;display:flex;flex-direction:column;
+      background:var(--paper);box-shadow:0 6px 24px rgba(0,0,0,.08);page-break-after:always}
+.page:last-of-type{page-break-after:auto}
+.hd{display:flex;justify-content:space-between;align-items:baseline;padding-bottom:5mm;border-bottom:1px solid var(--hair)}
+.hd .marca{font-family:'Cormorant Garamond',serif;font-size:17px;font-weight:600}
+.hd .tag{font-size:8.5px;letter-spacing:.34em;text-transform:uppercase;color:var(--gold);font-weight:500}
+.hd .meta{text-align:right;font-size:8.5px;letter-spacing:.28em;text-transform:uppercase;color:var(--muted)}
+.eyebrow{font-size:9.5px;letter-spacing:.4em;text-transform:uppercase;color:var(--gold);font-weight:500;margin:7mm 0 3mm}
+h1{font-family:'Cormorant Garamond',serif;font-weight:500;font-size:40px;line-height:1.05;margin-bottom:4mm}
+h1 em{font-style:italic;color:var(--gold)}
+h2{font-family:'Cormorant Garamond',serif;font-weight:600;font-size:23px;margin:6mm 0 2.5mm;padding-bottom:1.5mm;border-bottom:1px solid var(--hair)}
+h3{font-size:12.5px;font-weight:700;margin:4mm 0 1.5mm;color:var(--ink)}
+p{color:var(--ink-2);margin-bottom:2.5mm}
+.lede{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:16.5px;line-height:1.5;color:var(--ink-2);
+      padding:4mm 0;border-bottom:1px solid var(--hair);margin-bottom:3mm}
+table{width:100%;border-collapse:collapse;margin:2mm 0 3.5mm;font-size:11px}
+th{text-align:left;font-size:8.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--gold);
+   font-weight:600;padding:2mm 2.5mm;border-bottom:1px solid var(--hair)}
+td{padding:2.1mm 2.5mm;border-bottom:1px solid var(--hair-2);color:var(--ink-2);vertical-align:top}
+td strong{color:var(--ink);font-weight:600}
+code,.mono{font-family:'JetBrains Mono',monospace;font-size:10.5px;color:var(--ink)}
+.aviso{border:1px solid var(--rojo);background:rgba(184,56,45,.05);border-radius:3px;padding:3.5mm 4mm;margin:3mm 0}
+.aviso .t{font-weight:700;color:var(--rojo);font-size:11.5px;margin-bottom:1mm;letter-spacing:.04em;text-transform:uppercase}
+.aviso p{margin:0;font-size:11.5px;color:var(--ink-2)}
+.nota{border-left:2px solid var(--gold);background:var(--paper-2);padding:3mm 4mm;margin:3mm 0;font-size:11.5px}
+ul{list-style:none;margin:1mm 0 3mm}
+li{position:relative;padding-left:6mm;margin-bottom:1.6mm;font-size:11.8px;color:var(--ink-2)}
+li:before{content:"";position:absolute;left:1.5mm;top:2.2mm;width:1.6mm;height:1.6mm;background:var(--gold);border-radius:50%}
+ol.pasos{list-style:none;counter-reset:p;margin:1mm 0 3mm}
+ol.pasos li{counter-increment:p;padding-left:8mm}
+ol.pasos li:before{content:counter(p);background:none;color:var(--gold);font-family:'Cormorant Garamond',serif;
+                   font-weight:700;font-size:13px;top:0;left:1mm;width:auto;height:auto}
+.ft{margin-top:auto;padding-top:5mm;border-top:1px solid var(--hair);display:flex;justify-content:space-between;
+    font-size:8.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--muted)}
+.poste{height:3.5mm;background:repeating-linear-gradient(115deg,var(--rojo) 0 3mm,var(--paper) 3mm 6mm,var(--ink) 6mm 9mm);
+       border-radius:2px;margin-bottom:5mm}
+@page{size:A4;margin:0}
+@media print{html,body{background:#fff}.page{margin:0;box-shadow:none}}
+</style>
+</head>
+<body>
+
+<!-- ══════════ 1 ══════════ -->
+<section class="page">
+  <div class="hd"><div><div class="marca">Barbas &amp; Bigotes</div><div class="tag">Barbershop · Barranquilla</div></div>
+    <div class="meta">Documento interno<br />15 · 08 · 2026</div></div>
+  <div class="poste" style="margin-top:6mm"></div>
+  <div class="eyebrow">Uso interno — no compartir</div>
+  <h1>Manual <em>interno</em><br />de la aplicación</h1>
+  <p class="lede">Quién entra dónde, qué hace cada quien, qué sale solo y qué hacer cuando algo no sale.
+    Todo lo del día a día está en la app, en «Cómo se usa»; esto es lo que NO va en la app.</p>
+
+  <div class="aviso">
+    <div class="t">Este documento no lleva contraseñas</div>
+    <p>A propósito. Un PDF se reenvía por WhatsApp, se queda en un celular prestado y no se puede
+      revocar. Acá dice <strong>dónde vive</strong> cada clave y quién la puede cambiar; los valores
+      viven en el gestor de contraseñas. Si alguien te manda un documento con claves adentro,
+      eso es un problema, no un favor.</p>
+  </div>
+
+  <h2>Qué es cada cosa</h2>
+  <table>
+    <tr><th style="width:32%">Pieza</th><th>Para qué sirve</th></tr>
+    <tr><td><strong>barbasybigotes.com</strong></td><td>El sitio público y la reserva en línea. También el portal del cliente.</td></tr>
+    <tr><td><strong>El mostrador</strong><br /><span class="mono">/barbero</span></td><td>La pantalla de los barberos en el local: turnos, cobro, espera y cierre de caja.</td></tr>
+    <tr><td><strong>El panel</strong><br /><span class="mono">/admin</span></td><td>Lo del dueño: agenda, caja, clientes, catálogo, equipo, métricas.</td></tr>
+    <tr><td><strong>La base de datos</strong></td><td>Donde vive todo: citas, clientes, ventas, precios. Alojada en Supabase.</td></tr>
+    <tr><td><strong>Las automatizaciones</strong></td><td>Los correos que salen solos. Corren en n8n, revisando cada pocos minutos si hay algo que mandar.</td></tr>
+  </table>
+
+  <div class="ft"><span>Barbas &amp; Bigotes · interno</span><span>1 / 8</span></div>
+</section>
+
+<!-- ══════════ 2 ══════════ -->
+<section class="page">
+  <div class="hd"><div><div class="marca">Barbas &amp; Bigotes</div><div class="tag">Manual interno</div></div>
+    <div class="meta">Accesos y llaves</div></div>
+
+  <div class="eyebrow">Accesos</div>
+  <h2>Quién entra, dónde y con qué</h2>
+  <table>
+    <tr><th style="width:22%">Quién</th><th style="width:24%">Dónde</th><th>Con qué</th></tr>
+    <tr><td><strong>Dueño</strong></td><td><span class="mono">/login</span> → el panel</td>
+        <td>Correo <span class="mono">admin@barbasybigotes.com</span> y su contraseña. Es el único que ve plata, comisiones y métricas.</td></tr>
+    <tr><td><strong>Barbero</strong></td><td><span class="mono">/login</span> → el mostrador</td>
+        <td>Su <strong>PIN de 6 dígitos</strong>. Se pone y se cambia en Panel → Equipo. A los 5 intentos malos se bloquea 5 minutos.</td></tr>
+    <tr><td><strong>La sede</strong></td><td>El celular compartido del local</td>
+        <td>PIN de sede, para que el equipo opere las citas de ESA sede sin ver la otra.</td></tr>
+    <tr><td><strong>Cliente</strong></td><td><span class="mono">/cuenta</span></td>
+        <td>Entra con su Gmail si quiere. También puede reservar sin cuenta, como invitado.</td></tr>
+  </table>
+  <div class="nota">Un barbero nunca ve la caja completa ni las comisiones de otro, aunque escriba la
+    dirección a mano: el permiso lo controla la base de datos, no la pantalla.</div>
+
+  <div class="ft"><span>Barbas &amp; Bigotes · interno</span><span>2 / 8</span></div>
+</section>
+
+<!-- ══════════ 3 ══════════ -->
+<section class="page">
+  <div class="hd"><div><div class="marca">Barbas &amp; Bigotes</div><div class="tag">Manual interno</div></div>
+    <div class="meta">Las llaves</div></div>
+
+  <div class="eyebrow">Las llaves</div>
+  <h2>Dónde vive cada clave</h2>
+  <p>Ninguna de estas se escribe acá. Esta tabla es para saber <strong>a dónde ir</strong> cuando haya que
+    cambiar una, y quién tiene permiso de hacerlo.</p>
+  <table>
+    <tr><th style="width:34%">Clave</th><th style="width:30%">Dónde vive</th><th>Cuándo se toca</th></tr>
+    <tr><td><strong>Contraseña del dueño</strong></td><td>Gestor de contraseñas</td><td>Si se filtra o cambia de manos.</td></tr>
+    <tr><td><strong>PINes de barberos</strong></td><td>Panel → Equipo</td><td>Cuando entra o sale alguien del equipo.</td></tr>
+    <tr><td><strong>Claves de los buzones</strong><br /><span class="mono">reservas@ · hola@</span></td><td>Hostinger (hPanel)</td><td>Si cambia quien administra el correo.</td></tr>
+    <tr><td><strong>Llave maestra de la base</strong></td><td>Variables del proyecto en Vercel</td><td>Solo si se sospecha filtración. <strong>Nunca</strong> se pega en un chat ni en un correo.</td></tr>
+    <tr><td><strong>Llave de las automatizaciones</strong></td><td>n8n</td><td>Si pasó por un canal inseguro. Rotarla no rompe nada: se pega la nueva y listo.</td></tr>
+    <tr><td><strong>Certificado del sitio</strong></td><td>Se renueva solo (Vercel)</td><td>Nunca a mano.</td></tr>
+  </table>
+
+  <div class="aviso">
+    <div class="t">La regla de oro</div>
+    <p>La llave maestra de la base abre <em>todo</em>: clientes, teléfonos, ventas. Está verificado que
+      no viaja al navegador de nadie. Si alguna vez hace falta pasarla, va por el gestor de
+      contraseñas — nunca por WhatsApp, correo ni captura de pantalla.</p>
+  </div>
+
+  <div class="ft"><span>Barbas &amp; Bigotes · interno</span><span>3 / 8</span></div>
+</section>
+
+<!-- ══════════ 3 ══════════ -->
+<section class="page">
+  <div class="hd"><div><div class="marca">Barbas &amp; Bigotes</div><div class="tag">Manual interno</div></div>
+    <div class="meta">La operación</div></div>
+
+  <div class="eyebrow">El día</div>
+  <h2>Cómo se opera</h2>
+  <p>El detalle está en la app, en <strong>Panel → Cómo se usa</strong>, que se actualiza cuando cambia una
+    pantalla. Este es el resumen:</p>
+  <ol class="pasos">
+    <li><strong>Abrir.</strong> Cada barbero entra con su PIN en el celular del local.</li>
+    <li><strong>Atender.</strong> Llega el cliente → «Llegó» → a la silla. El que llega sin cita entra como walk-in, o a la lista de espera si no hay silla.</li>
+    <li><strong>Cobrar.</strong> Siempre desde la cita, eligiendo el medio de pago. Los productos se suman ahí mismo.</li>
+    <li><strong>Cerrar.</strong> Al final del día se cuenta el efectivo y se cierra la caja. <strong>Todos los días.</strong></li>
+  </ol>
+
+  <div class="ft"><span>Barbas &amp; Bigotes · interno</span><span>4 / 8</span></div>
+</section>
+
+<!-- ══════════ 5 ══════════ -->
+<section class="page">
+  <div class="hd"><div><div class="marca">Barbas &amp; Bigotes</div><div class="tag">Manual interno</div></div>
+    <div class="meta">Avisos y fallas</div></div>
+
+  <div class="eyebrow">Automático</div>
+  <h2>Lo que la app manda sola</h2>
+  <table>
+    <tr><th style="width:38%">Cuándo</th><th>Qué le llega al cliente</th></tr>
+    <tr><td>Apenas reserva</td><td>Confirmación con fecha, barbero y sede.</td></tr>
+    <tr><td>El día antes y un rato antes</td><td>Recordatorio de la cita.</td></tr>
+    <tr><td>Si le movés o cancelás la cita</td><td>Correo con el cambio y botón de WhatsApp. El panel además te ofrece escribirle vos.</td></tr>
+    <tr><td>Cuando se libera un cupo</td><td>Aviso al primero de la lista de espera.</td></tr>
+    <tr><td>Un par de horas después del corte</td><td>Invitación a dejar reseña en Google. Una por cliente cada 30 días.</td></tr>
+  </table>
+  <div class="nota">Todo eso sale del correo <span class="mono">reservas@barbasybigotes.com</span>, que es un buzón
+    real: si el cliente responde, la respuesta llega ahí. Conviene revisarlo.</div>
+
+  <div class="ft"><span>Barbas &amp; Bigotes · interno</span><span>5 / 8</span></div>
+</section>
+
+<!-- ══════════ 3 ══════════ -->
+<section class="page">
+  <div class="hd"><div><div class="marca">Barbas &amp; Bigotes</div><div class="tag">Manual interno</div></div>
+    <div class="meta">Si algo falla</div></div>
+
+  <div class="ft"><span>Barbas &amp; Bigotes · interno</span><span>6 / 8</span></div>
+</section>
+
+<!-- ══════════ 6 ══════════ -->
+<section class="page">
+  <div class="hd"><div><div class="marca">Barbas &amp; Bigotes</div><div class="tag">Manual interno</div></div>
+    <div class="meta">Si algo falla</div></div>
+
+  <div class="eyebrow">Diagnóstico</div>
+  <h2>Cuando algo no sale</h2>
+  <table>
+    <tr><th style="width:34%">Síntoma</th><th>Qué mirar, en este orden</th></tr>
+    <tr><td><strong>Un barbero no puede entrar</strong></td>
+        <td>¿Se equivocó 5 veces? Queda bloqueado 5 minutos. Desde Panel → Equipo se desbloquea al toque o se le pone un PIN nuevo.</td></tr>
+    <tr><td><strong>La caja no cuadra</strong></td>
+        <td>Casi siempre es una caja que quedó abierta de días: entonces suma varios días juntos. El panel avisa con una franja arriba. Cerrala y arrancá limpio.</td></tr>
+    <tr><td><strong>Un cliente dice que no le llegó el correo</strong></td>
+        <td>Revisar spam primero. Si de verdad no salió, avisar: los envíos quedan registrados y se ve si falló.</td></tr>
+    <tr><td><strong>Aparece plata «sin cobrar»</strong></td>
+        <td>Es una cita que se cerró sin pasar por caja. Está en la pantalla Hoy con el monto: se cobra o se corrige.</td></tr>
+    <tr><td><strong>Dos fichas del mismo cliente</strong></td>
+        <td>Panel → Clientes → «Fichas repetidas». Las une sin perder historial ni puntos.</td></tr>
+    <tr><td><strong>El sitio no carga</strong></td>
+        <td>Probar desde otra conexión (suele ser el wifi del local). Si de verdad está caído, hay monitoreo que lo reporta solo.</td></tr>
+  </table>
+
+  <div class="ft"><span>Barbas &amp; Bigotes · interno</span><span>7 / 8</span></div>
+</section>
+
+<section class="page">
+  <div class="hd"><div><div class="marca">Barbas &amp; Bigotes</div><div class="tag">Manual interno</div></div>
+    <div class="meta">Infraestructura</div></div>
+
+  <div class="eyebrow">Dónde vive</div>
+  <h2>Dónde está alojado todo</h2>
+  <table>
+    <tr><th style="width:30%">Servicio</th><th style="width:22%">Para qué</th><th>Costo</th></tr>
+    <tr><td><strong>Vercel</strong></td><td>El sitio y la app</td><td>Plan gratuito</td></tr>
+    <tr><td><strong>Supabase</strong></td><td>Base de datos y cuentas</td><td>Plan gratuito</td></tr>
+    <tr><td><strong>Hostinger</strong></td><td>Dominio y correos</td><td>Plan de correo activo</td></tr>
+    <tr><td><strong>n8n</strong></td><td>Los envíos automáticos</td><td>Servidor propio de FourG</td></tr>
+  </table>
+  <div class="nota">Hay respaldo automático de la base cada semana, y monitoreo de errores en vivo.
+    Comparado con lo que cobran las plataformas de agendamiento por un local de este tamaño
+    (entre 350.000 y 500.000 pesos al mes), esto corre prácticamente sin costo mensual.</div>
+
+  <h2>Lo que queda pendiente</h2>
+  <ul>
+    <li>Ponerle la foto de perfil a <span class="mono">reservas@barbasybigotes.com</span> para que el logo salga junto al remitente en Gmail.</li>
+    <li>Rotar la llave de las automatizaciones, que pasó por chat durante el montaje.</li>
+    <li>La app de Android está armada pero sin publicar: falta la cuenta de Play Store.</li>
+  </ul>
+
+  <div class="aviso">
+    <div class="t">Antes de dar de baja a alguien del equipo</div>
+    <p>Borrarle el PIN desde Panel → Equipo es suficiente para que no pueda entrar. No hace falta
+      tocar nada más, y su historial de ventas y comisiones se conserva.</p>
+  </div>
+
+  <div class="ft"><span>Barbas &amp; Bigotes · interno</span><span>8 / 8</span></div>
+</section>
+
+</body>
+</html>
