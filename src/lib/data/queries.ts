@@ -1,7 +1,7 @@
 import { type SupabaseClient } from "@supabase/supabase-js";
 import { supabaseServer, supabaseServerAuth, supabaseAdmin } from "@/lib/supabase/server";
 import { bogotaDayRange, bogotaDayRangeDeFecha, bogotaYmd, horarioEfectivo, rangoPeriodo, type Periodo } from "@/lib/slots";
-import { totalesPorMedio, snapshotDinero, type TotalesPorMedio } from "@/lib/cobro";
+import { totalesPorMedio, totalDeMedio, snapshotDinero, type TotalesPorMedio } from "@/lib/cobro";
 import { CERQUILLO_EXCLUIDOS, estadoTarjeta, TARJETA_SIZE, type BeneficioTarjeta } from "@/lib/tarjeta";
 import type { Sede, SedeId, Servicio, Barbero, Producto, Categoria, TipoContrato } from "./types";
 
@@ -627,15 +627,18 @@ export async function getResumen() {
   const { desde } = bogotaDayRange();
   const mesInicio = `${bogotaYmd().slice(0, 8)}01`; // primer día del mes civil en Bogotá
   const [ventasRes, prodsRes, adelRes] = await Promise.all([
-    sb.from("ventas").select("total,medio").gte("creado_en", desde.toISOString()),
+    sb.from("ventas").select("total,medio,pagos").gte("creado_en", desde.toISOString()),
     sb.from("productos").select("stock,stock_minimo"),
     sb.from("adelantos").select("monto").gte("fecha", mesInicio),
   ]);
-  const vs = (ventasRes.data ?? []) as { total: number; medio: string }[];
+  const vs = (ventasRes.data ?? []) as { total: number; medio: string; pagos?: unknown }[];
   // Ingresos = TODOS los medios; efectivo/datáfono se desglosan y el resto va en "otros".
   const ingresosHoy = vs.reduce((a, v) => a + v.total, 0);
-  const efectivo = vs.filter((v) => v.medio === "efectivo").reduce((a, v) => a + v.total, 0);
-  const datafono = vs.filter((v) => v.medio === "datafono").reduce((a, v) => a + v.total, 0);
+  // Por MEDIO REPARTIDO, no por el medio principal: en un cobro mixto (0060) el
+  // filtro por v.medio cargaba los 35 mil enteros al efectivo aunque 15 hubieran
+  // entrado por Nequi.
+  const efectivo = totalDeMedio(vs, "efectivo");
+  const datafono = totalDeMedio(vs, "datafono");
   const otros = ingresosHoy - efectivo - datafono;
   const bajoMinimo = ((prodsRes.data ?? []) as { stock: number; stock_minimo: number }[]).filter(
     (p) => p.stock <= p.stock_minimo,
@@ -662,7 +665,7 @@ export async function getCuadre() {
   const { desde, hasta } = bogotaDayRange();
   const [sedesRes, ventasRes, gastosRes] = await Promise.all([
     sb.from("sedes").select("id,nombre").order("nombre"),
-    sb.from("ventas").select("sede_id,medio,total").gte("creado_en", desde.toISOString()),
+    sb.from("ventas").select("sede_id,medio,total,pagos").gte("creado_en", desde.toISOString()),
     // Gastos por creado_en dentro del día de Bogotá [desde, hasta), igual que las
     // ventas y el cierre de caja. Antes se filtraba por la columna `fecha` (date con
     // default current_date en UTC) con un `>=` abierto: un gasto de la noche quedaba
@@ -673,7 +676,7 @@ export async function getCuadre() {
       .gte("creado_en", desde.toISOString())
       .lt("creado_en", hasta.toISOString()),
   ]);
-  const ventas = (ventasRes.data ?? []) as { sede_id: string; medio: string; total: number }[];
+  const ventas = (ventasRes.data ?? []) as { sede_id: string; medio: string; total: number; pagos?: unknown }[];
   const gastos = (gastosRes.data ?? []) as {
     id: string;
     sede_id: string;
@@ -684,8 +687,8 @@ export async function getCuadre() {
 
   const porSede: CuadreSede[] = ((sedesRes.data ?? []) as { id: string; nombre: string }[]).map((s) => {
     const vs = ventas.filter((v) => v.sede_id === s.id);
-    const efectivo = vs.filter((v) => v.medio === "efectivo").reduce((a, v) => a + v.total, 0);
-    const datafono = vs.filter((v) => v.medio === "datafono").reduce((a, v) => a + v.total, 0);
+    const efectivo = totalDeMedio(vs, "efectivo");
+    const datafono = totalDeMedio(vs, "datafono");
     const g = gastos.filter((x) => x.sede_id === s.id).reduce((a, x) => a + x.monto, 0);
     // Ingresos = TODOS los medios (Nequi, transferencia, etc. incluidos).
     const ingresos = vs.reduce((a, v) => a + v.total, 0);
@@ -845,10 +848,10 @@ export async function getCajaSesiones(): Promise<CajaSesionSede[]> {
     // y el cierre), para que el "esperado" salga del MISMO snapshotDinero que el cierre.
     const [vsRaw, gastosRes] = await Promise.all([
       sess
-        ? ventasDeSesion(sb, s.id, sess.id, sess.abierta_en, "medio,total,propina,propinaMedio:propina_medio")
+        ? ventasDeSesion(sb, s.id, sess.id, sess.abierta_en, "medio,total,propina,propinaMedio:propina_medio,pagos")
         : sb
             .from("ventas")
-            .select("medio,total,propina,propinaMedio:propina_medio")
+            .select("medio,total,propina,propinaMedio:propina_medio,pagos")
             .eq("sede_id", s.id)
             .gte("creado_en", start)
             .then((r) => (r.data ?? []) as unknown as Record<string, unknown>[]),
@@ -908,7 +911,7 @@ export async function getCajaSede(sedeId: string): Promise<CajaSedeEstado> {
   // efectivo − gastos) y el mismo criterio de pertenencia, o el barbero ve un
   // "esperado" que no coincide con lo que sale al cerrar.
   const [vsRaw, gastosRes] = await Promise.all([
-    ventasDeSesion(admin, sedeId, ses.id, ses.abierta_en, "medio,total,propina,propinaMedio:propina_medio"),
+    ventasDeSesion(admin, sedeId, ses.id, ses.abierta_en, "medio,total,propina,propinaMedio:propina_medio,pagos"),
     admin.from("gastos").select("monto").eq("sede_id", sedeId).gte("creado_en", ses.abierta_en),
   ]);
   const vs = vsRaw as { medio: string; total: number; propina: number | null; propinaMedio: string | null }[];

@@ -8,7 +8,7 @@
 //
 // (Node ≥23.6 corre TypeScript directo con type stripping; no requiere build.)
 import assert from "node:assert/strict";
-import { snapshotDinero, diferenciaCaja } from "../src/lib/cobro.ts";
+import { snapshotDinero, diferenciaCaja, repartoDeVenta, totalDeMedio } from "../src/lib/cobro.ts";
 
 // (a) Caja mixta: el esperado en el cajón es SOLO efectivo + propina en efectivo.
 {
@@ -126,6 +126,75 @@ import { snapshotDinero, diferenciaCaja } from "../src/lib/cobro.ts";
   assert.equal(s.ingresos, 50_000, "ingresos = todos los medios");
 }
 
+// ── Cobro MIXTO (0060) ───────────────────────────────────────────────────────
+// El caso que rompía la caja: el cliente paga una parte en efectivo y otra por
+// Nequi. Antes había que elegir un solo medio y el cajón nunca cuadraba.
+{
+  const mixta = {
+    medio: "efectivo",
+    total: 35000,
+    pagos: [
+      { medio: "efectivo", monto: 20000 },
+      { medio: "nequi", monto: 15000 },
+    ],
+  };
+  const t = snapshotDinero([mixta]).totales;
+  assert.equal(t.efectivo.total, 20000, "solo los 20 mil van al cajón");
+  assert.equal(t.nequi.total, 15000, "el resto va a nequi");
+  assert.equal(snapshotDinero([mixta]).ingresos, 35000, "la venta sigue valiendo 35 mil");
+  assert.equal(
+    snapshotDinero([mixta], { montoApertura: 50000 }).esperadoEfectivo,
+    70000,
+    "en el cajón se esperan el fondo + SOLO la parte en efectivo",
+  );
+  assert.equal(totalDeMedio([mixta], "efectivo"), 20000, "totalDeMedio lee el reparto");
+}
+
+// Sin reparto, todo al medio de la venta (el 99% de los cobros).
+assert.deepEqual(
+  repartoDeVenta({ medio: "datafono", total: 40000 }),
+  [{ medio: "datafono", monto: 40000 }],
+  "sin pagos, una sola parte",
+);
+
+// Un reparto que NO suma el total es dato corrupto: se ignora y manda el medio
+// principal. Repartir plata que no existe descuadraría el cajón en silencio.
+{
+  const rota = {
+    medio: "efectivo",
+    total: 35000,
+    pagos: [
+      { medio: "efectivo", monto: 20000 },
+      { medio: "nequi", monto: 9999 },
+    ],
+  };
+  assert.deepEqual(repartoDeVenta(rota), [{ medio: "efectivo", monto: 35000 }], "reparto que no cuadra se descarta");
+  assert.equal(snapshotDinero([rota]).ingresos, 35000, "la venta nunca vale más ni menos que su total");
+}
+
+// Basura en el jsonb (viene de la base, puede ser cualquier cosa): no revienta.
+for (const basura of [null, "efectivo", 42, [], [{ medio: "efectivo" }], [{ monto: 1 }, { monto: 2 }]]) {
+  const v = { medio: "nequi", total: 10000, pagos: basura };
+  assert.deepEqual(repartoDeVenta(v), [{ medio: "nequi", monto: 10000 }], `pagos basura: ${JSON.stringify(basura)}`);
+}
+
+// La propina en efectivo sobre una venta MIXTA sigue entrando al cajón.
+{
+  const v = {
+    medio: "nequi",
+    total: 30000,
+    propina: 5000,
+    propinaMedio: "efectivo",
+    pagos: [
+      { medio: "nequi", monto: 25000 },
+      { medio: "efectivo", monto: 5000 },
+    ],
+  };
+  const s2 = snapshotDinero([v]);
+  assert.equal(s2.esperadoEfectivo, 10000, "5 mil de la parte en efectivo + 5 mil de propina");
+}
+
+
 console.log(
-  "check-caja OK — esperado = fondo + efectivo + propina efectivo − gastos; diferencia = contado − esperado",
+  "check-caja OK — esperado/diferencia, y el cobro mixto reparte por medio sin inventar plata",
 );

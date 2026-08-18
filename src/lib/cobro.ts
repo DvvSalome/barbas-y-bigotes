@@ -89,7 +89,7 @@ export type SnapshotDinero = {
 // y las propinas cobradas EN EFECTIVO (esas sí van al cajón, no las de otros
 // medios) y le RESTA los gastos pagados en efectivo desde la apertura.
 export function snapshotDinero(
-  ventas: { medio: string; total: number; propina?: number | null; propinaMedio?: string | null }[],
+  ventas: VentaCobrada[],
   opts?: { montoApertura?: number; totalGastos?: number },
 ): SnapshotDinero {
   const totales = totalesPorMedio(ventas);
@@ -112,13 +112,54 @@ export function diferenciaCaja(efectivoContado: number, esperadoEfectivo: number
 // Agrupa ventas por medio de pago: el snapshot que queda en caja_sesiones.totales
 // y el desglose que muestran las cards de caja. La propina va aparte del total
 // (la propina en efectivo sí entra al cajón para el cuadre).
-export function totalesPorMedio(
-  ventas: { medio: string; total: number; propina?: number | null; propinaMedio?: string | null }[],
-): TotalesPorMedio {
+export type VentaCobrada = {
+  medio: string;
+  total: number;
+  propina?: number | null;
+  propinaMedio?: string | null;
+  /** Reparto entre medios cuando se pagó con más de uno (0060). */
+  pagos?: unknown;
+};
+
+/**
+ * Cómo se repartió el cobro entre medios de pago.
+ *
+ * Sin `pagos` (lo normal), todo va al medio de la venta. Con `pagos` —el cliente
+ * pagó una parte en efectivo y otra por Nequi— devuelve cada parte con su monto.
+ *
+ * Valida la forma en vez de confiar: `pagos` es jsonb, o sea que la base acepta
+ * cualquier cosa con forma de lista. Si viene rota se ignora y se cae al medio
+ * principal: perder el detalle fino es malo, pero inventar plata es peor.
+ */
+export function repartoDeVenta(v: VentaCobrada): { medio: string; monto: number }[] {
+  if (Array.isArray(v.pagos)) {
+    const partes = (v.pagos as unknown[])
+      .map((p) => p as { medio?: unknown; monto?: unknown })
+      .filter((p) => typeof p?.medio === "string" && p.medio && Number.isFinite(Number(p?.monto)))
+      .map((p) => ({ medio: String(p.medio), monto: Number(p.monto) }));
+    // Solo se usa si CUADRA con el total de la venta. Un reparto que no suma es un
+    // dato corrupto, y repartir plata que no existe descuadraría el cajón.
+    const suma = partes.reduce((a, p) => a + p.monto, 0);
+    if (partes.length >= 2 && Math.round(suma) === Math.round(v.total)) return partes;
+  }
+  return [{ medio: v.medio, monto: v.total }];
+}
+
+/** Cuánto entró por UN medio (p. ej. cuánto efectivo hay que contar en el cajón). */
+export function totalDeMedio(ventas: VentaCobrada[], slug: string): number {
+  return ventas.reduce(
+    (a, v) => a + repartoDeVenta(v).reduce((b, p) => b + (p.medio === slug ? p.monto : 0), 0),
+    0,
+  );
+}
+
+export function totalesPorMedio(ventas: VentaCobrada[]): TotalesPorMedio {
   const out: TotalesPorMedio = {};
   const bucket = (medio: string) => (out[medio] ??= { total: 0, propina: 0 });
   for (const v of ventas) {
-    bucket(v.medio).total += v.total;
+    // Cada parte suma a SU medio: sin esto, un cobro mixto cargaba todo al medio
+    // elegido y el efectivo esperado en el cajón nunca cuadraba.
+    for (const p of repartoDeVenta(v)) bucket(p.medio).total += p.monto;
     // La propina se atribuye a SU medio (propina_medio, 0053); si no se registró, al
     // de la venta (compat). Así una propina en efectivo sobre una venta por Nequi
     // suma al bucket de efectivo (entra al cajón), no al de Nequi.

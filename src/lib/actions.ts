@@ -1605,6 +1605,9 @@ export async function completarReserva(input: {
   servicioId: string | null;
   serviciosExtra?: string[]; // servicios adicionales hechos en el momento
   medio: string;
+  /** Reparto cuando el cliente paga con MÁS DE UN medio (0060): [{medio,monto}].
+   *  El servidor valida que los medios estén activos y que la suma dé el total. */
+  pagos?: { medio: string; monto: number }[];
   productos: { id: string; cantidad: number }[];
   propina?: number; // entero COP ≥ 0; NO entra al total
   /** Medio con que se pagó la PROPINA si difiere del de la venta (0053). Hoy solo
@@ -1681,6 +1684,30 @@ export async function completarReserva(input: {
     .maybeSingle();
   if (medioErr) return { ok: false, error: errorPublico("completarReserva medio", medioErr) };
   if (!medioRow) return { ok: false, error: "Medio de pago inválido o inactivo." };
+
+  // Cobro MIXTO (0060). Se valida acá y no en la pantalla porque esto es un
+  // endpoint POST invocable directo: un reparto que no suma el total descuadraría
+  // el cajón en silencio, que es exactamente el bug que vino a arreglar.
+  const pagosCrudos = (input.pagos ?? []).filter((p) => p && p.medio && Number(p.monto) > 0);
+  let pagos: { medio: string; monto: number }[] | null = null;
+  if (pagosCrudos.length > 0) {
+    if (pagosCrudos.length < 2) return { ok: false, error: "Un solo medio no necesita reparto." };
+    if (pagosCrudos.length > 6) return { ok: false, error: "Demasiados medios en un mismo cobro." };
+    const slugs = [...new Set(pagosCrudos.map((p) => String(p.medio).trim()))];
+    if (slugs.length !== pagosCrudos.length)
+      return { ok: false, error: "Hay un medio de pago repetido en el reparto." };
+    const { data: activos, error: activosErr } = await supabaseAdmin()
+      .from("medios_pago")
+      .select("slug")
+      .in("slug", slugs)
+      .eq("activo", true);
+    if (activosErr) return { ok: false, error: errorPublico("completarReserva pagos", activosErr) };
+    if ((activos ?? []).length !== slugs.length)
+      return { ok: false, error: "Alguno de los medios del reparto no existe o está inactivo." };
+    pagos = pagosCrudos.map((p) => ({ medio: String(p.medio).trim(), monto: Math.round(Number(p.monto)) }));
+    if (!pagos.some((p) => p.medio === medio))
+      return { ok: false, error: "El medio principal tiene que estar en el reparto." };
+  }
 
   const items: Record<string, unknown>[] = [];
 
@@ -1902,6 +1929,9 @@ export async function completarReserva(input: {
       reserva_id: input.reservaId,
       idem_token: idemToken,
       medio,
+      // El reparto se guarda solo si cuadra con el total que calculó el SERVIDOR
+      // (no con el que dijo la pantalla): si no cuadra, se cae al medio principal.
+      pagos: pagos && pagos.reduce((a, p) => a + p.monto, 0) === cobro.total ? pagos : null,
       total: cobro.total,
       descuento: cobro.descuento,
       cupon_codigo: cuponCodigo,
@@ -2406,8 +2436,14 @@ async function snapshotCaja(
     sedeId,
     sesionId,
     abiertaEnISO,
-    "medio,total,propina,propinaMedio:propina_medio",
-  )) as { medio: string; total: number; propina: number | null; propinaMedio: string | null }[];
+    "medio,total,propina,propinaMedio:propina_medio,pagos",
+  )) as {
+    medio: string;
+    total: number;
+    propina: number | null;
+    propinaMedio: string | null;
+    pagos?: unknown;
+  }[];
   const { data: gastos } = await admin
     .from("gastos")
     .select("monto")

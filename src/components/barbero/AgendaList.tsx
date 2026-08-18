@@ -807,6 +807,12 @@ function CheckoutForm({
   const [propinaEfectivo, setPropinaEfectivo] = useState(false); // propina en efectivo aunque la venta sea digital (0053)
   const [nota, setNota] = useState("");
   const [medio, setMedio] = useState(medios[0]?.slug ?? "");
+  // Cobro MIXTO (0060): el cliente paga una parte con un medio y el resto con otro.
+  // Se pide el monto del SEGUNDO y el primero sale por resta: una cifra menos que
+  // teclear con el cliente enfrente, y nunca queda un reparto que no cuadre.
+  const [mixto, setMixto] = useState(false);
+  const [medio2, setMedio2] = useState("");
+  const [monto2, setMonto2] = useState("");
   const [saving, setSaving] = useState(false);
   const [cupon, setCupon] = useState("");
   const [cuponInfo, setCuponInfo] = useState<{
@@ -925,7 +931,26 @@ function CheckoutForm({
   });
   const sinItems = rapida && extras.length === 0 && Object.keys(prodQty).length === 0;
 
+  // El reparto solo existe si está completo y cuadra; si no, se cobra con un solo
+  // medio (mejor eso que guardar un desglose falso).
+  const segundo = Math.round(Number(monto2) || 0);
+  const repartoMixto =
+    mixto && medio2 && medio2 !== medio && segundo > 0 && segundo < vivo.total
+      ? [
+          { medio, monto: vivo.total - segundo },
+          { medio: medio2, monto: segundo },
+        ]
+      : null;
+
   async function submit() {
+    if (mixto && !repartoMixto) {
+      setErr(
+        !medio2
+          ? "Elegí el segundo medio de pago."
+          : `El monto del segundo medio tiene que estar entre 1 y ${cop(vivo.total - 1)}.`,
+      );
+      return;
+    }
     if (sinItems) {
       setErr("Agregá al menos un servicio o producto.");
       return;
@@ -945,6 +970,7 @@ function CheckoutForm({
       servicioId: reserva?.servicioId ?? null,
       serviciosExtra: extras,
       medio,
+      pagos: repartoMixto ?? undefined,
       productos: Object.entries(prodQty).map(([id, cantidad]) => ({ id, cantidad })),
       propina,
       // Propina en efectivo aunque la venta sea digital: entra al cajón (0053, #16).
@@ -1291,6 +1317,95 @@ function CheckoutForm({
             </div>
           )}
         </div>
+
+        {/* Cobro con DOS medios (0060). Antes había que elegir uno solo: el cliente
+            pagaba $20 en efectivo y $15 por Nequi, el barbero marcaba "efectivo" y
+            el cajón quedaba esperando $35 que nunca estuvieron. */}
+        {medios.length > 1 && (
+          <div>
+            <button
+              type="button"
+              onClick={() => {
+                setMixto((v) => !v);
+                setErr(null);
+              }}
+              aria-pressed={mixto}
+              className={`flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border px-3 text-[13px] font-bold transition ${
+                mixto ? "border-accent bg-accent/10 text-accent-soft" : "border-line text-muted hover:text-ink"
+              }`}
+            >
+              {mixto ? "Quitar el pago dividido" : "Pagó con dos medios"}
+            </button>
+
+            {mixto && (
+              <div className="mt-2.5 rounded-xl border border-accent/30 bg-accent/[0.05] p-3">
+                <div className={sLabel}>¿Con qué más pagó?</div>
+                <div className="grid grid-cols-3 gap-2">
+                  {medios
+                    .filter((m) => m.slug !== medio)
+                    .map((m) => {
+                      const act = medio2 === m.slug;
+                      return (
+                        <button
+                          type="button"
+                          key={m.slug}
+                          aria-pressed={act}
+                          onClick={() => {
+                            setMedio2(m.slug);
+                            setErr(null);
+                          }}
+                          className={`flex min-h-[60px] flex-col items-center justify-center gap-1 rounded-xl border px-1.5 py-2 text-[11px] font-bold transition ${
+                            act ? "border-accent bg-accent/15 text-ink" : "border-line text-ink/80 hover:border-ink/25"
+                          }`}
+                        >
+                          <MedioLogo slug={m.slug} nombre={m.nombre} />
+                          <span className="max-w-full truncate">{m.nombre}</span>
+                        </button>
+                      );
+                    })}
+                </div>
+
+                <label className="mt-3 block">
+                  <span className={sLabel}>
+                    ¿Cuánto pagó con {medios.find((m) => m.slug === medio2)?.nombre ?? "ese medio"}?
+                  </span>
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    min={1}
+                    max={Math.max(1, vivo.total - 1)}
+                    value={monto2}
+                    onChange={(e) => {
+                      setMonto2(e.target.value);
+                      setErr(null);
+                    }}
+                    placeholder={`Ej: ${Math.round(vivo.total / 2)}`}
+                    className="min-h-11 w-full rounded-xl border border-line bg-bg px-3.5 text-[15px] text-ink tabular-nums placeholder:text-muted focus:border-accent focus:outline-none"
+                  />
+                </label>
+
+                {/* El reparto a la vista ANTES de cobrar: es lo que va a quedar en la
+                    caja, y el barbero lo puede contrastar con lo que tiene en la mano. */}
+                <p className="mt-2 text-[12.5px] leading-relaxed text-muted">
+                  {repartoMixto ? (
+                    <>
+                      Queda:{" "}
+                      {repartoMixto.map((r, i) => (
+                        <span key={r.medio}>
+                          {i > 0 && " · "}
+                          <b className="text-ink">{cop(r.monto)}</b>{" "}
+                          {medios.find((m) => m.slug === r.medio)?.nombre ?? r.medio}
+                        </span>
+                      ))}
+                    </>
+                  ) : (
+                    <>Elegí el segundo medio y cuánto pagó con él; el resto va al primero.</>
+                  )}
+                </p>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Propina en efectivo aunque el servicio se pague digital (común en CO: pagan
             por Nequi y dejan la propina en la mano). Sin esto ese efectivo genera un
