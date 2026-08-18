@@ -828,6 +828,8 @@ function CheckoutForm({
     puntos: number;
     tarjeta?: ActionResult["tarjeta"];
     resenaUrl?: string | null;
+    /** Reparto entre medios si el cobro fue mixto (0060). */
+    pagos?: { medio: string; monto: number }[] | null;
   } | null>(null);
   const [err, setErr] = useState<string | null>(null);
   // Estado de la tarjeta de cortes del cliente (solo cobro de reserva con cliente).
@@ -990,6 +992,7 @@ function CheckoutForm({
         puntos: res.puntos ?? 0,
         tarjeta: res.tarjeta,
         resenaUrl: res.resenaUrl,
+        pagos: repartoMixto,
       });
     } else setErr(res.error ?? "No se pudo completar");
   }
@@ -1001,6 +1004,19 @@ function CheckoutForm({
         <div className="mt-2 space-y-1">
           {resumen.descuento > 0 && <div className="text-muted">Descuento aplicado: −{cop(resumen.descuento)}</div>}
           <div>Total cobrado: <b className="text-ink">{cop(resumen.total)}</b></div>
+          {/* Con qué pagó, cuando fue partido: el barbero lo contrasta con lo que
+              tiene en la mano y en el datáfono ANTES de que se vaya el cliente. */}
+          {resumen.pagos && (
+            <div className="text-muted">
+              {resumen.pagos.map((r, i) => (
+                <span key={r.medio}>
+                  {i > 0 && " · "}
+                  <b className="text-ink">{cop(r.monto)}</b>{" "}
+                  {medios.find((m) => m.slug === r.medio)?.nombre ?? r.medio}
+                </span>
+              ))}
+            </div>
+          )}
           {resumen.propina > 0 && (
             <div className="text-muted">
               + {cop(resumen.propina)} de propina · en la mano: <b className="text-ink">{cop(resumen.total + resumen.propina)}</b>

@@ -250,7 +250,9 @@ export function nextDays(n: number): Date[] {
 }
 
 // ---------- Rangos de período para los reportes de /admin/metricas ----------
-export type Periodo = "mes" | "30d" | "90d";
+// 7d y 365d se agregaron a pedido del dueño: quería mirar la semana y el año,
+// no solo el mes. Son ventanas móviles, así que entran en la misma rama.
+export type Periodo = "7d" | "mes" | "30d" | "90d" | "365d";
 
 /**
  * Rango del período + el rango anterior del MISMO largo, para comparar peras con
@@ -280,7 +282,8 @@ export function rangoPeriodo(p: Periodo, ahora: Date = new Date()): {
   }
   // Ventanas móviles (30d/90d): el comparativo son los N días JUSTO antes; termina
   // donde arranca el actual.
-  const desde = new Date(hasta.getTime() - (p === "30d" ? 30 : 90) * 86_400_000);
+  const DIAS: Record<string, number> = { "7d": 7, "30d": 30, "90d": 90, "365d": 365 };
+  const desde = new Date(hasta.getTime() - (DIAS[p] ?? 30) * 86_400_000);
   const largo = hasta.getTime() - desde.getTime();
   return { desde, hasta, prevDesde: new Date(desde.getTime() - largo), prevHasta: desde };
 }

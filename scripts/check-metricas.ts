@@ -74,4 +74,18 @@ assert.equal(celdaCsv("Meyer=1"), "Meyer=1", "el = en medio NO es fórmula, no s
 const fila = ["Corte; barba", 'Juan "JJ"', null, 35000].map(celdaCsv).join(";");
 assert.equal(fila.split(";").length - (fila.match(/"[^"]*;[^"]*"/g)?.length ?? 0), 4, "no se corren las columnas");
 
+// Períodos nuevos (semana y año): ventana móvil y comparativo del MISMO largo,
+// pegado justo antes. Un año que compare contra "los 30 días previos" mentiría.
+for (const [periodo, dias] of [["7d", 7], ["365d", 365]] as const) {
+  const r = rangoPeriodo(periodo, new Date("2026-08-15T17:00:00Z"));
+  const largo = (r.hasta.getTime() - r.desde.getTime()) / 86_400_000;
+  assert.ok(Math.abs(largo - dias) < 0.01, `${periodo} abarca ${dias} días`);
+  assert.equal(r.prevHasta.getTime(), r.desde.getTime(), `${periodo}: el previo termina donde arranca el actual`);
+  assert.ok(
+    Math.abs((r.desde.getTime() - r.prevDesde.getTime()) / 86_400_000 - dias) < 0.01,
+    `${periodo}: el previo mide lo mismo`,
+  );
+}
+
+
 console.log(`check-metricas OK — rangos, comparativos y escapado del CSV correctos (TZ: ${process.env.TZ ?? "(sistema)"})`);

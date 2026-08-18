@@ -12,9 +12,11 @@ import { MON } from "@/lib/slots";
 export const metadata: Metadata = { title: "Métricas · Admin" };
 
 const PERIODOS: { id: Periodo; label: string }[] = [
+  { id: "7d", label: "Semana" },
   { id: "mes", label: "Este mes" },
   { id: "30d", label: "30 días" },
   { id: "90d", label: "90 días" },
+  { id: "365d", label: "Año" },
 ];
 
 // "2026-08-01" → "1 ago": acá se lee día-primero; "08-01" se entendía 8 de enero.
