@@ -11,13 +11,17 @@ import { MON } from "@/lib/slots";
 
 export const metadata: Metadata = { title: "Métricas · Admin" };
 
-const PERIODOS: { id: Periodo; label: string }[] = [
-  { id: "7d", label: "Semana" },
-  { id: "mes", label: "Este mes" },
-  { id: "30d", label: "30 días" },
-  { id: "90d", label: "90 días" },
-  { id: "365d", label: "Año" },
-];
+// Record<Periodo,…>: agregar un período sin etiqueta rompe el build, no la pantalla.
+const ETIQUETAS: Record<Periodo, string> = {
+  "7d": "Semana",
+  mes: "Este mes",
+  "30d": "30 días",
+  "90d": "90 días",
+  "365d": "Año",
+};
+const PERIODOS: { id: Periodo; label: string }[] = (
+  Object.keys(ETIQUETAS) as Periodo[]
+).map((id) => ({ id, label: ETIQUETAS[id] }));
 
 // "2026-08-01" → "1 ago": acá se lee día-primero; "08-01" se entendía 8 de enero.
 const fechaCo = (ymd: string) => {

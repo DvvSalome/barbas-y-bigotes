@@ -2200,7 +2200,7 @@ export async function getVentasParaCsv(p: Periodo = "mes", sede?: SedeId | null)
   let q = sb
     .from("ventas")
     .select(
-      "creado_en,sede_id,medio,total,propina,descuento,cupon_codigo,cliente_nombre,barberos(nombre),clientes(nombre),venta_items(tipo,descripcion,cantidad,precio_unitario)",
+      "creado_en,sede_id,medio,pagos,total,propina,descuento,cupon_codigo,cliente_nombre,barberos(nombre),clientes(nombre),venta_items(tipo,descripcion,cantidad,precio_unitario)",
     )
     .gte("creado_en", desde.toISOString())
     .lt("creado_en", hasta.toISOString())

@@ -252,7 +252,14 @@ export function nextDays(n: number): Date[] {
 // ---------- Rangos de período para los reportes de /admin/metricas ----------
 // 7d y 365d se agregaron a pedido del dueño: quería mirar la semana y el año,
 // no solo el mes. Son ventanas móviles, así que entran en la misma rama.
-export type Periodo = "7d" | "mes" | "30d" | "90d" | "365d";
+//
+// La lista vive acá y es UNA sola: el export a Excel tenía su propia copia
+// escrita a mano (["mes","30d","90d"]) y al agregar Semana y Año se quedó vieja
+// en silencio — mirabas el año, dabas Excel y bajaba el mes.
+export const PERIODOS_VALIDOS = ["7d", "mes", "30d", "90d", "365d"] as const;
+export type Periodo = (typeof PERIODOS_VALIDOS)[number];
+export const esPeriodo = (v: unknown): v is Periodo =>
+  typeof v === "string" && (PERIODOS_VALIDOS as readonly string[]).includes(v);
 
 /**
  * Rango del período + el rango anterior del MISMO largo, para comparar peras con

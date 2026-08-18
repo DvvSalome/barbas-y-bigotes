@@ -2,8 +2,9 @@ import { supabaseServerAuth } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/actions";
 import { getVentasParaCsv, getSedes } from "@/lib/data/queries";
 import type { SedeId } from "@/lib/data/types";
-import type { Periodo } from "@/lib/slots";
+import { esPeriodo, type Periodo } from "@/lib/slots";
 import { celdaCsv as celda } from "@/lib/format";
+import { repartoDeVenta } from "@/lib/cobro";
 
 // Descarga del detalle de cobros para el contador. Es un GET con
 // Content-Disposition en vez de una server action + Blob en el cliente: así el
@@ -25,9 +26,10 @@ export async function GET(req: Request) {
   if (denied) return new Response(denied, { status: 403 });
 
   const url = new URL(req.url);
-  const p = (["mes", "30d", "90d"].includes(url.searchParams.get("p") ?? "")
-    ? url.searchParams.get("p")
-    : "mes") as Periodo;
+  // Validación contra la lista compartida: la copia local se quedó desactualizada
+  // al agregar Semana y Año, y el Excel salía con OTRO período que el de pantalla.
+  const pParam = url.searchParams.get("p");
+  const p: Periodo = esPeriodo(pParam) ? pParam : "mes";
   const sedes = await getSedes();
   const sede = (sedes.find((s) => s.id === url.searchParams.get("sede"))?.id as SedeId | undefined) ?? null;
 
@@ -36,7 +38,7 @@ export async function GET(req: Request) {
 
   const cabecera = [
     "Fecha", "Hora", "Sede", "Barbero", "Cliente", "Servicios", "Productos",
-    "Medio de pago", "Descuento", "Cupón", "Propina", "Total",
+    "Medio de pago", "Reparto del pago", "Descuento", "Cupón", "Propina", "Total",
   ];
 
   const filas = ventas.map((v) => {
@@ -59,6 +61,13 @@ export async function GET(req: Request) {
       detalle("servicio"),
       detalle("producto"),
       v.medio ?? "",
+      // Con cobros mixtos (0060) el medio principal solo no alcanza: una venta
+      // marcada "efectivo" pudo entrar mitad por Nequi. Vacío cuando fue un solo
+      // medio, para no llenar la hoja de ruido en el 99% de las filas.
+      (() => {
+        const partes = repartoDeVenta({ medio: String(v.medio ?? ""), total: (v.total as number) || 0, pagos: v.pagos });
+        return partes.length > 1 ? partes.map((x) => `${x.medio} ${x.monto}`).join(" + ") : "";
+      })(),
       (v.descuento as number) || 0,
       v.cupon_codigo ?? "",
       (v.propina as number) || 0,
