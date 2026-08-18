@@ -62,13 +62,24 @@ export const adminNav: readonly Hoja[] = [
   ...SECUNDARIAS,
 ];
 
-// Únicas secciones que leen el ?sede= del selector del topbar: Hoy, Agenda y
-// Métricas filtran sus datos, y Precios lo usa para la sede del combo.
-const SECCIONES_CON_SEDE = ["/admin", "/admin/agenda", "/admin/metricas", "/admin/precios"] as const;
+// Únicas secciones que leen el ?sede= del selector del topbar: Hoy, Agenda,
+// Métricas y Clientes filtran sus datos, y Precios lo usa para la sede del combo.
+// Clientes se sumó cuando el dueño pidió saber quién es de cada local: la ficha
+// de un cliente no tiene sede propia, se deduce de dónde lo atendieron.
+const SECCIONES_CON_SEDE = [
+  "/admin",
+  "/admin/agenda",
+  "/admin/metricas",
+  "/admin/precios",
+  "/admin/clientes",
+] as const;
 
 const esRuta = (path: string, href: string) => (href === "/admin" ? path === href : path.startsWith(href));
 
 export function seccionFiltraPorSede(path: string) {
+  // La FICHA de un cliente ya es una persona: ahí el selector no tiene nada que
+  // filtrar y se deja en gris (marcado y sin efecto es un control muerto).
+  if (path.startsWith("/admin/clientes/")) return false;
   return SECCIONES_CON_SEDE.some((href) => esRuta(path, href));
 }
 

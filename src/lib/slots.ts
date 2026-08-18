@@ -262,6 +262,25 @@ export const esPeriodo = (v: unknown): v is Periodo =>
   typeof v === "string" && (PERIODOS_VALIDOS as readonly string[]).includes(v);
 
 /**
+ * Rango a la medida para el export: [desde 00:00, hasta 24:00) en Bogotá, con
+ * `hasta` INCLUSIVE — quien pide "hasta el 31" espera el 31 adentro, y dejarlo
+ * afuera le corta el último día del corte sin que se note.
+ * Devuelve null si no son fechas o vienen al revés: el llamador corta ahí. Caer
+ * en un período por defecto es justo el bug que se acaba de arreglar (mirabas
+ * una cosa y bajaba otra).
+ */
+export function rangoFechas(desdeYmd: string, hastaYmd: string): { desde: Date; hasta: Date } | null {
+  const ymd = /^\d{4}-\d{2}-\d{2}$/;
+  if (!ymd.test(desdeYmd) || !ymd.test(hastaYmd)) return null;
+  const { desde } = bogotaDayRangeDeFecha(desdeYmd);
+  const { hasta } = bogotaDayRangeDeFecha(hastaYmd);
+  // "2026-02-31" pasa el regex pero no es un día: Date lo deja en Invalid Date.
+  if (Number.isNaN(desde.getTime()) || Number.isNaN(hasta.getTime())) return null;
+  if (hasta <= desde) return null; // al revés (un mismo día sí vale: cubre 24h)
+  return { desde, hasta };
+}
+
+/**
  * Rango del período + el rango anterior del MISMO largo, para comparar peras con
  * peras. Devuelve [prevDesde, prevHasta) explícitos (no solo prevDesde) porque en
  * "mes" el comparativo NO termina donde arranca el actual. Vive acá con el resto de

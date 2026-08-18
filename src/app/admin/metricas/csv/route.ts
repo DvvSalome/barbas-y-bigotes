@@ -2,7 +2,7 @@ import { supabaseServerAuth } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/actions";
 import { getVentasParaCsv, getSedes } from "@/lib/data/queries";
 import type { SedeId } from "@/lib/data/types";
-import { esPeriodo, type Periodo } from "@/lib/slots";
+import { esPeriodo, rangoFechas, type Periodo } from "@/lib/slots";
 import { celdaCsv as celda } from "@/lib/format";
 import { repartoDeVenta } from "@/lib/cobro";
 
@@ -30,10 +30,24 @@ export async function GET(req: Request) {
   // al agregar Semana y Año, y el Excel salía con OTRO período que el de pantalla.
   const pParam = url.searchParams.get("p");
   const p: Periodo = esPeriodo(pParam) ? pParam : "mes";
+
+  // Export a la medida: ?desde=YYYY-MM-DD&hasta=YYYY-MM-DD manda sobre el
+  // período. Si vienen y no sirven se corta con 400 en vez de bajar el mes por
+  // defecto: entregar un archivo con OTRAS fechas de las que pidió el dueño es
+  // peor que no entregar nada — se lo pasa al contador sin volver a mirarlo.
+  const dParam = url.searchParams.get("desde");
+  const hParam = url.searchParams.get("hasta");
+  const rango = dParam || hParam ? rangoFechas(dParam ?? "", hParam ?? "") : undefined;
+  if ((dParam || hParam) && !rango) {
+    return new Response("Revisá las fechas: hace falta desde y hasta, y la primera no puede ser posterior.", {
+      status: 400,
+    });
+  }
+
   const sedes = await getSedes();
   const sede = (sedes.find((s) => s.id === url.searchParams.get("sede"))?.id as SedeId | undefined) ?? null;
 
-  const ventas = await getVentasParaCsv(p, sede);
+  const ventas = await getVentasParaCsv(p, sede, rango ?? undefined);
   const nombreSede = (id: string) => sedes.find((s) => s.id === id)?.nombre ?? id;
 
   const cabecera = [
@@ -83,7 +97,11 @@ export async function GET(req: Request) {
 
   const cuerpo = [cabecera.join(SEP), ...filas, ...(ventas.length ? [total] : [])].join("\r\n");
   const hoy = new Date().toLocaleDateString("sv-SE", { timeZone: "America/Bogota" }); // YYYY-MM-DD
-  const archivo = `barbas-cobros-${p}${sede ? `-${sede}` : ""}-${hoy}.csv`;
+  // El nombre lleva el rango pedido, no la fecha de descarga: con tres cortes a
+  // la medida en la carpeta de Descargas, "hoy" no distingue ninguno.
+  const archivo = rango
+    ? `barbas-cobros-${dParam}_a_${hParam}${sede ? `-${sede}` : ""}.csv`
+    : `barbas-cobros-${p}${sede ? `-${sede}` : ""}-${hoy}.csv`;
 
   // BOM: sin él, Excel abre el archivo en ANSI y las tildes salen como Ã±.
   return new Response("﻿" + cuerpo, {

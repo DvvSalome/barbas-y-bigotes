@@ -6,7 +6,7 @@
 // mes anterior COMPLETO. Eso haría que el panel diga "vas peor" todos los meses
 // hasta el día 30, y el dueño tomaría decisiones con un número que miente.
 import assert from "node:assert/strict";
-import { rangoPeriodo, bogotaYmd } from "../src/lib/slots.ts";
+import { rangoPeriodo, rangoFechas, bogotaYmd } from "../src/lib/slots.ts";
 import { celdaCsv } from "../src/lib/format.ts";
 
 const dia = 86_400_000;
@@ -89,3 +89,24 @@ for (const [periodo, dias] of [["7d", 7], ["365d", 365]] as const) {
 
 
 console.log(`check-metricas OK — rangos, comparativos y escapado del CSV correctos (TZ: ${process.env.TZ ?? "(sistema)"})`);
+
+// (f) Export a la medida (de X a Y). Lo que tiene que atrapar: un rango que
+//     recorta el ÚLTIMO día. El dueño pide "1 al 31" y espera el 31 adentro; si
+//     `hasta` fuera exclusivo, el corte de mes perdería el día más cargado y
+//     nadie lo notaría hasta cuadrar con el contador.
+const rango = rangoFechas("2026-08-01", "2026-08-31");
+assert.ok(rango, "un rango normal es válido");
+assert.equal(bogotaYmd(rango.desde), "2026-08-01", "arranca el 1° a las 00:00 de Bogotá");
+assert.equal(rango.hasta.getTime() - rango.desde.getTime(), 31 * dia, "cubre los 31 días COMPLETOS (hasta inclusive)");
+
+// Un solo día vale y cubre sus 24 horas.
+const unDia = rangoFechas("2026-08-10", "2026-08-10");
+assert.ok(unDia, "desde = hasta es un rango de un día");
+assert.equal(unDia.hasta.getTime() - unDia.desde.getTime(), dia, "el día completo, no cero");
+
+// Basura y fechas al revés: null. El route handler corta con 400 — bajar otro
+// período por defecto es entregar un archivo que dice fechas que no son.
+assert.equal(rangoFechas("2026-08-31", "2026-08-01"), null, "al revés no vale");
+assert.equal(rangoFechas("2026-02-31", "2026-03-01"), null, "el 31 de febrero no existe");
+assert.equal(rangoFechas("31/08/2026", "2026-08-31"), null, "otro formato no vale");
+assert.equal(rangoFechas("", ""), null, "vacío no vale");

@@ -7,7 +7,7 @@ import { SectionHeader } from "@/components/admin/SectionHeader";
 import { Kpi } from "@/components/admin/Kpi";
 import { RankingMetrica } from "@/components/admin/RankingMetrica";
 import { CashIcon, ScissorsIcon, UsersIcon, TagIcon } from "@/components/icons";
-import { MON } from "@/lib/slots";
+import { MON, bogotaYmd } from "@/lib/slots";
 
 export const metadata: Metadata = { title: "Métricas · Admin" };
 
@@ -101,6 +101,10 @@ export default async function MetricasPage({
   // ofrecer el atajo, no se paga en el camino normal.
   const hayEn90 = m.servicios === 0 && p !== "90d" && (await getMetricas("90d", sede)).servicios > 0;
   const nuevos = m.clientes.total - m.clientes.repiten;
+  // Defaults del rango a la medida: del 1° a hoy (el corte que se pide siempre).
+  // En Bogotá, no en la hora del servidor: a las 20:00 de acá en Vercel ya es otro día.
+  const hoyYmd = bogotaYmd();
+  const mesYmd = `${hoyYmd.slice(0, 8)}01`;
 
   return (
     <div className="max-w-6xl">
@@ -131,6 +135,46 @@ export default async function MetricasPage({
           </a>
         )}
       </div>
+
+      {/* Export a la medida. Es un <form> GET al mismo route handler: dos
+          <input type="date"> nativos —el celular abre su propio calendario— y
+          nada de JS ni de librería de fechas. Va afuera del bloque de datos a
+          propósito: cuando el período elegido sale vacío igual hace falta poder
+          bajar otro rango (es el caso en el que más se busca). */}
+      <form
+        action="/admin/metricas/csv"
+        className="mt-3 flex flex-wrap items-end gap-2 rounded-2xl border border-line bg-panel px-3.5 py-3"
+      >
+        {sede && <input type="hidden" name="sede" value={sede} />}
+        <div className="mr-auto">
+          <span className="block font-display text-[15px] font-bold text-ink">Excel de un rango exacto</span>
+          <span className="block text-[12px] text-muted">
+            Para el contador o el cierre de mes{nombreSede ? ` · ${nombreSede}` : ""}
+          </span>
+        </div>
+        {[
+          { name: "desde", label: "Desde", valor: mesYmd },
+          { name: "hasta", label: "Hasta", valor: hoyYmd },
+        ].map((f) => (
+          <label key={f.name} className="text-[11px] font-semibold uppercase tracking-wide text-muted">
+            {f.label}
+            <input
+              type="date"
+              name={f.name}
+              required
+              max={hoyYmd}
+              defaultValue={f.valor}
+              className="mt-1 block min-h-11 rounded-xl border border-line bg-bg px-3 text-[13px] text-ink focus:border-accent focus:outline-none"
+            />
+          </label>
+        ))}
+        <button
+          type="submit"
+          className="flex min-h-11 items-center rounded-xl border border-accent/45 bg-accent/[0.07] px-4 text-[13px] font-semibold text-accent-soft transition hover:bg-accent/15"
+        >
+          ↓ Descargar
+        </button>
+      </form>
 
       {m.servicios === 0 ? (
         // Una pantalla en blanco no dice si el negocio está parado o si el

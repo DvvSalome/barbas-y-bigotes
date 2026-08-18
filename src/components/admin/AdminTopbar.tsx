@@ -18,7 +18,7 @@ import type { CajaChip } from "@/lib/data/queries";
 
 
 // Segmentado Ambas / sede A / sede B: navega con ?sede= (sin param = ambas).
-// En las secciones que no filtran (Caja, Clientes, Inventario, Equipo, Comisiones,
+// En las secciones que no filtran (Caja, Inventario, Equipo, Comisiones,
 // Cupones, Avisos) el selector igual se dejaba cambiar: se podía tener "Plaza de la
 // Paz" marcado y estar leyendo las dos sedes sumadas. Ahí queda en gris, marcando
 // "Ambas sedes" —que es lo que se está viendo— y con la aclaración al lado.

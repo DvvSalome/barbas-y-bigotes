@@ -44,7 +44,15 @@ function fechaCorta(iso: string | null) {
 const TONOS = ["#a3907c", "#e8675c", "#c9b18a", "#8f7a60", "#d9a066"];
 const tono = (n: string) => TONOS[(n?.trim().length ?? 0) % TONOS.length];
 
-export function ClientesLista({ clientes }: { clientes: ClienteRow[] }) {
+export function ClientesLista({
+  clientes,
+  sedes,
+  sedeActiva,
+}: {
+  clientes: ClienteRow[];
+  sedes: { id: string; nombre: string }[];
+  sedeActiva: string | null;
+}) {
   const [q, setQ] = useState("");
   const [filtro, setFiltro] = useState<Filtro>("todos");
   // Grupo de fichas repetidas abierto para unir (email en minúsculas), o null.
@@ -53,9 +61,22 @@ export function ClientesLista({ clientes }: { clientes: ClienteRow[] }) {
   // (con cientos de clientes, renderizarlos todos ponía lento el celular).
   const [visibles, setVisibles] = useState(60);
 
+  // Todo lo que se ve —lista, buscador y contadores— arranca de la sede elegida
+  // en el topbar. Con dos locales, "quiénes son de Plaza y quiénes de Parque"
+  // es la mitad del control, y antes el CRM los mostraba siempre revueltos.
+  const base = useMemo(
+    () => (sedeActiva ? clientes.filter((c) => c.sedes.includes(sedeActiva)) : clientes),
+    [clientes, sedeActiva],
+  );
+  // Nombre corto por id ("Plaza", "Parque"): el completo no cabe en el chip.
+  const nombreCorto = useMemo(() => new Map(sedes.map((s) => [s.id, s.nombre.split(" ")[0]])), [sedes]);
+
   // Fichas repetidas del mismo correo. El fix de reservas evita que se creen
   // nuevas, pero las viejas siguen ahí y el dueño no tenía forma de verlas:
   // aparecían como cuatro clientes distintos con el mismo mail.
+  // Se cuentan sobre TODA la base, no sobre la sede filtrada: el mismo correo
+  // puede tener una ficha en cada local, y unirlas viendo solo la mitad del
+  // grupo dejaría la otra suelta.
   const duplicados = useMemo(() => {
     const m = new Map<string, number>();
     for (const c of clientes) {
@@ -68,8 +89,8 @@ export function ClientesLista({ clientes }: { clientes: ClienteRow[] }) {
   const lista = useMemo(() => {
     const s = q.trim().toLowerCase();
     let r = s
-      ? clientes.filter((c) => `${c.nombre} ${c.telefono} ${c.email}`.toLowerCase().includes(s))
-      : clientes;
+      ? base.filter((c) => `${c.nombre} ${c.telefono} ${c.email}`.toLowerCase().includes(s))
+      : base;
     if (filtro === "gastan") {
       r = r.filter((c) => c.facturado > 0).sort((a, b) => b.facturado - a.facturado);
     }
@@ -82,18 +103,22 @@ export function ClientesLista({ clientes }: { clientes: ClienteRow[] }) {
       r = r.filter((c) => (c.email ? (duplicados.get(c.email.trim().toLowerCase()) ?? 0) > 1 : false));
     }
     return r;
-  }, [clientes, q, filtro, duplicados]);
+  }, [base, q, filtro, duplicados]);
 
   // El CRM de un vistazo (panel derecho de escritorio): cada cuadro filtra.
   const stats = useMemo(() => {
     const corte = new Date().getTime() - DIAS_DORMIDO * 86_400_000;
     return {
-      gastan: clientes.filter((c) => c.facturado > 0).length,
-      facturadoTotal: clientes.reduce((a, c) => a + c.facturado, 0),
-      dormidos: clientes.filter((c) => c.ultima !== null && new Date(c.ultima).getTime() < corte).length,
-      repetidas: [...duplicados.values()].filter((n) => n > 1).length,
+      gastan: base.filter((c) => c.facturado > 0).length,
+      facturadoTotal: base.reduce((a, c) => a + c.facturado, 0),
+      dormidos: base.filter((c) => c.ultima !== null && new Date(c.ultima).getTime() < corte).length,
+      // Correos repetidos QUE SE VEN acá: el número del cuadro tiene que dar lo
+      // mismo que las filas que aparecen al tocarlo.
+      repetidas: new Set(
+        base.filter((c) => (duplicados.get(c.email?.trim().toLowerCase() ?? "") ?? 0) > 1).map((c) => c.email!.trim().toLowerCase()),
+      ).size,
     };
-  }, [clientes, duplicados]);
+  }, [base, duplicados]);
 
   return (
     <>
@@ -114,14 +139,19 @@ export function ClientesLista({ clientes }: { clientes: ClienteRow[] }) {
               className="w-full rounded-xl border border-line bg-bg px-4 py-2.5 pl-10 text-ink placeholder:text-muted focus:border-accent focus:outline-none"
             />
           </div>
-          {/* Descarga de la base (CSV con ; — Excel Colombia): mismo patrón que Métricas. */}
-          {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- es una DESCARGA (route handler con Content-Disposition), no navegación: <Link> haría fetch RSC */}
+          {/* Descarga de la base (CSV con ; — Excel Colombia): mismo patrón que
+              Métricas. Va con <a> y no con <Link> porque es una DESCARGA (route
+              handler con Content-Disposition): <Link> haría un fetch RSC. */}
           <a
-            href="/admin/clientes/csv"
+            href={sedeActiva ? `/admin/clientes/csv?sede=${sedeActiva}` : "/admin/clientes/csv"}
             className="flex min-h-11 shrink-0 items-center gap-1.5 rounded-xl border border-line px-4 text-[13px] font-semibold text-muted transition hover:border-ink/25 hover:text-ink"
-            aria-label="Descargar la base de clientes en Excel"
+            aria-label={
+              sedeActiva
+                ? `Descargar en Excel los clientes de ${nombreCorto.get(sedeActiva) ?? "esta sede"}`
+                : "Descargar la base de clientes en Excel"
+            }
           >
-            ↓ Excel
+            ↓ Excel{sedeActiva ? ` de ${nombreCorto.get(sedeActiva)}` : ""}
           </a>
         </div>
 
@@ -147,7 +177,11 @@ export function ClientesLista({ clientes }: { clientes: ClienteRow[] }) {
 
       {lista.length === 0 ? (
         <p className="mt-6 rounded-2xl border border-line bg-panel px-4 py-8 text-center text-sm text-muted">
-          {q ? "Sin resultados para esa búsqueda." : VACIO[filtro]}
+          {q
+            ? "Sin resultados para esa búsqueda."
+            : sedeActiva && filtro === "todos"
+              ? `Todavía no hay clientes con historia en ${nombreCorto.get(sedeActiva)}.`
+              : VACIO[filtro]}
         </p>
       ) : (
         <>
@@ -181,6 +215,17 @@ export function ClientesLista({ clientes }: { clientes: ClienteRow[] }) {
                     <span className="min-w-0 flex-1">
                       <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
                         <span className="truncate font-display text-[17px] leading-tight">{c.nombre}</span>
+                        {/* De qué sede es. Solo cuando aporta: mirando UNA sede
+                            todos dirían lo mismo, salvo el que va a las dos. */}
+                        {(!sedeActiva || c.sedes.length > 1) &&
+                          c.sedes.map((s) => (
+                            <span
+                              key={s}
+                              className="shrink-0 rounded-full border border-line px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-muted"
+                            >
+                              {nombreCorto.get(s) ?? s}
+                            </span>
+                          ))}
                         {dup > 1 && (
                           // Botón, no etiqueta: señalar el problema sin dejar
                           // resolverlo era un callejón sin salida.
@@ -245,7 +290,12 @@ export function ClientesLista({ clientes }: { clientes: ClienteRow[] }) {
           <div className="grid gap-2.5">
             {(
               [
-                { id: "todos" as Filtro, n: String(clientes.length), l: "clientes en total", sub: `${cop(stats.facturadoTotal)} facturados` },
+                {
+                  id: "todos" as Filtro,
+                  n: String(base.length),
+                  l: sedeActiva ? `clientes de ${nombreCorto.get(sedeActiva)}` : "clientes en total",
+                  sub: `${cop(stats.facturadoTotal)} facturados`,
+                },
                 { id: "gastan" as Filtro, n: String(stats.gastan), l: "con compras", sub: "de mayor a menor gasto" },
                 { id: "dormidos" as Filtro, n: String(stats.dormidos), l: `no vuelven hace ${DIAS_DORMIDO}+ días`, sub: "para recuperar", alerta: stats.dormidos > 0 },
                 { id: "repetidas" as Filtro, n: String(stats.repetidas), l: "correos con fichas repetidas", sub: stats.repetidas > 0 ? "tocá para verlas y unirlas" : "base limpia ✓", alerta: stats.repetidas > 0 },

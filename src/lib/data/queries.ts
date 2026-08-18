@@ -1249,6 +1249,8 @@ export type ClienteRow = {
   visitas: number;
   facturado: number;
   ultima: string | null;
+  /** Sedes donde se le ha atendido o tiene cita. Vacío = ficha sin movimiento. */
+  sedes: string[];
 };
 
 // La lista sale ordenada por ÚLTIMA VISITA (lo más reciente arriba): alfabético
@@ -1258,18 +1260,39 @@ export type ClienteRow = {
 // mientras se escribe.
 export async function getClientes(): Promise<ClienteRow[]> {
   const sb = await supabaseServerAuth();
-  const [clientesRes, ventasRes] = await Promise.all([
+  const [clientesRes, ventasRes, reservasRes] = await Promise.all([
     sb.from("clientes").select("id,nombre,telefono,email,creado_en").order("nombre"),
-    sb.from("ventas").select("cliente_ref,total,creado_en"),
+    sb.from("ventas").select("cliente_ref,total,creado_en,sede_id"),
+    // Las CITAS también dicen de qué sede es alguien: el que reservó en Plaza y
+    // todavía no ha venido no tiene venta, y filtrando por sede desaparecería
+    // justo del listado donde el dueño lo iba a buscar.
+    sb.from("reservas").select("cliente_ref,sede_id").not("cliente_ref", "is", null),
   ]);
   const agg = new Map<string, { visitas: number; facturado: number; ultima: string | null }>();
-  for (const v of (ventasRes.data ?? []) as { cliente_ref: string | null; total: number; creado_en: string }[]) {
+  // Un cliente puede moverse entre sedes: se guardan TODAS, no "la última".
+  const sedesDe = new Map<string, Set<string>>();
+  const marcarSede = (ref: string | null, sede: string | null) => {
+    if (!ref || !sede) return;
+    const s = sedesDe.get(ref) ?? new Set<string>();
+    s.add(sede);
+    sedesDe.set(ref, s);
+  };
+  for (const v of (ventasRes.data ?? []) as {
+    cliente_ref: string | null;
+    total: number;
+    creado_en: string;
+    sede_id: string | null;
+  }[]) {
     if (!v.cliente_ref) continue;
+    marcarSede(v.cliente_ref, v.sede_id);
     const a = agg.get(v.cliente_ref) ?? { visitas: 0, facturado: 0, ultima: null };
     a.visitas += 1;
     a.facturado += v.total;
     if (!a.ultima || v.creado_en > a.ultima) a.ultima = v.creado_en;
     agg.set(v.cliente_ref, a);
+  }
+  for (const r of (reservasRes.data ?? []) as { cliente_ref: string | null; sede_id: string | null }[]) {
+    marcarSede(r.cliente_ref, r.sede_id);
   }
   return ((clientesRes.data ?? []) as Record<string, unknown>[])
     .map((c) => {
@@ -1282,6 +1305,7 @@ export async function getClientes(): Promise<ClienteRow[]> {
         visitas: a.visitas,
         facturado: a.facturado,
         ultima: a.ultima,
+        sedes: [...(sedesDe.get(c.id as string) ?? [])],
       };
     })
     // Los que nunca compraron van al final, entre ellos por nombre (el .order de arriba).
@@ -2194,9 +2218,14 @@ export async function getMetricas(p: Periodo = "mes", sede?: SedeId | null): Pro
 }
 
 /** Ventas del período en crudo, una fila por cobro. Alimenta el CSV de /admin/metricas. */
-export async function getVentasParaCsv(p: Periodo = "mes", sede?: SedeId | null) {
+export async function getVentasParaCsv(
+  p: Periodo = "mes",
+  sede?: SedeId | null,
+  // Rango a la medida (export de X a Y): cuando viene, manda sobre el período.
+  rango?: { desde: Date; hasta: Date },
+) {
   const sb = await supabaseServerAuth();
-  const { desde, hasta } = rangoPeriodo(p);
+  const { desde, hasta } = rango ?? rangoPeriodo(p);
   let q = sb
     .from("ventas")
     .select(
