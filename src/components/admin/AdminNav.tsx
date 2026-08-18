@@ -47,7 +47,11 @@ const GRUPOS: readonly Grupo[] = [
   },
 ] as const;
 
-const SECUNDARIAS: readonly Hoja[] = [{ href: "/barbero", label: "App del barbero" }] as const;
+const SECUNDARIAS: readonly Hoja[] = [
+  { href: "/barbero", label: "App del barbero" },
+  // La guía de uso: última de la fila porque se consulta, no se opera.
+  { href: "/admin/ayuda", label: "Cómo se usa" },
+] as const;
 
 // adminNav PLANO: lo consume la paleta Ctrl-K ("Ir a"). Se aplanan los hijos con
 // su nombre largo para que buscar "inventario" o "comisiones" siga encontrando.
