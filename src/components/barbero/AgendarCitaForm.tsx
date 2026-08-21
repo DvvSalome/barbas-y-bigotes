@@ -5,7 +5,7 @@ import { getDisponibilidad, agendarCita } from "@/lib/actions";
 import {
   DOW,
   fmtTime,
-  buildSlots,
+  slotsDisponibles,
   computeTaken,
   nextDays,
   horarioEfectivo,
@@ -79,7 +79,10 @@ export function AgendarCitaForm({
   const reqId = useRef(0);
 
   const servicio = serviciosSede.find((s) => s.id === servicioId) ?? null;
-  const dur = servicio?.duracionMin ?? 30;
+  // Duración a medida de ESTA cita. null = la del catálogo, así cambiar de
+  // servicio trae su duración sola (sin un effect que las sincronice).
+  const [durManual, setDurManual] = useState<number | null>(null);
+  const dur = durManual ?? servicio?.duracionMin ?? 30;
 
   // Próximos días que la sede ABRE (mismo criterio que el wizard).
   const dias = useMemo(
@@ -87,14 +90,20 @@ export function AgendarCitaForm({
     [horarioSemanal, diasEspeciales],
   );
 
-  // Slots del día elegido dentro de su ventana.
+  // Turnos del día elegido: la grilla MÁS el instante en que se desocupa la
+  // silla, para poder encadenar al cliente que sigue sin dejar huecos muertos.
   const slots = useMemo(() => {
     if (!day) return [] as number[];
     const v = horarioEfectivo(ymdLocal(day), horarioSemanal, diasEspeciales);
-    return v.abierta ? buildSlots(dur, v.abreMin, v.cierraMin) : [];
-  }, [day, dur, horarioSemanal, diasEspeciales]);
+    return v.abierta ? slotsDisponibles(dur, v.abreMin, v.cierraMin, ocupados) : [];
+  }, [day, dur, horarioSemanal, diasEspeciales, ocupados]);
 
   const taken = day ? computeTaken({ slots, ocupados, day, duracionMin: dur }) : new Set<number>();
+  // La hora escrita a mano no está en la grilla, así que `taken` no la cubre: se
+  // chequea aparte con la MISMA función, para avisar antes de que el servidor la
+  // rebote (computeTaken también marca las horas ya pasadas de hoy).
+  const chocaElegido =
+    slot !== null && day ? computeTaken({ slots: [slot], ocupados, day, duracionMin: dur }).has(slot) : false;
 
   // Al cambiar barbero o día, traer su ocupación (guard de carrera reqId). Sin
   // setState síncrono en el cuerpo del effect (regla del React Compiler).
@@ -141,6 +150,7 @@ export function AgendarCitaForm({
       clienteNombre: nombre.trim(),
       telefono: telefono.trim(),
       email: email.trim() || undefined,
+      duracionMin: durManual ?? undefined,
     });
     setSaving(false);
     if (res.ok) onDone();
@@ -247,6 +257,59 @@ export function AgendarCitaForm({
             })}
           </div>
         )}
+
+        {/* Escape de la grilla: el cliente llegó 2:40 y se le agenda 2:40, no 2:45.
+            Los dos campos son nativos —el teléfono abre su propio selector— y
+            escriben sobre el MISMO `slot` que los chips, así el resto del form no
+            se entera de por dónde entró la hora. */}
+        <div className="mt-3 grid grid-cols-2 gap-2 rounded-xl border border-line bg-elevated/60 p-3">
+          <label className="text-[11px] font-semibold uppercase tracking-wide text-muted">
+            Hora exacta
+            <input
+              type="time"
+              step={300}
+              value={slot === null ? "" : `${String(Math.floor(slot / 60)).padStart(2, "0")}:${String(slot % 60).padStart(2, "0")}`}
+              onChange={(e) => {
+                const [h, m] = e.target.value.split(":").map(Number);
+                setSlot(Number.isFinite(h) && Number.isFinite(m) ? h * 60 + m : null);
+              }}
+              className={`${input} mt-1 tabular-nums`}
+            />
+          </label>
+          <label className="text-[11px] font-semibold uppercase tracking-wide text-muted">
+            Dura (min)
+            <input
+              type="number"
+              min={5}
+              max={480}
+              step={5}
+              value={dur}
+              onChange={(e) => {
+                const n = Number(e.target.value);
+                setDurManual(Number.isFinite(n) && n > 0 ? Math.round(n) : null);
+              }}
+              className={`${input} mt-1 tabular-nums`}
+            />
+          </label>
+          <p className="col-span-2 text-[12px] text-muted">
+            {slot === null ? (
+              "Elegí un turno arriba o escribí la hora."
+            ) : (
+              <>
+                Queda de <b className="text-ink tabular-nums">{fmtTime(slot)}</b> a{" "}
+                <b className="text-ink tabular-nums">{fmtTime(slot + dur)}</b>
+                {durManual !== null && servicio && durManual !== servicio.duracionMin && (
+                  <span className="text-muted"> · el servicio dura {servicio.duracionMin} min</span>
+                )}
+              </>
+            )}
+          </p>
+          {chocaElegido && (
+            <p className="col-span-2 text-[12px] font-semibold text-warn">
+              A esa hora el barbero está ocupado (o ya pasó). Elegí otra.
+            </p>
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">

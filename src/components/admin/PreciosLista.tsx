@@ -5,6 +5,7 @@ import { SearchIcon } from "@/components/icons";
 import { PrecioSedeEditable } from "@/components/admin/PrecioSedeEditable";
 import { ServicioActivoToggle } from "@/components/admin/ServicioActivoToggle";
 import { FotoServicio } from "@/components/admin/FotoServicio";
+import { DuracionEditable } from "@/components/admin/DuracionEditable";
 import { DescripcionServicio } from "@/components/admin/DescripcionServicio";
 import type { Categoria, Sede, SedeId } from "@/lib/data/types";
 
@@ -141,7 +142,7 @@ export function PreciosLista({
                             <span className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
                               <span className="text-[14px] font-semibold leading-tight text-ink">{s.nombre}</span>
                               {s.desde && <span className="text-[11px] text-muted">(desde)</span>}
-                              <span className="text-[11.5px] text-muted">{s.duracionMin} min</span>
+                              <DuracionEditable servicioId={s.id} min={s.duracionMin} />
                               {inactivo && (
                                 <span className="rounded-full border border-line px-2 py-0.5 text-[10px] uppercase tracking-wide text-muted">
                                   Fuera del catálogo

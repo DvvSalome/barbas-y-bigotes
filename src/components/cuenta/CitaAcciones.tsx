@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getDisponibilidad } from "@/lib/actions";
 import { cancelarReservaCliente, reagendarReservaCliente } from "@/lib/cliente-actions";
-import { DOW, fmtTime, buildSlots, computeTaken, nextDays, horarioEfectivo, instanteBogota, CANCELACION_MIN_HORAS } from "@/lib/slots";
+import { DOW, fmtTime, slotsDisponibles, computeTaken, nextDays, horarioEfectivo, instanteBogota, CANCELACION_MIN_HORAS } from "@/lib/slots";
 import type { HorarioSemanal, DiaEspecial } from "@/lib/data/queries";
 
 // YYYY-MM-DD por componentes LOCALES (como se rotulan los chips); horarioEfectivo
@@ -179,7 +179,7 @@ function ReagendarPanel({
 
   // Slots dentro de la ventana REAL del día elegido (arranca a su hora de apertura).
   const ventana = day ? horarioEfectivo(ymdLocal(day), horarioSemanal, diasEspeciales) : null;
-  const slots = ventana?.abierta ? buildSlots(duracionMin, ventana.abreMin, ventana.cierraMin) : [];
+  const slots = ventana?.abierta ? slotsDisponibles(duracionMin, ventana.abreMin, ventana.cierraMin, ocupados) : [];
   const taken = day ? computeTaken({ slots, ocupados, day, duracionMin }) : new Set<number>();
 
   async function pickDay(d: Date) {

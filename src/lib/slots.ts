@@ -3,7 +3,19 @@
 
 export const OPEN = 9 * 60;   // 09:00
 export const CLOSE = 20 * 60; // 20:00
-export const STEP = 30;       // minutos entre inicios de slot
+
+// Minutos entre inicios de la grilla. Estuvo en 30 y le costaba silla al local:
+// una barba dura 20 minutos y quemaba media hora, y un corte+barba de 50 no cabía
+// donde la grilla decía que cabía. Con 15 la grilla se acerca a las duraciones
+// reales; lo que termina de cerrar los huecos es `slotsDisponibles` (abajo), que
+// además ofrece el turno pegado al fin de la cita anterior.
+export const STEP = 15;
+
+// Granularidad mínima de un inicio: 5 minutos. No es estética — es el contrato
+// entre lo que la pantalla ofrece y lo que `slotEnVentana` acepta en el servidor.
+// Sin él, encadenar tras una cita que terminó 2:43 ofrecería un turno que el
+// servidor rechaza.
+export const GRANO_MIN = 5;
 
 // Ventana mínima para cancelar/reagendar online (horas). Regla de negocio única.
 export const CANCELACION_MIN_HORAS = 2;
@@ -67,6 +79,42 @@ export function buildSlots(duracionMin: number, abreMin: number = OPEN, cierraMi
   const out: number[] = [];
   for (let t = abreMin; t + duracionMin <= cierraMin; t += STEP) out.push(t);
   return out;
+}
+
+/**
+ * Turnos que se le ofrecen al cliente: la grilla MÁS el instante en que se
+ * desocupa la silla.
+ *
+ * Por qué existe: con grilla sola, una barba que termina 2:40 empuja al
+ * siguiente cliente a las 2:45 y esos 5 minutos no los usa nadie. Sumando el fin
+ * de cada cita como candidato, los turnos se pegan unos a otros y el día rinde.
+ *
+ * Los candidatos encadenados se alinean al grano de 5 minutos CONTADO DESDE LA
+ * APERTURA, que es exactamente lo que valida `slotEnVentana`: ofrecer un 2:43
+ * que el servidor va a rechazar es peor que ofrecer 2:45.
+ *
+ * `ocupados` son los mismos intervalos que ya maneja `computeTaken` (los que
+ * devuelve getDisponibilidad), así que quien tiene una lista tiene la otra. Los
+ * candidatos que choquen con la cita siguiente los apaga `computeTaken`: acá solo
+ * se PROPONEN inicios, no se decide si están libres.
+ */
+export function slotsDisponibles(
+  duracionMin: number,
+  abreMin: number,
+  cierraMin: number,
+  ocupados: { inicio: string; fin: string }[],
+): number[] {
+  const encadenados = ocupados
+    .map((o) => {
+      const fin = minutoBogota(new Date(o.fin));
+      // Hacia ARRIBA: redondear hacia abajo metería el turno nuevo dentro del
+      // anterior y el solape lo rebotaría la base.
+      return abreMin + Math.ceil((fin - abreMin) / GRANO_MIN) * GRANO_MIN;
+    })
+    .filter((t) => t >= abreMin && t + duracionMin <= cierraMin);
+  return [...new Set([...buildSlots(duracionMin, abreMin, cierraMin), ...encadenados])].sort(
+    (a, b) => a - b,
+  );
 }
 
 // ---- Horario efectivo por sede/fecha (fuente de verdad única) ----
@@ -138,15 +186,24 @@ export function resumirSemana(semanal: HorarioDia[]): { dias: string; horas: str
   return filas;
 }
 
-// ¿Un inicio (min-del-día) cae en un slot válido de esta ventana? Lo usa el
-// servidor para blindar el POST directo con el MISMO criterio que buildSlots
-// (alineado a abreMin, no a OPEN, porque la ventana puede empezar a otra hora).
+// ¿Un inicio (min-del-día) es válido en esta ventana? Lo usa el servidor para
+// blindar el POST directo.
+//
+// Antes exigía caer en la grilla (`% STEP`). Ya no puede: los turnos que se
+// ofrecen dependen de las citas del día (ver slotsDisponibles) y el mostrador
+// agenda a la hora que sea (2:40 porque el cliente llegó 2:40). Re-derivar acá el
+// conjunto exacto de inicios ofrecidos costaría una consulta más y volvería a
+// desincronizar pantalla y servidor.
+// Queda lo que de verdad protege: que el servicio quepa dentro del horario de
+// atención y que la hora sea una hora redonda al grano de 5 (nada de 2:43:17
+// llegado por POST). Que no pise otra cita lo garantiza el EXCLUDE
+// `reservas_no_overlap` de la base, no esta función.
 export function slotEnVentana(minInicio: number, duracionMin: number, v: VentanaDia): boolean {
   return (
     v.abierta &&
     minInicio >= v.abreMin &&
     minInicio + duracionMin <= v.cierraMin &&
-    (minInicio - v.abreMin) % STEP === 0
+    (minInicio - v.abreMin) % GRANO_MIN === 0
   );
 }
 

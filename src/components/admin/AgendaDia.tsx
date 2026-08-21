@@ -12,7 +12,7 @@ import { SEDE_INFO } from "@/lib/data/sede-info";
 import { quitarBloqueo, moverCita, actualizarReserva } from "@/lib/actions";
 import { instanteBogota } from "@/lib/slots";
 import { CaraBarbero } from "@/components/staff/Elegir";
-import { DOW, MON, fmtTime, horarioEfectivo, dowDeFecha, bogotaYmd } from "@/lib/slots";
+import { DOW, MON, STEP, fmtTime, horarioEfectivo, dowDeFecha, bogotaYmd } from "@/lib/slots";
 import type { Barbero, Servicio, SedeId } from "@/lib/data/types";
 import type { AgendaDiaItem, BloqueoDia, HorarioSemanal, DiaEspecial } from "@/lib/data/queries";
 
@@ -25,6 +25,10 @@ import type { AgendaDiaItem, BloqueoDia, HorarioSemanal, DiaEspecial } from "@/l
 // dueño la sintió "demasiado alta"). Un bloque de 30 min queda de ~33px: se
 // toca bien y el detalle completo vive en el sheet.
 const PX_MIN = 1.1;
+// Grano del calendario al arrastrar o al tocar un hueco. Estaba en 30 y no dejaba
+// dejar una cita a las 2:45; va con la grilla de turnos (STEP) para que lo que se
+// arma acá coincida con lo que ve el cliente.
+const SNAP_AGENDA = STEP;
 
 // Color por estado — tokens del panel, no colores inventados (DESIGN.md).
 // Estilo Google Calendar: banda de color a la IZQUIERDA + fondo suave del
@@ -158,7 +162,7 @@ export function AgendaDia({
     col: number; // columna (índice de barbero) de origen
     ini: number; // minuto de inicio original
     dCols: number; // desplazamiento de columnas (snapped)
-    dMin: number; // desplazamiento en minutos (snapped a 30)
+    dMin: number; // desplazamiento en minutos (snapped a SNAP_AGENDA)
     movio: boolean;
   } | null>(null);
   const [guardandoDrag, setGuardandoDrag] = useState(false);
@@ -185,7 +189,7 @@ export function AgendaDia({
       const dy = ev.clientY - startY;
       const movio = Math.abs(dx) > 6 || Math.abs(dy) > 6;
       const dCols = anchoCol > 0 ? Math.round(dx / anchoCol) : 0;
-      const dMin = Math.round(dy / (PX_MIN * 30)) * 30;
+      const dMin = Math.round(dy / (PX_MIN * SNAP_AGENDA)) * SNAP_AGENDA;
       setDrag((d) => (d ? { ...d, dCols, dMin, movio: d.movio || movio } : d));
       if (movio) ev.preventDefault();
     };
@@ -506,7 +510,7 @@ export function AgendaDia({
                       // (estilo Google Calendar: la hora tocada ya viene elegida).
                       if (e.target !== e.currentTarget) return;
                       const rect = e.currentTarget.getBoundingClientRect();
-                      const min = abre + Math.floor((e.clientY - rect.top) / (PX_MIN * 30)) * 30;
+                      const min = abre + Math.floor((e.clientY - rect.top) / (PX_MIN * SNAP_AGENDA)) * SNAP_AGENDA;
                       setSheet({ barberoId: b.id, slot: Math.min(cierra - 30, Math.max(abre, min)) });
                     }}
                   >

@@ -10,6 +10,7 @@ import {
   sanearNombre,
   sanearEspecialidades,
   sanearPrevioHoras,
+  sanearDuracionMin,
   slugCombo as slugComboRegla,
   resolverColisionSlug,
   esComboValido,
@@ -715,6 +716,26 @@ export async function actualizarDescripcionServicio(servicioId: string, texto: s
   return { ok: true };
 }
 
+/**
+ * Duración real de un servicio (minutos). Es lo que bloquea la silla y lo que
+ * decide qué turnos se ofrecen: con la barba en 30 cuando toma 20, la agenda
+ * regalaba 10 minutos por cliente y nadie tenía dónde corregirlo (solo se fijaba
+ * al crear un combo).
+ */
+export async function actualizarDuracionServicio(servicioId: string, min: number): Promise<ActionResult> {
+  const sb = await supabaseServerAuth();
+  const denied = await requireAdmin(sb);
+  if (denied) return { ok: false, error: denied };
+  const dur = sanearDuracionMin(min);
+  if (dur === null)
+    return { ok: false, error: `La duración tiene que estar entre 5 minutos y ${DURACION_MAX_MIN / 60} horas.` };
+  const { error } = await supabaseAdmin().from("servicios").update({ duracion_min: dur }).eq("id", servicioId);
+  if (error) return { ok: false, error: errorPublico("actualizarDuracionServicio", error) };
+  revalidatePath("/admin/precios");
+  revalidatePath("/reservar");
+  return { ok: true };
+}
+
 // --- Armador de combos (F3) ---
 
 // Crea un combo EN LA SEDE ACTIVA del módulo Precios (decisión del dueño): queda
@@ -1224,6 +1245,9 @@ export async function agendarCita(input: {
   telefono: string;
   email?: string;
   nota?: string;
+  /** Duración a medida para ESTA cita (el barbero sabe que a este cliente le toma
+   *  más o menos que el estándar). Omitida = la del catálogo. */
+  duracionMin?: number;
 }): Promise<ActionResult> {
   const sb = await supabaseServerAuth();
   const denied = await requireStaff(sb);
@@ -1243,7 +1267,13 @@ export async function agendarCita(input: {
   const admin = supabaseAdmin();
   // Duración del servicio + que tenga precio en la sede (misma barrera que createReserva).
   const { data: serv } = await admin.from("servicios").select("duracion_min").eq("id", input.servicioId).maybeSingle();
-  const dur = (serv as { duracion_min?: number } | null)?.duracion_min ?? 30;
+  // La duración a medida MANDA sobre la del catálogo, pero saneada: es un POST
+  // invocable directo y una duración de 0 dejaría una cita sin fin que no bloquea
+  // nada (dos clientes en la misma silla), y una de 10 horas taparía el día entero.
+  const durPedida = input.duracionMin != null ? sanearDuracionMin(input.duracionMin) : null;
+  if (input.duracionMin != null && durPedida == null)
+    return { ok: false, error: `La duración tiene que estar entre 5 minutos y ${DURACION_MAX_MIN / 60} horas.` };
+  const dur = durPedida ?? (serv as { duracion_min?: number } | null)?.duracion_min ?? 30;
   const fin = new Date(inicio.getTime() + dur * 60000);
   const { data: ss } = await admin
     .from("servicio_sede")
@@ -1372,11 +1402,18 @@ export async function moverCita(input: {
   const admin = supabaseAdmin();
   const { data: rsv } = await admin
     .from("reservas")
-    .select("sede_id,barbero_id,servicio_id,estado")
+    .select("sede_id,barbero_id,servicio_id,estado,inicio,fin")
     .eq("id", input.reservaId)
     .maybeSingle();
   if (!rsv) return { ok: false, error: "Reserva no encontrada" };
-  const r = rsv as { sede_id: string; barbero_id: string | null; servicio_id: string; estado: string };
+  const r = rsv as {
+    sede_id: string;
+    barbero_id: string | null;
+    servicio_id: string;
+    estado: string;
+    inicio: string;
+    fin: string;
+  };
   if (!(await staffPuedeOperarSede(staff, r.sede_id))) return { ok: false, error: "Esa cita es de otra sede." };
   // Solo se mueve lo que todavía no pasó por la silla.
   if (!["pendiente", "confirmada"].includes(r.estado))
@@ -1391,8 +1428,15 @@ export async function moverCita(input: {
   if (isNaN(inicio.getTime())) return { ok: false, error: "Hora inválida." };
   if (inicio.getTime() <= Date.now()) return { ok: false, error: "Esa hora ya pasó. Elegí una a futuro." };
 
-  const { data: serv } = await admin.from("servicios").select("duracion_min").eq("id", r.servicio_id).maybeSingle();
-  const dur = (serv as { duracion_min?: number } | null)?.duracion_min ?? 30;
+  // La duración sale de la CITA (fin - inicio), no del catálogo: si el mostrador la
+  // agendó a medida (2:40 a 3:10 porque a este cliente le toma más), moverla no
+  // puede devolverla en silencio a los 30 minutos del servicio.
+  const durReal = Math.round((new Date(r.fin).getTime() - new Date(r.inicio).getTime()) / 60000);
+  let dur = durReal;
+  if (!Number.isFinite(dur) || dur <= 0) {
+    const { data: serv } = await admin.from("servicios").select("duracion_min").eq("id", r.servicio_id).maybeSingle();
+    dur = (serv as { duracion_min?: number } | null)?.duracion_min ?? 30;
+  }
   const fin = new Date(inicio.getTime() + dur * 60000);
 
   const ventana = await ventanaDeDia(admin, r.sede_id, bogotaYmd(inicio));

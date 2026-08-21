@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { getDisponibilidad, moverCita } from "@/lib/actions";
-import { DOW, fmtTime, buildSlots, computeTaken, nextDays, horarioEfectivo } from "@/lib/slots";
+import { DOW, fmtTime, slotsDisponibles, computeTaken, nextDays, horarioEfectivo } from "@/lib/slots";
 import { instanteBogota } from "@/lib/slots";
 import type { Barbero } from "@/lib/data/types";
 import type { AgendaDiaItem, HorarioSemanal, DiaEspecial } from "@/lib/data/queries";
@@ -62,8 +62,8 @@ export function MoverCitaForm({
   const slots = useMemo(() => {
     if (!day) return [] as number[];
     const v = horarioEfectivo(ymdLocal(day), horarioSemanal, diasEspeciales);
-    return v.abierta ? buildSlots(dur, v.abreMin, v.cierraMin) : [];
-  }, [day, dur, horarioSemanal, diasEspeciales]);
+    return v.abierta ? slotsDisponibles(dur, v.abreMin, v.cierraMin, ocupados) : [];
+  }, [day, dur, horarioSemanal, diasEspeciales, ocupados]);
 
   // La cita NO choca consigo misma: al mirar su propio barbero se descuenta su
   // rango actual (si no, moverla 30 min aparecía como "ocupado" por ella misma).

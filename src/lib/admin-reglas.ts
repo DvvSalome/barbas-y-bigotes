@@ -143,6 +143,18 @@ export function esComboValido(partes: unknown, conBebida: boolean): boolean {
 /** Una jornada completa es el techo razonable de un servicio. */
 export const DURACION_MAX_MIN = 480;
 
+/**
+ * Duración en minutos de un servicio o de una cita puntual. Devuelve null si no
+ * sirve, para que el llamador decida (rechazar la acción o caer en la del
+ * catálogo) en vez de guardar un 0 o un NaN que después descuadra la agenda.
+ * El piso son 5 minutos: una cita de 1 minuto es un error de tipeo, no un caso.
+ */
+export function sanearDuracionMin(v: unknown): number | null {
+  const n = Math.round(Number(v));
+  if (!Number.isFinite(n) || n < 5 || n > DURACION_MAX_MIN) return null;
+  return n;
+}
+
 // ---------- Fotos de producto ----------
 
 export const FORMATOS_FOTO = ["image/jpeg", "image/png", "image/webp", "image/avif"] as const;

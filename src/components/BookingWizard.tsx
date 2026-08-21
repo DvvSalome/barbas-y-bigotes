@@ -11,7 +11,7 @@ import type { Sede, SedeId, Servicio, Barbero, Categoria } from "@/lib/data/type
 import type { BebidaUpsell, Ausencia, DiaEspecial, HorarioSemanal } from "@/lib/data/queries";
 import { cop } from "@/lib/format";
 import { ScissorsIcon } from "@/components/icons";
-import { DOW, MON, STEP, OPEN, CLOSE, fmtTime, buildSlots, horarioEfectivo, instanteBogota, type VentanaDia } from "@/lib/slots";
+import { DOW, MON, STEP, OPEN, CLOSE, fmtTime, slotsDisponibles, horarioEfectivo, instanteBogota, type VentanaDia } from "@/lib/slots";
 
 // YYYY-MM-DD de un Date por sus componentes LOCALES (mismo criterio con que se
 // rotulan los chips de día); horarioEfectivo lo re-ancla a mediodía UTC para el dow.
@@ -24,6 +24,9 @@ const ymdLocal = (d: Date) =>
 //  Una sola pantalla, 5 pasos internos, header fijo + footer sticky.
 //  Mobile-first: se ve perfecto a 390px sin desbordes horizontales.
 // ------------------------------------------------------------------
+
+// Segundos de la última mirada antes de mandar la reserva.
+const REVISION_SEG = 5;
 
 type Step = "sede" | "servicio" | "barbero" | "horario" | "datos" | "ok";
 
@@ -194,6 +197,14 @@ export function BookingWizard({
   // Nudge de Google antes de confirmar como invitado (una vez por flujo): sin
   // cuenta no hay seguimiento (cita en la fila, tarjeta de cortes, recordatorios).
   const [loginNudge, setLoginNudge] = useState(false);
+  // Última mirada antes de reservar, al estilo del "Realizando pedido" de DiDi:
+  // el resumen con todo palomeado y una cuenta atrás. No es un paso más del
+  // wizard (no entra en ORDEN ni en el historial): es una hoja, como el upsell.
+  const [revision, setRevision] = useState(false);
+  const [segundos, setSegundos] = useState(REVISION_SEG);
+  // La cuenta atrás CREA una reserva sola. En desarrollo React monta los efectos
+  // dos veces, y sin este cerrojo eso serían dos citas.
+  const disparadoRef = useRef(false);
   const [nudgeSeen, setNudgeSeen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -296,12 +307,23 @@ export function BookingWizard({
     [semanalSede, especialesSede, ahora],
   );
 
+  // Turnos ofrecidos: la grilla MÁS el instante en que se desocupa una silla, para
+  // que el cliente pueda encadenarse justo cuando termina la cita anterior (una
+  // barba de 20 min dejaba 10 muertos con grilla sola).
+  // Con barbero elegido se encadena al suyo; en "cualquier barbero" se proponen los
+  // finales de TODOS los de la sede — cada candidato lo valida después ocupadoSet,
+  // que ya sabe si queda alguien libre a esa hora.
+  const finesDelDia = useMemo(() => {
+    const ids = barbero ? [barbero.id] : sedeBarberos.map((b) => b.id);
+    return ids.flatMap((id) => ocupadosDia[id] ?? []);
+  }, [barbero, sedeBarberos, ocupadosDia]);
+
   const slots = useMemo(
     () =>
       servicio && ventanaDia.abierta
-        ? buildSlots(servicio.duracionMin, ventanaDia.abreMin, ventanaDia.cierraMin)
+        ? slotsDisponibles(servicio.duracionMin, ventanaDia.abreMin, ventanaDia.cierraMin, finesDelDia)
         : ([] as number[]),
-    [servicio, ventanaDia],
+    [servicio, ventanaDia, finesDelDia],
   );
   const dur = servicio?.duracionMin ?? STEP;
 
@@ -353,9 +375,10 @@ export function BookingWizard({
       // el paso donde estaba, como cualquier bottom sheet de Android. Reponemos
       // la entrada que consumió el gesto. En el piso no hay nada que reponer: ahí
       // el Atrás sale del wizard, como siempre.
-      if ((upsellMode || loginNudge) && marcaRef.current > pisoRef.current) {
+      if ((upsellMode || loginNudge || revision) && marcaRef.current > pisoRef.current) {
         setUpsellMode(null);
         setLoginNudge(false);
+        setRevision(false);
         window.history.pushState({ ...window.history.state, [HIST_MARCA]: marcaRef.current }, "");
         return;
       }
@@ -367,7 +390,7 @@ export function BookingWizard({
     };
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
-  }, [router, upsellMode, loginNudge]);
+  }, [router, upsellMode, loginNudge, revision]);
 
   // Al montar: (1) si venimos del redirect de Google, restaurar la reserva a
   // medias desde sessionStorage; (2) detectar la sesión del cliente para el
@@ -729,7 +752,7 @@ export function BookingWizard({
         setLoginNudge(true);
         return;
       }
-      confirmar();
+      abrirRevision();
       return;
     }
     const idx = ORDEN.indexOf(step as Exclude<Step, "ok">);
@@ -790,6 +813,34 @@ export function BookingWizard({
     if (marcaRef.current > pisoRef.current) window.history.back();
     else setStep("horario");
   }
+
+  function abrirRevision() {
+    disparadoRef.current = false;
+    setSegundos(REVISION_SEG);
+    setRevision(true);
+  }
+
+  /** Manda la reserva una sola vez, venga del botón o del cronómetro. */
+  function reservarYa() {
+    if (disparadoRef.current) return;
+    disparadoRef.current = true;
+    setRevision(false);
+    confirmar();
+  }
+
+  // La cuenta atrás. Al llegar a 0 la cita se manda sola: el cliente ya dijo
+  // "reservar" y esto es la última mirada, no una pregunta nueva. Quien quiera
+  // corregir algo tiene "Editar", que la detiene.
+  useEffect(() => {
+    if (!revision) return;
+    if (segundos <= 0) {
+      reservarYa();
+      return;
+    }
+    const id = setTimeout(() => setSegundos((n) => n - 1), 1000);
+    return () => clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- reservarYa se redefine en cada render; el disparo único lo garantiza disparadoRef
+  }, [revision, segundos]);
 
   async function confirmar() {
     if (!servicio || !day || slot === null || !sedeId) return;
@@ -1935,11 +1986,67 @@ export function BookingWizard({
                 onClick={() => {
                   setNudgeSeen(true);
                   setLoginNudge(false);
-                  confirmar();
+                  abrirRevision();
                 }}
                 className="mt-2.5 min-h-[46px] w-full rounded-xl border border-line text-[13px] font-semibold text-muted transition hover:text-ink"
               >
                 Reservar como invitado
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Última mirada antes de reservar (patrón "Realizando pedido" de DiDi): el
+          resumen palomeado y una cuenta atrás. Sirve para dos cosas — que el
+          cliente vea de un golpe QUÉ está reservando, y que tenga cinco segundos
+          para frenar sin haber creado nada todavía. */}
+      {revision && servicio && day && slot !== null && (
+        <div
+          className="fixed inset-0 z-[11] flex flex-col justify-end"
+          style={{ background: "rgba(5,4,3,.72)", backdropFilter: "blur(2px)" }}
+        >
+          <div className="w-full px-0">
+            <div
+              className="rounded-t-[22px] border-t border-line px-5 pb-[calc(env(safe-area-inset-bottom)+22px)] pt-5 md:mx-auto md:max-w-md md:rounded-[22px] md:border"
+              style={{ background: "#0c0b0a" }}
+            >
+              <div aria-hidden className="mx-auto mb-4 h-1 w-[38px] rounded-full md:hidden" style={{ background: "rgba(242,237,228,.18)" }} />
+              <h3 className="font-display text-[26px] font-extrabold uppercase leading-tight">Confirmando tu cita</h3>
+
+              <ul className="mt-4 space-y-3">
+                {[
+                  {
+                    k: "cuando",
+                    v: `${DOW[day.getDay()]} ${day.getDate()} ${MON[day.getMonth()]} · ${fmtTime(slot)} a ${fmtTime(slot + dur)}`,
+                  },
+                  { k: "servicio", v: `${servicio.nombre}${total !== null ? ` · ${servicio.desde ? "desde " : ""}${cop(total)}` : ""}` },
+                  { k: "barbero", v: barbero?.nombre ?? "El primero que se desocupe" },
+                  { k: "sede", v: sedeNombre },
+                  ...(bebida ? [{ k: "bebida", v: bebidaIncluida ? `${bebida.nombre} (incluida)` : `${bebida.nombre} +${cop(bebida.precio)}` }] : []),
+                  { k: "aviso", v: `Te escribimos a ${sesion ? sesion.email : email.trim()}` },
+                ].map((f) => (
+                  <li key={f.k} className="flex items-start justify-between gap-3">
+                    <span className="text-[15px] leading-snug text-ink">{f.v}</span>
+                    <span aria-hidden className="mt-0.5 shrink-0 text-[15px] font-bold text-ok">✓</span>
+                  </li>
+                ))}
+              </ul>
+
+              <button
+                type="button"
+                onClick={reservarYa}
+                disabled={saving}
+                className="mt-5 min-h-[52px] w-full rounded-xl bg-accent text-[15px] font-bold uppercase tracking-wide text-on-accent transition hover:bg-accent-soft disabled:opacity-60"
+              >
+                {saving ? "Reservando…" : `Confirmar (${segundos}s)`}
+              </button>
+              <button
+                type="button"
+                onClick={() => setRevision(false)}
+                className="mt-2.5 min-h-[46px] w-full rounded-xl border border-line text-[13px] font-semibold text-muted transition hover:text-ink"
+              >
+                Editar
               </button>
             </div>
           </div>

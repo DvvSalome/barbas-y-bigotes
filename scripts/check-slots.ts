@@ -10,6 +10,8 @@ import {
   faltaParaLlegar,
   MARGEN_LLEGADA_HORAS,
   buildSlots,
+  slotsDisponibles,
+  GRANO_MIN,
   computeTaken,
   horarioEfectivo,
   slotEnVentana,
@@ -75,7 +77,12 @@ function checkHorarioEfectivo() {
   assert.ok(slotEnVentana(780, 30, vent), "13:00 entra");
   assert.ok(slotEnVentana(960, 30, vent), "16:00 entra (termina justo al cierre)");
   assert.ok(!slotEnVentana(990, 30, vent), "16:30 no: no cabe antes del cierre");
-  assert.ok(!slotEnVentana(795, 30, vent), "13:15 no está alineado a STEP");
+  // Antes exigía caer en la grilla; ahora el servidor solo pide grano de 5, porque
+  // los turnos ofrecidos dependen de las citas del día y el mostrador agenda a la
+  // hora que llegó el cliente.
+  assert.ok(slotEnVentana(795, 30, vent), "13:15 entra (grano de 5)");
+  assert.ok(slotEnVentana(820, 30, vent), "13:40 entra: es la hora a la que llegó el cliente");
+  assert.ok(!slotEnVentana(823, 30, vent), "13:43 no: nadie agenda a los 43 minutos");
   assert.ok(!slotEnVentana(540, 30, vent), "9:00 fuera de la ventana");
   assert.ok(!slotEnVentana(780, 30, { abierta: false, abreMin: 780, cierraMin: 990 }), "día cerrado: nada");
 
@@ -159,6 +166,7 @@ if (process.env.SLOTS_TZ_CHILD) {
   checkComputeTakenBogota();
   checkHorarioEfectivo();
   checkInstanteBogota();
+  checkEncadenado();
   process.exit(0);
 }
 
@@ -232,4 +240,49 @@ for (const tz of ["America/New_York", "Asia/Tokyo", "UTC"]) {
   assert.equal(r.status, 0, `computeTaken debe dar lo mismo bajo TZ=${tz}\n${r.stderr ?? ""}`);
 }
 
+checkEncadenado();
+
 console.log("check-slots OK");
+
+// ---- slotsDisponibles: la silla se encadena, no se regala ----
+// El bug de negocio que atrapa: con grilla sola, una barba de 20 min que termina
+// 2:40 empuja al siguiente cliente a las 2:45 (o peor, con la grilla vieja de 30,
+// a las 3:00) y esos minutos no los usa nadie. El dueño lo midió en silla perdida.
+function checkEncadenado() {
+  const abre = 540; // 9:00
+  const cierra = 1200; // 20:00
+  const ocupado = (iniMin: number, finMin: number) => ({
+    inicio: instanteBogota("2026-08-20", iniMin).toISOString(),
+    fin: instanteBogota("2026-08-20", finMin).toISOString(),
+  });
+
+  // Barba de 20 que va de 14:20 a 14:40 → el turno 14:40 tiene que existir.
+  const conBarba = slotsDisponibles(20, abre, cierra, [ocupado(860, 880)]);
+  assert.ok(conBarba.includes(880), "se ofrece el turno justo cuando se desocupa la silla (14:40)");
+  assert.ok(conBarba.includes(870), "la grilla sigue estando (14:30)");
+
+  // Una cita que termina en una hora rara se redondea HACIA ARRIBA al grano de 5:
+  // ofrecer 14:43 sería ofrecer algo que slotEnVentana rechaza, y redondear hacia
+  // abajo metería la cita nueva dentro de la anterior.
+  const raro = slotsDisponibles(20, abre, cierra, [ocupado(860, 883)]);
+  assert.ok(raro.includes(885), "14:43 se ofrece como 14:45");
+  assert.ok(!raro.includes(883), "nunca se ofrece una hora que el servidor rebotaría");
+  for (const t of raro) assert.equal((t - abre) % GRANO_MIN, 0, `${t} respeta el grano de 5`);
+
+  // Nada que no quepa antes del cierre, ni siquiera encadenado.
+  const alCierre = slotsDisponibles(30, abre, cierra, [ocupado(1140, 1190)]);
+  assert.ok(!alCierre.includes(1190), "19:50 + 30 min se pasa del cierre: no se ofrece");
+  assert.ok(alCierre.every((t) => t + 30 <= cierra), "ningún turno se pasa del cierre");
+
+  // Sin citas, es exactamente la grilla (no inventa turnos de la nada).
+  assert.deepEqual(
+    slotsDisponibles(30, abre, cierra, []),
+    buildSlots(30, abre, cierra),
+    "sin ocupación, la grilla de siempre",
+  );
+
+  // Y el encadenado no se cuela dos veces si cae justo en la grilla.
+  const enGrilla = slotsDisponibles(30, abre, cierra, [ocupado(840, 870)]);
+  assert.equal(enGrilla.filter((t) => t === 870).length, 1, "sin turnos repetidos");
+  assert.deepEqual([...enGrilla].sort((a, b) => a - b), enGrilla, "vienen ordenados");
+}
