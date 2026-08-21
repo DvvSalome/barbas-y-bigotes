@@ -15,6 +15,7 @@ pip install playwright && playwright install chromium   # solo la primera vez
 python scripts/qa/recorrido-movil.py
 python scripts/qa/areas-tactiles.py
 python scripts/qa/vuelta-de-google.py
+python scripts/qa/turnos-encadenados.py
 ```
 
 ## Qué mide cada uno
@@ -37,6 +38,20 @@ petición) y recarga `/reservar` para simular el regreso. Comprueba tres cosas:
 que restaure idéntico en el paso 5, que el snapshot se consuma después de usarlo
 (una segunda carga arranca limpia) y que uno de hace más de 30 minutos no
 restaure. Este no escribe nada en la base.
+
+**`turnos-encadenados.py`** — el recorrido que valida el cambio de agenda de
+ago-2026 (grilla de 15 minutos + turnos pegados al fin de la cita anterior) y la
+hoja de confirmación con cuenta atrás. Siembra una cita que termina **2:40 pm**
+—una hora que NO cae en la grilla— y comprueba que el wizard ofrezca ese 2:40,
+que el turno que la pisa esté tomado, que "Editar" frene la reserva sin crear
+nada, que la cuenta atrás reserve sola y que la cita quede guardada con la hora
+EXACTA. Ese último punto es el que prueba que el servidor dejó de exigir la
+grilla: la pantalla podía ofrecer 2:40 y el POST rebotarlo. Escribe en producción
+y limpia todo lo que crea (incluida la ficha del cliente QA) en un `finally`.
+
+Ojo al escribir asserts sobre este wizard: varios títulos y CTAs van en
+`uppercase` por CSS y `inner_text` devuelve el texto RENDERIZADO — comparar contra
+"Confirmando" tal cual falla aunque la pantalla esté perfecta. Van con `re.I`.
 
 ## Ojo con los datos
 
