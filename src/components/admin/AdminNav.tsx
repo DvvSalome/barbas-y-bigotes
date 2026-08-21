@@ -33,6 +33,7 @@ const GRUPOS: readonly Grupo[] = [
     label: "Equipo",
     hijos: [
       { href: "/admin/equipo", label: "Barberos y PINes" },
+      { href: "/admin/liquidacion", label: "Liquidación semanal" },
       { href: "/admin/comisiones", label: "Comisiones y contratos" },
       { href: "/admin/horarios", label: "Horarios" },
     ],
@@ -72,6 +73,7 @@ const SECCIONES_CON_SEDE = [
   "/admin/metricas",
   "/admin/precios",
   "/admin/clientes",
+  "/admin/liquidacion",
 ] as const;
 
 const esRuta = (path: string, href: string) => (href === "/admin" ? path === href : path.startsWith(href));

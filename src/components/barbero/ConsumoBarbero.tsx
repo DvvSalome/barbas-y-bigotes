@@ -1,0 +1,165 @@
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { registrarConsumoBarbero } from "@/lib/actions";
+import { cop } from "@/lib/format";
+
+// "Me tomé algo del local". Lo registra el propio barbero, no el dueño: es la
+// regla del proyecto (el dueño mira y decide, el equipo registra) y además es el
+// único momento en que alguien sabe de verdad qué salió de la nevera.
+//
+// Dos cosas pasan al guardar: baja el stock (con su movimiento en el kardex) y
+// queda anotada la plata para descontarla en la liquidación del domingo. Antes no
+// pasaba ninguna de las dos: el inventario nunca cuadraba y el descuento se
+// llevaba de memoria.
+
+type Prod = { id: string; nombre: string; precio: number; stock: number };
+type Barb = { id: string; nombre: string };
+
+export function ConsumoBarbero({
+  productos,
+  barberos,
+  miBarberoId,
+}: {
+  productos: Prod[];
+  barberos: Barb[];
+  miBarberoId: string | null;
+}) {
+  const router = useRouter();
+  const [abierto, setAbierto] = useState(false);
+  const [productoId, setProductoId] = useState("");
+  const [barberoId, setBarberoId] = useState(miBarberoId ?? "");
+  const [cantidad, setCantidad] = useState(1);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [hecho, setHecho] = useState<string | null>(null);
+
+  const prod = productos.find((p) => p.id === productoId) ?? null;
+  const total = prod ? prod.precio * cantidad : 0;
+
+  async function guardar() {
+    if (!productoId || !barberoId) {
+      setError("Elegí el producto y de quién es.");
+      return;
+    }
+    setSaving(true);
+    setError(null);
+    const res = await registrarConsumoBarbero({ barberoId, productoId, cantidad });
+    setSaving(false);
+    if (!res.ok) {
+      setError(res.error ?? "No se pudo registrar.");
+      return;
+    }
+    setHecho(`${cantidad > 1 ? `${cantidad}× ` : ""}${prod?.nombre ?? "Producto"} · ${cop(total)}`);
+    setProductoId("");
+    setCantidad(1);
+    router.refresh();
+  }
+
+  if (!abierto) {
+    return (
+      <button
+        type="button"
+        onClick={() => {
+          setAbierto(true);
+          setHecho(null);
+        }}
+        className="flex min-h-11 w-full items-center justify-center rounded-xl border border-line text-[13px] font-semibold text-muted transition hover:border-accent/40 hover:text-ink"
+      >
+        + Anotar una bebida o mecato que me tomé
+      </button>
+    );
+  }
+
+  return (
+    <div className="rounded-2xl border border-line bg-panel p-4">
+      <div className="flex items-center justify-between gap-3">
+        <h3 className="font-display text-lg text-ink">Consumo del equipo</h3>
+        <button
+          type="button"
+          onClick={() => setAbierto(false)}
+          aria-label="Cerrar"
+          className="grid h-11 w-11 place-items-center rounded-full border border-line text-muted transition hover:text-ink"
+        >
+          ×
+        </button>
+      </div>
+      <p className="mt-1 text-[12px] text-muted">
+        Baja del inventario y se descuenta en la liquidación de la semana.
+      </p>
+
+      {hecho && (
+        <div className="mt-3 rounded-xl border border-ok/40 bg-ok/10 px-3.5 py-2.5 text-[13px] text-ok">
+          Anotado: {hecho}
+        </div>
+      )}
+
+      <div className="mt-3 space-y-2.5">
+        <select
+          value={productoId}
+          onChange={(e) => setProductoId(e.target.value)}
+          className="w-full rounded-xl border border-line bg-bg px-3.5 py-3 text-sm text-ink focus:border-accent focus:outline-none"
+        >
+          <option value="">¿Qué se tomó?</option>
+          {productos.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.nombre} · {cop(p.precio)}
+              {p.stock <= 0 ? " (sin stock)" : ""}
+            </option>
+          ))}
+        </select>
+
+        {/* El mostrador es compartido: el que anota no siempre es el que se lo
+            tomó, así que se elige a quién se le descuenta. */}
+        {barberos.length > 1 && (
+          <select
+            value={barberoId}
+            onChange={(e) => setBarberoId(e.target.value)}
+            className="w-full rounded-xl border border-line bg-bg px-3.5 py-3 text-sm text-ink focus:border-accent focus:outline-none"
+          >
+            <option value="">¿De quién es?</option>
+            {barberos.map((b) => (
+              <option key={b.id} value={b.id}>
+                {b.nombre}
+                {b.id === miBarberoId ? " (yo)" : ""}
+              </option>
+            ))}
+          </select>
+        )}
+
+        <div className="flex items-center gap-2">
+          <label className="text-[12px] text-muted">
+            Cuántos
+            <input
+              type="number"
+              min={1}
+              max={20}
+              value={cantidad}
+              onChange={(e) => setCantidad(Math.max(1, Math.round(Number(e.target.value) || 1)))}
+              className="ml-2 min-h-11 w-20 rounded-xl border border-line bg-bg px-3 text-sm text-ink tabular-nums focus:border-accent focus:outline-none"
+            />
+          </label>
+          {prod && (
+            <span className="ml-auto font-display text-[17px] font-bold tabular-nums text-ink">−{cop(total)}</span>
+          )}
+        </div>
+      </div>
+
+      {error && (
+        <div className="mt-3 rounded-xl border border-accent/40 bg-accent/10 px-3.5 py-2.5 text-[13px] text-accent-soft">
+          {error}
+        </div>
+      )}
+
+      <button
+        type="button"
+        onClick={guardar}
+        disabled={saving || !productoId || !barberoId}
+        className="mt-3 min-h-12 w-full rounded-full bg-accent text-sm font-bold uppercase tracking-wide text-on-accent transition hover:bg-accent-soft disabled:opacity-50"
+      >
+        {saving ? "Anotando…" : "Anotar"}
+      </button>
+    </div>
+  );
+}

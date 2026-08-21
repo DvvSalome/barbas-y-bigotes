@@ -28,6 +28,7 @@ import { CobradosHoy } from "@/components/barbero/CobradosHoy";
 import { AvisosBarbero } from "@/components/barbero/AvisosBarbero";
 import { EsperaPanel } from "@/components/barbero/EsperaPanel";
 import { CierreCaja } from "@/components/barbero/CierreCaja";
+import { ConsumoBarbero } from "@/components/barbero/ConsumoBarbero";
 import { RealtimeRefresh } from "@/components/motion/RealtimeRefresh";
 
 export const metadata: Metadata = { title: "Mostrador" };
@@ -202,8 +203,17 @@ export default async function BarberoPage({
             {/* Qué se llevó cada cliente (ítems reales de la venta). */}
             <CobradosHoy agenda={agendaSede} ventas={ventasSede} barberos={mostrador.barberosSede} />
             {sedeBarbero && (
-              <div className="mx-auto w-full max-w-2xl">
+              <div className="mx-auto w-full max-w-2xl space-y-3">
                 <CierreCaja caja={caja} desglose={cajaDesglose} miBarberoId={staff.barberoId} />
+                {/* Lo que se toma el equipo: acá, junto al cierre, porque es el
+                    momento del día en que se hacen las cuentas. */}
+                <ConsumoBarbero
+                  productos={productos
+                    .filter((p) => p.sede === sedeBarbero)
+                    .map((p) => ({ id: p.id, nombre: p.nombre, precio: p.precio, stock: p.stock }))}
+                  barberos={mostrador.barberosSede.map((b) => ({ id: b.id, nombre: b.nombre }))}
+                  miBarberoId={staff.barberoId}
+                />
               </div>
             )}
             {/* El aviso se ata a la sede o al barbero del perfil; el dueño no

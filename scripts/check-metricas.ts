@@ -6,7 +6,7 @@
 // mes anterior COMPLETO. Eso haría que el panel diga "vas peor" todos los meses
 // hasta el día 30, y el dueño tomaría decisiones con un número que miente.
 import assert from "node:assert/strict";
-import { rangoPeriodo, rangoFechas, bogotaYmd } from "../src/lib/slots.ts";
+import { rangoPeriodo, rangoFechas, semanaDeFecha, bogotaYmd } from "../src/lib/slots.ts";
 import { celdaCsv } from "../src/lib/format.ts";
 
 const dia = 86_400_000;
@@ -110,3 +110,16 @@ assert.equal(rangoFechas("2026-08-31", "2026-08-01"), null, "al revés no vale")
 assert.equal(rangoFechas("2026-02-31", "2026-03-01"), null, "el 31 de febrero no existe");
 assert.equal(rangoFechas("31/08/2026", "2026-08-31"), null, "otro formato no vale");
 assert.equal(rangoFechas("", ""), null, "vacío no vale");
+
+// (g) La semana de liquidación va de LUNES a domingo. Si arrancara el domingo
+//     (como getDay()), el pago del sábado caería en la semana siguiente y el
+//     barbero cobraría el fin de semana siete días tarde.
+const lunes = semanaDeFecha("2026-08-20"); // jueves
+assert.equal(lunes.desdeYmd, "2026-08-17", "el jueves pertenece a la semana que arranca el lunes 17");
+assert.equal(lunes.hastaYmd, "2026-08-23", "y termina el domingo 23");
+// El domingo CIERRA su semana, no abre la siguiente.
+const dom = semanaDeFecha("2026-08-23");
+assert.equal(dom.desdeYmd, "2026-08-17", "el domingo 23 sigue siendo de la semana del 17");
+assert.equal(dom.hastaYmd, "2026-08-23");
+// Y el lunes es el primer día de la suya.
+assert.equal(semanaDeFecha("2026-08-17").desdeYmd, "2026-08-17", "el lunes abre su propia semana");

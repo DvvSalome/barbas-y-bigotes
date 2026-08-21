@@ -167,3 +167,46 @@ export function totalesPorMedio(ventas: VentaCobrada[]): TotalesPorMedio {
   }
   return out;
 }
+
+// ---------- Liquidación: la parte del barbero ----------
+
+/** Ítem de una venta tal como se guarda (0063 lo lee para liquidar). */
+export type ItemComision = {
+  cantidad?: number | null;
+  precio_unitario?: number | null;
+  comision_pct?: number | string | null;
+};
+
+/**
+ * Lo que le toca al barbero por una venta, sumando ÍTEM POR ÍTEM con el
+ * porcentaje que quedó guardado en cada uno.
+ *
+ * Por qué no un 50% del total: en la misma venta conviven un servicio al 50% y un
+ * producto al 10%, y el porcentaje se congela al cobrar. Aplicar el porcentaje de
+ * hoy sobre el total de ayer le paga de más al barbero en unas semanas y de menos
+ * en otras, y nadie lo nota hasta que alguien reclama.
+ *
+ * `comision_pct` viene de Postgres como numeric, o sea STRING en el JSON: sin el
+ * Number() explícito, `bruto * "50" / 100` funciona por coerción pero
+ * `"50" || 0` no, y un null se cuela como NaN al total.
+ */
+export function comisionDeItems(items: ItemComision[]): number {
+  let total = 0;
+  for (const it of items ?? []) {
+    const bruto = (Number(it?.precio_unitario) || 0) * (Number(it?.cantidad) || 1);
+    const pct = Number(it?.comision_pct) || 0;
+    total += Math.round((bruto * pct) / 100);
+  }
+  return total;
+}
+
+/**
+ * Lo que queda por pagarle al barbero: su comisión menos lo que ya se llevó
+ * (adelantos) y lo que se consumió del local (bebidas, mecatos).
+ *
+ * Puede dar NEGATIVO y así se muestra: si pidió más adelantos de lo que produjo,
+ * el dueño necesita verlo, no un cero tranquilizador.
+ */
+export function netoLiquidacion(x: { comision: number; adelantos: number; consumos: number }): number {
+  return x.comision - x.adelantos - x.consumos;
+}

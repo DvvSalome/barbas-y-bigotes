@@ -214,6 +214,84 @@ export async function addProducto(input: {
   return { ok: true, id: productoId };
 }
 
+/**
+ * El barbero se tomó algo del local (0063). Baja el stock, deja el movimiento en
+ * el kardex y anota la plata para descontársela en la liquidación de la semana.
+ *
+ * Lo registra el propio mostrador: la regla del proyecto es que el dueño no opere,
+ * y este es justo el dato que hoy se lleva de memoria y nunca cuadra.
+ *
+ * El precio se congela acá. Usar el del catálogo al liquidar significaría que
+ * subir la gaseosa el mes que viene cambia lo que se le descontó al barbero esta
+ * semana.
+ */
+export async function registrarConsumoBarbero(input: {
+  barberoId: string;
+  productoId: string;
+  cantidad: number;
+  precioUnitario?: number; // por defecto, el del producto
+  nota?: string;
+}): Promise<ActionResult> {
+  const sb = await supabaseServerAuth();
+  const denied = await requireStaff(sb);
+  if (denied) return { ok: false, error: denied };
+  const staff = await getStaffContext();
+  if (!puedeMostrador(staff.rol)) return { ok: false, error: "No autorizado" };
+  // Nadie carga consumos a un barbero de la otra sede.
+  if (!(await staffPuedeOperarBarbero(staff, input.barberoId)))
+    return { ok: false, error: "Ese barbero es de otra sede." };
+
+  const cantidad = sanearCantidad(input.cantidad);
+  if (cantidad === null || cantidad < 1) return { ok: false, error: "La cantidad tiene que ser 1 o más." };
+
+  const admin = supabaseAdmin();
+  const { data: prod } = await admin
+    .from("productos")
+    .select("id,nombre,precio,sede_id,stock")
+    .eq("id", input.productoId)
+    .maybeSingle();
+  const pr = prod as { nombre: string; precio: number; sede_id: string; stock: number } | null;
+  if (!pr) return { ok: false, error: "Ese producto no existe." };
+  // El producto tiene que ser del local donde trabaja: si no, se descontaría del
+  // stock del otro y la sede equivocada quedaría corta al contar.
+  if (!(await staffPuedeOperarSede(staff, pr.sede_id)))
+    return { ok: false, error: "Ese producto es de la otra sede." };
+
+  const precio = input.precioUnitario != null ? sanearCop(input.precioUnitario) : pr.precio;
+  if (precio === null) return { ok: false, error: "Ese valor no sirve: pesos enteros, sin decimales." };
+
+  const { error } = await admin.from("consumos_barbero").insert({
+    barbero_id: input.barberoId,
+    producto_id: input.productoId,
+    cantidad,
+    precio_unitario: precio,
+    nota: (input.nota ?? "").trim().slice(0, 200) || null,
+  });
+  if (error) return { ok: false, error: errorPublico("registrarConsumoBarbero", error) };
+
+  // Stock + kardex. Best-effort y DESPUÉS de la plata: si el descuento de stock
+  // falla, el consumo igual quedó anotado para la liquidación (que es lo que el
+  // dueño pidió); al revés se perdería la plata y quedaría solo el faltante.
+  const { error: stockErr } = await admin
+    .from("productos")
+    .update({ stock: Math.max(0, (pr.stock ?? 0) - cantidad) })
+    .eq("id", input.productoId);
+  if (stockErr) errorPublico("registrarConsumoBarbero stock", stockErr);
+  const { error: movErr } = await admin.from("stock_movimientos").insert({
+    producto_id: input.productoId,
+    cantidad: -cantidad,
+    motivo: "consumo",
+    barbero_id: input.barberoId,
+    nota: (input.nota ?? "").trim().slice(0, 200) || null,
+  });
+  if (movErr) errorPublico("registrarConsumoBarbero kardex", movErr);
+
+  revalidatePath("/admin/inventario");
+  revalidatePath("/admin/liquidacion");
+  revalidatePath("/barbero");
+  return { ok: true };
+}
+
 // Precio editable desde /admin/inventario. Revalida /reservar porque las
 // bebidas del upsell (en_upsell) muestran este precio en el wizard.
 export async function actualizarPrecioProducto(id: string, precio: number): Promise<ActionResult> {

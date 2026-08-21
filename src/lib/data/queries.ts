@@ -1,7 +1,15 @@
 import { type SupabaseClient } from "@supabase/supabase-js";
 import { supabaseServer, supabaseServerAuth, supabaseAdmin } from "@/lib/supabase/server";
 import { bogotaDayRange, bogotaDayRangeDeFecha, bogotaYmd, horarioEfectivo, rangoPeriodo, type Periodo } from "@/lib/slots";
-import { totalesPorMedio, totalDeMedio, snapshotDinero, type TotalesPorMedio } from "@/lib/cobro";
+import {
+  totalesPorMedio,
+  totalDeMedio,
+  snapshotDinero,
+  comisionDeItems,
+  netoLiquidacion,
+  type TotalesPorMedio,
+  type ItemComision,
+} from "@/lib/cobro";
 import { CERQUILLO_EXCLUIDOS, estadoTarjeta, TARJETA_SIZE, type BeneficioTarjeta } from "@/lib/tarjeta";
 import type { Sede, SedeId, Servicio, Barbero, Producto, Categoria, TipoContrato } from "./types";
 
@@ -2372,4 +2380,132 @@ export async function getTestimoniosPublicos(limite = 3): Promise<TestimonioPubl
     sede: (r.sedes as { nombre?: string } | null)?.nombre ?? "",
     fecha: String(r.creado_en ?? ""),
   }));
+}
+
+// ---------- Liquidación semanal por barbero (0063) ----------
+// Lo que el dueño pide para pagar: "el valor total facturado, el 50% del barbero,
+// lo adelantado y las bebidas o mecatos consumidos por ellos pendientes a
+// descontar". Antes había que sacarlo a mano de tres pantallas distintas.
+
+export type LiquidacionBarbero = {
+  barberoId: string;
+  nombre: string;
+  sedeId: string;
+  tipoContrato: TipoContrato;
+  /** Lo que entró por su trabajo en el período (neto, sin propina). */
+  facturado: number;
+  /** Su parte: comisión real por ítem, o 0 si paga arriendo. */
+  comision: number;
+  /** Arriendo mensual del contrato, si es de silla (informativo). */
+  arriendo: number;
+  propinas: number;
+  cobros: number;
+  adelantos: number;
+  consumos: number;
+  /** Lo que queda por pagarle: su parte − adelantos − consumos. */
+  neto: number;
+  /** Detalle de lo consumido, para que el descuento no sea un número a ciegas. */
+  detalleConsumos: { producto: string; cantidad: number; total: number; fecha: string }[];
+};
+
+/**
+ * Liquidación de un rango [desde, hasta) por barbero.
+ *
+ * La comisión NO se calcula con un 50% supuesto: sale de `venta_items.comision_pct`,
+ * que se guarda POR ÍTEM al cobrar. Así un producto al 10% y un servicio al 50%
+ * liquidan cada uno como corresponde, y una comisión que cambió el mes pasado no
+ * reescribe lo ya cobrado.
+ *
+ * Las propinas se informan aparte y NO entran al neto: son del barbero desde el
+ * momento en que se las dieron, no algo que el local le deba.
+ */
+export async function getLiquidacion(
+  desde: Date,
+  hasta: Date,
+  sede?: SedeId | null,
+): Promise<LiquidacionBarbero[]> {
+  const admin = supabaseAdmin();
+  const [barbRes, ventasRes, adelRes, consRes] = await Promise.all([
+    admin
+      .from("barberos")
+      .select("id,nombre,sede_id,tipo_contrato,comision_pct,arriendo_mensual")
+      .eq("activo", true)
+      .order("sede_id")
+      .order("nombre"),
+    admin
+      .from("ventas")
+      .select("id,barbero_id,sede_id,total,propina,creado_en,venta_items(cantidad,precio_unitario,comision_pct)")
+      .gte("creado_en", desde.toISOString())
+      .lt("creado_en", hasta.toISOString()),
+    admin
+      .from("adelantos")
+      .select("barbero_id,monto,creado_en")
+      .gte("creado_en", desde.toISOString())
+      .lt("creado_en", hasta.toISOString()),
+    admin
+      .from("consumos_barbero")
+      .select("barbero_id,cantidad,precio_unitario,fecha,productos(nombre)")
+      .gte("fecha", bogotaYmd(desde))
+      .lte("fecha", bogotaYmd(new Date(hasta.getTime() - 1))),
+  ]);
+  // La tabla de consumos puede no existir todavía (deploy antes de aplicar 0063):
+  // eso no puede tumbar la pantalla, solo deja el descuento en cero.
+  if (consRes.error) console.error("getLiquidacion consumos:", consRes.error.message);
+
+  const barberos = ((barbRes.data ?? []) as Record<string, unknown>[]).filter(
+    (b) => !sede || b.sede_id === sede,
+  );
+
+  const porBarbero = new Map<string, LiquidacionBarbero>();
+  for (const b of barberos) {
+    porBarbero.set(b.id as string, {
+      barberoId: b.id as string,
+      nombre: (b.nombre as string) ?? "",
+      sedeId: b.sede_id as string,
+      tipoContrato: ((b.tipo_contrato as TipoContrato) ?? "porcentaje") as TipoContrato,
+      facturado: 0,
+      comision: 0,
+      arriendo: (b.arriendo_mensual as number) ?? 0,
+      propinas: 0,
+      cobros: 0,
+      adelantos: 0,
+      consumos: 0,
+      neto: 0,
+      detalleConsumos: [],
+    });
+  }
+
+  for (const v of (ventasRes.data ?? []) as Record<string, unknown>[]) {
+    const fila = porBarbero.get(v.barbero_id as string);
+    if (!fila) continue; // venta sin barbero, o de la otra sede
+    fila.facturado += (v.total as number) ?? 0;
+    fila.propinas += (v.propina as number) ?? 0;
+    fila.cobros += 1;
+    // Arriendo de silla: no hay comisión que repartir, la plata es del barbero y
+    // el local cobra el arriendo aparte.
+    if (fila.tipoContrato === "arriendo") continue;
+    fila.comision += comisionDeItems((v.venta_items ?? []) as ItemComision[]);
+  }
+
+  for (const a of (adelRes.data ?? []) as Record<string, unknown>[]) {
+    const fila = porBarbero.get(a.barbero_id as string);
+    if (fila) fila.adelantos += (a.monto as number) ?? 0;
+  }
+
+  for (const c of (consRes.data ?? []) as Record<string, unknown>[]) {
+    const fila = porBarbero.get(c.barbero_id as string);
+    if (!fila) continue;
+    const total = ((c.precio_unitario as number) ?? 0) * ((c.cantidad as number) ?? 1);
+    fila.consumos += total;
+    fila.detalleConsumos.push({
+      producto: (c.productos as { nombre?: string } | null)?.nombre ?? "Producto",
+      cantidad: (c.cantidad as number) ?? 1,
+      total,
+      fecha: c.fecha as string,
+    });
+  }
+
+  for (const fila of porBarbero.values()) fila.neto = netoLiquidacion(fila);
+  // Primero el que más produjo: es el orden en que el dueño quiere leerlo.
+  return [...porBarbero.values()].sort((a, b) => b.facturado - a.facturado);
 }

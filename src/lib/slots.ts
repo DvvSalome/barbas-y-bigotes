@@ -319,6 +319,25 @@ export const esPeriodo = (v: unknown): v is Periodo =>
   typeof v === "string" && (PERIODOS_VALIDOS as readonly string[]).includes(v);
 
 /**
+ * La semana (lunes a domingo) que contiene a `ymd`, como fechas civiles de Bogotá.
+ * La liquidación del barbero se paga por semana y el dueño la navega hacia atrás;
+ * esto vive acá con el resto de la matemática de fechas para que no se re-derive
+ * en la pantalla (regla del repo) y se pueda verificar sin levantar Supabase.
+ *
+ * Lunes primero porque así se paga y así se lee la semana en el local, no domingo
+ * como asume getDay().
+ */
+export function semanaDeFecha(ymd: string): { desdeYmd: string; hastaYmd: string } {
+  const dow = dowDeFecha(ymd); // 0=domingo
+  const alLunes = dow === 0 ? 6 : dow - 1; // domingo cierra la semana, no la abre
+  const base = new Date(`${ymd}T12:00:00Z`);
+  const lunes = new Date(base.getTime() - alLunes * 86_400_000);
+  const domingo = new Date(lunes.getTime() + 6 * 86_400_000);
+  const iso = (d: Date) => d.toISOString().slice(0, 10);
+  return { desdeYmd: iso(lunes), hastaYmd: iso(domingo) };
+}
+
+/**
  * Rango a la medida para el export: [desde 00:00, hasta 24:00) en Bogotá, con
  * `hasta` INCLUSIVE — quien pide "hasta el 31" espera el 31 adentro, y dejarlo
  * afuera le corta el último día del corte sin que se note.
