@@ -2041,16 +2041,15 @@ export async function completarReserva(input: {
 
   // 4) La venta. Los unique index ventas_reserva_unica (reserva) y ventas_idem_unica
   //    (venta rápida, 0021) son el backstop anti doble-cobro.
-  const { data: venta, error } = await admin
-    .from("ventas")
-    .insert({
+  // Quién operó el cobro (0062). No es barbero_id: en el mostrador se cobra la cita
+  // de un compañero, y si algún día hay que revisar un precio editado, el que
+  // importa es este.
+  const cobradaPor = (await sb.auth.getUser()).data.user?.id ?? null;
+  const filaVenta: Record<string, unknown> = {
       sede_id: sedeEfectiva,
       caja_sesion_id: cajaSesionId,
       barbero_id: barberoId,
-      // Quién operó el cobro (0062). No es barbero_id: en el mostrador se cobra la
-      // cita de un compañero, y si algún día hay que revisar un precio editado, el
-      // que importa es este.
-      cobrada_por: (await sb.auth.getUser()).data.user?.id ?? null,
+      cobrada_por: cobradaPor,
       cliente_ref: clienteEfectivo,
       cliente_nombre: !clienteEfectivo ? (input.clienteNombre ?? "").trim() || null : null,
       reserva_id: input.reservaId,
@@ -2068,9 +2067,21 @@ export async function completarReserva(input: {
       propina_medio: cobro.propina > 0 && propinaMedioPedido && propinaMedioPedido !== medio ? propinaMedioPedido : null,
       beneficio_tarjeta: beneficioTarjeta,
       nota,
-    })
-    .select("id")
-    .single();
+  };
+
+  // Compat de despliegue (mismo patrón que cuenta_corte en 0027): si el código
+  // sale antes de que la migración 0062 esté aplicada, las columnas nuevas no
+  // existen y PostgREST rechaza el insert entero. Sin este reintento, un deploy
+  // adelantado deja al local SIN PODER COBRAR — perder el rastro del precio de
+  // lista es malísimo; no poder cobrar es peor. Se puede borrar cuando 0062 esté
+  // aplicada en todos lados.
+  const faltaColumna = (m?: string | null, col?: string) => !!m && !!col && m.includes(col);
+  let { data: venta, error } = await admin.from("ventas").insert(filaVenta).select("id").single();
+  if (error && faltaColumna(error.message, "cobrada_por")) {
+    const { cobrada_por: _omitida, ...sinCobradaPor } = filaVenta;
+    void _omitida;
+    ({ data: venta, error } = await admin.from("ventas").insert(sinCobradaPor).select("id").single());
+  }
   if (error || !venta) {
     // 23505 = ya existe una venta para esta reserva/token: quedó cobrada. Este cobro
     // "perdedor" no tocó nada (el cupón se sube DESPUÉS de la venta, paso 6, así que
@@ -2087,7 +2098,17 @@ export async function completarReserva(input: {
   // 5) Los ítems. Si fallan, NO puede quedar la venta huérfana: se borra la
   //    venta y se revierte la reserva para reintentar el cobro completo.
   if (items.length) {
-    const { error: itemsErr } = await admin.from("venta_items").insert(items.map((it) => ({ ...it, venta_id: ventaId })));
+    const filas = items.map((it) => ({ ...it, venta_id: ventaId }));
+    let { error: itemsErr } = await admin.from("venta_items").insert(filas);
+    if (itemsErr && faltaColumna(itemsErr.message, "precio_lista")) {
+      ({ error: itemsErr } = await admin.from("venta_items").insert(
+        filas.map((f) => {
+          const { precio_lista: _sinUsar, ...resto } = f as Record<string, unknown>;
+          void _sinUsar;
+          return resto;
+        }),
+      ));
+    }
     if (itemsErr) {
       const { error: delErr } = await admin.from("ventas").delete().eq("id", ventaId);
       if (delErr) errorPublico("completarReserva borrar venta", delErr);
