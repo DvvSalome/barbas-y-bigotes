@@ -1682,7 +1682,14 @@ export async function completarReserva(input: {
   clienteRef: string | null;
   clienteNombre?: string; // venta rápida: texto libre opcional → ventas.cliente_nombre
   servicioId: string | null;
+  /** Cambia el servicio de la CITA al cobrar (el cliente pidió corte y terminó en
+   *  corte+barba). Solo aplica cuando la venta cierra una reserva. */
+  servicioIdOverride?: string;
   serviciosExtra?: string[]; // servicios adicionales hechos en el momento
+  /** Precio cobrado por línea de servicio cuando difiere del de catálogo
+   *  (rebaja a un conocido, recargo por trabajo largo). El de catálogo igual
+   *  queda guardado en venta_items.precio_lista. */
+  precios?: { refId: string; precio: number }[];
   medio: string;
   /** Reparto cuando el cliente paga con MÁS DE UN medio (0060): [{medio,monto}].
    *  El servidor valida que los medios estén activos y que la suma dé el total. */
@@ -1735,7 +1742,10 @@ export async function completarReserva(input: {
       return { ok: false, error: "Esa cita es de otra sede." };
     barberoId = r.barbero_id;
     sedeEfectiva = r.sede_id;
-    servicioEfectivo = r.servicio_id;
+    // El servicio SÍ se puede cambiar (0062); la sede, el barbero y el cliente NO:
+    // esos siguen saliendo de la cita para que una venta no se le acredite a otra
+    // ficha ni a otro local mandando otro id en el POST.
+    servicioEfectivo = (input.servicioIdOverride ?? "").trim() || r.servicio_id;
     clienteEfectivo = r.cliente_ref;
   } else {
     barberoId = input.barberoId || staff.barberoId;
@@ -1767,6 +1777,22 @@ export async function completarReserva(input: {
   // Cobro MIXTO (0060). Se valida acá y no en la pantalla porque esto es un
   // endpoint POST invocable directo: un reparto que no suma el total descuadraría
   // el cajón en silencio, que es exactamente el bug que vino a arreglar.
+  // Medio de la PROPINA (0053). Se valida igual que el de la venta: es un POST
+  // invocable directo, y un slug inventado acá no revienta nada — se cuela en el
+  // desglose de caja como un medio fantasma y el cuadre deja de cerrar sin que
+  // nadie sepa por qué.
+  const propinaMedioPedido = (input.propinaMedio ?? "").trim();
+  if (propinaMedioPedido && propinaMedioPedido !== medio) {
+    const { data: pm, error: pmErr } = await supabaseAdmin()
+      .from("medios_pago")
+      .select("slug")
+      .eq("slug", propinaMedioPedido)
+      .eq("activo", true)
+      .maybeSingle();
+    if (pmErr) return { ok: false, error: errorPublico("completarReserva propinaMedio", pmErr) };
+    if (!pm) return { ok: false, error: "El medio de la propina no existe o está inactivo." };
+  }
+
   const pagosCrudos = (input.pagos ?? []).filter((p) => p && p.medio && Number(p.monto) > 0);
   let pagos: { medio: string; monto: number }[] | null = null;
   if (pagosCrudos.length > 0) {
@@ -1786,6 +1812,17 @@ export async function completarReserva(input: {
     pagos = pagosCrudos.map((p) => ({ medio: String(p.medio).trim(), monto: Math.round(Number(p.monto)) }));
     if (!pagos.some((p) => p.medio === medio))
       return { ok: false, error: "El medio principal tiene que estar en el reparto." };
+  }
+
+  // Precios editados en el mostrador. Se sanean uno por uno: `sanearCop` rechaza
+  // vacío, decimal, negativo y no-numérico. Un precio de $0 SÍ se permite (una
+  // cortesía es un caso real); lo que no se permite es un NaN entrando al total.
+  const precioEditado = new Map<string, number>();
+  for (const e of input.precios ?? []) {
+    if (!e || typeof e.refId !== "string" || !e.refId) continue;
+    const n = sanearCop(e.precio);
+    if (n === null) return { ok: false, error: "Ese precio no sirve: poné pesos enteros, sin decimales." };
+    precioEditado.set(e.refId, n);
   }
 
   const items: Record<string, unknown>[] = [];
@@ -1816,12 +1853,16 @@ export async function completarReserva(input: {
     // completa una venta cobrando $0 por el servicio en silencio.
     if (!p) return { ok: false, error: "El servicio de la cita no tiene precio en esta sede." };
     const row = p as Record<string, unknown>;
+    const lista = row.precio as number;
     items.push({
       tipo: "servicio",
       ref_id: servicioEfectivo,
       descripcion: (row.servicios as { nombre?: string } | null)?.nombre ?? "Servicio",
       cantidad: 1,
-      precio_unitario: row.precio,
+      // La comisión sale del precio COBRADO, no del de lista: si se le hizo una
+      // rebaja al cliente, el barbero cobra su porcentaje sobre lo que entró.
+      precio_unitario: precioEditado.get(servicioEfectivo) ?? lista,
+      precio_lista: lista,
       comision_pct: barberComision,
     });
   }
@@ -1841,12 +1882,14 @@ export async function completarReserva(input: {
     for (const id of extras) {
       const row = porId.get(id);
       if (!row) return { ok: false, error: "Un servicio adicional no tiene precio en esta sede." };
+      const lista = row.precio as number;
       items.push({
         tipo: "servicio",
         ref_id: id,
         descripcion: (row.servicios as { nombre?: string } | null)?.nombre ?? "Servicio",
         cantidad: 1,
-        precio_unitario: row.precio,
+        precio_unitario: precioEditado.get(id) ?? lista,
+        precio_lista: lista,
         comision_pct: barberComision,
       });
     }
@@ -1876,6 +1919,7 @@ export async function completarReserva(input: {
         descripcion: pr.nombre,
         cantidad,
         precio_unitario: pr.precio,
+        precio_lista: pr.precio,
         comision_pct: pr.comision_pct !== null ? Number(pr.comision_pct) : 0,
       });
     }
@@ -2003,6 +2047,10 @@ export async function completarReserva(input: {
       sede_id: sedeEfectiva,
       caja_sesion_id: cajaSesionId,
       barbero_id: barberoId,
+      // Quién operó el cobro (0062). No es barbero_id: en el mostrador se cobra la
+      // cita de un compañero, y si algún día hay que revisar un precio editado, el
+      // que importa es este.
+      cobrada_por: (await sb.auth.getUser()).data.user?.id ?? null,
       cliente_ref: clienteEfectivo,
       cliente_nombre: !clienteEfectivo ? (input.clienteNombre ?? "").trim() || null : null,
       reserva_id: input.reservaId,
@@ -2017,8 +2065,7 @@ export async function completarReserva(input: {
       propina: cobro.propina,
       // Medio propio de la propina solo si hay propina y difiere del de la venta
       // (0053); si no, null = va con el medio de la venta (compat).
-      propina_medio:
-        cobro.propina > 0 && input.propinaMedio && input.propinaMedio !== medio ? input.propinaMedio : null,
+      propina_medio: cobro.propina > 0 && propinaMedioPedido && propinaMedioPedido !== medio ? propinaMedioPedido : null,
       beneficio_tarjeta: beneficioTarjeta,
       nota,
     })

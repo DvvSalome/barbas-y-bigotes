@@ -6,6 +6,7 @@
 //
 // (Node ≥23.6 corre TypeScript directo con type stripping; no requiere build.)
 import assert from "node:assert/strict";
+import { sanearCop } from "../src/lib/admin-reglas.ts";
 import { calcularCobro, totalesPorMedio, PUNTOS_POR_COP } from "../src/lib/cobro.ts";
 
 // (a) Cobro simple: servicio $25.000 + 2 gaseosas de $5.000, sin cupón ni propina.
@@ -130,3 +131,25 @@ import { calcularCobro, totalesPorMedio, PUNTOS_POR_COP } from "../src/lib/cobro
 assert.equal(PUNTOS_POR_COP, 1000, "regla de fidelidad: 1 punto por $1.000");
 
 console.log("check-cobro OK — total/descuento/propina/puntos correctos (calcularCobro)");
+
+// ---- Cobro a medida (0062): precio editado en el mostrador ----
+// El barbero puede cambiar el valor de una línea (rebaja a un conocido, recargo
+// por un trabajo largo). Lo que se fija acá es que ese precio ENTRE al total como
+// cualquier otro, y que un $0 —la cortesía, que es un caso real— no rompa nada ni
+// se cuele como error de tipeo.
+{
+  const conRebaja = calcularCobro({ items: [{ precio: 25000, cantidad: 1 }], propina: 0 });
+  assert.equal(conRebaja.total, 25000, "el precio editado manda: se cobra lo que se puso");
+
+  const cortesia = calcularCobro({ items: [{ precio: 0, cantidad: 1 }], propina: 5000 });
+  assert.equal(cortesia.total, 0, "una cortesía deja el neto en 0");
+  assert.equal(cortesia.aCobrar, 5000, "…pero la propina se sigue cobrando");
+  assert.equal(cortesia.puntos, 0, "y no regala puntos de fidelidad");
+
+  // El saneo es el que decide qué llega a calcularCobro: el $0 pasa (cortesía),
+  // el campo vacío y el decimal NO (así un dedazo no guarda un servicio gratis).
+  assert.equal(sanearCop(0), 0, "$0 es un precio válido: la cortesía existe");
+  assert.equal(sanearCop(""), null, "vacío no es $0");
+  assert.equal(sanearCop("35000.5"), null, "sin decimales");
+  assert.equal(sanearCop(-1), null, "sin negativos");
+}

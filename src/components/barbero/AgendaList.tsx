@@ -13,6 +13,7 @@ import {
   type ActionResult,
 } from "@/lib/actions";
 import { calcularCobro } from "@/lib/cobro";
+import { sanearCop } from "@/lib/admin-reglas";
 import { CERQUILLO_EXCLUIDOS, type BeneficioTarjeta } from "@/lib/tarjeta";
 import { categorias } from "@/lib/data/seed";
 import { sfxCobro, sfxExito } from "@/lib/sfx";
@@ -764,6 +765,102 @@ const PROPINA_CHIPS = [2000, 5000, 10000];
 
 // Form de cobro: cierra una reserva (servicio fijo + adicionales + consumos +
 // propina + nota) o registra una venta rápida (reserva null: sin cita).
+/**
+ * Precio de una línea del cobro, editable en el momento (0062). Toque sobre el
+ * monto → input → ✓. Mismo gesto que el precio del catálogo en el admin.
+ *
+ * Cuando el precio cobrado se aparta del de lista, la fila lo dice: es la única
+ * señal que tiene el dueño de que alguien tocó ese número, y estar a la vista
+ * también frena al que lo tocaría de más.
+ */
+function PrecioCobro({
+  precio,
+  lista,
+  onChange,
+}: {
+  precio: number;
+  lista: number | null;
+  onChange: (n: number | null) => void;
+}) {
+  const [editando, setEditando] = useState(false);
+  const [val, setVal] = useState(String(precio));
+  const [err, setErr] = useState(false);
+
+  function guardar() {
+    // sanearCop rechaza vacío, decimal, negativo y no-numérico. El $0 SÍ vale: una
+    // cortesía es un caso real del mostrador.
+    const n = sanearCop(val);
+    if (n === null) {
+      setErr(true);
+      return;
+    }
+    setErr(false);
+    setEditando(false);
+    onChange(lista !== null && n === lista ? null : n);
+  }
+
+  if (!editando) {
+    return (
+      <span className="shrink-0 text-right">
+        <button
+          type="button"
+          onClick={() => {
+            setVal(String(precio));
+            setErr(false);
+            setEditando(true);
+          }}
+          aria-label="Tocar para cambiar el precio de esta línea"
+          className="inline-flex min-h-11 items-center gap-1 font-bold text-ink tabular-nums underline decoration-dotted decoration-line underline-offset-4 transition hover:decoration-accent"
+        >
+          {cop(precio)}
+          <span aria-hidden className="text-[11px] font-normal text-muted">✎</span>
+        </button>
+        {lista !== null && precio !== lista && (
+          <span className="block text-[11px] text-warn">
+            Lista {cop(lista)} ·{" "}
+            <button type="button" onClick={() => onChange(null)} className="underline underline-offset-2">
+              deshacer
+            </button>
+          </span>
+        )}
+      </span>
+    );
+  }
+
+  return (
+    <span className="inline-flex shrink-0 items-center gap-1.5">
+      <input
+        type="number"
+        min={0}
+        step={1}
+        autoFocus
+        value={val}
+        onChange={(e) => {
+          setVal(e.target.value);
+          if (err) setErr(false);
+        }}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") guardar();
+          if (e.key === "Escape") setEditando(false);
+        }}
+        aria-invalid={err}
+        aria-label="Precio cobrado"
+        className={`min-h-11 w-24 rounded-lg border bg-bg px-2 text-sm text-ink tabular-nums focus:outline-none ${
+          err ? "border-red-500" : "border-accent"
+        }`}
+      />
+      <button
+        type="button"
+        onClick={guardar}
+        aria-label="Guardar precio"
+        className="grid h-11 w-11 place-items-center rounded-full bg-accent text-sm font-bold text-on-accent"
+      >
+        ✓
+      </button>
+    </span>
+  );
+}
+
 function CheckoutForm({
   reserva,
   sedes,
@@ -798,13 +895,22 @@ function CheckoutForm({
   const [barberoId, setBarberoId] = useState(""); // venta rápida: el admin puede cobrar por otro
   const [nombre, setNombre] = useState(""); // venta rápida: nombre del cliente (opcional)
   const [extras, setExtras] = useState<string[]>([]);
+  // Cobro a medida (0062): servicio cambiado y precios editados por línea.
+  // Vacío = todo como está en el catálogo, que es el 95% de los cobros.
+  const [servicioOverride, setServicioOverride] = useState<string | null>(null);
+  const [preciosEdit, setPreciosEdit] = useState<Record<string, number>>({});
+  const [cambiandoServicio, setCambiandoServicio] = useState(false);
   // Acordeón de adicionales: una categoría abierta a la vez, todas cerradas al
   // entrar (lo normal es cobrar la cita tal cual, sin sumar nada).
   const [catAbierta, setCatAbierta] = useState<Categoria | null>(null);
   const [prodQty, setProdQty] = useState<Record<string, number>>({});
   const [propina, setPropina] = useState(0);
   const [propinaOtra, setPropinaOtra] = useState(false); // "Otra…" abre el input libre
-  const [propinaEfectivo, setPropinaEfectivo] = useState(false); // propina en efectivo aunque la venta sea digital (0053)
+  // Medio con el que dejaron la PROPINA. null = el mismo de la venta. Era un
+  // booleano "fue en efectivo" y no alcanzaba: el cliente paga el corte en efectivo
+  // y la propina por Nequi (o al revés), y el cierre esperaba esa plata donde no
+  // estaba. Ahora se elige el medio, que es lo que el dueño pidió.
+  const [propinaMedio, setPropinaMedio] = useState<string | null>(null);
   const [nota, setNota] = useState("");
   const [medio, setMedio] = useState(medios[0]?.slug ?? "");
   // Cobro MIXTO (0060): el cliente paga una parte con un medio y el resto con otro.
@@ -825,6 +931,8 @@ function CheckoutForm({
     total: number;
     descuento: number;
     propina: number;
+    /** Con qué medio quedó la propina, si no fue el de la venta. */
+    propinaMedio: string | null;
     puntos: number;
     tarjeta?: ActionResult["tarjeta"];
     resenaUrl?: string | null;
@@ -855,10 +963,24 @@ function CheckoutForm({
   // (TODOS los servicios, activos e inactivos) para que el total en vivo coincida
   // con lo que cobra el server aunque el admin haya desactivado el servicio. Los
   // chips de adicionales siguen usando `servicios` (solo activos, más abajo).
-  const servicioFijo = reserva?.servicioId
-    ? preciosServicios.find((s) => s.id === reserva.servicioId) ?? null
-    : null;
-  const precioFijo = servicioFijo?.preciosPorSede[sedeId];
+  const servicioFijoId = servicioOverride ?? reserva?.servicioId ?? null;
+  const servicioFijo = servicioFijoId ? preciosServicios.find((s) => s.id === servicioFijoId) ?? null : null;
+  const precioListaFijo = servicioFijo?.preciosPorSede[sedeId];
+  // Precio con el que se va a cobrar esta línea: el editado manda sobre el de lista.
+  const precioFijo = servicioFijo
+    ? preciosEdit[servicioFijo.id] ?? precioListaFijo
+    : undefined;
+  /** Precio de catálogo de un servicio en esta sede (null si no tiene). */
+  const listaDe = (id: string) => serviciosSede.find((s) => s.id === id)?.precios[sedeId] ?? null;
+  /** Lo que de verdad se va a cobrar por ese servicio. */
+  const cobradoDe = (id: string) => preciosEdit[id] ?? listaDe(id) ?? 0;
+  const editarPrecio = (id: string, n: number | null) =>
+    setPreciosEdit((prev) => {
+      const next = { ...prev };
+      if (n === null) delete next[id];
+      else next[id] = n;
+      return next;
+    });
 
   // Los adicionales EXCLUYEN el servicio de la cita. Estaba en las dos partes:
   // fijo arriba y además como chip, y tocarlo lo sumaba dos veces al total (y el
@@ -874,6 +996,8 @@ function CheckoutForm({
     setBarberoId("");
     setExtras([]);
     setProdQty({});
+    setPreciosEdit({});
+    setServicioOverride(null);
   }
 
   function setQty(id: string, q: number) {
@@ -886,7 +1010,13 @@ function CheckoutForm({
   }
 
   function toggleExtra(id: string) {
-    setExtras((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+    setExtras((prev) => {
+      const quitando = prev.includes(id);
+      // Al quitarlo se olvida su precio editado: si no, volvía solo al re-elegirlo
+      // y el barbero cobraba un precio que ya había descartado.
+      if (quitando) editarPrecio(id, null);
+      return quitando ? prev.filter((x) => x !== id) : [...prev, id];
+    });
   }
 
   async function chequearCupon() {
@@ -911,7 +1041,7 @@ function CheckoutForm({
   const preciosCortePreview: number[] = [];
   if (esCorteId(reserva?.servicioId) && precioFijo != null) preciosCortePreview.push(precioFijo);
   for (const id of extras) {
-    if (esCorteId(id)) preciosCortePreview.push(serviciosSede.find((s) => s.id === id)?.precios[sedeId] ?? 0);
+    if (esCorteId(id)) preciosCortePreview.push(cobradoDe(id));
   }
   // El beneficio se topa al precio de la línea de corte más cara (como el server).
   const precioCorteMax = preciosCortePreview.length ? Math.max(...preciosCortePreview) : null;
@@ -921,7 +1051,7 @@ function CheckoutForm({
   const vivo = calcularCobro({
     items: [
       ...(precioFijo != null ? [{ precio: precioFijo, cantidad: 1 }] : []),
-      ...extras.map((id) => ({ precio: serviciosSede.find((s) => s.id === id)?.precios[sedeId] ?? 0, cantidad: 1 })),
+      ...extras.map((id) => ({ precio: cobradoDe(id), cantidad: 1 })),
       ...Object.entries(prodQty).map(([id, cantidad]) => ({
         precio: productosSede.find((p) => p.id === id)?.precio ?? 0,
         cantidad,
@@ -970,13 +1100,15 @@ function CheckoutForm({
       clienteRef: reserva?.clienteRef ?? null,
       clienteNombre: rapida ? nombre : undefined,
       servicioId: reserva?.servicioId ?? null,
+      servicioIdOverride: servicioOverride ?? undefined,
       serviciosExtra: extras,
+      precios: Object.entries(preciosEdit).map(([refId, precio]) => ({ refId, precio })),
       medio,
       pagos: repartoMixto ?? undefined,
       productos: Object.entries(prodQty).map(([id, cantidad]) => ({ id, cantidad })),
       propina,
       // Propina en efectivo aunque la venta sea digital: entra al cajón (0053, #16).
-      propinaMedio: propina > 0 && propinaEfectivo && medio !== "efectivo" ? "efectivo" : null,
+      propinaMedio: propina > 0 && propinaMedio && propinaMedio !== medio ? propinaMedio : null,
       nota,
       cuponCodigo: cupon.trim() || undefined,
       idemToken,
@@ -989,6 +1121,7 @@ function CheckoutForm({
         total: res.total ?? 0,
         descuento: res.descuento ?? 0,
         propina: res.propina ?? 0,
+        propinaMedio: propina > 0 && propinaMedio && propinaMedio !== medio ? propinaMedio : null,
         puntos: res.puntos ?? 0,
         tarjeta: res.tarjeta,
         resenaUrl: res.resenaUrl,
@@ -1019,7 +1152,11 @@ function CheckoutForm({
           )}
           {resumen.propina > 0 && (
             <div className="text-muted">
-              + {cop(resumen.propina)} de propina · en la mano: <b className="text-ink">{cop(resumen.total + resumen.propina)}</b>
+              + {cop(resumen.propina)} de propina
+              {resumen.propinaMedio && (
+                <> en <b className="text-ink">{medios.find((m) => m.slug === resumen.propinaMedio)?.nombre ?? resumen.propinaMedio}</b></>
+              )}{" "}
+              · en la mano: <b className="text-ink">{cop(resumen.total + resumen.propina)}</b>
             </div>
           )}
           {resumen.tarjeta && (
@@ -1126,9 +1263,56 @@ function CheckoutForm({
         {servicioFijo && (
           <div>
             <div className={sLabel}>Servicio de la cita</div>
-            <div className="flex items-center justify-between gap-3 rounded-xl border border-line bg-elevated px-3.5 py-3 text-sm">
-              <span className="font-semibold text-ink">{servicioFijo.nombre}</span>
-              <span className="font-bold text-ink tabular-nums">{precioFijo != null ? cop(precioFijo) : "—"}</span>
+            <div className="rounded-xl border border-line bg-elevated px-3.5 py-3 text-sm">
+              <div className="flex items-center justify-between gap-3">
+                <span className="min-w-0 font-semibold text-ink">{servicioFijo.nombre}</span>
+                <PrecioCobro
+                  precio={precioFijo ?? 0}
+                  lista={precioListaFijo ?? null}
+                  onChange={(n) => editarPrecio(servicioFijo.id, n)}
+                />
+              </div>
+              {/* Cambiar el servicio al cobrar: el cliente pidió corte y terminó
+                  en corte+barba. Es un <select> nativo a propósito — en el celular
+                  del local abre el selector del sistema, que se maneja con una mano. */}
+              {cambiandoServicio ? (
+                <select
+                  autoFocus
+                  value={servicioFijo.id}
+                  onChange={(e) => {
+                    setServicioOverride(e.target.value);
+                    setCambiandoServicio(false);
+                  }}
+                  onBlur={() => setCambiandoServicio(false)}
+                  className="mt-2 w-full rounded-lg border border-accent bg-bg px-2 py-2 text-sm text-ink focus:outline-none"
+                >
+                  {serviciosSede.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.nombre} · {cop(s.precios[sedeId] ?? 0)}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setCambiandoServicio(true)}
+                  className="mt-1 min-h-11 text-[12.5px] font-semibold text-accent-soft underline decoration-dotted underline-offset-4 transition hover:text-ink"
+                >
+                  Cambiar servicio
+                </button>
+              )}
+              {servicioOverride && servicioOverride !== reserva?.servicioId && (
+                <p className="text-[12px] text-muted">
+                  La cita era otro servicio.{" "}
+                  <button
+                    type="button"
+                    onClick={() => setServicioOverride(null)}
+                    className="font-semibold text-accent-soft underline decoration-dotted underline-offset-2"
+                  >
+                    Volver al de la cita
+                  </button>
+                </p>
+              )}
             </div>
           </div>
         )}
@@ -1193,6 +1377,25 @@ function CheckoutForm({
                   </div>
                 );
               })}
+            </div>
+          )}
+
+          {/* Lo elegido, con su precio tocable. Sin esto la venta rápida (el
+              walk-in, que es la mitad del mostrador) no tenía dónde ajustar un
+              valor: los chips son de elegir, no de cobrar. */}
+          {extras.length > 0 && (
+            <div className="mt-2.5 space-y-1.5">
+              {extras.map((id) => (
+                <div
+                  key={id}
+                  className="flex items-center justify-between gap-3 rounded-xl border border-line/60 bg-elevated/50 px-3.5 py-2 text-sm"
+                >
+                  <span className="min-w-0 truncate text-ink">
+                    {serviciosSede.find((x) => x.id === id)?.nombre ?? id}
+                  </span>
+                  <PrecioCobro precio={cobradoDe(id)} lista={listaDe(id)} onChange={(n) => editarPrecio(id, n)} />
+                </div>
+              ))}
             </div>
           )}
         </div>
@@ -1423,19 +1626,34 @@ function CheckoutForm({
           </div>
         )}
 
-        {/* Propina en efectivo aunque el servicio se pague digital (común en CO: pagan
-            por Nequi y dejan la propina en la mano). Sin esto ese efectivo genera un
-            sobrante en el cierre, porque el sistema lo esperaba en el medio de la venta. */}
-        {propina > 0 && medio && medio !== "efectivo" && (
-          <label className="flex cursor-pointer items-center gap-2.5 rounded-xl border border-line bg-elevated px-3.5 py-2.5 text-sm text-ink">
-            <input
-              type="checkbox"
-              checked={propinaEfectivo}
-              onChange={(e) => setPropinaEfectivo(e.target.checked)}
-              className="h-4 w-4 accent-accent"
-            />
-            La propina la dejó en <b>efectivo</b> (entra al cajón)
-          </label>
+        {/* Con qué dejó la PROPINA. En Colombia es normal pagar el corte por Nequi y
+            dejar la propina en la mano (o al revés): si no se registra dónde cayó esa
+            plata, el cierre la espera en el medio de la venta y el cajón no cuadra. */}
+        {propina > 0 && medio && (
+          <div>
+            <div className={sLabel}>¿Con qué dejó la propina?</div>
+            <div className="flex flex-wrap gap-2">
+              {medios.map((m) => {
+                const act = (propinaMedio ?? medio) === m.slug;
+                return (
+                  <button
+                    key={m.slug}
+                    type="button"
+                    aria-pressed={act}
+                    onClick={() => setPropinaMedio(m.slug === medio ? null : m.slug)}
+                    className={`min-h-11 rounded-xl border px-3.5 text-xs font-bold transition ${
+                      act ? "border-accent bg-accent/15 text-ink" : "border-line text-ink/80 hover:border-ink/25"
+                    }`}
+                  >
+                    {m.nombre}
+                  </button>
+                );
+              })}
+            </div>
+            {(propinaMedio ?? medio) === "efectivo" && medio !== "efectivo" && (
+              <p className="mt-1.5 text-[12px] text-muted">Esa propina entra al cajón.</p>
+            )}
+          </div>
         )}
 
         <div>
