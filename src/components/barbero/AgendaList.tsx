@@ -15,6 +15,7 @@ import {
 import { calcularCobro } from "@/lib/cobro";
 import { sanearCop } from "@/lib/admin-reglas";
 import { type BeneficioTarjeta } from "@/lib/tarjeta";
+import { linkWhatsApp, mensajeCitaConfirmada } from "@/lib/whatsapp";
 import { categorias } from "@/lib/data/seed";
 import { sfxCobro, sfxExito } from "@/lib/sfx";
 import type { Categoria } from "@/lib/data/types";
@@ -369,6 +370,34 @@ export function AgendaList({
                             Propuesto {proposedTimeStr}
                           </span>
                         )}
+                        {/* Confirmarle por WhatsApp. Con el correo del dominio
+                            suspendido (ago-2026), el cliente que reserva por la web
+                            no recibe NADA: esto le deja al mostrador el aviso a un
+                            toque, con el mensaje escrito. Sirva o no el correo, es
+                            el canal que la gente sí lee. */}
+                        {(() => {
+                          if (r.estado !== "pendiente" && r.estado !== "confirmada") return null;
+                          const url = linkWhatsApp(
+                            r.telefono,
+                            mensajeCitaConfirmada({
+                              cliente: r.cliente,
+                              cuando: `hoy a las ${hora(r.inicio)}`,
+                              barbero: r.barbero,
+                              sede: sedes.find((x) => x.id === r.sede)?.nombre ?? mostrador.sedeNombre,
+                            }),
+                          );
+                          if (!url) return null; // sin teléfono marcable no se ofrece
+                          return (
+                            <a
+                              href={url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="rounded-full border border-ok/40 bg-ok/[0.08] px-3 py-1.5 text-xs font-semibold text-ok transition hover:bg-ok/[0.16]"
+                            >
+                              Confirmar por WhatsApp
+                            </a>
+                          );
+                        })()}
                         {earliestSlot && !hasPendingProposal && (
                           <button
                             onClick={() => ofrecerAdelanto(r, earliestSlot.inicio)}

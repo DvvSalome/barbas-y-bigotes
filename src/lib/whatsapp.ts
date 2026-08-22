@@ -70,3 +70,26 @@ export function mensajeCitaCancelada(datos: {
     "Cuando quieras la volvemos a agendar: barbasybigotes.com/reservar o respondé por acá.",
   ].join("\n");
 }
+
+/**
+ * "Te confirmamos tu cita". Es el correo de confirmación, pero por el canal que la
+ * gente sí lee — y el que sigue funcionando cuando el buzón está caído.
+ *
+ * Nació de una caída real: con el correo suspendido, el cliente reservaba por la
+ * web y no recibía NADA, y el mostrador no tenía forma de enterarse ni de avisarle.
+ */
+export function mensajeCitaConfirmada(datos: {
+  cliente: string | null;
+  cuando: string; // "hoy a las 3:30 pm"
+  barbero: string;
+  sede: string;
+}): string {
+  const hola = pila(datos.cliente) ? `Hola ${pila(datos.cliente)}!` : "¡Hola!";
+  return [
+    `${hola} Te confirmamos tu cita en Barbas & Bigotes ✂️`,
+    "",
+    `Te esperamos ${datos.cuando}${datos.barbero ? ` con ${datos.barbero}` : ""} en ${datos.sede}.`,
+    "",
+    "Si te surge algo, respondé este mensaje y la movemos.",
+  ].join("\n");
+}

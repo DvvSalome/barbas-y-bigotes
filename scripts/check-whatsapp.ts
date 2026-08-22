@@ -2,7 +2,7 @@
 // evita abrir un chat con un número inventado) y armado del mensaje.
 //   node scripts/check-whatsapp.ts
 import assert from "node:assert/strict";
-import { telefonoWhatsApp, linkWhatsApp, mensajeCitaMovida, mensajeCitaCancelada } from "../src/lib/whatsapp.ts";
+import { telefonoWhatsApp, linkWhatsApp, mensajeCitaMovida, mensajeCitaCancelada, mensajeCitaConfirmada } from "../src/lib/whatsapp.ts";
 
 // — Teléfonos que SÍ se pueden marcar —
 assert.equal(telefonoWhatsApp("3006734799"), "573006734799", "celular suelto lleva indicativo");
@@ -43,5 +43,25 @@ assert.ok(
   mensajeCitaCancelada({ cliente: "  ", cuando: "vie 15", sede: "Plaza" }).includes("/reservar"),
   "la cancelación invita a reservar de nuevo",
 );
+
+// Confirmación por WhatsApp: el reemplazo del correo cuando el buzón está caído.
+// Lo que se fija es que el mensaje diga las tres cosas que el cliente necesita
+// —cuándo, con quién y dónde— y que nunca salude a un "undefined".
+const confirmada = mensajeCitaConfirmada({
+  cliente: "Juan Carlos Pérez",
+  cuando: "hoy a las 3:30 pm",
+  barbero: "Meyer",
+  sede: "Parque Venezuela",
+});
+assert.ok(confirmada.startsWith("Hola Juan!"), "saluda por el primer nombre");
+assert.ok(
+  confirmada.includes("hoy a las 3:30 pm") && confirmada.includes("Meyer") && confirmada.includes("Parque Venezuela"),
+  "dice cuándo, con quién y dónde",
+);
+// Sin barbero asignado no puede quedar un " con " colgando en el medio de la frase.
+const sinBarbero = mensajeCitaConfirmada({ cliente: null, cuando: "hoy a las 4:00 pm", barbero: "", sede: "Plaza" });
+assert.ok(sinBarbero.startsWith("¡Hola!"), "sin nombre saluda igual");
+assert.ok(!sinBarbero.includes(" con  "), "sin barbero no deja el 'con' colgando");
+assert.ok(sinBarbero.includes("Te esperamos hoy a las 4:00 pm en Plaza"), "la frase cierra bien igual");
 
 console.log("check-whatsapp: ok");
