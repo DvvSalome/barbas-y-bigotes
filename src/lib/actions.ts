@@ -39,6 +39,7 @@ import {
 import { ventanaDeDia } from "@/lib/horario";
 import { choqueAusencia } from "@/lib/ausencias";
 import { errorPublico } from "@/lib/errors";
+import { emailGuardable } from "@/lib/email";
 import { calcularCobro, snapshotDinero, diferenciaCaja } from "@/lib/cobro";
 import { beneficioProximoCorte, sanearConfigTarjeta, type BeneficioTarjeta } from "@/lib/tarjeta";
 import { pushACliente, pushABarbero, pushASede } from "@/lib/push";
@@ -159,7 +160,11 @@ async function upsertClienteId(
   const { data } = await sb.rpc("upsert_cliente", {
     p_nombre: nombre ?? "",
     p_telefono: telefono ?? "",
-    p_email: email ?? "",
+    // Una dirección que no existe se guarda como VACÍA, no como está. Todas las
+    // colas de correo exigen `email <> ''`, así que con esto ninguna le va a
+    // escribir nunca. Es la puerta por la que entraron los rebotes que le
+    // costaron al buzón tres suspensiones (ver src/lib/email.ts).
+    p_email: emailGuardable(email),
     p_origen: origen,
     p_fidelizado: fidelizado,
   });
