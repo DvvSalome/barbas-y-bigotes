@@ -40,6 +40,7 @@ import { ventanaDeDia } from "@/lib/horario";
 import { choqueAusencia } from "@/lib/ausencias";
 import { errorPublico } from "@/lib/errors";
 import { emailGuardable } from "@/lib/email";
+import { avisarConfirmacionPendiente } from "@/lib/n8n";
 import { calcularCobro, snapshotDinero, diferenciaCaja } from "@/lib/cobro";
 import { beneficioProximoCorte, sanearConfigTarjeta, type BeneficioTarjeta } from "@/lib/tarjeta";
 import { pushACliente, pushABarbero, pushASede } from "@/lib/push";
@@ -1207,6 +1208,10 @@ export async function createReserva(input: {
   };
   await pushASede(input.sede, avisoCita);
   await pushABarbero(barberoId, avisoCita);
+  // Empujón a n8n para que mande la confirmación YA y no en la vuelta del cron:
+  // el cliente todavía está mirando la pantalla del "¡Listo!". Nunca bloquea ni
+  // revienta —la cita ya está guardada— y si falla, el cron la manda igual.
+  await avisarConfirmacionPendiente();
   revalidatePath("/barbero");
   return { ok: true, token: (creada as { confirm_token?: string } | null)?.confirm_token ?? null };
 }
@@ -1467,6 +1472,9 @@ export async function agendarCita(input: {
     if (error.code === "23P01") return { ok: false, error: "Ese horario ya fue tomado. Elegí otro." };
     return { ok: false, error: errorPublico("agendarCita", error) };
   }
+  // Mismo empujón que la reserva pública: la cita del mostrador también manda
+  // confirmación si el cliente dejó correo.
+  await avisarConfirmacionPendiente();
   revalidatePath("/barbero");
   return { ok: true };
 }
