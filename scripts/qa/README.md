@@ -16,6 +16,7 @@ python scripts/qa/recorrido-movil.py
 python scripts/qa/areas-tactiles.py
 python scripts/qa/vuelta-de-google.py
 python scripts/qa/turnos-encadenados.py
+python scripts/qa/latencia-confirmacion.py     # contra producción por defecto
 ```
 
 ## Qué mide cada uno
@@ -52,6 +53,14 @@ y limpia todo lo que crea (incluida la ficha del cliente QA) en un `finally`.
 Ojo al escribir asserts sobre este wizard: varios títulos y CTAs van en
 `uppercase` por CSS y `inner_text` devuelve el texto RENDERIZADO — comparar contra
 "Confirmando" tal cual falla aunque la pantalla esté perfecta. Van con `re.I`.
+
+**`latencia-confirmacion.py`** — reserva de verdad en el sitio y cronometra los
+segundos hasta que sale el correo de confirmación (`confirm_sent` se marca DESPUÉS
+de enviar). Vigila el empujón a n8n de `src/lib/n8n.ts`: sin él, el correo sale en
+la vuelta del cron —hasta 60 s— y el check falla al pasar de 25. Si un día alguien
+borra la variable `N8N_WEBHOOK_CONFIRMACION` o el webhook deja de estar registrado
+en n8n, esto lo canta. Manda un correo real: por defecto a four4gsolutions@gmail.com
+(`DESTINO=` para cambiarlo). Medido el 22-ago: **2 segundos**.
 
 ## Ojo con los datos
 
