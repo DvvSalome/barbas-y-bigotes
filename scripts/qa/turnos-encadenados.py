@@ -202,7 +202,12 @@ def main():
 
             # --- Paso 4: horario (manana)
             pagina.get_by_role("button", name=re.compile("Mañana")).first.click()
-            pagina.wait_for_timeout(1200)  # llega la disponibilidad del barbero
+            # Esperar la CONDICION, no un tiempo: la disponibilidad del barbero
+            # llega por red y mientras tanto se dibuja un esqueleto. Con un
+            # wait_for_timeout fijo, un servidor frio hacia fallar los asserts de
+            # la grilla aunque los turnos estuvieran perfectos (y el propio click
+            # de mas abajo, que SI espera, funcionaba: sintoma de test flaky).
+            pagina.get_by_role("button", name=re.compile(r"^\d{1,2}:\d{2} (am|pm)")).first.wait_for(timeout=20000)
 
             texto = pagina.inner_text("body")
             ok("2:15 pm" in texto and "2:45 pm" in texto, "la grilla ofrece turnos cada 15 minutos")
