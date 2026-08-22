@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { SearchIcon } from "@/components/icons";
 import { PrecioSedeEditable } from "@/components/admin/PrecioSedeEditable";
 import { ServicioActivoToggle } from "@/components/admin/ServicioActivoToggle";
+import { SelloToggle } from "@/components/admin/SelloToggle";
 import { FotoServicio } from "@/components/admin/FotoServicio";
 import { DuracionEditable } from "@/components/admin/DuracionEditable";
 import { DescripcionServicio } from "@/components/admin/DescripcionServicio";
@@ -28,6 +29,8 @@ export type ServicioPrecios = {
   /** Foto y descripción que ve el cliente al reservar (0055). */
   fotoUrl?: string | null;
   descripcion?: string | null;
+  /** ¿Suma sello en la tarjeta de cortes? null/true = sí (0064). */
+  cuentaCorte?: boolean | null;
   precios: Partial<Record<SedeId, number>>;
 };
 
@@ -152,6 +155,11 @@ export function PreciosLista({
                             <DescripcionServicio servicioId={s.id} descripcion={s.descripcion} />
                           </span>
                           <span className="shrink-0">
+                            {/* Solo cortes y combos entran al conteo de la
+                                tarjeta; en el resto el interruptor mentiría. */}
+                            {(s.categoria === "cortes" || s.categoria === "combos") && (
+                              <SelloToggle id={s.id} suma={s.cuentaCorte !== false} />
+                            )}
                             <ServicioActivoToggle id={s.id} activo={!inactivo} />
                           </span>
                         </div>

@@ -33,6 +33,10 @@ export interface Servicio {
   fotoUrl?: string | null;
   /** Una frase de qué incluye; la ve el cliente al reservar (0055). */
   descripcion?: string | null;
+  /** ¿Suma sello en la tarjeta de fidelidad? false = no (la barba, los
+   *  cerquillos). undefined en lecturas que no lo piden; el criterio real es
+   *  `!== false`, igual que en getCorteIds. */
+  cuentaCorte?: boolean | null;
   /** Solo lo llena el catálogo admin (getServiciosCatalogoAdmin): un servicio
    *  desactivado (activo=false) no aparece en la reserva. La lectura pública
    *  (getServicios) ya filtra activo=true, así que ahí queda undefined. */

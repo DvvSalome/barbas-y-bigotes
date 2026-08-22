@@ -1,4 +1,4 @@
-import { TARJETA_SIZE, HITO_REGALO, HITO_50 } from "@/lib/tarjeta";
+import { TARJETA_DEFECTO, type ConfigTarjeta } from "@/lib/tarjeta";
 
 /*
   Réplica de la tarjeta física (layout 2A del proyecto de Claude Design
@@ -29,10 +29,15 @@ export function TarjetaFidelidad({
   nombre,
   subtitulo = "Se llena sola con cada corte. Aquí no tienes que presentar nada.",
   codigo,
+  cfg = TARJETA_DEFECTO,
 }: {
-  /** Sellos llenos, 0..9 (cortesTotales % 10). */
+  /** Sellos llenos, 0..tamaño-1 (cortesTotales % tamaño). */
   sellos: number;
   nombre?: string;
+  /** Tamaño y premios reales del negocio (0064). El dueño los cambia desde el
+   *  panel, así que la tarjeta dibujada tiene que seguirlos o le prometería al
+   *  cliente un premio que no existe. */
+  cfg?: ConfigTarjeta;
   /**
    * Línea bajo el título. Por defecto NO se copia la de la tarjeta impresa
    * ("Válido hasta …, obligatorio presentar la tarjeta física"): en el portal
@@ -42,7 +47,9 @@ export function TarjetaFidelidad({
   subtitulo?: string;
   codigo?: string;
 }) {
-  const llenos = Math.max(0, Math.min(TARJETA_SIZE, sellos));
+  const llenos = Math.max(0, Math.min(cfg.tamano, sellos));
+  /** El premio que cae en esa casilla, si hay alguno. */
+  const hitoDe = (n: number) => cfg.hitos.find((h) => h.posicion === n) ?? null;
 
   return (
     <div className="bb-tarjeta" style={{ containerType: "inline-size" }}>
@@ -51,7 +58,7 @@ export function TarjetaFidelidad({
         style={{ borderRadius: u(14) }}
         // La tarjeta es decorativa; el estado real va en el texto de al lado.
         role="img"
-        aria-label={`Tarjeta de fidelidad: ${llenos} de ${TARJETA_SIZE} cortes`}
+        aria-label={`Tarjeta de fidelidad: ${llenos} de ${cfg.tamano} cortes`}
       >
         {/* Fondo: dos capas de degradados radiales (cuero gastado + viñeta). */}
         <div className="bb-tarjeta__fondo" />
@@ -97,7 +104,7 @@ export function TarjetaFidelidad({
               gap: `${u(12)} ${u(14)}`,
             }}
           >
-            {Array.from({ length: TARJETA_SIZE }).map((_, i) => {
+            {Array.from({ length: cfg.tamano }).map((_, i) => {
               const n = i + 1;
               const hecho = n <= llenos;
               // Solo el último sello gana la animación del corte: es el que se
@@ -158,9 +165,9 @@ export function TarjetaFidelidad({
                         style={{ height: u(64), width: u(46) }}
                       />
                       {/* Los premios llevan su marca, según la regla real del
-                          negocio (tarjeta.ts, la misma que aplica el cobro):
-                          el 5º corte se lleva un regalo y el 10º va al 50%. */}
-                      {n === HITO_REGALO && (
+                          negocio (ajustes_tarjeta, la misma que aplica el cobro).
+                          Si el dueño mueve el regalo al 4º corte, acá se mueve. */}
+                      {hitoDe(n)?.tipo === "regalo" && (
                         <svg
                           viewBox="0 0 24 24"
                           aria-hidden
@@ -178,9 +185,10 @@ export function TarjetaFidelidad({
                           <path d="M12 7.5s2.2-.1 3.6-.9c1.4-.8 1.2-2.6-.2-3c-1.5-.4-3.4 2.3-3.4 3.9z" />
                         </svg>
                       )}
-                      {n === HITO_50 && (
+                      {hitoDe(n)?.tipo === "porcentaje" && (
                         <span className="bb-sello__mitad" style={{ fontSize: u(26) }}>
-                          50<span style={{ fontSize: u(15), verticalAlign: "super" }}>%</span>
+                          {hitoDe(n)!.valor}
+                          <span style={{ fontSize: u(15), verticalAlign: "super" }}>%</span>
                         </span>
                       )}
                     </div>
@@ -219,7 +227,7 @@ export function TarjetaFidelidad({
             {nombre ? `${nombre} · ` : ""}Nº {codigo}
           </span>
           <span className="tabular-nums">
-            {llenos}/{TARJETA_SIZE} sellos
+            {llenos}/{cfg.tamano} sellos
           </span>
         </div>
       )}

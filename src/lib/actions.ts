@@ -21,7 +21,13 @@ import {
 } from "@/lib/admin-reglas";
 import { type SupabaseClient } from "@supabase/supabase-js";
 import { supabaseServerAuth, supabaseAdmin } from "@/lib/supabase/server";
-import { getStaffContext, getCorteIds, contarCortesCliente, precioCorteBase, ventasDeSesion } from "@/lib/data/queries";
+import {
+  getStaffContext,
+  getCorteIds,
+  contarCortesCliente,
+  getConfigTarjeta,
+  ventasDeSesion,
+} from "@/lib/data/queries";
 import { clienteIdForUser } from "@/lib/cliente-actions";
 import {
   bogotaDayRange,
@@ -34,7 +40,7 @@ import { ventanaDeDia } from "@/lib/horario";
 import { choqueAusencia } from "@/lib/ausencias";
 import { errorPublico } from "@/lib/errors";
 import { calcularCobro, snapshotDinero, diferenciaCaja } from "@/lib/cobro";
-import { beneficioProximoCorte, type BeneficioTarjeta } from "@/lib/tarjeta";
+import { beneficioProximoCorte, sanearConfigTarjeta, type BeneficioTarjeta } from "@/lib/tarjeta";
 import { pushACliente, pushABarbero, pushASede } from "@/lib/push";
 import { cop, fechaHoraBogota } from "@/lib/format";
 
@@ -117,21 +123,27 @@ export async function validarCupon(codigo: string): Promise<CuponResult> {
 // corte del cliente. El server (completarReserva) es la fuente de verdad y lo
 // recomputa; esto solo alimenta el aviso y el total en vivo del barbero. Cuenta
 // con supabaseAdmin() (igual que el cobro) para no undercontar por la RLS 0010.
+/**
+ * Beneficio que le toca al cliente en ESTE cobro, para el total en vivo del
+ * mostrador. Devuelve el PORCENTAJE, no un monto: el descuento depende del
+ * servicio que se termine cobrando (y de si el barbero le editó el precio), así
+ * que el monto lo arma la pantalla y lo recalcula el servidor al cerrar.
+ */
 export async function getTarjetaParaCobro(
   clienteRef: string,
-  sede: string,
 ): Promise<
-  | { ok: true; cortesPrevios: number; posicion: number; tipo: BeneficioTarjeta | null; descuento: number }
+  | { ok: true; cortesPrevios: number; posicion: number; tipo: BeneficioTarjeta | null; pct: number }
   | { ok: false }
 > {
   const sb = await supabaseServerAuth();
   const denied = await requireStaff(sb);
   if (denied || !clienteRef) return { ok: false };
   const admin = supabaseAdmin();
-  const cortesPrevios = await contarCortesCliente(admin, clienteRef);
-  const base = await precioCorteBase(admin, sede);
-  const b = beneficioProximoCorte(cortesPrevios, base);
-  return { ok: true, cortesPrevios, posicion: b.posicion, tipo: b.tipo, descuento: b.descuento };
+  const [cortesPrevios, cfg] = await Promise.all([contarCortesCliente(admin, clienteRef), getConfigTarjeta()]);
+  // Precio 100 → el descuento sale directo como porcentaje, sin duplicar acá la
+  // tabla de hitos.
+  const b = beneficioProximoCorte(cortesPrevios, 100, cfg);
+  return { ok: true, cortesPrevios, posicion: b.posicion, tipo: b.tipo, pct: b.descuento };
 }
 
 // Upsert de cliente por teléfono vía RPC SECURITY DEFINER: dedup correcto sin exponer
@@ -791,6 +803,55 @@ export async function actualizarDescripcionServicio(servicioId: string, texto: s
   if (error) return { ok: false, error: errorPublico("actualizarDescripcionServicio", error) };
   revalidatePath("/admin/precios");
   revalidatePath("/reservar");
+  return { ok: true };
+}
+
+/**
+ * ¿Este servicio suma sello en la tarjeta? (0064)
+ *
+ * Lo pidió el dueño: "las barbas no cuentan". Antes la lista de exclusiones era un
+ * Set de ids escrito a mano en el código y cambiarla era un deploy — además de que
+ * el mostrador tenía su propia copia, que podía quedar distinta de la del servidor.
+ */
+export async function setServicioCuentaSello(servicioId: string, cuenta: boolean): Promise<ActionResult> {
+  const sb = await supabaseServerAuth();
+  const denied = await requireAdmin(sb);
+  if (denied) return { ok: false, error: denied };
+  const { error } = await supabaseAdmin()
+    .from("servicios")
+    .update({ cuenta_corte: cuenta })
+    .eq("id", servicioId);
+  if (error) return { ok: false, error: errorPublico("setServicioCuentaSello", error) };
+  revalidatePath("/admin/precios");
+  revalidatePath("/admin/tarjeta");
+  return { ok: true };
+}
+
+/**
+ * Tamaño y premios de la tarjeta de fidelidad (0064, singleton id=1).
+ *
+ * Se sanea con la MISMA función que lee la config en el cobro: si la guardada no
+ * pasara ese filtro, el cobro se caería al defecto y el dueño estaría mirando en
+ * el panel una regla que no se aplica.
+ */
+export async function guardarConfigTarjeta(cfg: unknown): Promise<ActionResult> {
+  const sb = await supabaseServerAuth();
+  const denied = await requireAdmin(sb);
+  if (denied) return { ok: false, error: denied };
+  const limpia = sanearConfigTarjeta(cfg);
+  if (!limpia)
+    return {
+      ok: false,
+      error:
+        "Revisá la tarjeta: entre 3 y 20 cortes, al menos un premio, cada uno en una casilla distinta y dentro de la tarjeta, y los porcentajes entre 1 y 100.",
+    };
+  const { error } = await supabaseAdmin()
+    .from("ajustes_tarjeta")
+    .update({ tamano: limpia.tamano, hitos: limpia.hitos, actualizado_en: new Date().toISOString() })
+    .eq("id", 1);
+  if (error) return { ok: false, error: errorPublico("guardarConfigTarjeta", error) };
+  revalidatePath("/admin/tarjeta");
+  revalidatePath("/cuenta");
   return { ok: true };
 }
 
@@ -2045,12 +2106,19 @@ export async function completarReserva(input: {
       .filter((it) => it.tipo === "servicio" && corteIds.includes(it.ref_id as string))
       .sort((a, b) => (b.precio_unitario as number) - (a.precio_unitario as number))[0];
     if (corteItem) {
-      cortesPrevios = await contarCortesCliente(admin, clienteEfectivo);
-      const base = await precioCorteBase(admin, sedeEfectiva);
-      const b = beneficioProximoCorte(cortesPrevios, base);
+      const [previos, cfg] = await Promise.all([
+        contarCortesCliente(admin, clienteEfectivo),
+        getConfigTarjeta(),
+      ]);
+      cortesPrevios = previos;
+      // El porcentaje se aplica sobre el precio REALMENTE COBRADO de la línea de
+      // corte más cara, no sobre un "corte base" de la sede: al que se hizo un
+      // combo de $60.000 se le descontaba la mitad de $25.000 (lo que el dueño
+      // pidió corregir). beneficioProximoCorte ya lo topa a ese precio.
+      const b = beneficioProximoCorte(cortesPrevios, corteItem.precio_unitario as number, cfg);
       beneficioTarjeta = b.tipo;
       tarjetaPos = b.posicion;
-      descuentoTarjeta = Math.min(b.descuento, corteItem.precio_unitario as number);
+      descuentoTarjeta = b.descuento;
     }
   }
 

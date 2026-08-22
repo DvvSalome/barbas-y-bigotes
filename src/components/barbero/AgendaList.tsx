@@ -14,7 +14,7 @@ import {
 } from "@/lib/actions";
 import { calcularCobro } from "@/lib/cobro";
 import { sanearCop } from "@/lib/admin-reglas";
-import { CERQUILLO_EXCLUIDOS, type BeneficioTarjeta } from "@/lib/tarjeta";
+import { type BeneficioTarjeta } from "@/lib/tarjeta";
 import { categorias } from "@/lib/data/seed";
 import { sfxCobro, sfxExito } from "@/lib/sfx";
 import type { Categoria } from "@/lib/data/types";
@@ -943,12 +943,14 @@ function CheckoutForm({
   // Estado de la tarjeta de cortes del cliente (solo cobro de reserva con cliente).
   // Solo se setea si hay un beneficio (5º regalo / 10º 50%); el server es la
   // fuente de verdad y lo recomputa al cobrar.
-  const [tarjeta, setTarjeta] = useState<{ tipo: BeneficioTarjeta; descuento: number } | null>(null);
+  // `pct` y no un monto: el descuento depende del precio que se termine cobrando
+  // (que el barbero puede editar), así que se calcula acá y el server lo recalcula.
+  const [tarjeta, setTarjeta] = useState<{ tipo: BeneficioTarjeta; pct: number; posicion: number } | null>(null);
   useEffect(() => {
     if (!reserva?.clienteRef) return;
     let vivo = true;
-    getTarjetaParaCobro(reserva.clienteRef, reserva.sede).then((r) => {
-      if (vivo && r.ok && r.tipo) setTarjeta({ tipo: r.tipo, descuento: r.descuento });
+    getTarjetaParaCobro(reserva.clienteRef).then((r) => {
+      if (vivo && r.ok && r.tipo) setTarjeta({ tipo: r.tipo, pct: r.pct, posicion: r.posicion });
     });
     return () => {
       vivo = false;
@@ -1036,7 +1038,10 @@ function CheckoutForm({
   const esCorteId = (id: string | null | undefined): boolean => {
     if (!id) return false;
     const s = servicios.find((x) => x.id === id);
-    return s ? (s.categoria === "cortes" || s.categoria === "combos") && !CERQUILLO_EXCLUIDOS.has(s.id) : false;
+    // Mismo criterio que el servidor (getCorteIds): categoría de corte/combo y que
+    // el servicio SUME SELLO. Antes acá había una lista de ids escrita a mano que
+    // podía quedar distinta de la del servidor sin que nadie lo notara.
+    return s ? (s.categoria === "cortes" || s.categoria === "combos") && s.cuentaCorte !== false : false;
   };
   const preciosCortePreview: number[] = [];
   if (esCorteId(reserva?.servicioId) && precioFijo != null) preciosCortePreview.push(precioFijo);
@@ -1045,7 +1050,10 @@ function CheckoutForm({
   }
   // El beneficio se topa al precio de la línea de corte más cara (como el server).
   const precioCorteMax = preciosCortePreview.length ? Math.max(...preciosCortePreview) : null;
-  const descuentoTarjeta = tarjeta && precioCorteMax != null ? Math.min(tarjeta.descuento, precioCorteMax) : 0;
+  // Mismo cálculo que el servidor: el porcentaje sobre la línea de corte más cara
+  // (ya con el precio editado, si lo hubo), topado a ese precio.
+  const descuentoTarjeta =
+    tarjeta && precioCorteMax != null ? Math.min(Math.floor((precioCorteMax * tarjeta.pct) / 100), precioCorteMax) : 0;
 
   // Total en vivo con la MISMA matemática del servidor (calcularCobro).
   const vivo = calcularCobro({
@@ -1162,11 +1170,13 @@ function CheckoutForm({
           {resumen.tarjeta && (
             <div className="text-accent-soft">
               🎫{" "}
+              {/* El texto sigue la config real de la tarjeta (0064): sin hitos
+                  quemados, porque el dueño los cambia desde el panel. */}
               {resumen.tarjeta.beneficio === "regalo"
-                ? "¡Corte #5! Entregale el regalo — el corte se cobró completo."
-                : resumen.tarjeta.beneficio === "50%"
-                  ? "50% aplicado (corte #10). Tarjeta completa, arranca una nueva."
-                  : `Corte ${((resumen.tarjeta.cortesTotales - 1) % 10) + 1}/10 de su tarjeta.`}
+                ? `¡Corte #${resumen.tarjeta.posicion}! Entregale el regalo — el corte se cobró completo.`
+                : resumen.tarjeta.beneficio
+                  ? `${resumen.tarjeta.beneficio} aplicado en el corte #${resumen.tarjeta.posicion}.`
+                  : `Lleva ${resumen.tarjeta.cortesTotales} corte${resumen.tarjeta.cortesTotales === 1 ? "" : "s"} en su tarjeta.`}
             </div>
           )}
         </div>
@@ -1698,11 +1708,13 @@ function CheckoutForm({
       {tarjeta && (
         <div className="flex items-center gap-2 border-t border-accent/30 bg-accent/[0.07] px-4 py-2.5 text-sm font-semibold text-accent-soft">
           <span aria-hidden>{tarjeta.tipo === "regalo" ? "🎁" : "🎫"}</span>
+          {/* El texto sale de la config real (0064): el dueño puede mover el
+              regalo al 4º corte o bajar el 50% al 30%, y esto lo sigue. */}
           {tarjeta.tipo === "regalo" ? (
-            <span>Corte #5 · entregale el REGALO (el corte se cobra completo)</span>
+            <span>Corte #{tarjeta.posicion} · entregale el REGALO (el corte se cobra completo)</span>
           ) : (
             <span>
-              Corte #10 · −50% en el corte · −{cop(descuentoTarjeta)}
+              Corte #{tarjeta.posicion} · −{tarjeta.tipo} en el corte · −{cop(descuentoTarjeta)}
             </span>
           )}
         </div>

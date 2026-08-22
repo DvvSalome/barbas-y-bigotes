@@ -48,7 +48,9 @@ export type TarjetaClienteView = {
   cortesTotales: number;
   sellos: number;
   tarjetasCompletas: number;
-  proximo: { tipo: "regalo" | "50%"; faltan: number };
+  /** "regalo" o el porcentaje ("50%"), según lo que el dueño configuró (0064). */
+  proximo: { tipo: string; faltan: number; posicion: number } | null;
+  tamano: number;
 };
 
 export function ClienteDetalle({
@@ -440,14 +442,24 @@ function FidelidadTab({ d, tarjeta }: { d: Detalle; tarjeta: TarjetaClienteView 
       <div className="mb-5 rounded-2xl border border-line bg-panel p-5">
         <div className="text-xs uppercase tracking-wide text-muted">Tarjeta de cortes</div>
         <div className="mt-1 flex flex-wrap items-baseline gap-2">
-          <span className="font-display text-3xl font-bold tabular-nums text-accent-soft">{tarjeta.sellos}/10</span>
+          <span className="font-display text-3xl font-bold tabular-nums text-accent-soft">
+            {tarjeta.sellos}/{tarjeta.tamano}
+          </span>
           <span className="text-xs text-muted">
-            · {tarjeta.tarjetasCompletas} completada{tarjeta.tarjetasCompletas === 1 ? "" : "s"} · próximo:{" "}
-            {tarjeta.proximo.tipo === "50%" ? "50%" : "corte gratis"} en {tarjeta.proximo.faltan}
+            · {tarjeta.tarjetasCompletas} completada{tarjeta.tarjetasCompletas === 1 ? "" : "s"}
+            {tarjeta.proximo && (
+              <>
+                {" "}· próximo: {tarjeta.proximo.tipo === "regalo" ? "regalo" : tarjeta.proximo.tipo} en{" "}
+                {tarjeta.proximo.faltan}
+              </>
+            )}
           </span>
         </div>
         <p className="mt-1 text-xs text-muted">
-          {tarjeta.cortesTotales} corte{tarjeta.cortesTotales === 1 ? "" : "s"} en total. El 5º de cada ciclo va 50% y el 10º gratis (se aplica solo al cobrar).
+          {/* La regla ya no se escribe acá: la pone el dueño en Marketing → Tarjeta,
+              y repetirla a mano garantizaba que un día dijera algo distinto. */}
+          {tarjeta.cortesTotales} corte{tarjeta.cortesTotales === 1 ? "" : "s"} en total. Los premios se
+          aplican solos al cobrar.
         </p>
       </div>
 

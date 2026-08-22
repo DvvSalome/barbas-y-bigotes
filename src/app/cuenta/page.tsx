@@ -261,27 +261,21 @@ async function Portal({ clienteId, nombre, avatarUrl }: { clienteId: string; nom
           </Link>
         </div>
 
-        <TarjetaFidelidad sellos={tarjeta.sellos} nombre={nombre} />
+        <TarjetaFidelidad sellos={tarjeta.sellos} nombre={nombre} cfg={tarjeta.cfg} />
 
-        <p className="mt-4 text-sm text-muted">
-          {tarjeta.proximo.tipo === "regalo" ? (
-            <>
-              Faltan{" "}
-              <b className="text-accent-soft">
-                {tarjeta.proximo.faltan} corte{tarjeta.proximo.faltan === 1 ? "" : "s"}
-              </b>{" "}
-              para tu <b className="text-ink">regalo</b>. Al corte 10, el 50%.
-            </>
-          ) : (
-            <>
-              Faltan{" "}
-              <b className="text-accent-soft">
-                {tarjeta.proximo.faltan} corte{tarjeta.proximo.faltan === 1 ? "" : "s"}
-              </b>{" "}
-              para tu <b className="text-ink">50% de descuento</b>.
-            </>
-          )}
-        </p>
+        {tarjeta.proximo && (
+          <p className="mt-4 text-sm text-muted">
+            Faltan{" "}
+            <b className="text-accent-soft">
+              {tarjeta.proximo.faltan} corte{tarjeta.proximo.faltan === 1 ? "" : "s"}
+            </b>{" "}
+            para tu{" "}
+            <b className="text-ink">
+              {tarjeta.proximo.tipo === "regalo" ? "regalo" : `${tarjeta.proximo.tipo} de descuento`}
+            </b>
+            .
+          </p>
+        )}
       </section>
 
       {/* Próximas citas */}

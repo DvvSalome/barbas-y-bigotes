@@ -10,7 +10,13 @@ import {
   type TotalesPorMedio,
   type ItemComision,
 } from "@/lib/cobro";
-import { CERQUILLO_EXCLUIDOS, estadoTarjeta, TARJETA_SIZE, type BeneficioTarjeta } from "@/lib/tarjeta";
+import {
+  estadoTarjeta,
+  sanearConfigTarjeta,
+  TARJETA_DEFECTO,
+  type BeneficioTarjeta,
+  type ConfigTarjeta,
+} from "@/lib/tarjeta";
 import type { Sede, SedeId, Servicio, Barbero, Producto, Categoria, TipoContrato } from "./types";
 
 export async function getSedes(): Promise<Sede[]> {
@@ -28,7 +34,9 @@ export async function getServicios(): Promise<Servicio[]> {
   const sb = supabaseServer();
   const { data } = await sb
     .from("servicios")
-    .select("id,nombre,categoria,duracion_min,es_combo,desde,foto_url,descripcion,servicio_sede(sede_id,precio)")
+    .select(
+      "id,nombre,categoria,duracion_min,es_combo,desde,foto_url,descripcion,cuenta_corte,servicio_sede(sede_id,precio)",
+    )
     .eq("activo", true);
   return (data ?? []).map((s: Record<string, unknown>) => {
     const precios = {} as Record<SedeId, number>;
@@ -44,6 +52,7 @@ export async function getServicios(): Promise<Servicio[]> {
       desde: s.desde as boolean,
       fotoUrl: (s.foto_url as string) ?? null,
       descripcion: (s.descripcion as string) ?? null,
+      cuentaCorte: (s.cuenta_corte as boolean | null) ?? null,
       precios,
     };
   });
@@ -56,7 +65,9 @@ export async function getServiciosCatalogoAdmin(): Promise<Servicio[]> {
   const sb = supabaseServer();
   const { data } = await sb
     .from("servicios")
-    .select("id,nombre,categoria,duracion_min,es_combo,desde,activo,foto_url,descripcion,servicio_sede(sede_id,precio)")
+    .select(
+      "id,nombre,categoria,duracion_min,es_combo,desde,activo,foto_url,descripcion,cuenta_corte,servicio_sede(sede_id,precio)",
+    )
     .order("categoria");
   return (data ?? []).map((s: Record<string, unknown>) => {
     const precios = {} as Record<SedeId, number>;
@@ -73,6 +84,7 @@ export async function getServiciosCatalogoAdmin(): Promise<Servicio[]> {
       activo: s.activo as boolean,
       fotoUrl: (s.foto_url as string) ?? null,
       descripcion: (s.descripcion as string) ?? null,
+      cuentaCorte: (s.cuenta_corte as boolean | null) ?? null,
       precios,
     };
   });
@@ -1905,10 +1917,10 @@ export async function getCorteIds(sb: SupabaseClient): Promise<string[]> {
   } else {
     rows = (res.data ?? []) as { id: string; cuenta_corte: boolean | null }[];
   }
-  return rows
-    .filter((s) => s.cuenta_corte !== false)
-    .map((s) => s.id)
-    .filter((id) => !CERQUILLO_EXCLUIDOS.has(id));
+  // Antes también se filtraba con un Set de ids escrito a mano (los cerquillos).
+  // Eso ahora es dato: 0064 los marca cuenta_corte=false y el dueño puede cambiar
+  // cualquier servicio desde el catálogo.
+  return rows.filter((s) => s.cuenta_corte !== false).map((s) => s.id);
 }
 
 // Nº de ventas del cliente que incluyeron al menos un corte (1 sello por venta).
@@ -1936,17 +1948,39 @@ export async function precioCorteBase(sb: SupabaseClient, sede: string): Promise
   return (data as { precio?: number } | null)?.precio ?? 0;
 }
 
+/**
+ * Config de la tarjeta (0064). Singleton id=1. Si la fila no existe todavía —o
+ * quedó con una forma rara— se cae al comportamiento de siempre en vez de dejar
+ * al cobro sin regla: una tarjeta que no premia nada se nota tarde y con el
+ * cliente adelante.
+ */
+export async function getConfigTarjeta(): Promise<ConfigTarjeta> {
+  const { data, error } = await supabaseAdmin()
+    .from("ajustes_tarjeta")
+    .select("tamano,hitos")
+    .eq("id", 1)
+    .maybeSingle();
+  if (error) {
+    // Tabla todavía sin crear (deploy antes de la migración): no es motivo para
+    // romper el cobro ni el portal.
+    console.error("getConfigTarjeta:", error.message);
+    return TARJETA_DEFECTO;
+  }
+  return sanearConfigTarjeta(data) ?? TARJETA_DEFECTO;
+}
+
 // Estado de la tarjeta para el admin (solo lectura). Corre bajo la sesión del admin
 // (RLS le da todas las ventas del cliente); la página que lo llama es admin-only.
 export async function getTarjetaCliente(clienteRef: string) {
   const sb = await supabaseServerAuth();
-  const cortesTotales = await contarCortesCliente(sb, clienteRef);
-  const est = estadoTarjeta(cortesTotales);
+  const [cortesTotales, cfg] = await Promise.all([contarCortesCliente(sb, clienteRef), getConfigTarjeta()]);
+  const est = estadoTarjeta(cortesTotales, cfg);
   return {
     cortesTotales,
     sellos: est.sellos,
-    tarjetasCompletas: Math.floor(cortesTotales / TARJETA_SIZE),
+    tarjetasCompletas: Math.floor(cortesTotales / cfg.tamano),
     proximo: est.proximo,
+    tamano: cfg.tamano,
   };
 }
 
@@ -1956,7 +1990,13 @@ export type CuentaData = {
   pasadas: { id: string; inicio: string; estado: string; servicio: string; barbero: string }[];
   puntosBalance: number;
   puntos: { tipo: string; puntos: number; nota: string; fecha: string }[];
-  tarjeta: { cortes: number; sellos: number; proximo: { tipo: BeneficioTarjeta; faltan: number } };
+  tarjeta: {
+    cortes: number;
+    sellos: number;
+    /** null solo si la config se quedó sin premios. */
+    proximo: { tipo: BeneficioTarjeta; faltan: number; posicion: number } | null;
+    cfg: ConfigTarjeta;
+  };
   cola: { id: string; estado: string; servicio: string; barbero: string; fotoBarbero: string | null; creadoEn: string }[];
 };
 
@@ -2057,8 +2097,11 @@ export async function getCuenta(clienteRef: string): Promise<CuentaData> {
   }));
   // Tarjeta de cortes: sellos reales derivados de las ventas del propio cliente.
   const cortesTotales = await contarCortesCliente(sb, clienteRef);
-  const est = estadoTarjeta(cortesTotales);
-  const tarjeta = { cortes: cortesTotales, sellos: est.sellos, proximo: est.proximo };
+  const cfgTarjeta = await getConfigTarjeta();
+  const est = estadoTarjeta(cortesTotales, cfgTarjeta);
+  // `cfg` viaja al portal para que la tarjeta DIBUJADA tenga los mismos sellos y
+  // premios que aplica el cobro.
+  const tarjeta = { cortes: cortesTotales, sellos: est.sellos, proximo: est.proximo, cfg: cfgTarjeta };
   return { proximas, pasadas, puntosBalance, puntos, tarjeta, cola };
 }
 

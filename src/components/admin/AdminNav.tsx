@@ -43,6 +43,7 @@ const GRUPOS: readonly Grupo[] = [
     label: "Marketing",
     hijos: [
       { href: "/admin/cupones", label: "Cupones" },
+      { href: "/admin/tarjeta", label: "Tarjeta de cortes" },
       { href: "/admin/avisos", label: "Avisos al cliente" },
     ],
   },
