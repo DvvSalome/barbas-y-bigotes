@@ -17,6 +17,7 @@ python scripts/qa/areas-tactiles.py
 python scripts/qa/vuelta-de-google.py
 python scripts/qa/turnos-encadenados.py
 python scripts/qa/latencia-confirmacion.py     # contra producción por defecto
+node   scripts/qa/carreras.mjs                # no necesita navegador
 ```
 
 ## Qué mide cada uno
@@ -61,6 +62,21 @@ la vuelta del cron —hasta 60 s— y el check falla al pasar de 25. Si un día 
 borra la variable `N8N_WEBHOOK_CONFIRMACION` o el webhook deja de estar registrado
 en n8n, esto lo canta. Manda un correo real: por defecto a four4gsolutions@gmail.com
 (`DESTINO=` para cambiarlo). Medido el 22-ago: **2 segundos**.
+
+**`carreras.mjs`** — dispara carreras reales contra producción para comprobar que
+**dos clientes no se quedan con el mismo turno** y que **una cita no se cobra dos
+veces**: 8 reservas simultáneas al mismo cupo, una cita que se pisa 15 minutos con
+otra, cancelar y volver a reservar, 6 cobros simultáneos de la misma cita y 4 clics
+del mismo botón.
+
+Existe porque esas reglas **no viven en el código, viven en la base** (un `EXCLUDE`
+de Postgres para el solape, `ventas_reserva_unica` y `ventas_idem_unica` para el
+cobro). Eso es lo correcto —la pantalla puede mentir, la base no— pero tiene un
+costo: si una migración borra un índice, **nada falla**. La app sigue andando y un
+día aparecen dos clientes a la misma hora o una cita cobrada dos veces, sin error y
+sin log. Correr esto después de cualquier migración que toque `reservas` o `ventas`.
+
+No necesita navegador. Limpia todo lo que crea, incluso si algo revienta a mitad.
 
 ## Ojo con los datos
 
