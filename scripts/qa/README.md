@@ -78,6 +78,25 @@ sin log. Correr esto después de cualquier migración que toque `reservas` o `ve
 
 No necesita navegador. Limpia todo lo que crea, incluso si algo revienta a mitad.
 
+**`sesion-staff.mjs`** — la llave que faltaba para poder probar el **panel y el
+mostrador**, que están detrás de login. Deja una sesión real de staff lista para
+Playwright **sin usar la contraseña de nadie**: pide un enlace de un solo uso con
+la llave de servicio, lo canjea y escribe la cookie que espera `@supabase/ssr`.
+Es el mismo mecanismo que `barbero-auth.ts` usa para el login por PIN.
+
+```bash
+ROL=admin   node scripts/qa/sesion-staff.mjs   # dueño: /admin
+ROL=sede    node scripts/qa/sesion-staff.mjs   # mostrador de una sede: /barbero
+ROL=barbero node scripts/qa/sesion-staff.mjs   # un barbero
+```
+
+Deja `qa-out/cookies-<rol>.json` (ignorado por git) para cargarlo con
+`context.add_cookies(...)`. La sesión vence en una hora.
+
+Ojo con **qué ve cada rol**: el admin no tiene sede, así que en el mostrador ve las
+dos y **no** le aparecen el cierre de caja ni el registro de consumos —esos cuelgan
+de una sede—. Para probar esa parte hay que entrar con `ROL=sede`.
+
 ## Ojo con los datos
 
 Un recorrido que llega al final **crea una reserva de verdad** (las variables de
