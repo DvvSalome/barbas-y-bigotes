@@ -1980,15 +1980,25 @@ export async function completarReserva(input: {
   const items: Record<string, unknown>[] = [];
 
   // Comisión del barbero para los servicios (principal + adicionales).
+  //
+  // Va con supabaseAdmin() y NO con la sesión: `barberos` no le está concedida al
+  // rol del que cobra, así que con `sb` esta lectura devolvía null en silencio y
+  // el ítem se guardaba con 0% de comisión. Nadie se enteraba —no hay error, la
+  // venta se cierra igual— hasta que alguien mira la liquidación y ve que un
+  // barbero facturó $123.000 y le tocan $2.800. Mismo motivo por el que la
+  // tarjeta de cortes también cuenta con admin.
   const extras = [...new Set((input.serviciosExtra ?? []).filter(Boolean))];
   let barberComision = 0;
   if (barberoId && (servicioEfectivo || extras.length)) {
-    const { data: barb } = await sb
+    const { data: barb, error: barbErr } = await supabaseAdmin()
       .from("barberos")
       .select("tipo_contrato,comision_pct")
       .eq("id", barberoId)
       .maybeSingle();
     const barbRow = barb as { tipo_contrato?: string | null; comision_pct?: number | null } | null;
+    // Si no se pudo leer, se deja rastro: cobrar con 0% es plata que el barbero
+    // no ve, y el silencio es justo lo que hizo que durara meses.
+    if (barbErr || !barbRow) errorPublico("completarReserva comisión", barbErr ?? { message: "barbero no encontrado" });
     if (barbRow && barbRow.tipo_contrato === "porcentaje") {
       barberComision = barbRow.comision_pct != null ? Number(barbRow.comision_pct) : 50;
     }
