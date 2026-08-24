@@ -1,0 +1,625 @@
+<!doctype html>
+<html lang="es" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>De una barbería a muchas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Serif:ital,wght@0,400;0,600;1,400&display=swap">
+
+<style>
+  :root {
+    --papel:      #f2f4f4;
+    --superficie: #ffffff;
+    --hundido:    #e7ebeb;
+    --linea:      #d3dadb;
+    --tinta:      #14191a;
+    --tinta-2:    #4a5658;
+    --tinta-3:    #6f7c7e;
+    --acento:     #146b66;
+    --acento-sup: #e2efee;
+    --alerta:     #a8500c;
+    --alerta-sup: #f9ede2;
+    --peligro:    #a52822;
+    --sombra:     0 1px 2px rgba(20,25,26,.05), 0 8px 24px -16px rgba(20,25,26,.25);
+
+    --serif: "IBM Plex Serif", Georgia, "Times New Roman", serif;
+    --sans:  "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --mono:  "IBM Plex Mono", ui-monospace, "SFMono-Regular", Consolas, monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --papel:      #0e1314;
+      --superficie: #141b1c;
+      --hundido:    #101617;
+      --linea:      #253032;
+      --tinta:      #e8eeee;
+      --tinta-2:    #a9b7b8;
+      --tinta-3:    #7d8c8e;
+      --acento:     #5cc4bb;
+      --acento-sup: #122b2a;
+      --alerta:     #e0a266;
+      --alerta-sup: #2a1f13;
+      --peligro:    #ef7a72;
+      --sombra:     0 1px 2px rgba(0,0,0,.4), 0 10px 30px -18px rgba(0,0,0,.8);
+    }
+  }
+  :root[data-theme="dark"] {
+    --papel:      #0e1314;
+    --superficie: #141b1c;
+    --hundido:    #101617;
+    --linea:      #253032;
+    --tinta:      #e8eeee;
+    --tinta-2:    #a9b7b8;
+    --tinta-3:    #7d8c8e;
+    --acento:     #5cc4bb;
+    --acento-sup: #122b2a;
+    --alerta:     #e0a266;
+    --alerta-sup: #2a1f13;
+    --peligro:    #ef7a72;
+    --sombra:     0 1px 2px rgba(0,0,0,.4), 0 10px 30px -18px rgba(0,0,0,.8);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--papel);
+    color: var(--tinta);
+    font-family: var(--serif);
+    font-size: 17px;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .envoltura { max-width: 1080px; margin: 0 auto; padding: 0 24px 96px; }
+  .prosa { max-width: 68ch; }
+  .prosa p, .prosa ul, .prosa ol { margin: 0 0 1.05em; }
+  .prosa li { margin-bottom: .4em; }
+
+  /* ---------- cabecera ---------- */
+  .cabecera { padding: 72px 0 40px; border-bottom: 1px solid var(--linea); margin-bottom: 44px; }
+  .kicker {
+    font-family: var(--mono); font-size: 12px; font-weight: 500;
+    letter-spacing: .16em; text-transform: uppercase; color: var(--acento);
+    margin: 0 0 18px;
+  }
+  h1 {
+    font-family: var(--sans); font-weight: 700; font-size: clamp(34px, 5.5vw, 54px);
+    line-height: 1.05; letter-spacing: -.022em; margin: 0 0 20px; text-wrap: balance;
+  }
+  .bajada { font-size: 20px; line-height: 1.55; color: var(--tinta-2); margin: 0; max-width: 60ch; }
+  .meta {
+    display: flex; flex-wrap: wrap; gap: 8px 28px; margin-top: 28px;
+    font-family: var(--mono); font-size: 12.5px; color: var(--tinta-3);
+  }
+  .meta b { color: var(--tinta-2); font-weight: 500; }
+
+  /* ---------- estructura ---------- */
+  section { margin-bottom: 64px; scroll-margin-top: 24px; }
+  h2 {
+    font-family: var(--sans); font-weight: 600; font-size: 27px; letter-spacing: -.015em;
+    margin: 0 0 8px; text-wrap: balance; display: flex; align-items: baseline; gap: 14px;
+  }
+  h2 .num {
+    font-family: var(--mono); font-size: 13px; font-weight: 500; color: var(--acento);
+    letter-spacing: .04em; flex-shrink: 0;
+  }
+  h3 {
+    font-family: var(--sans); font-weight: 600; font-size: 18.5px; letter-spacing: -.01em;
+    margin: 32px 0 8px;
+  }
+  .sub { color: var(--tinta-3); font-size: 15.5px; margin: 0 0 26px; padding-left: 34px; }
+  @media (max-width: 620px) { .sub { padding-left: 0; } h2 { flex-direction: column; gap: 2px; } }
+
+  code {
+    font-family: var(--mono); font-size: .88em; background: var(--hundido);
+    border: 1px solid var(--linea); border-radius: 4px; padding: 1px 5px; color: var(--tinta);
+  }
+  pre {
+    font-family: var(--mono); font-size: 13.5px; line-height: 1.6;
+    background: var(--hundido); border: 1px solid var(--linea); border-radius: 8px;
+    padding: 16px 18px; overflow-x: auto; margin: 0 0 20px;
+  }
+  pre code { background: none; border: 0; padding: 0; font-size: inherit; }
+  .c-com { color: var(--tinta-3); }
+  .c-key { color: var(--acento); font-weight: 500; }
+
+  a { color: var(--acento); text-underline-offset: 3px; }
+  :focus-visible { outline: 2px solid var(--acento); outline-offset: 3px; border-radius: 3px; }
+
+  /* ---------- veredicto ---------- */
+  .veredicto {
+    background: var(--superficie); border: 1px solid var(--linea);
+    border-left: 3px solid var(--acento);
+    border-radius: 10px; padding: 26px 28px; box-shadow: var(--sombra); margin-bottom: 56px;
+  }
+  .veredicto p { margin: 0 0 .8em; }
+  .veredicto p:last-child { margin-bottom: 0; }
+  .veredicto strong { font-family: var(--sans); font-weight: 600; }
+
+  /* ---------- mapa de tablas ---------- */
+  .mapa { display: grid; gap: 18px; margin: 8px 0 24px; }
+  @media (min-width: 860px) { .mapa { grid-template-columns: repeat(3, 1fr); } }
+  .grupo {
+    background: var(--superficie); border: 1px solid var(--linea);
+    border-radius: 10px; padding: 18px 18px 20px; box-shadow: var(--sombra);
+  }
+  .grupo h4 {
+    font-family: var(--sans); font-size: 14px; font-weight: 600; margin: 0 0 3px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .punto { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+  .p-ancla { background: var(--acento); }
+  .p-sede  { background: var(--alerta); }
+  .p-padre { background: var(--tinta-3); }
+  .grupo .como { font-family: var(--mono); font-size: 11.5px; color: var(--tinta-3); margin: 0 0 14px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 5px; }
+  .chip {
+    font-family: var(--mono); font-size: 11.5px; padding: 3px 7px;
+    border: 1px solid var(--linea); border-radius: 5px; background: var(--hundido);
+    color: var(--tinta-2); white-space: nowrap;
+  }
+  .chip.marca { border-color: var(--acento); color: var(--acento); background: var(--acento-sup); }
+
+  /* ---------- trampas ---------- */
+  .trampa {
+    background: var(--alerta-sup); border: 1px solid var(--linea);
+    border-left: 3px solid var(--alerta); border-radius: 10px;
+    padding: 20px 24px; margin: 0 0 20px;
+  }
+  .trampa h3 { margin: 0 0 6px; color: var(--alerta); font-size: 17px; }
+  .trampa p { margin: 0 0 .7em; }
+  .trampa p:last-child { margin-bottom: 0; }
+  .trampa pre { background: var(--superficie); }
+
+  /* ---------- fases ---------- */
+  .fases { display: grid; gap: 2px; background: var(--linea); border: 1px solid var(--linea); border-radius: 10px; overflow: hidden; }
+  .fase { background: var(--superficie); padding: 20px 24px; display: grid; gap: 4px 20px; }
+  @media (min-width: 760px) { .fase { grid-template-columns: 132px 1fr; } }
+  .fase .etiqueta { font-family: var(--mono); font-size: 12px; color: var(--acento); letter-spacing: .04em; padding-top: 4px; }
+  .fase h4 { font-family: var(--sans); font-size: 16.5px; font-weight: 600; margin: 0 0 5px; }
+  .fase p { margin: 0 0 .55em; font-size: 15.5px; }
+  .fase p:last-child { margin-bottom: 0; }
+  .fase .desbloquea {
+    font-family: var(--sans); font-size: 13px; color: var(--tinta-3);
+    border-top: 1px dashed var(--linea); padding-top: 8px; margin-top: 10px;
+  }
+  .fase .desbloquea b { color: var(--tinta-2); font-weight: 600; }
+
+  /* ---------- tabla ---------- */
+  .tabla-envoltura { overflow-x: auto; margin: 0 0 22px; border: 1px solid var(--linea); border-radius: 10px; background: var(--superficie); }
+  table { border-collapse: collapse; width: 100%; font-family: var(--sans); font-size: 14.5px; }
+  th, td { text-align: left; padding: 11px 16px; border-bottom: 1px solid var(--linea); vertical-align: top; }
+  th { font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--tinta-3); background: var(--hundido); white-space: nowrap; }
+  tr:last-child td { border-bottom: 0; }
+  td code { font-size: 12.5px; }
+
+  .nota { font-size: 15px; color: var(--tinta-3); font-style: italic; }
+  hr { border: 0; border-top: 1px solid var(--linea); margin: 0 0 40px; }
+</style>
+
+  <style>
+    @page { size: A4; margin: 16mm 15mm 18mm; }
+    @media print {
+      html, body { background: #ffffff !important; }
+      .envoltura { max-width: none; padding: 0 0 0 0; }
+      .cabecera { padding-top: 0; }
+      /* Nada de cortes en seco: los bloques que se leen como una unidad
+         viajan enteros a la página siguiente. */
+      /* Solo los bloques ATÓMICOS viajan enteros. Poner esto en `section` era
+         demasiado grueso: empujaba secciones completas a la página siguiente y
+         dejaba media hoja en blanco cada vez. */
+      .veredicto, .grupo, .trampa, .fase, .tabla-envoltura, pre { break-inside: avoid; }
+      h2, h3, h4 { break-after: avoid; }
+      section { margin-bottom: 34px; }
+      .mapa { grid-template-columns: repeat(3, 1fr); }
+      .fase { grid-template-columns: 120px 1fr; }
+      body { font-size: 10.5pt; line-height: 1.55; }
+      h1 { font-size: 30pt; }
+      h2 { font-size: 16pt; }
+      pre, code { font-size: 8.6pt; }
+      .meta, .kicker { font-size: 8pt; }
+      a { text-decoration: none; }
+      .sombra, .veredicto, .grupo { box-shadow: none !important; }
+    }
+  </style>
+
+</head>
+<body>
+
+
+<div class="envoltura">
+
+  <header class="cabecera">
+    <p class="kicker">Arquitectura · Barbas &amp; Bigotes</p>
+    <h1>De una barbería a muchas</h1>
+    <p class="bajada">
+      Qué hace falta para que esta app deje de ser de un negocio y pase a ser de varios,
+      sin que ninguno vea la plata ni los clientes del otro.
+    </p>
+    <div class="meta">
+      <span><b>23</b> tablas hoy</span>
+      <span><b>2</b> sedes · <b>6</b> barberos</span>
+      <span><b>65</b> migraciones aplicadas</span>
+      <span>23 de agosto de 2026</span>
+    </div>
+  </header>
+
+  <div class="veredicto prosa">
+    <p><strong>Sí se puede, y estás a mitad de camino sin haberlo buscado.</strong></p>
+    <p>
+      La app ya piensa por <em>sedes</em>: casi todo lo operativo está acotado a un local y
+      hay guardas reales que lo hacen cumplir. Multitenencia es exactamente el mismo patrón
+      una capa más arriba. Lo difícil no es agregar la columna — es que la base defienda el
+      límite sola, sin depender de que el código se acuerde.
+    </p>
+    <p>
+      <strong>Pero no lo hagas todavía.</strong> Con dos o tres clientes sale más barato y más
+      seguro clonar el despliegue. Este esquema es para cuando quieras que alguien se registre
+      desde la web, o cuando aplicar migraciones a mano en N proyectos ya sea un trabajo.
+      Mientras tanto, la fase 0 —que es puro orden— hace que el día que decidas, sea barato.
+    </p>
+  </div>
+
+  <section id="modelo">
+    <h2><span class="num">01</span> El modelo</h2>
+    <p class="sub">Una base para todos, con la frontera puesta en el motor.</p>
+    <div class="prosa">
+      <p>
+        Hay dos formas de hacer esto y la elección define todo lo demás.
+      </p>
+      <div class="tabla-envoltura">
+        <table>
+          <thead>
+            <tr><th>Camino</th><th>A favor</th><th>En contra</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><b>Un despliegue por cliente</b><br><span class="nota">clonar lo que ya tenés</span></td>
+              <td>Imposible que se filtren datos entre negocios. Arranca en días. Cada uno con su marca y su dominio sin pelear.</td>
+              <td>N proyectos, N migraciones, N configuraciones de correo. A partir de ~10 es un trabajo de tiempo completo.</td>
+            </tr>
+            <tr>
+              <td><b>Una base compartida</b><br><span class="nota">lo que describe este documento</span></td>
+              <td>Una migración sirve para todos. Registro propio posible. Costo por cliente casi cero.</td>
+              <td>Un error en una política de seguridad es una fuga entre negocios. No perdona.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p>
+        Si vas a compartir base, la regla es una sola y no se negocia:
+        <strong>la frontera vive en Postgres, no en el código.</strong> El día que alguien
+        escriba una consulta sin el filtro —y va a pasar— la base tiene que devolver cero filas,
+        no los clientes del vecino.
+      </p>
+    </div>
+  </section>
+
+  <section id="mapa">
+    <h2><span class="num">02</span> Dónde va el dueño</h2>
+    <p class="sub">Las 23 tablas, agrupadas por cómo saben a qué negocio pertenecen.</p>
+
+    <div class="mapa">
+      <div class="grupo">
+        <h4><span class="punto p-ancla"></span> Ancla</h4>
+        <p class="como">tenant_id propio · sin padre</p>
+        <div class="chips">
+          <span class="chip marca">sedes</span>
+          <span class="chip marca">clientes</span>
+          <span class="chip marca">servicios</span>
+          <span class="chip marca">cupones</span>
+          <span class="chip marca">medios_pago</span>
+          <span class="chip marca">profiles</span>
+          <span class="chip marca">ajustes_avisos</span>
+          <span class="chip marca">ajustes_tarjeta</span>
+        </div>
+      </div>
+      <div class="grupo">
+        <h4><span class="punto p-sede"></span> Cuelgan de la sede</h4>
+        <p class="como">ya tienen sede_id</p>
+        <div class="chips">
+          <span class="chip">barberos</span>
+          <span class="chip">servicio_sede</span>
+          <span class="chip">productos</span>
+          <span class="chip">reservas</span>
+          <span class="chip">ventas</span>
+          <span class="chip">caja_sesiones</span>
+          <span class="chip">gastos</span>
+          <span class="chip">lista_espera</span>
+          <span class="chip">sede_horario_semanal</span>
+          <span class="chip">sede_dias_especiales</span>
+          <span class="chip">sede_pin</span>
+          <span class="chip">push_subscriptions</span>
+        </div>
+      </div>
+      <div class="grupo">
+        <h4><span class="punto p-padre"></span> Cuelgan de un padre</h4>
+        <p class="como">vía barbero, cliente o venta</p>
+        <div class="chips">
+          <span class="chip">venta_items</span>
+          <span class="chip">adelantos</span>
+          <span class="chip">consumos_barbero</span>
+          <span class="chip">barbero_ausencias</span>
+          <span class="chip">barbero_pin</span>
+          <span class="chip">stock_movimientos</span>
+          <span class="chip">puntos_mov</span>
+          <span class="chip">cliente_notas</span>
+          <span class="chip">cliente_resenas</span>
+          <span class="chip">cliente_wallet_mov</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="prosa">
+      <p>
+        La tentación es dejar que los dos últimos grupos deduzcan el dueño por su padre —
+        un <code>JOIN</code> hasta llegar a <code>sedes.tenant_id</code>. <strong>No lo hagas.</strong>
+        Una política de seguridad con un <code>JOIN</code> adentro se ejecuta por cada fila
+        leída, y basta un <code>LEFT JOIN</code> mal puesto para que una fila huérfana se
+        escape del filtro.
+      </p>
+      <p>
+        <strong>Poné <code>tenant_id</code> en las 23.</strong> Suena redundante y lo es —
+        a propósito. A cambio, toda política del sistema es la misma línea, usa un índice,
+        y no hay que razonar sobre nada:
+      </p>
+      <pre><code><span class="c-key">create policy</span> aisla_por_negocio <span class="c-key">on</span> public.ventas
+  <span class="c-key">for all to</span> authenticated
+  <span class="c-key">using</span> (tenant_id = public.tenant_actual())
+  <span class="c-key">with check</span> (tenant_id = public.tenant_actual());</code></pre>
+      <p>
+        Y el <code>tenant_id</code> no lo manda la app: lo pone la base sola, así que ninguna
+        inserción puede olvidarse de él.
+      </p>
+      <pre><code><span class="c-key">alter table</span> public.ventas
+  <span class="c-key">add column</span> tenant_id uuid <span class="c-key">not null</span>
+  <span class="c-key">default</span> public.tenant_actual()
+  <span class="c-key">references</span> public.tenants(id);</code></pre>
+    </div>
+  </section>
+
+  <section id="quien">
+    <h2><span class="num">03</span> Quién pregunta</h2>
+    <p class="sub">Dos caminos entran a la base, y solo uno tiene sesión.</p>
+    <div class="prosa">
+      <p>
+        <code>tenant_actual()</code> resuelve el negocio del que pregunta. Para el
+        <b>staff</b> sale de su perfil, y conviene fijarlo como <em>claim</em> en el token para
+        no pagar una consulta por cada fila:
+      </p>
+      <pre><code><span class="c-key">create function</span> public.tenant_actual() <span class="c-key">returns</span> uuid
+<span class="c-key">language</span> sql <span class="c-key">stable security definer</span> <span class="c-key">set</span> search_path = <span class="c-com">''</span>
+<span class="c-key">as</span> $$
+  <span class="c-key">select</span> nullif(auth.jwt() -&gt; <span class="c-com">'app_metadata'</span> -&gt;&gt; <span class="c-com">'tenant_id'</span>, <span class="c-com">''</span>)::uuid
+$$;</code></pre>
+      <p>
+        El <b>cliente que reserva</b> es otra historia, y acá está el punto que más se subestima:
+        <strong>el sitio público escribe con <code>service_role</code>, que se salta la RLS por
+        diseño.</strong> Ahí la base no te protege — el dueño lo decide el dominio por el que entró
+        y lo impone el código.
+      </p>
+      <p>
+        Por eso el <code>tenant_id</code> de la reserva pública tiene que resolverse en un
+        <em>único</em> lugar —el middleware que ya existe en <code>proxy.ts</code>, mapeando
+        el host a su negocio— y viajar desde ahí. Ninguna acción pública debería aceptar un
+        <code>tenant_id</code> que venga del navegador.
+      </p>
+      <div class="tabla-envoltura">
+        <table>
+          <thead><tr><th>Quién entra</th><th>Cómo se sabe el negocio</th><th>Qué lo protege</th></tr></thead>
+          <tbody>
+            <tr><td>Dueño y barberos</td><td>claim del token</td><td>RLS</td></tr>
+            <tr><td>Cliente con cuenta</td><td>claim del token</td><td>RLS</td></tr>
+            <tr><td>Cliente reservando</td><td>dominio → middleware</td><td><b>solo el código</b></td></tr>
+            <tr><td>Los crones de correo</td><td>recorren todos los negocios</td><td>ninguno: son de servicio</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section id="trampas">
+    <h2><span class="num">04</span> Las tres trampas</h2>
+    <p class="sub">Están en el esquema de hoy y ninguna avisa cuando explota.</p>
+
+    <div class="trampa prosa">
+      <h3>Los identificadores son palabras, no números</h3>
+      <p>
+        <code>sedes.id</code> y <code>servicios.id</code> son texto:
+        <code>'parque-venezuela'</code>, <code>'cerquillo'</code>. Funciona hermoso con un
+        negocio y revienta con dos: <b>toda barbería quiere un servicio llamado
+        <code>corte</code></b>, y la segunda que lo intente choca contra la llave primaria.
+      </p>
+      <p>
+        Se arregla de una de dos formas: llave compuesta <code>(tenant_id, id)</code> —barata,
+        pero contagia el <code>tenant_id</code> a cada clave foránea— o pasar a <code>uuid</code>
+        y dejar el slug como columna de display. <b>La segunda es la correcta y hay que hacerla
+        antes de tener datos de varios negocios</b>, porque después es una migración con
+        reescritura de todas las referencias.
+      </p>
+    </div>
+
+    <div class="trampa prosa">
+      <h3>El teléfono del cliente es único en todo el sistema</h3>
+      <p>
+        <code>clientes.telefono</code> tiene un <code>unique</code> global. Hoy tiene sentido.
+        Con dos negocios significa que <b>si un cliente va a las dos barberías, la segunda no
+        puede darlo de alta</b> — o peor, termina compartiendo ficha, historial y tarjeta de
+        fidelidad con el negocio de al lado.
+      </p>
+      <pre><code><span class="c-key">alter table</span> public.clientes
+  <span class="c-key">drop constraint</span> clientes_telefono_key,
+  <span class="c-key">add constraint</span> clientes_telefono_por_negocio
+    <span class="c-key">unique</span> (tenant_id, telefono);</code></pre>
+      <p class="nota">
+        Lo mismo vale para el <code>upsert_cliente</code> que hace la deduplicación por teléfono:
+        hoy busca en toda la tabla.
+      </p>
+    </div>
+
+    <div class="trampa prosa">
+      <h3>La configuración es una sola fila</h3>
+      <p>
+        <code>ajustes_tarjeta</code> y <code>ajustes_avisos</code> son literalmente
+        <code>check (id = 1)</code>: <b>una tarjeta de fidelidad y una regla de avisos para todo
+        el sistema.</b> Pasan a ser una fila por negocio, con <code>tenant_id</code> de llave
+        primaria. Es el cambio más fácil de los tres, y el más fácil de olvidar — porque no
+        falla: simplemente todos los negocios comparten la promoción del primero.
+      </p>
+    </div>
+
+    <div class="prosa">
+      <p class="nota">
+        Lo que <em>no</em> es trampa: <code>reservas_no_overlap</code> sigue siendo correcto tal
+        como está. Acota por <code>barbero_id</code>, y un barbero pertenece a una sede que
+        pertenece a un negocio — el aislamiento le llega heredado.
+      </p>
+    </div>
+  </section>
+
+  <section id="correo">
+    <h2><span class="num">05</span> El correo no escala como está</h2>
+    <p class="sub">Es la pieza que hoy no se puede clonar ni compartir.</p>
+    <div class="prosa">
+      <p>
+        Cinco workflows de n8n atados a este negocio, una credencial SMTP, y
+        <strong>las plantillas viven dentro de n8n</strong> — no en el repositorio. Con un
+        cliente más ya duele: o clonás los cinco por cliente (no escala), o los reescribís.
+      </p>
+      <p>La forma que aguanta:</p>
+      <ul>
+        <li><b>Las plantillas al repositorio.</b> Versionadas, revisables, probables. Dos de las cinco ya están en <code>docs/emails/</code>.</li>
+        <li><b>El remitente, en la base.</b> Una tabla <code>tenant_correo</code> con el dominio, el remitente y las credenciales de cada negocio.</li>
+        <li><b>Un workflow por evento, no por cliente.</b> La cola ya devuelve el <code>tenant_id</code>; el workflow elige remitente y plantilla con ese dato.</li>
+      </ul>
+      <p>
+        A esa altura conviene preguntarse si n8n sigue siendo el lugar. Mandar desde la app con
+        un proveedor transaccional saca un salto del camino crítico y te deja registro de cada
+        correo enviado — que es justo lo que faltó durante los cuatro días de agosto en que el
+        buzón estuvo suspendido.
+      </p>
+    </div>
+  </section>
+
+  <section id="fases">
+    <h2><span class="num">06</span> El plan</h2>
+    <p class="sub">En orden. Cada fase deja algo servible aunque pares ahí.</p>
+
+    <div class="fases">
+      <div class="fase">
+        <div class="etiqueta">FASE 0</div>
+        <div>
+          <h4>Ordenar sin cambiar nada</h4>
+          <p>
+            Sacar las plantillas de correo de n8n. Una sola fuente para la marca (nombre,
+            colores, logo, dominio) en vez de 20 archivos. Matar las 58 referencias a
+            <code>parque-venezuela</code> y <code>plaza-de-la-paz</code> quemadas en el código —
+            <code>getSedes()</code> ya existe. Seguir metiendo reglas en tablas, no en constantes.
+          </p>
+          <p class="desbloquea"><b>Desbloquea:</b> clonar para un segundo cliente pasa de reescribir medio proyecto a cambiar un archivo de marca. Sirve aunque nunca hagas multitenencia.</p>
+        </div>
+      </div>
+
+      <div class="fase">
+        <div class="etiqueta">FASE 1</div>
+        <div>
+          <h4>Las llaves, antes de que haya datos ajenos</h4>
+          <p>
+            <code>sedes.id</code> y <code>servicios.id</code> a <code>uuid</code>, con el slug
+            como columna aparte. Es la migración más invasiva de todo el plan y la única que
+            <b>se vuelve exponencialmente más cara con cada mes que pasa</b>.
+          </p>
+          <p class="desbloquea"><b>Desbloquea:</b> que dos negocios puedan tener un servicio llamado igual.</p>
+        </div>
+      </div>
+
+      <div class="fase">
+        <div class="etiqueta">FASE 2</div>
+        <div>
+          <h4>La columna y el relleno</h4>
+          <p>
+            Crear <code>tenants</code>, meter a Barbas como el primero, agregar
+            <code>tenant_id</code> a las 23 tablas y rellenarlo con ese id.
+            <b>Sin RLS todavía</b> — la app sigue funcionando exactamente igual mientras tanto.
+            Índice <code>(tenant_id, …)</code> en las tablas calientes.
+          </p>
+          <p class="desbloquea"><b>Desbloquea:</b> nada visible. Es el andamio, y se puede hacer sin ventana de mantenimiento.</p>
+        </div>
+      </div>
+
+      <div class="fase">
+        <div class="etiqueta">FASE 3</div>
+        <div>
+          <h4>Cerrar la frontera</h4>
+          <p>
+            <code>tenant_actual()</code>, el claim en el token, y reescribir las políticas de las
+            12 tablas sensibles. Arreglar el único del teléfono y los singletons de configuración.
+            <b>Acá es donde se rompe todo si se rompe</b>: con un solo negocio en la base,
+            un error de política se ve como "no hay datos", no como una fuga — así que hay que
+            probarlo con dos negocios de mentira antes de creerle.
+          </p>
+          <p class="desbloquea"><b>Desbloquea:</b> el aislamiento real. La base deja de confiar en el código.</p>
+        </div>
+      </div>
+
+      <div class="fase">
+        <div class="etiqueta">FASE 4</div>
+        <div>
+          <h4>Una puerta por negocio</h4>
+          <p>
+            El middleware resuelve el host y de ahí sale el negocio para todo el camino público.
+            Marca, dominio y correo por cliente. El panel deja de ser "el admin" y pasa a ser
+            "el admin de este negocio".
+          </p>
+          <p class="desbloquea"><b>Desbloquea:</b> el segundo cliente entra sin tocar código.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="pruebas">
+    <h2><span class="num">07</span> Cómo se prueba que aísla</h2>
+    <p class="sub">La parte que casi nadie escribe, y la única que atrapa una fuga.</p>
+    <div class="prosa">
+      <p>
+        Un error de aislamiento <b>no falla: devuelve datos de más.</b> Nadie lo ve hasta que un
+        cliente lo ve. La app ya tiene el molde para esto en
+        <code>scripts/qa/carreras.mjs</code>, que dispara carreras reales para comprobar que dos
+        clientes no se quedan con el mismo turno. El equivalente para multitenencia:
+      </p>
+      <ul>
+        <li>Crear <b>dos negocios de prueba</b> con datos propios.</li>
+        <li>Con la sesión del negocio A, recorrer <b>las 23 tablas</b> y exigir cero filas del negocio B.</li>
+        <li>Intentar escribir en una fila de B con la sesión de A — tiene que rebotar, no ignorarse.</li>
+        <li>Reservar por el sitio público de A y verificar que la cita quedó en A.</li>
+        <li>Correrlo <b>después de cada migración</b>, como el de carreras.</li>
+      </ul>
+      <p>
+        Sin esa prueba, la multitenencia es una promesa. Con ella, es una propiedad verificada.
+      </p>
+    </div>
+  </section>
+
+  <hr>
+
+  <section id="cierre" style="margin-bottom:0">
+    <div class="prosa">
+      <h3 style="margin-top:0">Si mañana hay que decidir</h3>
+      <p>
+        Hacé la <b>fase 0</b> igual: es orden, sirve para las dos rutas y no compromete nada.
+        Hacé la <b>fase 1</b> antes de firmar el segundo cliente, porque es la única que se
+        encarece sola con el tiempo. Y no toques las fases 2 a 4 hasta que tener varios
+        despliegues te esté doliendo de verdad — la complejidad se paga todos los días, y el
+        aislamiento se paga una vez, pero se cobra caro si sale mal.
+      </p>
+    </div>
+  </section>
+
+</div>
+
+</body>
+</html>
