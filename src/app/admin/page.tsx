@@ -625,9 +625,16 @@ export default async function AdminHoy({
           <section aria-label="Caja">
             <h2 className={`${SEC} mb-2.5`}>
               <span>Caja</span>
-              <Link href="/admin/cuadre" className={SEC_ACTION}>
-                Cuadre manual
-              </Link>
+              <span className="flex items-center gap-3">
+                {/* El gasto suelto (la botella de agua) tiene su atajo directo:
+                    antes había que saber que vivía dentro del cuadre. */}
+                <Link href="/admin/cuadre#registrar" className={SEC_ACTION}>
+                  + Gasto
+                </Link>
+                <Link href="/admin/cuadre" className={SEC_ACTION}>
+                  Cuadre manual
+                </Link>
+              </span>
             </h2>
             <div className={PANEL}>
               {caja.map((c) => (

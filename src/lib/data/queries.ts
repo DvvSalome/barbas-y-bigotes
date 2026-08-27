@@ -5,6 +5,7 @@ import {
   totalesPorMedio,
   totalDeMedio,
   snapshotDinero,
+  sumaGastosEfectivo,
   comisionDeItems,
   netoLiquidacion,
   type TotalesPorMedio,
@@ -142,6 +143,24 @@ export async function getBarberos(): Promise<Barbero[]> {
     .order("sede_id")
     .order("orden");
   return (data ?? []).map((b) => mapBarberoPublico(b as Record<string, unknown>));
+}
+
+// Correo de avisos por barbero (barbero_contacto, 0066). La tabla es RLS-cerrada
+// (solo service_role), así que se lee igual que los contratos (0049): service
+// role SOLO tras confirmar que quien pide es admin. Lo usa /admin/equipo.
+export async function getEmailsBarberos(): Promise<Record<string, string>> {
+  const auth = await supabaseServerAuth();
+  const {
+    data: { user },
+  } = await auth.auth.getUser();
+  if (!user) return {};
+  const { data: prof } = await auth.from("profiles").select("rol").eq("auth_id", user.id).maybeSingle();
+  if ((prof as { rol?: string } | null)?.rol !== "admin") return {};
+  // Antes de aplicar 0066 la tabla no existe: {} y la pantalla vive igual.
+  const { data } = await supabaseAdmin().from("barbero_contacto").select("barbero_id,email");
+  return Object.fromEntries(
+    ((data ?? []) as { barbero_id: string; email: string }[]).map((r) => [r.barbero_id, r.email]),
+  );
 }
 
 export type BarberoConContrato = Barbero & { tipoContrato: TipoContrato };
@@ -491,7 +510,15 @@ export async function getAgendaSedeRango(sedeId: string, desdeYmd: string, dias:
   }));
 }
 
-export type AdelantoHoy = { id: string; barbero: string; monto: number; nota: string | null; creadoEn: string };
+export type AdelantoHoy = {
+  id: string;
+  barbero: string;
+  monto: number;
+  nota: string | null;
+  creadoEn: string;
+  /** Con qué se pagó (0067); null en filas de antes (eran efectivo). */
+  medio: string | null;
+};
 
 // Adelantos registrados HOY (día civil Bogotá), con el nombre del barbero. El
 // cuadre los lista para que registrar un adelanto deje rastro visible (antes no
@@ -501,7 +528,8 @@ export async function getAdelantosHoy(): Promise<AdelantoHoy[]> {
   const { desde, hasta } = bogotaDayRange();
   const { data, error } = await admin
     .from("adelantos")
-    .select("id,monto,nota,creado_en,barberos(nombre)")
+    // select("*") tolera que `medio` (0067) aún no exista.
+    .select("*,barberos(nombre)")
     .gte("creado_en", desde.toISOString())
     .lt("creado_en", hasta.toISOString())
     .order("creado_en", { ascending: false });
@@ -512,6 +540,7 @@ export async function getAdelantosHoy(): Promise<AdelantoHoy[]> {
     monto: a.monto as number,
     nota: (a.nota as string) ?? null,
     creadoEn: a.creado_en as string,
+    medio: (a.medio as string) ?? null,
   }));
 }
 
@@ -690,9 +719,10 @@ export async function getCuadre() {
     // ventas y el cierre de caja. Antes se filtraba por la columna `fecha` (date con
     // default current_date en UTC) con un `>=` abierto: un gasto de la noche quedaba
     // fechado el día siguiente y, sin cota superior, se contaba HOY y MAÑANA.
+    // select("*") a propósito: tolera que `medio` (0067) aún no exista.
     sb
       .from("gastos")
-      .select("id,sede_id,categoria,descripcion,monto")
+      .select("*")
       .gte("creado_en", desde.toISOString())
       .lt("creado_en", hasta.toISOString()),
   ]);
@@ -703,6 +733,7 @@ export async function getCuadre() {
     categoria: string;
     descripcion: string | null;
     monto: number;
+    medio?: string | null;
   }[];
 
   const porSede: CuadreSede[] = ((sedesRes.data ?? []) as { id: string; nombre: string }[]).map((s) => {
@@ -875,10 +906,12 @@ export async function getCajaSesiones(): Promise<CajaSesionSede[]> {
             .eq("sede_id", s.id)
             .gte("creado_en", start)
             .then((r) => (r.data ?? []) as unknown as Record<string, unknown>[]),
-      sb.from("gastos").select("monto").eq("sede_id", s.id).gte("creado_en", start),
+      sb.from("gastos").select("*").eq("sede_id", s.id).gte("creado_en", start),
     ]);
     const vs = vsRaw as { medio: string; total: number; propina: number | null; propinaMedio: string | null }[];
-    const totalGastos = ((gastosRes.data ?? []) as { monto: number }[]).reduce((a, g) => a + g.monto, 0);
+    // Del cajón solo salió lo pagado en efectivo (0067); un gasto por Nequi no
+    // puede inventar un faltante en el cierre.
+    const totalGastos = sumaGastosEfectivo((gastosRes.data ?? []) as { monto: number; medio?: string | null }[]);
     const montoApertura = sess?.monto_apertura ?? 0;
     const snap = snapshotDinero(vs, { montoApertura, totalGastos });
     out.push({
@@ -932,10 +965,10 @@ export async function getCajaSede(sedeId: string): Promise<CajaSedeEstado> {
   // "esperado" que no coincide con lo que sale al cerrar.
   const [vsRaw, gastosRes] = await Promise.all([
     ventasDeSesion(admin, sedeId, ses.id, ses.abierta_en, "medio,total,propina,propinaMedio:propina_medio,pagos"),
-    admin.from("gastos").select("monto").eq("sede_id", sedeId).gte("creado_en", ses.abierta_en),
+    admin.from("gastos").select("*").eq("sede_id", sedeId).gte("creado_en", ses.abierta_en),
   ]);
   const vs = vsRaw as { medio: string; total: number; propina: number | null; propinaMedio: string | null }[];
-  const totalGastos = ((gastosRes.data ?? []) as { monto: number }[]).reduce((a, g) => a + g.monto, 0);
+  const totalGastos = sumaGastosEfectivo((gastosRes.data ?? []) as { monto: number; medio?: string | null }[]);
   const { esperadoEfectivo, ingresos } = snapshotDinero(vs, {
     montoApertura: ses.monto_apertura ?? 0,
     totalGastos,

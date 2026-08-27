@@ -8,7 +8,7 @@
 //
 // (Node ≥23.6 corre TypeScript directo con type stripping; no requiere build.)
 import assert from "node:assert/strict";
-import { snapshotDinero, diferenciaCaja, repartoDeVenta, totalDeMedio } from "../src/lib/cobro.ts";
+import { snapshotDinero, diferenciaCaja, repartoDeVenta, totalDeMedio, sumaGastosEfectivo } from "../src/lib/cobro.ts";
 
 // (a) Caja mixta: el esperado en el cajón es SOLO efectivo + propina en efectivo.
 {
@@ -194,6 +194,24 @@ for (const basura of [null, "efectivo", 42, [], [{ medio: "efectivo" }], [{ mont
   assert.equal(s2.esperadoEfectivo, 10000, "5 mil de la parte en efectivo + 5 mil de propina");
 }
 
+
+// Del cajón solo descuenta lo pagado en EFECTIVO (0067): un gasto por Nequi no
+// puede inventar un faltante en el cierre. Filas viejas (sin medio) eran efectivo.
+{
+  const gastos = [
+    { monto: 5000, medio: "efectivo" },
+    { monto: 8000, medio: "nequi" },
+    { monto: 2000, medio: null },
+    { monto: 3000 },
+  ];
+  assert.equal(sumaGastosEfectivo(gastos), 10000, "efectivo + filas viejas; el Nequi no toca el cajón");
+  assert.equal(sumaGastosEfectivo([]), 0, "sin gastos, cero");
+  const s3 = snapshotDinero([{ medio: "efectivo", total: 50000 }], {
+    montoApertura: 20000,
+    totalGastos: sumaGastosEfectivo(gastos),
+  });
+  assert.equal(s3.esperadoEfectivo, 60000, "20 de fondo + 50 cobrados − 10 gastados del cajón");
+}
 
 console.log(
   "check-caja OK — esperado/diferencia, y el cobro mixto reparte por medio sin inventar plata",

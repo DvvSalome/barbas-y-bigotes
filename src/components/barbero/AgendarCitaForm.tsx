@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { getDisponibilidad, agendarCita } from "@/lib/actions";
+import { getDisponibilidad, agendarCita, buscarClientesStaff } from "@/lib/actions";
 import {
   DOW,
   fmtTime,
   slotsDisponibles,
   computeTaken,
+  chocaConOcupados,
+  instantePasado,
   nextDays,
   horarioEfectivo,
   instanteBogota,
@@ -31,8 +33,11 @@ function dayLabel(d: Date): string {
   const hoy = new Date();
   const man = new Date(hoy);
   man.setDate(hoy.getDate() + 1);
+  const ayer = new Date(hoy);
+  ayer.setDate(hoy.getDate() - 1);
   if (d.toDateString() === hoy.toDateString()) return "Hoy";
   if (d.toDateString() === man.toDateString()) return "Mañana";
+  if (d.toDateString() === ayer.toDateString()) return "Ayer";
   return `${DOW[d.getDay()]} ${d.getDate()}`;
 }
 
@@ -77,6 +82,17 @@ export function AgendarCitaForm({
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const reqId = useRef(0);
+  // Desplegable de clientes registrados: se escribe el nombre (o el teléfono) y
+  // salen las fichas que ya existen; elegir una llena los tres campos. El dedup
+  // real sigue siendo por teléfono en el server — esto solo evita re-tipear.
+  // Las filas se guardan CON su query: el render solo muestra las que responden
+  // a lo que está escrito ahora (nada de resultados viejos ni setState síncrono).
+  const [busca, setBusca] = useState<{
+    q: string;
+    filas: { id: string; nombre: string; telefono: string | null; email: string | null }[];
+  }>({ q: "", filas: [] });
+  const [clienteElegido, setClienteElegido] = useState<string | null>(null);
+  const busquedaId = useRef(0);
 
   const servicio = serviciosSede.find((s) => s.id === servicioId) ?? null;
   // Duración a medida de ESTA cita. null = la del catálogo, así cambiar de
@@ -84,11 +100,21 @@ export function AgendarCitaForm({
   const [durManual, setDurManual] = useState<number | null>(null);
   const dur = durManual ?? servicio?.duracionMin ?? 30;
 
-  // Próximos días que la sede ABRE (mismo criterio que el wizard).
-  const dias = useMemo(
-    () => nextDays(14).filter((d) => horarioEfectivo(ymdLocal(d), horarioSemanal, diasEspeciales).abierta),
-    [horarioSemanal, diasEspeciales],
-  );
+  // Próximos días que la sede ABRE (mismo criterio que el wizard) MÁS dos días
+  // hacia atrás: el mostrador también registra el corte de ayer que se olvidó
+  // anotar. El servidor acepta hasta una semana; dos chips alcanzan para el caso
+  // real sin llenar la fila de pasado.
+  const dias = useMemo(() => {
+    const hoy = new Date();
+    const atras = [2, 1].map((n) => {
+      const d = new Date(hoy);
+      d.setDate(hoy.getDate() - n);
+      return d;
+    });
+    return [...atras, ...nextDays(14)].filter(
+      (d) => horarioEfectivo(ymdLocal(d), horarioSemanal, diasEspeciales).abierta,
+    );
+  }, [horarioSemanal, diasEspeciales]);
 
   // Turnos del día elegido: la grilla MÁS el instante en que se desocupa la
   // silla, para poder encadenar al cliente que sigue sin dejar huecos muertos.
@@ -99,11 +125,12 @@ export function AgendarCitaForm({
   }, [day, dur, horarioSemanal, diasEspeciales, ocupados]);
 
   const taken = day ? computeTaken({ slots, ocupados, day, duracionMin: dur }) : new Set<number>();
-  // La hora escrita a mano no está en la grilla, así que `taken` no la cubre: se
-  // chequea aparte con la MISMA función, para avisar antes de que el servidor la
-  // rebote (computeTaken también marca las horas ya pasadas de hoy).
-  const chocaElegido =
-    slot !== null && day ? computeTaken({ slots: [slot], ocupados, day, duracionMin: dur }).has(slot) : false;
+  // La hora escrita a mano no está en la grilla, así que `taken` no la cubre. Se
+  // separan las DOS razones que antes iban juntas: "ocupado" bloquea de verdad
+  // (el servidor la va a rebotar); "ya pasó" solo informa — registrar el corte
+  // de hace un rato (o de ayer) ahora es un caso soportado.
+  const chocaOcupado = slot !== null ? chocaConOcupados(slot, dur, ocupados) : false;
+  const yaPaso = slot !== null && day ? instantePasado(ymdLocal(day), slot) : false;
 
   // Al cambiar barbero o día, traer su ocupación (guard de carrera reqId). Sin
   // setState síncrono en el cuerpo del effect (regla del React Compiler).
@@ -123,11 +150,28 @@ export function AgendarCitaForm({
       });
   }, [day, barberoId]);
 
-  // Preselecciona el día pedido (calendario) o el primer día abierto.
+  // Buscar clientes mientras se escribe el nombre (300ms de respiro + guard de
+  // carrera): con ficha ya elegida no se busca más hasta que vuelvan a tipear.
+  useEffect(() => {
+    const t = nombre.trim();
+    if (clienteElegido || t.length < 2) return; // el render ya no muestra nada
+    const h = setTimeout(async () => {
+      const my = ++busquedaId.current;
+      const r = await buscarClientesStaff(t);
+      if (my === busquedaId.current) setBusca({ q: t, filas: r });
+    }, 300);
+    return () => clearTimeout(h);
+  }, [nombre, clienteElegido]);
+
+  const sugerencias = !clienteElegido && busca.q === nombre.trim() ? busca.filas : [];
+
+  // Preselecciona el día pedido (calendario) o HOY (la lista ahora arranca en
+  // anteayer, así que "el primero" ya no es el de siempre).
   useEffect(() => {
     const pref = diaInicial && dias.find((d) => d.toDateString() === diaInicial.toDateString());
+    const hoy = dias.find((d) => d.toDateString() === new Date().toDateString());
     // eslint-disable-next-line react-hooks/set-state-in-effect -- preselección de UX al montar (no cascada real)
-    if (!day && dias.length) setDay(pref ?? dias[0]);
+    if (!day && dias.length) setDay(pref ?? hoy ?? dias[0]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dias]);
 
@@ -304,18 +348,54 @@ export function AgendarCitaForm({
               </>
             )}
           </p>
-          {chocaElegido && (
+          {chocaOcupado && (
             <p className="col-span-2 text-[12px] font-semibold text-warn">
-              A esa hora el barbero está ocupado (o ya pasó). Elegí otra.
+              A esa hora el barbero está ocupado. Elegí otra.
+            </p>
+          )}
+          {!chocaOcupado && yaPaso && (
+            <p className="col-span-2 text-[12px] text-muted">
+              Esa hora ya pasó: la cita queda registrada como un corte ya hecho (después se cobra desde Turnos).
             </p>
           )}
         </div>
       </div>
 
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-        <div>
+        <div className="relative">
           <div className={sLabel}>Nombre del cliente</div>
-          <input value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Ej: Andrés" className={input} />
+          <input
+            value={nombre}
+            onChange={(e) => {
+              setNombre(e.target.value);
+              setClienteElegido(null);
+            }}
+            placeholder="Escribí y salen los registrados"
+            className={input}
+          />
+          {sugerencias.length > 0 && (
+            <div className="absolute left-0 right-0 z-20 mt-1 overflow-hidden rounded-xl border border-line bg-elevated shadow-lg">
+              {sugerencias.map((c) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => {
+                    setNombre(c.nombre);
+                    setTelefono(c.telefono ?? "");
+                    setEmail(c.email ?? "");
+                    setClienteElegido(c.id); // elegir oculta el desplegable (derivado)
+                  }}
+                  className="flex min-h-11 w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm transition hover:bg-bg"
+                >
+                  <span className="truncate font-semibold text-ink">{c.nombre}</span>
+                  <span className="shrink-0 text-xs text-muted tabular-nums">{c.telefono ?? "sin tel."}</span>
+                </button>
+              ))}
+            </div>
+          )}
+          {clienteElegido && (
+            <p className="mt-1 text-[11px] text-muted">Cliente registrado ✓ — la cita va a su ficha.</p>
+          )}
         </div>
         <div>
           <div className={sLabel}>Teléfono (WhatsApp)</div>

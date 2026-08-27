@@ -260,6 +260,28 @@ export function computeTaken(params: {
   return s;
 }
 
+/** ¿Ese día+minuto (en Bogotá) ya quedó atrás? Para el aviso "ya pasó" del form
+ *  del mostrador (el React Compiler no deja llamar Date.now() en el render). */
+export function instantePasado(ymd: string, minuto: number): boolean {
+  return instanteBogota(ymd, minuto).getTime() <= Date.now();
+}
+
+/** ¿[minInicio, minInicio+dur) pisa alguno de los rangos ocupados? Es el mismo
+ *  solape de computeTaken pero SIN el "ya pasó": el mostrador también registra
+ *  cortes ya hechos (la cita de ayer que se olvidó anotar) y necesita separar
+ *  "ocupado" (bloquea de verdad) de "pasado" (se permite, solo se avisa). */
+export function chocaConOcupados(
+  minInicio: number,
+  duracionMin: number,
+  ocupados: { inicio: string; fin: string }[],
+): boolean {
+  return ocupados.some((o) => {
+    const a = minutoBogota(new Date(o.inicio));
+    const b = minutoBogota(new Date(o.fin));
+    return minInicio < b && minInicio + duracionMin > a;
+  });
+}
+
 // ---- Día civil en Bogotá (UTC-5 fijo, Colombia no tiene DST) ----
 // Los servers de Vercel corren en UTC: NUNCA usar setHours(0,0,0,0) para
 // "hoy" en código server. Estos helpers no dependen del TZ del proceso.

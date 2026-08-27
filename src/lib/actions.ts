@@ -39,9 +39,9 @@ import {
 import { ventanaDeDia } from "@/lib/horario";
 import { choqueAusencia } from "@/lib/ausencias";
 import { errorPublico } from "@/lib/errors";
-import { emailGuardable } from "@/lib/email";
+import { emailGuardable, esEmailEnviable } from "@/lib/email";
 import { avisarConfirmacionPendiente } from "@/lib/n8n";
-import { calcularCobro, snapshotDinero, diferenciaCaja } from "@/lib/cobro";
+import { calcularCobro, snapshotDinero, diferenciaCaja, sumaGastosEfectivo } from "@/lib/cobro";
 import { beneficioProximoCorte, sanearConfigTarjeta, type BeneficioTarjeta } from "@/lib/tarjeta";
 import { pushACliente, pushABarbero, pushASede } from "@/lib/push";
 import { cop, fechaHoraBogota } from "@/lib/format";
@@ -322,6 +322,21 @@ export async function actualizarPrecioProducto(id: string, precio: number): Prom
   if (error) return { ok: false, error: errorPublico("actualizarPrecioProducto", error) };
   revalidatePath("/admin/inventario");
   revalidatePath("/reservar");
+  return { ok: true };
+}
+
+// La comisión del producto se toca donde se lee (tarjeta del inventario), igual
+// que el precio. Solo aplica a ventas FUTURAS: cada venta congela su % en
+// venta_items.comision_pct al cobrar, así que lo ya vendido no se recalcula.
+export async function actualizarComisionProducto(id: string, pct: number): Promise<ActionResult> {
+  const sb = await supabaseServerAuth();
+  const denied = await requireAdmin(sb);
+  if (denied) return { ok: false, error: denied };
+  const p = sanearComisionPct(pct);
+  if (p === null) return { ok: false, error: "La comisión tiene que estar entre 0 y 100." };
+  const { error } = await sb.from("productos").update({ comision_pct: p }).eq("id", id);
+  if (error) return { ok: false, error: errorPublico("actualizarComisionProducto", error) };
+  revalidatePath("/admin/inventario");
   return { ok: true };
 }
 
@@ -1032,6 +1047,37 @@ export async function actualizarPerfilBarbero(input: {
 // bot puede usar el sitio para mandarle correo a desconocidos con nuestro
 // dominio, y eso termina en lista negra (y en el buzón suspendido, como el
 // 18-ago). Ningún cliente de verdad reserva 3 veces en un minuto.
+// El correo de avisos de cada barbero ("te cayó una cita", lo manda n8n leyendo
+// v_avisos_barbero_pendientes). Vive en barbero_contacto, tabla RLS-cerrada:
+// `barberos` la lee el sitio público y un correo ahí quedaría expuesto. Por eso
+// el write va con service role DESPUÉS del gate de admin.
+export async function guardarEmailBarbero(barberoId: string, email: string): Promise<ActionResult> {
+  const sb = await supabaseServerAuth();
+  const denied = await requireAdmin(sb);
+  if (denied) return { ok: false, error: denied };
+  const admin = supabaseAdmin();
+  const limpio = (email ?? "").trim().toLowerCase().slice(0, 120);
+  if (!limpio) {
+    const { error } = await admin.from("barbero_contacto").delete().eq("barbero_id", barberoId);
+    if (error) return { ok: false, error: errorPublico("guardarEmailBarbero", error) };
+    revalidatePath("/admin/equipo");
+    return { ok: true, aviso: "Sin correo: a ese barbero no le llegan avisos de citas." };
+  }
+  // Misma barrera que los clientes (src/lib/email.ts): una dirección inventada
+  // rebota, y los rebotes ya costaron tres suspensiones del buzón.
+  if (!esEmailEnviable(limpio)) return { ok: false, error: "Ese correo no parece real. Revisá el dominio." };
+  const { error } = await admin
+    .from("barbero_contacto")
+    .upsert({ barbero_id: barberoId, email: limpio, actualizado_en: new Date().toISOString() });
+  if (error) {
+    if (error.code === "42P01" || error.code === "PGRST205")
+      return { ok: false, error: "Falta aplicar la migración 0066 en Supabase." };
+    return { ok: false, error: errorPublico("guardarEmailBarbero", error) };
+  }
+  revalidatePath("/admin/equipo");
+  return { ok: true };
+}
+
 const RESERVA_POR_IP = { porMinuto: 3, porHora: 10 };
 // Techo global por hora, contado en la BASE (el de memoria es por instancia
 // serverless, así que no es un techo de verdad). 25/hora es holgadísimo para
@@ -1411,7 +1457,12 @@ export async function agendarCita(input: {
 
   const inicio = new Date(input.inicioISO);
   if (isNaN(inicio.getTime())) return { ok: false, error: "Hora inválida." };
-  if (inicio.getTime() <= Date.now()) return { ok: false, error: "Esa hora ya pasó. Elegí una a futuro." };
+  // El mostrador también REGISTRA cortes que ya pasaron ("ayer llegó uno y se
+  // olvidó anotarlo"): se acepta hasta una semana atrás. Más viejo que eso casi
+  // siempre es una fecha mal escrita, no un registro.
+  const esPasada = inicio.getTime() <= Date.now();
+  if (inicio.getTime() < Date.now() - 7 * 86_400_000)
+    return { ok: false, error: "Esa fecha es de hace más de una semana. Revisala." };
 
   const admin = supabaseAdmin();
   // Duración del servicio + que tenga precio en la sede (misma barrera que createReserva).
@@ -1467,6 +1518,9 @@ export async function agendarCita(input: {
     estado: "confirmada",
     canal: "app",
     nota,
+    // Un corte registrado después de hecho no manda "tu cita está confirmada":
+    // confirmarle al cliente una hora que ya pasó es puro ruido.
+    ...(esPasada ? { confirm_sent: true } : {}),
   });
   if (error) {
     if (error.code === "23P01") return { ok: false, error: "Ese horario ya fue tomado. Elegí otro." };
@@ -1474,7 +1528,7 @@ export async function agendarCita(input: {
   }
   // Mismo empujón que la reserva pública: la cita del mostrador también manda
   // confirmación si el cliente dejó correo.
-  await avisarConfirmacionPendiente();
+  if (!esPasada) await avisarConfirmacionPendiente();
   revalidatePath("/barbero");
   return { ok: true };
 }
@@ -1578,7 +1632,10 @@ export async function moverCita(input: {
 
   const inicio = new Date(input.inicioISO);
   if (isNaN(inicio.getTime())) return { ok: false, error: "Hora inválida." };
-  if (inicio.getTime() <= Date.now()) return { ok: false, error: "Esa hora ya pasó. Elegí una a futuro." };
+  // Mover al pasado se permite (misma semana): es la corrección de "ese corte
+  // fue 5:15, no 5:30" cuando se registra la agenda después de hecha.
+  if (inicio.getTime() < Date.now() - 7 * 86_400_000)
+    return { ok: false, error: "Esa fecha es de hace más de una semana. Revisala." };
 
   // La duración sale de la CITA (fin - inicio), no del catálogo: si el mostrador la
   // agendó a medida (2:40 a 3:10 porque a este cliente le toma más), moverla no
@@ -2495,30 +2552,104 @@ export async function historialCliente(clienteRef: string) {
   return getHistorialCliente(clienteRef);
 }
 
+/** Búsqueda corta de clientes para el desplegable del form de agendar (mostrador
+ *  y admin). Corre con la sesión del que busca: la RLS decide qué clientes ve
+ *  cada rol (el admin todos, el barbero los que atendió). */
+export async function buscarClientesStaff(
+  q: string,
+): Promise<{ id: string; nombre: string; telefono: string | null; email: string | null }[]> {
+  const sb = await supabaseServerAuth();
+  if (await requireStaff(sb)) return [];
+  // PostgREST parsea el .or() por comas y paréntesis: se limpian para que un
+  // "López, Juan" no rompa el filtro entero.
+  const t = q.replace(/[,()%]/g, " ").replace(/\s+/g, " ").trim().slice(0, 60);
+  if (t.length < 2) return [];
+  const like = `%${t}%`;
+  const { data } = await sb
+    .from("clientes")
+    .select("id,nombre,telefono,email")
+    .or(`nombre.ilike.${like},telefono.ilike.${like}`)
+    .order("creado_en", { ascending: false })
+    .limit(8);
+  return (data ?? []) as { id: string; nombre: string; telefono: string | null; email: string | null }[];
+}
+
+// Alta manual de cliente ("ayer llegó uno y se olvidó registrarlo"): mismo RPC
+// de dedup por teléfono que usan las reservas, así una ficha nunca se duplica.
+export async function registrarClienteManual(input: {
+  nombre: string;
+  telefono: string;
+  email?: string;
+}): Promise<ActionResult> {
+  const sb = await supabaseServerAuth();
+  const denied = await requireStaff(sb);
+  if (denied) return { ok: false, error: denied };
+  const nombre = (input.nombre ?? "").trim().slice(0, 120);
+  const telefono = (input.telefono ?? "").trim().slice(0, 40);
+  if (!nombre || !telefono) return { ok: false, error: "Poné el nombre y el teléfono." };
+  // Aviso amable si el teléfono ya tenía ficha (el RPC igual dedupa; esto es
+  // solo para que el admin sepa que no creó una nueva).
+  const { data: previo } = await sb.from("clientes").select("id,nombre").eq("telefono", telefono).maybeSingle();
+  const id = await upsertClienteId(sb, nombre, telefono, input.email ?? "", "registrado");
+  if (!id) return { ok: false, error: "No se pudo guardar el cliente." };
+  revalidatePath("/admin/clientes");
+  const p = previo as { id: string; nombre: string } | null;
+  return { ok: true, id, aviso: p ? `Ese teléfono ya era de ${p.nombre}: se usó su ficha, no se duplicó.` : undefined };
+}
+
+/** Valida un medio de pago contra los ACTIVOS (mismo criterio que la propina,
+ *  0053): es un POST invocable directo y un slug inventado ensuciaría el
+ *  desglose de caja en silencio. Vacío/omitido = efectivo. */
+async function medioValidoOError(
+  sb: SupabaseClient,
+  medio: string | undefined,
+): Promise<{ slug: string } | { error: string }> {
+  const slug = (medio ?? "").trim() || "efectivo";
+  const { data } = await sb.from("medios_pago").select("slug").eq("slug", slug).eq("activo", true).maybeSingle();
+  if (!data) return { error: "Ese medio de pago no existe o está inactivo." };
+  return { slug };
+}
+
 export async function registrarGasto(input: {
   sede: string;
   categoria: string;
   monto: number;
   descripcion: string;
+  /** Con qué se pagó (0067): descuenta del cajón SOLO si fue efectivo. */
+  medio?: string;
 }): Promise<ActionResult> {
   const sb = await supabaseServerAuth();
-  const denied = await requireAdmin(sb);
+  // Staff, no solo admin: la botella de agua la compra quien está en el local, y
+  // el gasto se anota en el momento (el dueño mira y decide, el equipo registra).
+  // La RLS de gastos ya era de staff (0002); el gate viejo de admin era solo de
+  // esta action. Cada quien anota gastos de SU sede.
+  const denied = await requireStaff(sb);
   if (denied) return { ok: false, error: denied };
+  const staff = await getStaffContext();
+  if (!(await staffPuedeOperarSede(staff, input.sede)))
+    return { ok: false, error: "Esa sede no es la tuya." };
   // Saneo del monto (misma barrera que addProducto): entero de pesos, sin negativos
   // ni decimales raros, y mayor a cero (un gasto de $0 no cuadra). Sin esto un
   // negativo inflaba el esperado del cierre y daba un faltante inventado.
   const monto = sanearCop(input.monto);
   if (monto === null || monto <= 0)
     return { ok: false, error: "El monto tiene que ser un número entero de pesos, mayor a cero." };
-  const { error } = await sb.from("gastos").insert({
+  const medio = await medioValidoOError(sb, input.medio);
+  if ("error" in medio) return { ok: false, error: medio.error };
+  const fila = {
     sede_id: input.sede,
-    categoria: input.categoria,
+    categoria: (input.categoria ?? "").trim().slice(0, 40) || "Otro",
     monto,
     descripcion: input.descripcion || null,
-  });
+  };
+  let { error } = await sb.from("gastos").insert({ ...fila, medio: medio.slug });
+  // PGRST204 = la columna `medio` aún no existe (0067 sin aplicar): se guarda sin
+  // ella y cuenta como efectivo, que era el único mundo que había.
+  if (error?.code === "PGRST204") ({ error } = await sb.from("gastos").insert(fila));
   if (error) return { ok: false, error: errorPublico("registrarGasto", error) };
   revalidatePath("/admin/cuadre");
   revalidatePath("/admin");
+  revalidatePath("/barbero");
   return { ok: true };
 }
 
@@ -2526,6 +2657,9 @@ export async function registrarAdelanto(input: {
   barberoId: string;
   monto: number;
   nota: string;
+  /** Con qué se le adelantó (0067): queda registrado para el cuadre; la deuda
+   *  del barbero en la liquidación es la misma con cualquier medio. */
+  medio?: string;
 }): Promise<ActionResult> {
   const sb = await supabaseServerAuth();
   const denied = await requireAdmin(sb);
@@ -2535,12 +2669,17 @@ export async function registrarAdelanto(input: {
   const monto = sanearCop(input.monto);
   if (monto === null || monto <= 0)
     return { ok: false, error: "El monto tiene que ser un número entero de pesos, mayor a cero." };
-  const { error } = await sb.from("adelantos").insert({
+  const medio = await medioValidoOError(sb, input.medio);
+  if ("error" in medio) return { ok: false, error: medio.error };
+  const fila = {
     barbero_id: input.barberoId,
     monto,
     saldo: monto,
     nota: input.nota || null,
-  });
+  };
+  let { error } = await sb.from("adelantos").insert({ ...fila, medio: medio.slug });
+  // 0067 sin aplicar: sin columna `medio` (cuenta como efectivo, lo único que había).
+  if (error?.code === "PGRST204") ({ error } = await sb.from("adelantos").insert(fila));
   if (error) return { ok: false, error: errorPublico("registrarAdelanto", error) };
   revalidatePath("/admin/cuadre");
   revalidatePath("/admin");
@@ -2760,12 +2899,14 @@ async function snapshotCaja(
     propinaMedio: string | null;
     pagos?: unknown;
   }[];
+  // select("*") a propósito: tolera que `medio` (0067) aún no exista, y las
+  // filas del día son un puñado. Solo lo pagado en efectivo salió del cajón.
   const { data: gastos } = await admin
     .from("gastos")
-    .select("monto")
+    .select("*")
     .eq("sede_id", sedeId)
     .gte("creado_en", abiertaEnISO);
-  const totalGastos = ((gastos ?? []) as { monto: number }[]).reduce((a, g) => a + g.monto, 0);
+  const totalGastos = sumaGastosEfectivo((gastos ?? []) as { monto: number; medio?: string | null }[]);
   // Matemática pura del snapshot (misma que testea scripts/check-caja.ts): el
   // esperado incluye el fondo de apertura y descuenta los gastos del cajón.
   const { totales, efectivo, datafono, esperadoEfectivo } = snapshotDinero(vs, {

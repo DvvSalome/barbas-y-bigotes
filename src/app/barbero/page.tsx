@@ -19,6 +19,7 @@ import {
   getVentasSedeHoy,
   getHorarioSemanal,
   getDiasEspeciales,
+  getReservasPendientesCobro,
 } from "@/lib/data/queries";
 import { bogotaYmd, dowDeFecha } from "@/lib/slots";
 import type { SedeId } from "@/lib/data/types";
@@ -29,6 +30,8 @@ import { AvisosBarbero } from "@/components/barbero/AvisosBarbero";
 import { EsperaPanel } from "@/components/barbero/EsperaPanel";
 import { CierreCaja } from "@/components/barbero/CierreCaja";
 import { ConsumoBarbero } from "@/components/barbero/ConsumoBarbero";
+import { GastoRapido } from "@/components/barbero/GastoRapido";
+import { PendientesCobrar } from "@/components/staff/PendientesCobrar";
 import { RealtimeRefresh } from "@/components/motion/RealtimeRefresh";
 
 export const metadata: Metadata = { title: "Mostrador" };
@@ -47,7 +50,7 @@ export default async function BarberoPage({
   // transmitir la agenda de las DOS sedes antes de que el layout lo expulse.
   if (!["admin", "barbero", "sede"].includes(staff.rol)) redirect("/cuenta");
   const filtro = staff.rol === "barbero" ? staff.barberoId : null;
-  const [sedes, barberos, servicios, preciosServicios, productos, medios, espera, horarioSemanal, diasEspeciales] =
+  const [sedes, barberos, servicios, preciosServicios, productos, medios, espera, horarioSemanal, diasEspeciales, pendientesCobro] =
     await Promise.all([
       getSedes(),
       getBarberos(),
@@ -59,6 +62,8 @@ export default async function BarberoPage({
       getListaEspera(filtro, staff.sedeId),
       getHorarioSemanal(),
       getDiasEspeciales(),
+      // Cobro exprés del Cierre (corre con la sesión: la RLS ya lo deja en su alcance).
+      getReservasPendientesCobro(),
     ]);
 
   // La sede que se opera. Un perfil por sede (0044) trae la suya en el perfil;
@@ -200,6 +205,16 @@ export default async function BarberoPage({
         }
         cierreSlot={
           <div className="space-y-8">
+            {/* Cobro exprés: la cita que el barbero no alcanzó a registrar en el
+                momento se cobra acá mismo (medio + propina), sin ir a Turnos. */}
+            {sedeBarbero && (
+              <div className="mx-auto w-full max-w-2xl">
+                <PendientesCobrar
+                  pendientes={pendientesCobro.filter((p) => p.sede === sedeBarbero)}
+                  medios={medios.map((m) => ({ slug: m.slug, nombre: m.nombre }))}
+                />
+              </div>
+            )}
             {/* Qué se llevó cada cliente (ítems reales de la venta). */}
             <CobradosHoy agenda={agendaSede} ventas={ventasSede} barberos={mostrador.barberosSede} />
             {sedeBarbero && (
@@ -214,6 +229,9 @@ export default async function BarberoPage({
                   barberos={mostrador.barberosSede.map((b) => ({ id: b.id, nombre: b.nombre }))}
                   miBarberoId={staff.barberoId}
                 />
+                {/* El gasto del local ("compré agua") se anota acá mismo, no
+                    cuando el admin se acuerde en el cuadre. */}
+                <GastoRapido sede={sedeBarbero} medios={medios.map((m) => ({ slug: m.slug, nombre: m.nombre }))} />
               </div>
             )}
             {/* El aviso se ata a la sede o al barbero del perfil; el dueño no

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { cop } from "@/lib/format";
 import { PrecioEditable } from "@/components/admin/PrecioEditable";
+import { ComisionEditable } from "@/components/admin/ComisionEditable";
 import { UpsellToggle } from "@/components/admin/UpsellToggle";
 import { StockControl } from "@/components/admin/StockControl";
 import { AddProductForm } from "@/components/admin/AddProductForm";
@@ -110,9 +111,8 @@ export function InventarioPanel({ productos, sedes }: { productos: Producto[]; s
                     <span className="font-display text-[17px] font-extrabold tabular-nums text-ink">
                       <PrecioEditable productoId={p.id} precio={p.precio} />
                     </span>
-                    {p.comisionPct > 0 && (
-                      <span className="text-[11px] text-muted">{p.comisionPct}% para el barbero</span>
-                    )}
+                    {/* Siempre visible (aun en 0%): se toca para cambiarla. */}
+                    <ComisionEditable productoId={p.id} pct={p.comisionPct} />
                   </div>
                 </div>
               </div>

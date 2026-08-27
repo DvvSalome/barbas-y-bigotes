@@ -13,6 +13,7 @@ import {
 import { CuadreForms } from "@/components/admin/CuadreForms";
 import { CajaSesiones } from "@/components/admin/CajaSesiones";
 import { MediosPago } from "@/components/admin/MediosPago";
+import { PendientesCobrar } from "@/components/staff/PendientesCobrar";
 import { cop } from "@/lib/format";
 import type { TotalesPorMedio } from "@/lib/cobro";
 import { SectionHeader } from "@/components/admin/SectionHeader";
@@ -87,31 +88,11 @@ export default async function CuadrePage() {
         <CajaSesiones cajas={cajas} medios={medios} />
       </div>
 
+      {/* Con cobro AHÍ MISMO (medio + propina): antes era solo lectura y había
+          que irse a la app del barbero hasta para un cobro simple. */}
       {pendientes.length > 0 && (
-        <div className="mt-8 rounded-2xl border border-line bg-panel p-5">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <h2 className="flex items-center gap-2 font-display text-2xl">
-              <span className="h-2 w-2 rounded-full bg-warn" /> Pendientes por cobrar
-            </h2>
-            <span className="text-sm text-muted">
-              {pendientes.length} reservas · <b className="text-accent-soft">{cop(totalPendiente)}</b> proyectado
-            </span>
-          </div>
-          <p className="mt-1 text-xs text-muted">Citas de hoy aún sin registrar en caja. Se cobran al completar la atención en la app del barbero.</p>
-          <div className="mt-4 space-y-2">
-            {pendientes.map((p) => (
-              <div key={p.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-line bg-bg px-4 py-2.5 text-sm transition hover:border-accent/30">
-                <div className="min-w-0">
-                  <span className="font-semibold">{p.cliente}</span>
-                  <span className="text-muted"> · {p.servicio} · {p.barbero}</span>
-                </div>
-                <div className="flex shrink-0 items-center gap-3">
-                  <span className="text-xs text-muted">{horaCorta(p.inicio)}</span>
-                  <span className="text-accent-soft">{cop(p.monto)}</span>
-                </div>
-              </div>
-            ))}
-          </div>
+        <div className="mt-8">
+          <PendientesCobrar pendientes={pendientes} medios={medios.filter((m) => m.activo)} />
         </div>
       )}
 
@@ -134,9 +115,10 @@ export default async function CuadrePage() {
       </div>
         </section>
 
-        {/* Panel de ACCIONES, fijo a la derecha con su propio scroll */}
-        <aside className="lg:sticky lg:top-28 lg:max-h-[calc(100dvh-8.5rem)] lg:overflow-y-auto">
-          <CuadreForms sedes={sedes} barberos={barberos} />
+        {/* Panel de ACCIONES, fijo a la derecha con su propio scroll. El id es el
+            ancla del atajo "+ Gasto" del tablero Hoy. */}
+        <aside id="registrar" className="lg:sticky lg:top-28 lg:max-h-[calc(100dvh-8.5rem)] lg:overflow-y-auto lg:scroll-mt-28">
+          <CuadreForms sedes={sedes} barberos={barberos} medios={medios.filter((m) => m.activo)} />
           <div className="mt-6">
             <MediosPago medios={medios} />
           </div>
@@ -156,7 +138,13 @@ export default async function CuadrePage() {
                       <span className="block font-medium">{g.categoria}</span>
                       {g.descripcion && <span className="block text-xs text-muted">{g.descripcion}</span>}
                     </span>
-                    <span className="shrink-0 tabular-nums text-muted">−{cop(g.monto)}</span>
+                    <span className="flex shrink-0 items-center gap-2">
+                      {/* Con qué se pagó (0067): del cajón solo descuenta el efectivo. */}
+                      <span className="rounded-full border border-line px-2 py-0.5 text-[10px] uppercase tracking-wide text-muted">
+                        {medios.find((m) => m.slug === (g.medio ?? "efectivo"))?.nombre ?? g.medio ?? "Efectivo"}
+                      </span>
+                      <span className="tabular-nums text-muted">−{cop(g.monto)}</span>
+                    </span>
                   </li>
                 ))}
               </ul>
@@ -175,7 +163,12 @@ export default async function CuadrePage() {
                       <span className="block font-medium">{a.barbero}</span>
                       {a.nota && <span className="block text-xs text-muted">{a.nota}</span>}
                     </span>
-                    <span className="shrink-0 tabular-nums text-muted">−{cop(a.monto)}</span>
+                    <span className="flex shrink-0 items-center gap-2">
+                      <span className="rounded-full border border-line px-2 py-0.5 text-[10px] uppercase tracking-wide text-muted">
+                        {medios.find((m) => m.slug === (a.medio ?? "efectivo"))?.nombre ?? a.medio ?? "Efectivo"}
+                      </span>
+                      <span className="tabular-nums text-muted">−{cop(a.monto)}</span>
+                    </span>
                   </li>
                 ))}
               </ul>

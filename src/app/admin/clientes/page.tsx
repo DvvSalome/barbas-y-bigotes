@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { getClientes, getSedes } from "@/lib/data/queries";
 import { SectionHeader } from "@/components/admin/SectionHeader";
+import { NuevoCliente } from "@/components/admin/NuevoCliente";
 import { ClientesLista } from "./ClientesLista";
 
 export const metadata: Metadata = { title: "Clientes · Admin" };
@@ -29,6 +30,11 @@ export default async function ClientesPage({
             : `${clientes.length} clientes, del que vino hoy al que hace rato no aparece · abre una ficha para ver historial, notas, wallet y reseñas.`
         }
       />
+
+      {/* Alta manual: el que llegó ayer y no quedó registrado. */}
+      <div className="mt-4 flex justify-end">
+        <NuevoCliente />
+      </div>
 
       <ClientesLista
         clientes={clientes}

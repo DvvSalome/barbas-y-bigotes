@@ -13,6 +13,7 @@ import {
   slotsDisponibles,
   GRANO_MIN,
   computeTaken,
+  chocaConOcupados,
   horarioEfectivo,
   slotEnVentana,
   resumirSemana,
@@ -167,6 +168,7 @@ if (process.env.SLOTS_TZ_CHILD) {
   checkHorarioEfectivo();
   checkInstanteBogota();
   checkEncadenado();
+  checkChocaConOcupados();
   process.exit(0);
 }
 
@@ -241,8 +243,25 @@ for (const tz of ["America/New_York", "Asia/Tokyo", "UTC"]) {
 }
 
 checkEncadenado();
+checkChocaConOcupados();
 
 console.log("check-slots OK");
+
+// ---- chocaConOcupados: "ocupado" bloquea; "ya pasó" ya no ----
+// Registrar el corte de ayer es un caso soportado (mostrador). El form separa
+// las dos razones: esta función solo ve el SOLAPE, nunca el reloj.
+function checkChocaConOcupados() {
+  const o = (iniMin: number, finMin: number) => ({
+    inicio: instanteBogota("2026-08-20", iniMin).toISOString(),
+    fin: instanteBogota("2026-08-20", finMin).toISOString(),
+  });
+  const citas = [o(860, 880)]; // 2:20pm–2:40pm
+  assert.ok(chocaConOcupados(870, 30, citas), "2:30 pisa la barba de 2:20–2:40");
+  assert.ok(chocaConOcupados(850, 20, citas), "2:10+20 termina 2:30: pisa");
+  assert.ok(!chocaConOcupados(880, 30, citas), "2:40 arranca justo al terminar: NO pisa (encadenado)");
+  assert.ok(!chocaConOcupados(830, 30, citas), "1:50+30 termina justo 2:20: pegado por delante NO pisa");
+  assert.ok(!chocaConOcupados(600, 30, []), "sin citas nada choca, aunque la hora sea vieja");
+}
 
 // ---- slotsDisponibles: la silla se encadena, no se regala ----
 // El bug de negocio que atrapa: con grilla sola, una barba de 20 min que termina

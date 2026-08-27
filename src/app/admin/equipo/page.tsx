@@ -1,22 +1,24 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { getBarberos, getSedes, getAusenciasAdmin } from "@/lib/data/queries";
+import { getBarberos, getSedes, getAusenciasAdmin, getEmailsBarberos } from "@/lib/data/queries";
 import { bogotaYmd } from "@/lib/slots";
 import { getBarberosPinEstado, getSedesPinEstado } from "@/lib/barbero-auth";
 import { SectionHeader } from "@/components/admin/SectionHeader";
 import { EquipoPinAdmin } from "@/components/admin/EquipoPinAdmin";
 import { SedePinAdmin } from "@/components/admin/SedePinAdmin";
 import { AusenciasAdmin } from "@/components/admin/AusenciasAdmin";
+import { CorreosBarberos } from "@/components/admin/CorreosBarberos";
 
 export const metadata: Metadata = { title: "Equipo · Admin" };
 
 export default async function EquipoPage() {
-  const [barberos, sedes, estado, estadoSedes, ausencias] = await Promise.all([
+  const [barberos, sedes, estado, estadoSedes, ausencias, emails] = await Promise.all([
     getBarberos(),
     getSedes(),
     getBarberosPinEstado(),
     getSedesPinEstado(),
     getAusenciasAdmin(),
+    getEmailsBarberos(),
   ]);
   return (
     <div className="max-w-6xl">
@@ -42,6 +44,13 @@ export default async function EquipoPage() {
             estado={estado}
             ausentesHoy={ausencias.filter((a) => a.fecha === bogotaYmd()).map((a) => a.barberoId)}
           />
+
+          <h2 className="mb-3 mt-8 text-xs uppercase tracking-[0.3em] text-accent">Correo de avisos</h2>
+          <p className="mb-3 text-[12.5px] text-muted">
+            Cuando un cliente reserva, al barbero le llega un correo con la cita al instante. Poné acá el correo de
+            cada uno; vacío = sin aviso (le queda solo la notificación push, si la tiene activa).
+          </p>
+          <CorreosBarberos barberos={barberos} emails={emails} />
         </section>
 
         <aside className="lg:sticky lg:top-28 lg:max-h-[calc(100dvh-8.5rem)] lg:overflow-y-auto">

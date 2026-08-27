@@ -109,6 +109,15 @@ export function diferenciaCaja(efectivoContado: number, esperadoEfectivo: number
   return efectivoContado - esperadoEfectivo;
 }
 
+/** El `totalGastos` que se le pasa a snapshotDinero: SOLO lo pagado en efectivo,
+ *  que es lo único que salió físicamente del cajón. Un gasto por Nequi o
+ *  transferencia (0067) no puede descontar del esperado del cierre — antes lo
+ *  hacía y el cuadre daba un faltante inventado. Filas viejas sin `medio` eran
+ *  de la época en que todo gasto era del cajón: cuentan como efectivo. */
+export function sumaGastosEfectivo(rows: { monto: number; medio?: string | null }[]): number {
+  return rows.filter((g) => !g.medio || g.medio === "efectivo").reduce((a, g) => a + g.monto, 0);
+}
+
 // Agrupa ventas por medio de pago: el snapshot que queda en caja_sesiones.totales
 // y el desglose que muestran las cards de caja. La propina va aparte del total
 // (la propina en efectivo sí entra al cajón para el cuadre).
