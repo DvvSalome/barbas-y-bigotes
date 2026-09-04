@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Barbas &amp; Bigotes · Análisis de practicidad y seguimiento</title>
+<style>
+  @page { size: A4; margin: 16mm 14mm; }
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; color: #1c1a17; margin: 0; font-size: 11.5pt; line-height: 1.45; background: #fff; }
+  .hoja { max-width: 180mm; margin: 0 auto; padding: 8mm 0 12mm; }
+  h1 { font-size: 22pt; margin: 0 0 4px; letter-spacing: -0.01em; }
+  .sub { color: #6b6559; margin: 0 0 18px; font-size: 11pt; }
+  h2 { font-size: 15pt; margin: 26px 0 8px; padding-bottom: 4px; border-bottom: 2px solid #c9b18a; color: #2b2622; page-break-after: avoid; }
+  h3 { font-size: 12pt; margin: 16px 0 6px; color: #7a2b23; page-break-after: avoid; }
+  p { margin: 0 0 8px; }
+  ul, ol { margin: 0 0 10px 20px; padding: 0; }
+  li { margin: 0 0 4px; }
+  table { border-collapse: collapse; width: 100%; margin: 6px 0 12px; font-size: 10.5pt; page-break-inside: avoid; }
+  th, td { border: 1px solid #ddd6c8; padding: 6px 8px; text-align: left; vertical-align: top; }
+  th { background: #f4efe6; font-weight: 700; }
+  .caja { border: 1px solid #ddd6c8; border-left: 4px solid #c9b18a; background: #faf7f1; padding: 10px 12px; margin: 10px 0 12px; page-break-inside: avoid; }
+  .alerta { border-left-color: #b8372b; background: #fbf1ef; }
+  .ok { border-left-color: #3c7a4e; background: #f0f7f2; }
+  .peq { font-size: 10pt; color: #6b6559; }
+  .tag { display: inline-block; font-size: 9pt; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 2px 7px; border-radius: 999px; background: #efe8da; color: #5a4a2e; margin-right: 4px; }
+  .tag.hecho { background: #dcefe1; color: #22553a; }
+  .tag.corto { background: #fdecc8; color: #6b4a08; }
+  .tag.medio { background: #e3e8f5; color: #2b3f7a; }
+  .pie { margin-top: 28px; padding-top: 8px; border-top: 1px solid #ddd6c8; font-size: 9.5pt; color: #8a8378; }
+  b { font-weight: 700; }
+</style>
+</head>
+<body>
+<div class="hoja">
+
+<h1>Barbas &amp; Bigotes · practicidad, prontitud y seguimiento</h1>
+<p class="sub">Análisis para el dueño · 4 de septiembre de 2026 · sobre la app en producción (barbasybigotes.com) y todo lo que se midió y arregló en agosto.</p>
+
+<div class="caja ok">
+<b>Lo que ya está resuelto de fondo:</b> el núcleo del negocio cuadra (cobro, caja, comisiones por ítem, stock, un turno es de uno solo, una cita se cobra una vez), los correos transaccionales salen solos (confirmación en 2 segundos, recordatorio, cupo libre, reseña de Google, cambio de cita, aviso al barbero) y hoy se cerró el lote del 27-ago: cliente a mano, cortes ya hechos, gastos con medio, cobro exprés, comisión de producto editable. <b>La app no necesita más funciones grandes para operar; necesita quitar toques y empezar a traer gente de vuelta.</b>
+</div>
+
+<h2>1. Resumen para decidir</h2>
+<ol>
+  <li><b>Prontitud:</b> lo que más tiempo quema en el local ya no es "hacer" sino "buscar" (el cliente, la cita, el precio). Lo que sigue es <b>un toque para lo repetido</b>: cobrar con el medio de siempre, agendar "igual que la última vez", y el teléfono como llave de todo.</li>
+  <li><b>Experiencia del cliente:</b> el 69% reserva con menos de 3 horas de anticipación. Eso dice que el cliente decide en el momento; la app tiene que ser rápida al reservar (ya lo es) y, sobre todo, <b>recordarle que existe antes de que decida</b>.</li>
+  <li><b>Seguimiento y campañas:</b> hoy no hay nada que traiga gente de vuelta. Hay 6 correos automáticos y todos nacen de una cita ya reservada. El pedido del dueño ("recordar cada X días que toca peluquearse", "avisar eventos") es la pieza que falta, y se puede hacer <b>con la misma maquinaria que ya funciona</b> (una cola en la base + n8n). Con una regla no negociable: <b>el correo masivo no sale por el buzón <i>reservas@</i></b>.</li>
+</ol>
+
+<h2>2. Cómo se usa de verdad</h2>
+<p>Una tablet en cada mostrador abierta todo el día; los barberos registran (cita, cobro, gasto, consumo); el dueño mira y decide desde el celular. Ese principio ("el dueño no opera, el equipo registra") es el correcto y toda mejora tiene que respetarlo: <b>menos toques para el equipo, más lectura clara para el dueño</b>.</p>
+<p>Dato de agosto: el panel del admin se construyó "para escritorio con mouse" y se usa "en el celular con el dedo". Se midió con instrumentos: 50 controles de menos de 40 px (varios de 15 a 26 px) y hasta 250 px de cabecera antes del contenido. Lo grueso se arregló; queda una cola documentada (chips de 34-38 px, cabecera, contraste 4,37:1 del blanco sobre el rojo).</p>
+
+<h2>3. Prontitud: dónde se pierde tiempo y qué sigue</h2>
+<table>
+<tr><th style="width:26%">Momento</th><th>Hoy</th><th>Siguiente paso (1 toque)</th></tr>
+<tr><td><b>Cobrar</b></td><td>Desde Turnos (completo) o desde "Pendientes por cobrar" (exprés, hecho hoy).</td><td>Botón "Cobrar $30.000 · Efectivo" directo en la tarjeta de la cita con el medio más usado de ese cliente preseleccionado; el detalle solo si se toca "cambiar".</td></tr>
+<tr><td><b>Agendar</b></td><td>Buscador de clientes al escribir el nombre (hecho hoy); hora exacta y duración libres; cortes de ayer.</td><td>El teléfono como llave: 4 dígitos y aparece la ficha. "Igual que la última vez" (mismo servicio y barbero) en un toque.</td></tr>
+<tr><td><b>Cliente frecuente</b></td><td>La ficha guarda historial, notas, wallet, tarjeta de cortes.</td><td>Mostrar en la tarjeta de la cita "viene cada 18 días · siempre con Kevin · corte + barba": el barbero no pregunta nada.</td></tr>
+<tr><td><b>Tablet tras un deploy</b></td><td>Se quedaba colgada ("Cobrando…" sin respuesta) porque tenía la versión vieja. <span class="tag hecho">Arreglado hoy</span>: se recarga sola una vez.</td><td>Nada más: es el error que llegó a Sentry.</td></tr>
+<tr><td><b>Caja</b></td><td>Esperado real (fondo + efectivo + propinas − gastos y adelantos en efectivo, hecho hoy); cierre desde el mostrador.</td><td>Resumen del cierre por WhatsApp al dueño con un toque (hoy va por correo).</td></tr>
+<tr><td><b>Admin en el celular</b></td><td>Funciona, con la cola medida de targets pequeños y cabecera larga.</td><td>Media jornada de trabajo: targets a 44 px en lo que falta, cabecera en 1 fila, el rojo solo para acción y alerta (hoy hace cinco trabajos).</td></tr>
+</table>
+
+<h2>4. Experiencia del cliente</h2>
+<ul>
+  <li><b>Reservar</b> ya es rápido: wizard, hoja de confirmación de 5 segundos (patrón DiDi), correo de confirmación en 2 segundos, portal con Google, notificaciones push.</li>
+  <li><b>Lo que falta es antes y después de la cita.</b> Antes: que se acuerde de venir. Después: "reservar de nuevo" en un toque desde el correo de reseña o desde el portal, con su barbero y servicio de siempre.</li>
+  <li><b>WhatsApp es el canal que el cliente colombiano lee.</b> Hoy la app arma mensajes y abre WhatsApp (enlaces); no manda solo. Mandar solo exige la API de WhatsApp Business (Meta, vía Twilio o 360dialog): plantillas aprobadas y un costo por mensaje de marketing (del orden de US$0,02 a 0,06). Vale la pena como fase 3, cuando el correo ya esté rindiendo y se sepa qué mensajes convierten.</li>
+</ul>
+
+<h2>5. Seguimiento y campañas: lo que pidió el dueño</h2>
+
+<h3>5.1 Qué existe y qué no</h3>
+<table>
+<tr><th style="width:38%">Correo automático</th><th>Cuándo sale</th><th>Estado</th></tr>
+<tr><td>Confirmación de reserva</td><td>2 s después de reservar (webhook) + red de cron cada minuto</td><td>En producción</td></tr>
+<tr><td>Recordatorio "te vemos mañana" + "tu cita es en un rato"</td><td>4 corridas al día; antelación configurable en Marketing → Avisos</td><td>En producción</td></tr>
+<tr><td>Se liberó un cupo (lista de espera)</td><td>Cada 10 min</td><td>En producción</td></tr>
+<tr><td>Reseña en Google tras el corte</td><td>2 h a 2 días después del cobro, 1 por cliente cada 30 días, 9 am a 9 pm</td><td>En producción</td></tr>
+<tr><td>Cambio o cancelación de cita</td><td>Cada 5 min</td><td>En producción</td></tr>
+<tr><td>Aviso al barbero de cita nueva</td><td>Al instante</td><td>En producción (hoy)</td></tr>
+<tr><td><b>"Te toca corte" cada X días</b></td><td>—</td><td><b>No existe</b></td></tr>
+<tr><td><b>Eventos, promociones, campañas por segmento</b></td><td>—</td><td><b>No existe</b></td></tr>
+<tr><td>Cumpleaños, "hace 60 días no venís", cupón de regreso</td><td>—</td><td>No existe (el CRM ya sabe quién está dormido)</td></tr>
+</table>
+
+<div class="caja alerta">
+<b>La regla no negociable, aprendida a golpes en agosto:</b> el buzón <i>reservas@</i> fue suspendido tres veces por Hostinger; la causa fueron rebotes a direcciones inexistentes que el relay de salida (MailChannels) castigó bloqueando al remitente. Un envío masivo de marketing por ese mismo buzón es la forma más rápida de volver a ese bucle <b>y de tumbar de paso las confirmaciones a clientes</b>. Por eso las campañas y los recordatorios de frecuencia van por un <b>proveedor de correo de marketing con reputación propia</b> (Hostinger Reach, que ya está en la cuenta y conectado a tus herramientas, o Brevo), idealmente desde un subdominio propio (por ejemplo <i>news.barbasybigotes.com</i>) para que la reputación del marketing nunca toque la del correo transaccional.
+</div>
+
+<h3>5.2 "Te toca peluquearte": cómo se hace bien</h3>
+<ul>
+  <li><b>La lógica vive en la app</b>, que es la que sabe cuándo vino cada uno. Regla: cliente con correo y consentimiento, sin cita futura, cuya última visita fue hace más de X días. X se configura en Marketing → Avisos (como hoy la antelación del recordatorio); la versión inteligente usa la <b>cadencia real de cada cliente</b> (el promedio de días entre sus visitas) y avisa unos días antes de que "le toque".</li>
+  <li><b>Un aviso por cliente cada 30 días, en horario de 9 am a 9 pm</b>, y siempre con un botón "Reservar con Kevin, corte + barba" que ya llegue con su barbero y servicio de siempre precargados. El correo de reseña ya usa estas mismas reglas; se reutilizan.</li>
+  <li><b>Misma maquinaria que ya funciona:</b> una cola en la base que se toma y se marca en la misma transacción (el patrón que evitó los reenvíos infinitos) y un flujo en n8n que la lee. Lo único nuevo es que el nodo de envío usa la API del proveedor de marketing en vez del SMTP del buzón.</li>
+  <li><b>Consentimiento y baja:</b> una casilla al reservar ("quiero que me avisen cuando me toque corte y de promociones"), registro de cuándo aceptó, y enlace de baja en cada correo. Es la Ley 1581 de 2012 (datos personales) y además es lo que evita marcas de spam.</li>
+</ul>
+
+<h3>5.3 Eventos y promociones</h3>
+<ul>
+  <li>Pantalla <b>Marketing → Campañas</b>: se elige el <b>segmento</b> (todos, por sede, "no vienen hace 60 días", los que más gastan, los que tienen la tarjeta cerca del regalo), se escribe el mensaje (o se elige una plantilla), se adjunta un <b>cupón</b> (ya existen) y se programa.</li>
+  <li>El cupón es la <b>medición</b>: cuántos lo usaron y cuánto facturaron esas reservas. Sin eso una campaña "salió bien" de oído.</li>
+  <li>Envío por el proveedor de marketing, con aperturas y bajas visibles en el panel.</li>
+</ul>
+
+<h3>5.4 Plan por fases</h3>
+<table>
+<tr><th style="width:16%">Fase</th><th>Qué entrega</th><th style="width:18%">Esfuerzo</th><th style="width:22%">Necesita del dueño</th></tr>
+<tr><td><span class="tag hecho">0 · hecha</span></td><td>Lote del 27-ago + auto-recarga + adelantos en efectivo.</td><td>—</td><td>Cargar los correos de los barberos en Equipo.</td></tr>
+<tr><td><span class="tag corto">1 · corta</span></td><td>"Te toca corte" cada X días con consentimiento y baja; proveedor de marketing conectado; X configurable; botón "reservar igual que la última vez".</td><td>3 a 5 días</td><td>Elegir proveedor (Reach o Brevo), la cadencia inicial (X) y el texto del aviso.</td></tr>
+<tr><td><span class="tag medio">2 · media</span></td><td>Campañas por segmento con cupón y programación; métricas de apertura y reservas atribuidas; "dormidos" y cumpleaños automáticos.</td><td>1 a 2 semanas</td><td>Las promos que quiere correr y con qué frecuencia.</td></tr>
+<tr><td><span class="tag">3 · después</span></td><td>WhatsApp automático (API de Meta) para recordatorios y campañas; cobro y agenda en 1 toque; cola de UX del admin en el celular.</td><td>Según canal</td><td>Cuenta de WhatsApp Business verificada y presupuesto por mensaje.</td></tr>
+</table>
+
+<h2>6. Riesgos que ya conocemos (para no volver a pagarlos)</h2>
+<ul>
+  <li><b>Entregabilidad:</b> cada rebote duro cuenta; el filtro de direcciones que ya está en la app (rechaza dominios inventados y buzones propios inexistentes) tiene que aplicarse también a las listas de campañas.</li>
+  <li><b>Plan Hobby de Vercel:</b> sin protección contra pestañas viejas ni protección de rama; hoy se compensó con la auto-recarga. Si el negocio crece, el plan Pro elimina esa clase de errores de raíz.</li>
+  <li><b>n8n:</b> las plantillas se rompen en silencio con expresiones vacías; ya hay una guardia en el CI y la regla es formatear todo en un nodo de código, nunca dentro del HTML.</li>
+  <li><b>Datos duplicados:</b> la dirección de cada sede vive en tres lugares del código; unificarla antes de que una campaña la imprima mal.</li>
+</ul>
+
+<p class="pie">Fuentes: mediciones de UX del 14-ago (Playwright, 375 px), auditoría de lógica de negocio del 10-ago (17 hallazgos, todos resueltos), historial del correo transaccional (jul–ago), datos de reservas de julio (69% con menos de 3 h de anticipación), y el trabajo del 27-ago al 4-sep. Preparado por Claude para FourG Solutions.</p>
+
+</div>
+</body>
+</html>
