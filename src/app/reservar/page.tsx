@@ -21,9 +21,10 @@ export const metadata: Metadata = {
 export default async function ReservarPage({
   searchParams,
 }: {
-  searchParams: Promise<{ barbero?: string; sede?: string }>;
+  searchParams: Promise<{ barbero?: string; sede?: string; servicio?: string }>;
 }) {
-  const { barbero, sede } = await searchParams;
+  // ?servicio= lo manda el correo "te toca corte" (reservar igual que la última vez).
+  const { barbero, sede, servicio } = await searchParams;
   const [sedes, barberos, servicios, bebidas, ausencias, diasEspeciales, horarioSemanal] = await Promise.all([
     getSedes(),
     getBarberos(),
@@ -46,6 +47,7 @@ export default async function ReservarPage({
         horarioSemanal={horarioSemanal}
         initialBarberoId={barbero}
         initialSedeId={initialSedeId}
+        initialServicioId={servicios.find((s) => s.id === servicio)?.id}
       />
       {/* Política de cancelación server-rendered (crawlable para IAs/buscadores),
           fuera del app-shell del wizard para no romper el layout mobile. */}

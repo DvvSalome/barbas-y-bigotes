@@ -1109,6 +1109,9 @@ export async function createReserva(input: {
   email?: string;
   inicioISO: string;
   nota?: string;
+  /** Casilla del wizard: "avisame cuando me toque corte y de promos" (0068).
+   *  Omitida = no se toca la ficha (p. ej. el asistente IA). */
+  aceptaMarketing?: boolean;
 }): Promise<ActionResult> {
   const sb = supabaseAdmin();
   // Primero de todo: es una action pública, o sea un POST que cualquiera puede
@@ -1207,6 +1210,19 @@ export async function createReserva(input: {
   }
   if (!clienteRef) {
     clienteRef = await upsertClienteId(sb, clienteNombre, telefono, input.email ?? "", "app");
+  }
+  // Consentimiento de marketing (0068). Solo si el wizard lo mandó: la marca
+  // explícita en "sí" además RE-ACTIVA a quien se había dado de baja (volvió a
+  // pedirlo); en "no" apaga sin borrar nada. Best-effort: nunca frena la reserva.
+  if (clienteRef && typeof input.aceptaMarketing === "boolean") {
+    await sb
+      .from("clientes")
+      .update(
+        input.aceptaMarketing
+          ? { acepta_marketing: true, marketing_en: new Date().toISOString(), baja_en: null }
+          : { acepta_marketing: false },
+      )
+      .eq("id", clienteRef);
   }
   // La nota (ej. "Bebida: Gaseosa" del upsell) viaja al barbero en su agenda.
   // ponytail: si el barbero propone adelanto después, sobrescribe esta nota (raro;
@@ -3442,6 +3458,9 @@ export async function getLiveBarberStatuses(): Promise<BarberLiveStatus[]> {
 export async function actualizarAjustesAvisos(input: {
   previoHoras: number;
   previoActivo: boolean;
+  /** "Te toca corte" (0068): cada cuántos días sin venir se avisa, y si está prendido. */
+  corteCadaDias?: number;
+  corteActivo?: boolean;
 }): Promise<ActionResult> {
   const sb = await supabaseServerAuth();
   const denied = await requireAdmin(sb);
@@ -3452,14 +3471,20 @@ export async function actualizarAjustesAvisos(input: {
   if (horas === null)
     return { ok: false, error: "La antelación debe estar entre 30 minutos y 12 horas." };
 
-  const { error } = await sb
-    .from("ajustes_avisos")
-    .update({
-      previo_horas: horas,
-      previo_activo: input.previoActivo,
-      actualizado_en: new Date().toISOString(),
-    })
-    .eq("id", 1);
+  const cambios: Record<string, unknown> = {
+    previo_horas: horas,
+    previo_activo: input.previoActivo,
+    actualizado_en: new Date().toISOString(),
+  };
+  if (input.corteCadaDias !== undefined) {
+    // Mismo rango que el CHECK de la tabla (0068): 7 a 120 días.
+    const dias = Number(input.corteCadaDias);
+    if (!Number.isInteger(dias) || dias < 7 || dias > 120)
+      return { ok: false, error: "La cadencia del aviso tiene que estar entre 7 y 120 días." };
+    cambios.corte_cada_dias = dias;
+  }
+  if (input.corteActivo !== undefined) cambios.corte_activo = !!input.corteActivo;
+  const { error } = await sb.from("ajustes_avisos").update(cambios).eq("id", 1);
   if (error) return { ok: false, error: errorPublico("actualizarAjustesAvisos", error) };
   revalidatePath("/admin/avisos");
   return { ok: true };

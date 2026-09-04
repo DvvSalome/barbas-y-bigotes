@@ -1,0 +1,49 @@
+<!-- Plantilla de correo · TE TOCA CORTE (aviso de frecuencia, migración 0068)
+     Sale por BREVO, no por reservas@ (ese buzón ya fue suspendido tres veces por
+     rebotes; el marketing va por un proveedor con reputación propia). El
+     workflow de n8n "te toca corte" arma el payload en un nodo Code: convierte
+     los marcadores de esta plantilla a variables de JavaScript, así que acá se
+     escriben como en las demás plantillas y no hay expresiones vivas de n8n.
+     Variables: cliente, dias, barbero, foto_html, servicio, sede, reservar_url,
+     baja_url. Todas vienen ya formateadas del nodo Code.
+     Asunto: se arma en el nodo (Te toca corte, nombre).
+     Cron:   cada 30 min (America/Bogota); el RPC tomar_avisos_corte decide
+             quien, respeta 9am a 9pm, y no repite en 30 dias.
+     Regla:  siempre con enlace de baja (Ley 1581 y menos marcas de spam). -->
+<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><meta name="color-scheme" content="dark"><meta name="supported-color-schemes" content="dark"></head><body style="margin:0;padding:0;background:#060504;background-image:linear-gradient(#060504,#060504);">
+<div style="margin:0;padding:24px 12px;background:#060504;background-image:linear-gradient(#060504,#060504);">
+<div style="max-width:600px;margin:0 auto;font-family:Arial,Helvetica,sans-serif;color:#f2ede4;">
+<div style="background:#0c0b0a;background-image:linear-gradient(#0c0b0a,#0c0b0a);border:1px solid rgba(242,237,228,.12);border-radius:18px;overflow:hidden;">
+<div style="height:5px;background:repeating-linear-gradient(115deg,#d23f34 0 14px,#f2ede4 14px 28px,#12100e 28px 42px);"></div>
+<div style="background:#0a0908 url('https://barbasybigotes.com/sedes/parque-venezuela-interior.jpg') center/cover no-repeat;">
+<div style="background:rgba(10,9,8,.85);background-image:linear-gradient(rgba(10,9,8,.85),rgba(10,9,8,.85));padding:32px 24px 26px;text-align:center;">
+<img src="https://barbasybigotes.com/brand/logo-lockup.png" alt="Barbas &amp; Bigotes" height="46" style="height:46px;width:auto;">
+<div style="margin-top:8px;font-size:10px;text-transform:uppercase;letter-spacing:.34em;color:#cfc7ba;">Barber&iacute;a cl&aacute;sica &middot; Barranquilla</div>
+</div>
+</div>
+<div style="padding:32px 28px;text-align:center;">
+<span style="display:inline-block;border-radius:999px;padding:6px 14px;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;background:rgba(210,63,52,.12);border:1px solid rgba(210,63,52,.35);color:#e8675c;">&#9986; Ya te toca</span>
+<h2 style="margin:16px 0 10px;font-family:'Barlow Condensed',Arial,sans-serif;font-size:32px;font-weight:800;text-transform:uppercase;line-height:1;color:#f2ede4;">{{ $json.cliente }}, ya van {{ $json.dias }} d&iacute;as</h2>
+<p style="margin:0 auto 22px;max-width:42ch;font-size:14px;color:#9c958a;line-height:1.6;">Desde tu &uacute;ltimo corte en <b style="color:#f2ede4;">Barbas &amp; Bigotes</b>. Te guardamos el turno: reserv&aacute; igual que la &uacute;ltima vez y listo.</p>
+<div style="border:1px solid rgba(210,63,52,.3);background:linear-gradient(160deg,rgba(210,63,52,.14),#12100e 60%);border-radius:18px;padding:26px 22px;text-align:center;">
+<div style="font-size:11px;text-transform:uppercase;letter-spacing:.16em;color:#9c958a;">Tu corte de siempre</div>
+<div style="margin-top:12px;font-size:15px;color:#cfc7ba;">{{ $json.foto_html }}{{ $json.servicio }} &middot; con <b style="color:#f2ede4;">{{ $json.barbero }}</b></div>
+<div style="margin-top:5px;font-size:12px;color:#9c958a;">{{ $json.sede }}</div>
+</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:20px;"><tr>
+<td width="49%"><a href="{{ $json.reservar_url }}" style="display:block;text-align:center;background:linear-gradient(180deg,#e8675c,#d23f34);color:#fbf7f0;border-radius:12px;padding:15px 8px;font-size:13.5px;font-weight:700;text-decoration:none;">Reservar igual que la &uacute;ltima vez</a></td>
+<td width="2%"></td>
+<td width="49%"><a href="https://barbasybigotes.com/reservar" style="display:block;text-align:center;border:1px solid rgba(242,237,228,.18);color:#f2ede4;border-radius:12px;padding:14px 8px;font-size:13.5px;font-weight:700;text-decoration:none;">Elegir otra cosa</a></td>
+</tr></table>
+<p style="margin:14px 0 0;font-size:12px;color:#9c958a;">Reservar toma un minuto y no hay que llamar. Si ya viniste y no lo registramos, ignor&aacute; este correo.</p>
+</div>
+<div style="border-top:1px solid rgba(242,237,228,.08);background:#0a0908;background-image:linear-gradient(#0a0908,#0a0908);padding:24px;text-align:center;">
+<img src="https://barbasybigotes.com/brand/logo-face-transparent.png" alt="" height="30" style="height:30px;width:auto;opacity:.8;">
+<div style="margin-top:8px;font-size:11.5px;color:#9c958a;">Parque Venezuela &middot; Plaza de la Paz</div>
+<div style="margin-top:8px;font-size:11px;color:rgba(156,149,138,.6);">Barbas &amp; Bigotes Barbershop &middot; Barranquilla, CO<br>Te escribimos porque dejaste tu correo en la barber&iacute;a. <a href="{{ $json.baja_url }}" style="color:#9c958a;">No quiero m&aacute;s avisos</a>.</div>
+<div style="margin-top:8px;font-size:11px;"><a href="https://instagram.com/barbasybigotes.baq" style="color:#9c958a;text-decoration:none;">Instagram</a> &middot; <a href="https://wa.me/573006734799" style="color:#9c958a;text-decoration:none;">WhatsApp</a></div>
+</div>
+</div>
+</div>
+</div>
+</body></html>

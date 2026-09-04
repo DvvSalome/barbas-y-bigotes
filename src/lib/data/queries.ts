@@ -2163,23 +2163,60 @@ export async function getCuenta(clienteRef: string): Promise<CuentaData> {
 }
 
 // ---------- Ajustes de avisos automáticos (/admin/avisos) ----------
-export type AjustesAvisos = { previoHoras: number; previoActivo: boolean };
+export type AjustesAvisos = {
+  previoHoras: number;
+  previoActivo: boolean;
+  /** "Te toca corte" (0068): cada cuántos días sin venir se avisa, y si está prendido. */
+  corteCadaDias: number;
+  corteActivo: boolean;
+};
 
-/** Config del aviso "tu cita es en un rato". Singleton (fila id=1, migración 0038). */
+/** Config de los avisos. Singleton (fila id=1, migraciones 0038 y 0068). */
 export async function getAjustesAvisos(): Promise<AjustesAvisos> {
   const sb = await supabaseServerAuth();
-  const { data } = await sb
-    .from("ajustes_avisos")
-    .select("previo_horas,previo_activo")
-    .eq("id", 1)
-    .maybeSingle();
-  const row = data as { previo_horas?: number | string; previo_activo?: boolean } | null;
+  // select("*") a propósito: tolera que las columnas de 0068 aún no existan.
+  const { data } = await sb.from("ajustes_avisos").select("*").eq("id", 1).maybeSingle();
+  const row = data as {
+    previo_horas?: number | string;
+    previo_activo?: boolean;
+    corte_cada_dias?: number;
+    corte_activo?: boolean;
+  } | null;
   // Defaults iguales a los de la tabla: la pantalla nunca queda en blanco aunque
   // la fila no esté (p. ej. si alguien la borra a mano).
   return {
     previoHoras: Number(row?.previo_horas ?? 2),
     previoActivo: row?.previo_activo ?? true,
+    corteCadaDias: Number(row?.corte_cada_dias ?? 21),
+    corteActivo: row?.corte_activo ?? false,
   };
+}
+
+export type ResumenTocaCorte = { elegiblesHoy: number; enviados30d: number };
+
+// "Hoy le tocaría a N" + "salieron M en 30 días": el dueño ve el efecto de la
+// cadencia ANTES de prender el aviso. La vista es de service_role (expone
+// correos), por eso va tras confirmar que quien pide es admin (patrón 0049).
+export async function getResumenTocaCorte(): Promise<ResumenTocaCorte> {
+  const auth = await supabaseServerAuth();
+  const {
+    data: { user },
+  } = await auth.auth.getUser();
+  if (!user) return { elegiblesHoy: 0, enviados30d: 0 };
+  const { data: prof } = await auth.from("profiles").select("rol").eq("auth_id", user.id).maybeSingle();
+  if ((prof as { rol?: string } | null)?.rol !== "admin") return { elegiblesHoy: 0, enviados30d: 0 };
+  const admin = supabaseAdmin();
+  const hace30 = new Date(Date.now() - 30 * 86_400_000).toISOString();
+  const [eleg, env] = await Promise.all([
+    admin.from("v_toca_corte_elegibles").select("cliente_ref", { count: "exact", head: true }),
+    admin
+      .from("avisos_marketing")
+      .select("id", { count: "exact", head: true })
+      .eq("tipo", "toca_corte")
+      .gte("enviado_en", hace30),
+  ]);
+  // Antes de aplicar 0068 ambas fallan: 0 y la pantalla vive igual.
+  return { elegiblesHoy: eleg.count ?? 0, enviados30d: env.count ?? 0 };
 }
 
 // ---------- Métricas por período (/admin/metricas) ----------

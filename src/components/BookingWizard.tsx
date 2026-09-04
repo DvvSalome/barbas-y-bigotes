@@ -142,6 +142,7 @@ export function BookingWizard({
   horarioSemanal,
   initialBarberoId,
   initialSedeId,
+  initialServicioId,
 }: {
   sedes: Sede[];
   barberos: Barbero[];
@@ -152,6 +153,8 @@ export function BookingWizard({
   horarioSemanal: HorarioSemanal[];
   initialBarberoId?: string;
   initialSedeId?: SedeId;
+  /** "Reservar igual que la última vez" (correo te toca corte): el servicio ya viene elegido. */
+  initialServicioId?: string;
 }) {
   const router = useRouter();
 
@@ -172,7 +175,13 @@ export function BookingWizard({
   const [cancelando, setCancelando] = useState(false);
   const [cancelError, setCancelError] = useState<string | null>(null);
   const [sedeId, setSedeId] = useState<SedeId | null>(sedeDefault);
-  const [servicio, setServicio] = useState<Servicio | null>(null);
+  // Preselección del correo "te toca corte": solo si el servicio existe y tiene
+  // precio en la sede con la que arranca (si no, el cliente elige como siempre).
+  const [servicio, setServicio] = useState<Servicio | null>(
+    () =>
+      servicios.find((s) => s.id === initialServicioId && (sedeDefault ? s.precios[sedeDefault] != null : true)) ??
+      null,
+  );
   const [servicioFoto, setServicioFoto] = useState<string>("");
   // Arranca en la primera categoría CON servicios de la sede (antes era siempre
   // 'cortes': si la sede no tenía cortes, la grilla quedaba vacía sin aviso).
@@ -191,6 +200,10 @@ export function BookingWizard({
   const [slot, setSlot] = useState<number | null>(null);
   const [nombre, setNombre] = useState("");
   const [email, setEmail] = useState("");
+  // Casilla "avisame cuando me toque corte y de promos" (0068). Marcada por
+  // defecto y visible: el cliente la ve al lado del correo y la desmarca si no
+  // quiere; cada correo lleva además el enlace de baja.
+  const [aceptaAvisos, setAceptaAvisos] = useState(true);
   const [bebida, setBebida] = useState<Bebida | null>(null);
   const [bebidaIncluida, setBebidaIncluida] = useState(false); // combo → sin cargo
   const [upsellMode, setUpsellMode] = useState<"extra" | "combo" | null>(null);
@@ -879,6 +892,7 @@ export function BookingWizard({
       email: sesion ? sesion.email : email.trim(),
       inicioISO: inicio.toISOString(),
       nota,
+      aceptaMarketing: aceptaAvisos,
     }).catch(() => null);
     setSaving(false);
     if (!res) {
@@ -1756,6 +1770,16 @@ export function BookingWizard({
                         />
                       </label>
                     )}
+                    {/* Misma casilla de consentimiento para quien entra con Google. */}
+                    <label className="mt-3 flex cursor-pointer items-start gap-2.5 text-[12px] leading-snug text-muted">
+                      <input
+                        type="checkbox"
+                        checked={aceptaAvisos}
+                        onChange={(e) => setAceptaAvisos(e.target.checked)}
+                        className="mt-0.5 h-4 w-4 shrink-0 accent-[var(--accent)]"
+                      />
+                      <span>Avisarme por correo cuando me toque corte y de alguna promo. Me puedo salir desde cualquier correo.</span>
+                    </label>
                   </div>
                 ) : (
                   <div className="flex flex-col gap-3">
@@ -1792,6 +1816,17 @@ export function BookingWizard({
                           ? "Revisa el correo: falta el @ o el dominio."
                           : "Ya mismo te mandamos la confirmación y el recordatorio."}
                       </span>
+                    </label>
+                    {/* Consentimiento de marketing (0068): visible, marcado por defecto y
+                        desmarcable con un toque; cada correo lleva además el enlace de baja. */}
+                    <label className="flex cursor-pointer items-start gap-2.5 text-[12px] leading-snug text-muted">
+                      <input
+                        type="checkbox"
+                        checked={aceptaAvisos}
+                        onChange={(e) => setAceptaAvisos(e.target.checked)}
+                        className="mt-0.5 h-4 w-4 shrink-0 accent-[var(--accent)]"
+                      />
+                      <span>Avisarme por correo cuando me toque corte y de alguna promo. Me puedo salir desde cualquier correo.</span>
                     </label>
 
                     {/* Como invitado (arriba) o con la cuenta Google del cliente. Si ya
