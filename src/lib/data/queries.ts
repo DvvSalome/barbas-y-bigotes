@@ -838,6 +838,9 @@ export type CajaSesionSede = {
   propinaEfectivo: number;
   /** Gastos en efectivo desde la apertura (salen del cajón). */
   gastos: number;
+  /** Adelantos en efectivo a los barberos de la sede desde la apertura (también
+   *  salen del cajón; los por transferencia no cuentan acá). */
+  adelantos: number;
   /** Efectivo esperado en el cajón = fondo + efectivo + propina efectivo − gastos.
    *  MISMO cálculo que el cierre real (cerrarCaja/snapshotDinero); la card del admin
    *  lo usa tal cual, no lo re-deriva, para que el preview no engañe. */
@@ -911,7 +914,10 @@ export async function getCajaSesiones(): Promise<CajaSesionSede[]> {
     const vs = vsRaw as { medio: string; total: number; propina: number | null; propinaMedio: string | null }[];
     // Del cajón solo salió lo pagado en efectivo (0067); un gasto por Nequi no
     // puede inventar un faltante en el cierre.
-    const totalGastos = sumaGastosEfectivo((gastosRes.data ?? []) as { monto: number; medio?: string | null }[]);
+    const gastosEf = sumaGastosEfectivo((gastosRes.data ?? []) as { monto: number; medio?: string | null }[]);
+    // Los adelantos en efectivo también salen del cajón (regla del dueño, 27-ago).
+    const adelantosEf = await adelantosEfectivoSede(sb, s.id, start);
+    const totalGastos = gastosEf + adelantosEf;
     const montoApertura = sess?.monto_apertura ?? 0;
     const snap = snapshotDinero(vs, { montoApertura, totalGastos });
     out.push({
@@ -927,11 +933,26 @@ export async function getCajaSesiones(): Promise<CajaSesionSede[]> {
       citas: vs.length,
       totales: snap.totales,
       propinaEfectivo: snap.totales.efectivo?.propina ?? 0,
-      gastos: totalGastos,
+      gastos: gastosEf,
+      adelantos: adelantosEf,
       esperadoEfectivo: snap.esperadoEfectivo,
     });
   }
   return out;
+}
+
+// Adelantos EN EFECTIVO a los barberos de una sede desde `desdeISO`: plata que
+// salió físicamente del cajón (el dueño lo confirmó el 27-ago: el adelanto en
+// efectivo sale de caja; por transferencia, no). Se suma al mismo `totalGastos`
+// del snapshot. `adelantos` no tiene sede: se llega por el barbero.
+export async function adelantosEfectivoSede(client: SupabaseClient, sedeId: string, desdeISO: string): Promise<number> {
+  const { data, error } = await client
+    .from("adelantos")
+    .select("monto,medio,barberos!inner(sede_id)")
+    .eq("barberos.sede_id", sedeId)
+    .gte("creado_en", desdeISO);
+  if (error) console.error("adelantosEfectivoSede:", error.message);
+  return sumaGastosEfectivo((data ?? []) as { monto: number; medio?: string | null }[]);
 }
 
 export type CajaSedeEstado = {
@@ -968,7 +989,10 @@ export async function getCajaSede(sedeId: string): Promise<CajaSedeEstado> {
     admin.from("gastos").select("*").eq("sede_id", sedeId).gte("creado_en", ses.abierta_en),
   ]);
   const vs = vsRaw as { medio: string; total: number; propina: number | null; propinaMedio: string | null }[];
-  const totalGastos = sumaGastosEfectivo((gastosRes.data ?? []) as { monto: number; medio?: string | null }[]);
+  // Gastos + adelantos en efectivo: todo lo que salió del cajón desde la apertura.
+  const totalGastos =
+    sumaGastosEfectivo((gastosRes.data ?? []) as { monto: number; medio?: string | null }[]) +
+    (await adelantosEfectivoSede(admin, sedeId, ses.abierta_en));
   const { esperadoEfectivo, ingresos } = snapshotDinero(vs, {
     montoApertura: ses.monto_apertura ?? 0,
     totalGastos,

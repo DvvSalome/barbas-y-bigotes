@@ -27,6 +27,7 @@ import {
   contarCortesCliente,
   getConfigTarjeta,
   ventasDeSesion,
+  adelantosEfectivoSede,
 } from "@/lib/data/queries";
 import { clienteIdForUser } from "@/lib/cliente-actions";
 import {
@@ -2906,9 +2907,13 @@ async function snapshotCaja(
     .select("*")
     .eq("sede_id", sedeId)
     .gte("creado_en", abiertaEnISO);
-  const totalGastos = sumaGastosEfectivo((gastos ?? []) as { monto: number; medio?: string | null }[]);
+  // Gastos + adelantos en efectivo: TODO lo que salió físicamente del cajón
+  // (regla del dueño: el adelanto en efectivo sale de caja; por transferencia no).
+  const totalGastos =
+    sumaGastosEfectivo((gastos ?? []) as { monto: number; medio?: string | null }[]) +
+    (await adelantosEfectivoSede(admin, sedeId, abiertaEnISO));
   // Matemática pura del snapshot (misma que testea scripts/check-caja.ts): el
-  // esperado incluye el fondo de apertura y descuenta los gastos del cajón.
+  // esperado incluye el fondo de apertura y descuenta las salidas del cajón.
   const { totales, efectivo, datafono, esperadoEfectivo } = snapshotDinero(vs, {
     montoApertura,
     totalGastos,
@@ -2946,6 +2951,8 @@ async function ejecutarCierreCaja(
     total_efectivo: snap.efectivo,
     total_datafono: snap.datafono,
     totales: snap.totales,
+    // Salidas del cajón en efectivo (gastos + adelantos): es lo que cuadra con
+    // `diferencia`, no solo los gastos.
     total_gastos: snap.totalGastos,
     citas: snap.citas,
     efectivo_contado: params.efectivoContado,

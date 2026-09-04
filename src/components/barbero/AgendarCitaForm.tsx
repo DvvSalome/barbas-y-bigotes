@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { getDisponibilidad, agendarCita, buscarClientesStaff } from "@/lib/actions";
+import { recargarSiDeployViejo } from "@/lib/skew";
 import {
   DOW,
   fmtTime,
@@ -195,8 +196,13 @@ export function AgendarCitaForm({
       telefono: telefono.trim(),
       email: email.trim() || undefined,
       duracionMin: durManual ?? undefined,
-    });
+    }).catch(() => null);
     setSaving(false);
+    if (!res) {
+      // La action REVENTÓ (pestaña con el bundle viejo tras un deploy): recargar.
+      if (!recargarSiDeployViejo()) setErr("No se pudo agendar. Revisá la conexión y volvé a intentar.");
+      return;
+    }
     if (res.ok) onDone();
     else setErr(res.error ?? "No se pudo agendar.");
   }

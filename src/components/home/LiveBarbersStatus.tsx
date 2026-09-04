@@ -5,6 +5,7 @@ import { supabaseBrowser } from "@/lib/supabase/client";
 import Link from "next/link";
 import { CardTilt } from "@/components/ui/CardTilt";
 import { getLiveBarberStatuses } from "@/lib/actions";
+import { recargarSiDeployViejo } from "@/lib/skew";
 
 type BarberStatus = {
   id: string;
@@ -31,7 +32,10 @@ export function LiveBarbersStatus() {
       const data = await getLiveBarberStatuses();
       setBarbers(data);
     } catch (err) {
-      console.error("Error fetching live status:", err);
+      // Una action que revienta desde la home es casi siempre una pestaña con el
+      // bundle viejo tras un deploy (21 errores en 6 s en Sentry, 4-sep): se
+      // recarga una vez y listo; si no era eso, se deja quieto (nada de tormentas).
+      if (!recargarSiDeployViejo()) console.error("Error fetching live status:", err);
     } finally {
       setLoading(false);
     }
@@ -45,7 +49,9 @@ export function LiveBarbersStatus() {
       .then((data) => {
         if (vivo) setBarbers(data);
       })
-      .catch((err) => console.error("Error fetching live status:", err))
+      .catch((err) => {
+        if (!recargarSiDeployViejo()) console.error("Error fetching live status:", err);
+      })
       .finally(() => {
         if (vivo) setLoading(false);
       });

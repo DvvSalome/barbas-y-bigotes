@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { completarReserva } from "@/lib/actions";
+import { recargarSiDeployViejo } from "@/lib/skew";
 import { sanearCop } from "@/lib/admin-reglas";
 import { cop } from "@/lib/format";
 import type { PendienteCobro } from "@/lib/data/queries";
@@ -72,8 +73,13 @@ export function PendientesCobrar({
       productos: [],
       propina: prop ?? 0,
       propinaMedio: (prop ?? 0) > 0 ? (propinaMedio ?? medio) : undefined,
-    });
+    }).catch(() => null);
     setSaving(false);
+    if (!res) {
+      // La action REVENTÓ (pestaña con el bundle viejo tras un deploy): recargar.
+      if (!recargarSiDeployViejo()) setError("No se pudo cobrar. Revisá la conexión y volvé a intentar.");
+      return;
+    }
     if (!res.ok) {
       setError(res.error ?? "No se pudo cobrar.");
       return;

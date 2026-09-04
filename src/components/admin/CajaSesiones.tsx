@@ -203,6 +203,7 @@ function CajaCard({ caja, medios }: { caja: CajaSesionSede; medios: MedioPago[] 
             {caja.montoApertura > 0 && <> · base {cop(caja.montoApertura)}</>}
             {caja.propinaEfectivo > 0 && <> · +{cop(caja.propinaEfectivo)} propinas</>}
             {caja.gastos > 0 && <> · −{cop(caja.gastos)} gastos</>}
+            {caja.adelantos > 0 && <> · −{cop(caja.adelantos)} adelantos</>}
           </div>
           <div>
             <label className={lbl}>Efectivo contado en la caja</label>

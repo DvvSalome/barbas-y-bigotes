@@ -5,6 +5,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { categorias } from "@/lib/data/seed";
 import { createReserva, getDisponibilidad } from "@/lib/actions";
+import { recargarSiDeployViejo } from "@/lib/skew";
 import { cancelarReservaReciente } from "@/lib/cliente-actions";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import type { Sede, SedeId, Servicio, Barbero, Categoria } from "@/lib/data/types";
@@ -878,8 +879,14 @@ export function BookingWizard({
       email: sesion ? sesion.email : email.trim(),
       inicioISO: inicio.toISOString(),
       nota,
-    });
+    }).catch(() => null);
     setSaving(false);
+    if (!res) {
+      // La action REVENTÓ (no devolvió {ok:false}): casi siempre es una pestaña
+      // con el bundle viejo tras un deploy. Recargar trae los ids vigentes.
+      if (!recargarSiDeployViejo()) setErrorMsg("No se pudo reservar. Revisá la conexión y volvé a intentar.");
+      return;
+    }
     if (res.ok) {
       // Persistir la confirmación ANTES de pintarla: si un reload (deploy/PWA/F5)
       // llega en este instante, al remontar se restaura la pantalla ¡Listo!.

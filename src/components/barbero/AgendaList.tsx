@@ -12,6 +12,7 @@ import {
   getTarjetaParaCobro,
   type ActionResult,
 } from "@/lib/actions";
+import { recargarSiDeployViejo } from "@/lib/skew";
 import { calcularCobro } from "@/lib/cobro";
 import { sanearCop } from "@/lib/admin-reglas";
 import { type BeneficioTarjeta } from "@/lib/tarjeta";
@@ -1149,8 +1150,15 @@ function CheckoutForm({
       nota,
       cuponCodigo: cupon.trim() || undefined,
       idemToken,
-    });
+    }).catch(() => null);
     setSaving(false);
+    if (!res) {
+      // La action REVENTÓ (no devolvió {ok:false}): la tablet del mostrador queda
+      // abierta todo el día y tras un deploy sus actions ya no existen. Recargar
+      // trae los ids vigentes; el idemToken evita cobrar dos veces si acaso.
+      if (!recargarSiDeployViejo()) setErr("No se pudo cobrar. Revisá la conexión y volvé a intentar.");
+      return;
+    }
     if (res.ok) {
       // La caja "suena" al cobrar: el equipo lo oye sin mirar la pantalla.
       sfxCobro();
