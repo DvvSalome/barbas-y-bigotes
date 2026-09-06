@@ -60,7 +60,7 @@ export function PrecioEditable({ productoId, precio }: { productoId: string; pre
         {cop(precio)}
         {/* Lápiz SIEMPRE visible: en el celular no hay hover, así que si estaba
             oculto el dueño no sabía que el precio se toca para cambiarlo. */}
-        <span aria-hidden className="text-[11px] text-muted">✎</span>
+        <span aria-hidden className="text-[12.5px] text-muted">✎</span>
       </button>
     );
   }
@@ -108,7 +108,7 @@ export function PrecioEditable({ productoId, precio }: { productoId: string; pre
           ×
         </button>
       </span>
-      {error && <span className="text-[11px] leading-tight text-accent-soft">{error}</span>}
+      {error && <span className="text-[12.5px] leading-tight text-accent-soft">{error}</span>}
     </span>
   );
 }

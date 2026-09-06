@@ -75,6 +75,9 @@ const SECCIONES_CON_SEDE = [
   "/admin/precios",
   "/admin/clientes",
   "/admin/liquidacion",
+  // Productos obedece al selector de arriba (6-sep): antes traía sus propias
+  // pestañas de sede debajo de un selector que acá no filtraba.
+  "/admin/inventario",
 ] as const;
 
 const esRuta = (path: string, href: string) => (href === "/admin" ? path === href : path.startsWith(href));

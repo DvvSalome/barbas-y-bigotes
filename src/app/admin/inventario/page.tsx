@@ -5,19 +5,30 @@ import { SectionHeader } from "@/components/admin/SectionHeader";
 
 export const metadata: Metadata = { title: "Productos y stock · Admin" };
 
-export default async function InventarioPage() {
+export default async function InventarioPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ [k: string]: string | string[] | undefined }>;
+}) {
+  const sp = await searchParams;
   const [productos, sedes] = await Promise.all([getProductos(), getSedes()]);
+  // El ?sede= del selector del topbar, validado contra las sedes reales (mismo
+  // patrón que Clientes). Sin sede = las dos, agrupadas.
+  const sedeActiva = sedes.find((s) => s.id === (typeof sp.sede === "string" ? sp.sede : undefined))?.id ?? null;
+  const nombreSede = sedes.find((s) => s.id === sedeActiva)?.nombre;
 
   return (
     <div className="max-w-6xl">
       <SectionHeader
         eyebrow="Catálogo"
         title="Productos y stock"
-        description="Lo que se vende en el mostrador: cuánto queda, cuánto cuesta y qué se está acabando."
+        description={
+          sedeActiva
+            ? `Lo que se vende en ${nombreSede}: cuánto queda, cuánto cuesta y qué se está acabando.`
+            : "Lo que se vende en las dos sedes: cuánto queda, cuánto cuesta y qué se está acabando. Elegí una sede arriba para ver solo esa."
+        }
       />
-      {/* Una sola pantalla: sede en pestañas (no secciones apiladas) y el alta
-          se abre en su sitio, para no mandar al dueño a hacer scroll. */}
-      <InventarioPanel productos={productos} sedes={sedes} />
+      <InventarioPanel productos={productos} sedes={sedes} sedeActiva={sedeActiva} />
     </div>
   );
 }

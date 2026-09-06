@@ -48,10 +48,10 @@ export function ComisionEditable({ productoId, pct }: { productoId: string; pct:
           setEditing(true);
         }}
         aria-label="Tocar para editar la comisión del barbero"
-        className="inline-flex min-h-11 items-center gap-1 text-[11px] text-muted underline decoration-dotted decoration-line underline-offset-4 transition hover:decoration-accent"
+        className="inline-flex min-h-11 items-center gap-1 text-[12.5px] text-muted underline decoration-dotted decoration-line underline-offset-4 transition hover:decoration-accent"
       >
         {pct}% para el barbero
-        <span aria-hidden className="text-[11px] text-muted">✎</span>
+        <span aria-hidden className="text-[12.5px] text-muted">✎</span>
       </button>
     );
   }
@@ -79,7 +79,7 @@ export function ComisionEditable({ productoId, pct }: { productoId: string; pct:
             error ? "border-red-500" : "border-accent"
           }`}
         />
-        <span className="text-[11px] text-muted">% barbero</span>
+        <span className="text-[12.5px] text-muted">% barbero</span>
         <button
           type="button"
           onClick={guardar}
@@ -101,7 +101,7 @@ export function ComisionEditable({ productoId, pct }: { productoId: string; pct:
           ×
         </button>
       </span>
-      {error && <span className="text-[11px] leading-tight text-accent-soft">{error}</span>}
+      {error && <span className="text-[12.5px] leading-tight text-accent-soft">{error}</span>}
     </span>
   );
 }

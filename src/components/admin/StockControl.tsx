@@ -8,8 +8,8 @@ import { sanearCantidad } from "@/lib/admin-reglas";
 // Control de stock del producto. Dos gestos distintos, a propósito:
 //  · "Entró mercancía" SUMA (es lo que pasa en el local: llegaron 12 aguas).
 //  · "Corregir" fija el número contado (el dueño contó y hay otra cantidad).
-// Antes no existía ninguno: el stock solo bajaba con las ventas y no había
-// forma de volver a subirlo.
+// El número en bodega lo muestra la tarjeta; acá solo viven las dos acciones,
+// a 44 px y con texto legible (auditoría del 6-sep).
 export function StockControl({
   productoId,
   stock,
@@ -51,17 +51,18 @@ export function StockControl({
 
   if (modo) {
     return (
-      <div className="flex flex-col gap-1.5">
+      <div className="flex w-full flex-col gap-1.5">
         {/* En el celular no hay hover: la diferencia clave (sumar vs fijar) se dice
             con palabras, no en un title. Evita descuadrar el stock por confusión. */}
-        <p className="text-[11px] font-semibold text-ink">
+        <p className="text-[12.5px] font-semibold text-ink">
           {modo === "entrada"
             ? `¿Cuántas ENTRARON? (se suman a ${stock})`
             : "¿Cuántas hay REALMENTE? (fija el total contado)"}
         </p>
-        <div className="flex flex-wrap items-center gap-1.5">
+        <div className="flex flex-wrap items-center gap-2">
           <input
             type="number"
+            inputMode="numeric"
             min={modo === "entrada" ? 1 : 0}
             step={1}
             autoFocus
@@ -76,7 +77,7 @@ export function StockControl({
             }}
             placeholder={modo === "entrada" ? "+ cuántas" : "quedan"}
             aria-label={modo === "entrada" ? "Cuántas unidades entraron" : "Cuántas hay realmente"}
-            className="w-[86px] rounded-lg border border-accent/60 bg-bg px-2 py-1 text-sm text-ink tabular-nums focus:outline-none"
+            className="min-h-11 w-[96px] rounded-xl border border-accent/60 bg-bg px-3 text-sm text-ink tabular-nums focus:outline-none"
           />
           <button
             type="button"
@@ -99,31 +100,24 @@ export function StockControl({
             ×
           </button>
         </div>
-        {error && <span className="text-[11px] leading-tight text-accent-soft">{error}</span>}
+        {error && <span className="text-[12.5px] leading-tight text-accent-soft">{error}</span>}
       </div>
     );
   }
 
   return (
     <div className="flex items-center gap-2">
-      <div className="flex items-baseline gap-1">
-        <span
-          className={`font-display text-[22px] font-extrabold leading-none tabular-nums ${
-            bajo ? "text-warn" : "text-ink"
-          }`}
-        >
-          {stock}
-        </span>
-        <span className="text-[11px] text-muted">en bodega</span>
-      </div>
       <button
         type="button"
         onClick={() => {
           setModo("entrada");
           setVal("");
         }}
-        title="Llegó mercancía: suma unidades al stock"
-        className="inline-flex min-h-11 items-center rounded-full border border-accent/40 bg-accent/[0.07] px-3.5 text-[11.5px] font-bold text-accent-soft transition hover:bg-accent/15"
+        className={`inline-flex min-h-11 items-center rounded-full border px-4 text-[13px] font-bold transition ${
+          bajo
+            ? "border-warn/50 bg-warn/10 text-warn hover:bg-warn/15"
+            : "border-accent/40 bg-accent/[0.07] text-accent-soft hover:bg-accent/15"
+        }`}
       >
         + Entró
       </button>
@@ -133,8 +127,7 @@ export function StockControl({
           setModo("correccion");
           setVal(String(stock));
         }}
-        title="Conté y hay otra cantidad"
-        className="inline-flex min-h-11 items-center rounded-full border border-line px-3.5 text-[11.5px] text-muted transition hover:text-ink"
+        className="inline-flex min-h-11 items-center rounded-full border border-line px-4 text-[13px] text-muted transition hover:text-ink"
       >
         Corregir
       </button>

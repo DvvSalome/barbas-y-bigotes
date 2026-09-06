@@ -52,7 +52,7 @@ export function NuevoCliente() {
           setAbierto(true);
           setHecho(null);
         }}
-        className="rounded-full bg-[linear-gradient(180deg,var(--cta-1),var(--cta-2))] px-4 py-2 text-[12.5px] font-bold uppercase tracking-wide text-on-accent transition hover:brightness-105"
+        className="min-h-11 rounded-full bg-[linear-gradient(180deg,var(--cta-1),var(--cta-2))] px-5 text-[13px] font-bold uppercase tracking-wide text-on-accent transition hover:brightness-105"
       >
         + Registrar cliente
       </button>
