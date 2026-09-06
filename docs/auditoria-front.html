@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Barbas &amp; Bigotes · Auditoría de front y experiencia</title>
+<style>
+  @page { size: A4; margin: 16mm 14mm; }
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; color: #1c1a17; margin: 0; font-size: 11.2pt; line-height: 1.45; background: #fff; }
+  .hoja { max-width: 180mm; margin: 0 auto; padding: 8mm 0 12mm; }
+  h1 { font-size: 22pt; margin: 0 0 4px; letter-spacing: -0.01em; }
+  .sub { color: #6b6559; margin: 0 0 18px; font-size: 11pt; }
+  h2 { font-size: 15pt; margin: 26px 0 8px; padding-bottom: 4px; border-bottom: 2px solid #c9b18a; color: #2b2622; page-break-after: avoid; }
+  h3 { font-size: 12pt; margin: 16px 0 6px; color: #7a2b23; page-break-after: avoid; }
+  p { margin: 0 0 8px; }
+  ul, ol { margin: 0 0 10px 20px; padding: 0; }
+  li { margin: 0 0 4px; }
+  table { border-collapse: collapse; width: 100%; margin: 6px 0 12px; font-size: 10pt; page-break-inside: avoid; }
+  th, td { border: 1px solid #ddd6c8; padding: 5px 7px; text-align: left; vertical-align: top; }
+  th { background: #f4efe6; font-weight: 700; }
+  td.n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .caja { border: 1px solid #ddd6c8; border-left: 4px solid #c9b18a; background: #faf7f1; padding: 10px 12px; margin: 10px 0 12px; page-break-inside: avoid; }
+  .ok { border-left-color: #3c7a4e; background: #f0f7f2; }
+  .alerta { border-left-color: #b8372b; background: #fbf1ef; }
+  .sev { display: inline-block; font-size: 9pt; font-weight: 700; padding: 1px 7px; border-radius: 999px; white-space: nowrap; }
+  .s1 { background: #f8d7d2; color: #7a2b23; } .s2 { background: #fdecc8; color: #6b4a08; } .s3 { background: #dcefe1; color: #22553a; }
+  .capturas { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 8px 0 12px; page-break-inside: avoid; }
+  .capturas figure { margin: 0; }
+  .capturas img { width: 100%; border: 1px solid #ddd6c8; border-radius: 6px; }
+  .capturas figcaption { font-size: 9pt; color: #6b6559; margin-top: 3px; }
+  .peq { font-size: 9.5pt; color: #6b6559; }
+  .pie { margin-top: 28px; padding-top: 8px; border-top: 1px solid #ddd6c8; font-size: 9.5pt; color: #8a8378; }
+</style>
+</head>
+<body>
+<div class="hoja">
+
+<h1>Barbas &amp; Bigotes · auditoría de front y experiencia</h1>
+<p class="sub">Medida en producción el 6 de septiembre de 2026 · 18 pantallas × celular (390 px) y escritorio o tablet · con las sesiones reales de admin y mostrador. Los números salen de instrumentos, no de opinión.</p>
+
+<div class="caja ok"><b>Impresión general.</b> La app es sólida donde más se usa: el <b>mostrador</b> y el <b>wizard de reserva</b> tienen botones grandes, estados claros y cero errores; ninguna pantalla se desborda ni rompe. La oportunidad grande está en el <b>panel del admin en el celular</b>: hasta 368 px de cabecera antes del contenido, la mitad de los textos por debajo de 12 px en las pantallas de catálogo, y decenas de controles de 31 a 38 px. Y en la <b>home</b>, que llega a 5.980 px de largo y tapa su propio titular con una animación y un widget.</div>
+
+<h2>1. Lo medido</h2>
+<p class="peq">Targets &lt; 40 px = botones, enlaces y controles con alguno de sus lados menor a 40 px (la referencia es 44 px). Texto &lt; 12 px = elementos con texto propio en menos de 12 px. Cromo = píxeles desde arriba hasta el primer título de la pantalla en celular. Sin desborde horizontal y sin errores de consola en las 36 mediciones.</p>
+<table>
+<tr><th>Pantalla (celular)</th><th class="n">Targets &lt; 40 px</th><th class="n">Texto &lt; 12 px</th><th class="n">Cromo</th><th>Lo que pesa</th></tr>
+<tr><td>Público · Home</td><td class="n">10 de 25</td><td class="n">13 %</td><td class="n">72 px</td><td>Enlaces del pie de 15–19 px de alto; página de 5.980 px.</td></tr>
+<tr><td>Público · Reservar (servicio)</td><td class="n">0 de 16</td><td class="n">43 %</td><td class="n">100 px</td><td>Etiquetas “PRECIO”, duración “30M” y contadores de categoría en 10–11 px.</td></tr>
+<tr><td>Público · Barberos</td><td class="n">5 de 14</td><td class="n">44 %</td><td class="n">157 px</td><td>Mismo pie chico; texto secundario pequeño.</td></tr>
+<tr><td>Mostrador · Turnos / Agenda</td><td class="n">1 de 12</td><td class="n">8 %</td><td class="n">118 px</td><td>Solo el logo. Bien.</td></tr>
+<tr><td>Mostrador · Cierre</td><td class="n">1 de 11</td><td class="n">0 %</td><td class="n">—</td><td>Bien.</td></tr>
+<tr><td>Admin · Hoy</td><td class="n">1 de 22</td><td class="n">38 %</td><td class="n">230 px</td><td>Etiquetas de KPI en 10–11 px; “$ 0” en rojo lee como alerta.</td></tr>
+<tr><td>Admin · Agenda</td><td class="n">1 de 27</td><td class="n">34 %</td><td class="n">250 px</td><td>Cabecera larga.</td></tr>
+<tr><td>Admin · Caja (cuadre)</td><td class="n">17 de 52</td><td class="n">23 %</td><td class="n">307 px</td><td>Chips de categoría y de medio a 38 px; página de 3.800 px.</td></tr>
+<tr><td>Admin · Clientes</td><td class="n">6 de 46</td><td class="n">19 %</td><td class="n">250 px</td><td>Filtros a 34 px; botón “Registrar cliente” a 35 px.</td></tr>
+<tr><td>Admin · Servicios y precios</td><td class="n">22 de 78</td><td class="n">49 %</td><td class="n">311 px</td><td>“Suma sello” y “Desactivar” a 31 px en cada fila.</td></tr>
+<tr><td>Admin · Productos y stock</td><td class="n">12 de 70</td><td class="n"><b>56 %</b></td><td class="n"><b>368 px</b></td><td>Toggles “Sí” a 32 px; “10 % para el barbero”, “Subir foto”, avisos de stock en 11 px.</td></tr>
+<tr><td>Admin · Equipo</td><td class="n">23 de 52</td><td class="n">24 %</td><td class="n">368 px</td><td>“Cambiar PIN” y “Perfil” a 36 px × 6 barberos.</td></tr>
+<tr><td>Admin · Liquidación</td><td class="n">1 de 24</td><td class="n">41 %</td><td class="n">311 px</td><td>Tabla con mucho texto secundario chico.</td></tr>
+<tr><td>Admin · Avisos</td><td class="n">3 de 34</td><td class="n">11 %</td><td class="n">368 px</td><td>Dos interruptores sin nombre accesible.</td></tr>
+<tr><td>Admin · Horarios</td><td class="n"><b>34 de 63</b></td><td class="n">7 %</td><td class="n">368 px</td><td>Casilla de 13 px, selectores de hora a 32–34 px; el horario queda debajo de las fotos de sede.</td></tr>
+</table>
+
+<div class="capturas">
+<figure><img src="auditoria-front/aud-publico-home-movil.png" alt=""><figcaption>Home: el titular animado deja una “T” sola y el widget tapa el texto.</figcaption></figure>
+<figure><img src="auditoria-front/aud-admin-hoy-movil.png" alt=""><figcaption>Admin · Hoy: 230 px de cabecera y un $ 0 en rojo.</figcaption></figure>
+<figure><img src="auditoria-front/aud-admin-productos-y-stock-movil.png" alt=""><figcaption>Productos: 368 px antes del título; textos de 11 px.</figcaption></figure>
+<figure><img src="auditoria-front/aud-mostrador-turnos-tablet.png" alt=""><figcaption>Mostrador en tablet: claro y grande. Sobra la mitad derecha.</figcaption></figure>
+</div>
+
+<h2>2. Usabilidad: hallazgos y qué hacer</h2>
+<h3>Panel del admin (el dueño en el celular)</h3>
+<table>
+<tr><th style="width:44%">Hallazgo</th><th style="width:11%">Peso</th><th>Recomendación</th></tr>
+<tr><td>La cabecera ocupa 230–368 px antes del contenido: logo, selector de sede, la línea “Esta sección muestra las dos sedes”, buscador, banner amarillo de caja, pestañas y subpestañas.</td><td><span class="sev s1">Crítico</span></td><td>Una sola fila: logo, selector de sede compacto y buscador como ícono. El banner de caja pasa a ser un chip en el título (y a pantalla completa solo en Hoy y Caja). Fuera la línea explicativa. Meta medible: de 368 a ~140 px.</td></tr>
+<tr><td>Entre 31 y 38 px: chips de gasto y de medio (38), filtros de clientes (34), “Suma sello” / “Desactivar” (31), “Cambiar PIN” (36), toggles “Sí” (32), selectores de horario (32–34), casilla de 13 px en Horarios.</td><td><span class="sev s1">Crítico</span></td><td>Todo control a 44 px de alto. Un solo componente de interruptor con etiqueta para “Sí/No”, “Suma sello” y los de Avisos (que además no tienen nombre accesible).</td></tr>
+<tr><td>Textos de 10–11 px en mayúscula con espaciado (eyebrows, etiquetas de KPI, “10 % para el barbero”, avisos de stock). En Productos son el 56 % de los textos.</td><td><span class="sev s1">Crítico</span></td><td>Mínimo 12 px para etiquetas y 13 px para texto secundario. Las mayúsculas espaciadas solo en el eyebrow de sección.</td></tr>
+<tr><td>El rojo hace cinco trabajos: marca, plata (“$ 0 entró hoy”), enlaces de acción (“Cuadre manual”, “+ Gasto”), estado “Sí” y alerta.</td><td><span class="sev s2">Moderado</span></td><td>Plata en blanco/neutro, rojo solo para la acción principal, ámbar para alertas, verde solo para “cuadró / activo”.</td></tr>
+<tr><td>Hoy arranca con una foto de fondo y un “$ 0” enorme; lo accionable (pendientes por cobrar, caja sin cerrar, barberos sin correo) queda abajo o en otras pantallas. El sparkline sin datos se dibuja plano.</td><td><span class="sev s2">Moderado</span></td><td>Arriba un bloque “Para hacer hoy” (3 líneas con enlace directo), luego los KPI en dos filas compactas; sin sparkline hasta tener 7 días de datos.</td></tr>
+<tr><td>Horarios muestra primero “La foto de cada sede” y el horario semanal después.</td><td><span class="sev s2">Moderado</span></td><td>El horario primero; las fotos a una sección “Sedes” (con dirección y teléfono, hoy repartidos en tres lugares).</td></tr>
+<tr><td>Cuadre es una página de 3.800 px: pendientes, corte del día, bitácoras, cuadres anteriores y los formularios a la derecha.</td><td><span class="sev s3">Menor</span></td><td>Pestañas internas “Hoy · Bitácora · Anteriores” o secciones plegadas; los formularios de gasto y adelanto como hoja que sube (patrón del mostrador).</td></tr>
+</table>
+
+<h3>Mostrador (tablet y celular del barbero)</h3>
+<table>
+<tr><th style="width:44%">Hallazgo</th><th style="width:11%">Peso</th><th>Recomendación</th></tr>
+<tr><td>En la tarjeta del barbero libre, el gesto es el “+” chico de la derecha; la tarjeta entera parece tocable y no lo es.</td><td><span class="sev s2">Moderado</span></td><td>Toda la tarjeta registra el walk-in; el “+” se queda como refuerzo visual.</td></tr>
+<tr><td>Cobrar una cita son tres toques (tarjeta → hoja → cobrar) y el 95 % de las veces no se cambia nada.</td><td><span class="sev s2">Moderado</span></td><td>Botón “Cobrar $ 35.000 · Efectivo” en la tarjeta de la cita con el medio que ese cliente usa siempre; “cambiar” abre la hoja completa. De 3 toques a 1.</td></tr>
+<tr><td>En tablet apaisada la mitad derecha de Turnos queda vacía mientras la lista de espera y los pendientes viven en otras pestañas.</td><td><span class="sev s3">Menor</span></td><td>A partir de 1024 px: dos columnas, turnos a la izquierda y espera + pendientes por cobrar a la derecha.</td></tr>
+<tr><td>Agendar pide barbero, servicio, día, hora, nombre y teléfono aunque el cliente sea de siempre.</td><td><span class="sev s3">Menor</span></td><td>Buscar el cliente primero y ofrecer “igual que la última vez” (barbero y servicio precargados): de seis campos a dos.</td></tr>
+</table>
+
+<h3>Público (el cliente)</h3>
+<table>
+<tr><th style="width:44%">Hallazgo</th><th style="width:11%">Peso</th><th>Recomendación</th></tr>
+<tr><td>El titular de la home se escribe letra por letra: en un celular de gama media la primera pantalla muestra una “T” sola varios segundos, y el widget de contacto (“¿Alguna duda, bro?”) se abre encima del texto en el primer scroll.</td><td><span class="sev s1">Crítico</span></td><td>Titular completo desde el primer cuadro (animar solo el acento o el subrayado); el widget aparece cerrado y solo se abre al tocarlo, o después de 20 s.</td></tr>
+<tr><td>El párrafo “Esta aplicación se llama Barbas &amp; Bigotes y es el sistema de reservas…” está escrito para buscadores e IA y un humano lo lee raro justo debajo del hero. Dos botones “Reservar” seguidos.</td><td><span class="sev s2">Moderado</span></td><td>Dejar ese texto para las máquinas en un bloque discreto al final (o en el pie) y aquí una frase de marca. Un solo CTA por pantalla.</td></tr>
+<tr><td>La home mide 5.980 px en celular y Barberos 5.109 px.</td><td><span class="sev s2">Moderado</span></td><td>Recortar a lo que decide: reservar, sedes, barberos, reseñas. Lo demás, a Nosotros.</td></tr>
+<tr><td>En Reservar, la tarjeta de “Cerquillos” muestra una foto de un brazo robótico industrial (imagen de archivo) y varios servicios llevan el ícono genérico de tijera.</td><td><span class="sev s2">Moderado</span></td><td>Foto real por servicio (ya se pueden subir desde Catálogo); mientras no haya, un ícono de marca, nunca una foto ajena.</td></tr>
+<tr><td>En Reservar, etiquetas “PRECIO”, “30M” y contadores de categoría en 10–11 px (43 % de los textos).</td><td><span class="sev s3">Menor</span></td><td>Precio en 15 px y duración en 12 px dentro de la tarjeta; los contadores fuera del chip.</td></tr>
+<tr><td>Pie de página con enlaces de 15–19 px de alto (teléfonos, privacidad, términos).</td><td><span class="sev s3">Menor</span></td><td>Enlaces a 44 px o agrupados en dos botones (“Llamar”, “WhatsApp”).</td></tr>
+</table>
+
+<h2>3. Jerarquía visual</h2>
+<ul>
+  <li><b>Qué se ve primero.</b> Público: la foto del local y el botón rojo, correcto, pero el titular llega tarde. Mostrador: “Nadie en la silla ahora mismo” y los barberos libres, correcto. Admin Hoy: un “$ 0” rojo enorme sobre una foto; lo correcto sería lo que hay que hacer hoy.</li>
+  <li><b>Orden de lectura.</b> En el admin el ojo baja por 250–368 px de controles antes de encontrar el título de la sección. En Horarios el título dice “Horarios” y lo primero que aparece son fotos.</li>
+  <li><b>Énfasis.</b> El rojo se usa tanto que dejó de señalar. La plata debería ser blanca y grande; la alerta, ámbar; el rojo, solo el botón principal.</li>
+  <li><b>Espacio.</b> Los KPI de Hoy son seis tarjetas de ~120 px con un número y una frase: caben en dos filas de tres con la mitad de alto.</li>
+</ul>
+
+<h2>4. Consistencia</h2>
+<table>
+<tr><th style="width:26%">Elemento</th><th>Hoy hay</th><th>Propuesta</th></tr>
+<tr><td>Interruptor Sí/No</td><td>Toggle “Sí” rojo de 47×32 (Productos), switch verde (Avisos), pill “Suma sello / No suma sello” (Servicios).</td><td>Un solo componente Switch con etiqueta a la izquierda, 44 px, verde = activo.</td></tr>
+<tr><td>Elegir sede</td><td>Segmentado en la cabecera, chips “Parque Venezuela 1 · Plaza de la Paz 1” en Productos, selector en los formularios de Caja.</td><td>Solo el segmentado de la cabecera; las pantallas obedecen a ese valor.</td></tr>
+<tr><td>Editar un dato</td><td>Precio y comisión inline con lápiz; nombre y descripción en formularios; stock con “+ Entró / Corregir”.</td><td>Inline con lápiz para todo dato corto (precio, comisión, duración, correo); formulario solo para altas.</td></tr>
+<tr><td>Botones del mismo grupo</td><td>Degradado, contorno rojo y contorno gris conviven (mostrador, agenda).</td><td>Primario = degradado; secundario = contorno gris; el contorno rojo desaparece.</td></tr>
+<tr><td>Etiquetas de sección</td><td>Eyebrow rojo en mayúsculas de 10–12 px, con y sin espaciado.</td><td>Un solo estilo a 12 px, y solo uno por pantalla.</td></tr>
+</table>
+
+<h2>5. Accesibilidad</h2>
+<ul>
+  <li><b>Contraste:</b> blanco sobre el rojo de marca 4,37:1 y el eyebrow rojo sobre negro 4,21:1; AA pide 4,5:1 para texto normal. Oscurecer el rojo un paso para texto y botones, o usar el rojo solo en fondos con texto grande.</li>
+  <li><b>Targets:</b> los conteos de la tabla; el peor caso es Horarios (34 de 63) con una casilla de 13 px.</li>
+  <li><b>Legibilidad:</b> 38–56 % de textos bajo 12 px en Hoy, Servicios, Productos y Liquidación.</li>
+  <li><b>Nombres:</b> los dos interruptores de Avisos no tienen nombre accesible (un lector de pantalla dice “botón”).</li>
+  <li><b>Lo que ya está bien:</b> sin desborde horizontal, sin errores de consola, botones de 44 px en el mostrador y el wizard, foco visible en formularios.</li>
+</ul>
+
+<h2>6. Lo que funciona y hay que conservar</h2>
+<ul>
+  <li>El mostrador: barra de acciones fija, estados en palabras (“Nadie en la silla”, “Libre”), sonido al cobrar, hojas que suben sin perder la agenda de fondo.</li>
+  <li>El wizard: cinco pasos, tarjetas grandes, precio visible, confirmación de cinco segundos con “Editar”.</li>
+  <li>La marca: oscuro, rojo y crema, tipografía condensada; es reconocible y consistente en las tres apps y en los correos.</li>
+  <li>Rendimiento y estabilidad: 36 de 36 pantallas en 200, sin errores, con recarga automática si un deploy deja una pestaña vieja.</li>
+</ul>
+
+<h2>7. Recomendaciones por prioridad</h2>
+<table>
+<tr><th style="width:5%">#</th><th style="width:38%">Cambio</th><th style="width:12%">Esfuerzo</th><th>Cómo se mide</th></tr>
+<tr><td>1</td><td><b>Cabecera del admin a una fila</b> + banner de caja como chip + fuera la línea explicativa.</td><td>1 día</td><td>Cromo en celular: de 230–368 px a ≤ 140 px en las 12 pantallas.</td></tr>
+<tr><td>2</td><td><b>Tipografía mínima 12/13 px</b> en todo el panel y en Reservar.</td><td>½ día</td><td>Texto &lt; 12 px: de 38–56 % a menos de 10 %.</td></tr>
+<tr><td>3</td><td><b>Controles a 44 px</b> y un solo Switch (chips, pills, toggles, selectores de horario, casilla, filtros, “Registrar cliente”). Nombres accesibles en los interruptores.</td><td>½ día</td><td>Targets &lt; 40 px: de 130 a 0 en el panel.</td></tr>
+<tr><td>4</td><td><b>Semántica del color:</b> plata neutra, rojo solo acción, ámbar alerta.</td><td>1 día</td><td>Ningún monto en rojo; una sola alerta ámbar por pantalla.</td></tr>
+<tr><td>5</td><td><b>Hoy del admin:</b> “Para hacer hoy” arriba, KPI en dos filas, sin sparkline vacío.</td><td>1 día</td><td>Lo accionable visible sin scroll en un celular de 844 px.</td></tr>
+<tr><td>6</td><td><b>Home:</b> titular completo, widget cerrado, un CTA por pantalla, texto para máquinas al final, página más corta.</td><td>1 día</td><td>Titular legible en el primer cuadro; página &lt; 3.500 px.</td></tr>
+<tr><td>7</td><td><b>Mostrador a un toque:</b> tarjeta del barbero entera tocable; “Cobrar $ X · medio” en la cita; dos columnas en tablet.</td><td>1 día</td><td>Cobrar una cita: de 3 toques a 1.</td></tr>
+<tr><td>8</td><td><b>Reservar:</b> foto real o ícono de marca por servicio (fuera la foto del robot); precio y duración legibles.</td><td>½ día</td><td>Cero imágenes de archivo ajenas; texto &lt; 12 px bajo 10 %.</td></tr>
+<tr><td>9</td><td><b>Horarios y Sedes:</b> el horario primero; dirección, teléfono y foto de cada sede en un solo lugar (hoy viven en tres).</td><td>½ día</td><td>Una fuente de verdad para la dirección.</td></tr>
+</table>
+<p>Los puntos 1 a 3 son dos días de trabajo y se notan en cada pantalla del admin; propongo empezar por ahí y medir con el mismo arnés antes y después.</p>
+
+<p class="pie">Método: arnés Playwright contra producción (auditoria-front.py), 18 pantallas en 390 × 844 y en 1280 × 900 o 1024 × 768, sesiones reales de admin y mostrador; contraste medido en la auditoría del 14 de agosto. Preparado por Claude para FourG Solutions.</p>
+
+</div>
+</body>
+</html>
