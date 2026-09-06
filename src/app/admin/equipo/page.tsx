@@ -48,8 +48,17 @@ export default async function EquipoPage() {
           <h2 className="mb-3 mt-8 text-xs uppercase tracking-[0.3em] text-accent">Correo de avisos</h2>
           <p className="mb-3 text-[12.5px] text-muted">
             Cuando un cliente reserva, al barbero le llega un correo con la cita al instante. Poné acá el correo de
-            cada uno; vacío = sin aviso (le queda solo la notificación push, si la tiene activa).
+            cada uno; se guarda solo al salir del campo. Vacío = sin aviso (le queda solo la notificación push, si
+            la tiene activa).
           </p>
+          {barberos.filter((b) => !emails[b.id]).length > 0 && (
+            <p className="mb-3 rounded-xl border border-warn/40 bg-warn/[0.08] px-3.5 py-2.5 text-[12.5px] text-warn">
+              <b>
+                {barberos.filter((b) => !emails[b.id]).length} de {barberos.length} barberos sin correo
+              </b>
+              : a ellos no les llega ningún aviso de cita.
+            </p>
+          )}
           <CorreosBarberos barberos={barberos} emails={emails} />
         </section>
 

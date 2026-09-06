@@ -479,7 +479,7 @@ export function AgendaList({
             onClick={() => { setWalkinOpen(false); setWalkinBarbero(""); setVentaOpen(true); }}
             className="mb-3 min-h-11 rounded-full border border-line px-4 text-[13.5px] font-semibold text-muted transition hover:text-ink"
           >
-            ¿Solo lleva productos? Venta rápida →
+            ¿Sin cita? Cobrar directo (servicio o productos) →
           </button>
           <WalkinForm
             sedes={sedes}
@@ -524,7 +524,7 @@ export function AgendaList({
       )}
 
       {ventaOpen && (
-        <HojaInferior titulo="Venta rápida" onCerrar={() => setVentaOpen(false)}>
+        <HojaInferior titulo="Cobrar directo (sin cita)" onCerrar={() => setVentaOpen(false)}>
           <CheckoutForm
             reserva={null}
             sedes={sedes}
@@ -573,6 +573,15 @@ export function AgendaList({
               )}
             </button>
           ))}
+          {/* Cobrar SIN cita (servicio y/o productos): vivía escondido detrás del
+              walk-in como "¿Solo lleva productos?". El dueño lo pidió a la vista
+              para el mostrador y para el barbero (5-sep). */}
+          <button
+            onClick={() => setVentaOpen(true)}
+            className="min-h-14 flex-1 rounded-xl border border-accent/45 text-[14.5px] font-bold text-accent-soft transition hover:bg-accent/10"
+          >
+            Cobrar
+          </button>
           <button
             onClick={() => { setWalkinBarbero(""); setEsperaMsg(null); setWalkinOpen(true); }}
             className="min-h-14 flex-1 rounded-xl bg-[linear-gradient(180deg,var(--cta-1),var(--cta-2))] text-[14.5px] font-bold text-on-accent shadow-[0_10px_24px_-10px_rgba(210,63,52,0.7)] transition hover:brightness-105"
@@ -599,7 +608,7 @@ export function AgendaList({
  * Hoja que sube desde el borde inferior (formularios del mostrador). El fondo
  * queda visible y atenuado: el barbero no pierde el contexto de la agenda.
  */
-function HojaInferior({
+export function HojaInferior({
   titulo,
   onCerrar,
   children,
@@ -891,7 +900,8 @@ function PrecioCobro({
   );
 }
 
-function CheckoutForm({
+// Exportado: el cuadre del admin monta el mismo cobro directo (sin cita).
+export function CheckoutForm({
   reserva,
   sedes,
   barberos,

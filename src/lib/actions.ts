@@ -1550,6 +1550,58 @@ export async function agendarCita(input: {
   return { ok: true };
 }
 
+// Cambiar el SERVICIO de una cita ya agendada ("me equivoqué al agendar"). Antes
+// solo se podía al cobrar (servicioIdOverride); el dueño lo pidió desde el
+// calendario. La cita toma la duración del servicio nuevo; si con eso pisa la
+// cita siguiente (23P01), conserva su duración actual y se avisa.
+export async function cambiarServicioCita(input: { reservaId: string; servicioId: string }): Promise<ActionResult> {
+  const sb = await supabaseServerAuth();
+  const denied = await requireStaff(sb);
+  if (denied) return { ok: false, error: denied };
+  const staff = await getStaffContext();
+  if (!puedeMostrador(staff.rol)) return { ok: false, error: "No autorizado" };
+
+  const admin = supabaseAdmin();
+  const { data: rsv } = await admin
+    .from("reservas")
+    .select("sede_id,servicio_id,estado,inicio,fin")
+    .eq("id", input.reservaId)
+    .maybeSingle();
+  if (!rsv) return { ok: false, error: "Reserva no encontrada" };
+  const r = rsv as { sede_id: string; servicio_id: string; estado: string; inicio: string; fin: string };
+  if (!(await staffPuedeOperarSede(staff, r.sede_id))) return { ok: false, error: "Esa cita es de otra sede." };
+  if (!["pendiente", "confirmada", "en_curso"].includes(r.estado))
+    return { ok: false, error: "Esa cita ya terminó; el servicio se cambia al cobrar." };
+  if (r.servicio_id === input.servicioId) return { ok: true };
+
+  // El servicio tiene que existir y tener precio en la sede de la cita.
+  const { data: ss } = await admin
+    .from("servicio_sede")
+    .select("servicio_id,servicios(duracion_min)")
+    .eq("sede_id", r.sede_id)
+    .eq("servicio_id", input.servicioId)
+    .maybeSingle();
+  if (!ss) return { ok: false, error: "Ese servicio no está disponible en esa sede." };
+  const durNueva = (ss as { servicios?: { duracion_min?: number } | null }).servicios?.duracion_min ?? null;
+  const inicio = new Date(r.inicio);
+  const finNuevo = durNueva ? new Date(inicio.getTime() + durNueva * 60000).toISOString() : r.fin;
+
+  let { error } = await admin
+    .from("reservas")
+    .update({ servicio_id: input.servicioId, fin: finNuevo })
+    .eq("id", input.reservaId);
+  let aviso: string | undefined;
+  if (error?.code === "23P01") {
+    // Pisa la cita siguiente: se cambia el servicio pero se conserva la duración.
+    ({ error } = await admin.from("reservas").update({ servicio_id: input.servicioId }).eq("id", input.reservaId));
+    aviso = "Quedó con la duración de antes: con la del servicio nuevo pisaba la cita siguiente.";
+  }
+  if (error) return { ok: false, error: errorPublico("cambiarServicioCita", error) };
+  revalidatePath("/barbero");
+  revalidatePath("/admin/agenda");
+  return { ok: true, aviso };
+}
+
 // Bloquear un rato (o el día) de un barbero desde el calendario: almuerzo,
 // diligencia, ausencia. Staff de la sede, no solo admin (a diferencia de
 // marcarAusencia): el mostrador también tapa huecos. RLS de escritura es
@@ -2659,10 +2711,15 @@ export async function registrarGasto(input: {
     monto,
     descripcion: input.descripcion || null,
   };
-  let { error } = await sb.from("gastos").insert({ ...fila, medio: medio.slug });
-  // PGRST204 = la columna `medio` aún no existe (0067 sin aplicar): se guarda sin
-  // ella y cuenta como efectivo, que era el único mundo que había.
-  if (error?.code === "PGRST204") ({ error } = await sb.from("gastos").insert(fila));
+  // La RLS de gastos es admin-only (admin_all_gastos): el mostrador y el barbero
+  // recibían 42501 y veían "no se pudo completar" (5-sep). El gate de arriba ya
+  // validó rol y sede, así que el insert va con service role — mismo patrón que
+  // bloquearHoras. Queda rastro de quién lo anotó (registrado_por_barbero, 0044).
+  const admin = supabaseAdmin();
+  const conRastro = { ...fila, registrado_por_barbero: staff.barberoId ?? null };
+  let { error } = await admin.from("gastos").insert({ ...conRastro, medio: medio.slug });
+  // PGRST204 = alguna columna nueva no existe todavía: se guarda lo básico.
+  if (error?.code === "PGRST204") ({ error } = await admin.from("gastos").insert(fila));
   if (error) return { ok: false, error: errorPublico("registrarGasto", error) };
   revalidatePath("/admin/cuadre");
   revalidatePath("/admin");

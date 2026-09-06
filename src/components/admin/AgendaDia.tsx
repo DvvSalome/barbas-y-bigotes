@@ -10,6 +10,7 @@ import { AvisarWhatsApp } from "@/components/admin/AvisarWhatsApp";
 import { mensajeCitaMovida, mensajeCitaCancelada } from "@/lib/whatsapp";
 import { SEDE_INFO } from "@/lib/data/sede-info";
 import { quitarBloqueo, moverCita, actualizarReserva } from "@/lib/actions";
+import { CambiarServicioCita } from "@/components/admin/CambiarServicioCita";
 import { instanteBogota } from "@/lib/slots";
 import { CaraBarbero } from "@/components/staff/Elegir";
 import { DOW, MON, STEP, fmtTime, horarioEfectivo, dowDeFecha, bogotaYmd } from "@/lib/slots";
@@ -784,6 +785,18 @@ export function AgendaDia({
                     >
                       Mover de hora o de barbero
                     </button>
+                    {/* "Me equivoqué al agendar": el servicio se corrige acá, no solo al cobrar. */}
+                    <CambiarServicioCita
+                      reservaId={detalle.id}
+                      servicioActual={detalle.servicio}
+                      servicios={servicios}
+                      sede={sede}
+                      onDone={(aviso) => {
+                        if (aviso) setErrDrag(aviso);
+                        setDetalle(null);
+                        router.refresh();
+                      }}
+                    />
                     {/* Cancelar vivía SOLO en el mostrador: desde el calendario había
                         que cambiar de pantalla. Dos toques (mismo patrón que quitar
                         foto o unir fichas) porque no tiene deshacer, y al soltarlo

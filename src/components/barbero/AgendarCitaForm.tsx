@@ -100,6 +100,11 @@ export function AgendarCitaForm({
   // servicio trae su duración sola (sin un effect que las sincronice).
   const [durManual, setDurManual] = useState<number | null>(null);
   const dur = durManual ?? servicio?.duracionMin ?? 30;
+  // Lo que se está TECLEANDO en "Dura (min)", aparte del valor vigente. Antes el
+  // input mostraba `dur` directo: al borrar el "60" para escribir "45", el campo
+  // quedaba vacío un instante, se volvía 60 solo y terminaba en "6045" (foto del
+  // dueño, 5-sep). null = no se está editando: se muestra `dur`.
+  const [durTexto, setDurTexto] = useState<string | null>(null);
 
   // Próximos días que la sede ABRE (mismo criterio que el wizard) MÁS dos días
   // hacia atrás: el mostrador también registra el corte de ayer que se olvidó
@@ -330,14 +335,19 @@ export function AgendarCitaForm({
             Dura (min)
             <input
               type="number"
+              inputMode="numeric"
               min={5}
               max={480}
               step={5}
-              value={dur}
+              value={durTexto ?? String(dur)}
               onChange={(e) => {
+                // Se deja escribir libremente (incluso vacío); el valor vigente
+                // solo cambia cuando hay un número válido.
+                setDurTexto(e.target.value);
                 const n = Number(e.target.value);
-                setDurManual(Number.isFinite(n) && n > 0 ? Math.round(n) : null);
+                if (e.target.value.trim() !== "" && Number.isFinite(n) && n >= 5) setDurManual(Math.round(n));
               }}
+              onBlur={() => setDurTexto(null)}
               className={`${input} mt-1 tabular-nums`}
             />
           </label>

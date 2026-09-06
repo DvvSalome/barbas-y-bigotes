@@ -8,9 +8,13 @@ import {
   getCuadresAnteriores,
   getMediosTodos,
   getAdelantosHoy,
+  getServicios,
+  getPreciosServiciosStaff,
+  getProductos,
   type MedioPago,
 } from "@/lib/data/queries";
 import { CuadreForms } from "@/components/admin/CuadreForms";
+import { CobroDirectoAdmin } from "@/components/admin/CobroDirectoAdmin";
 import { CajaSesiones } from "@/components/admin/CajaSesiones";
 import { MediosPago } from "@/components/admin/MediosPago";
 import { PendientesCobrar } from "@/components/staff/PendientesCobrar";
@@ -47,16 +51,20 @@ function desgloseCierre(totales: TotalesPorMedio, medios: MedioPago[]) {
 }
 
 export default async function CuadrePage() {
-  const [cuadre, sedes, barberos, cajas, pendientes, anteriores, medios, adelantos] = await Promise.all([
-    getCuadre(),
-    getSedes(),
-    getBarberos(),
-    getCajaSesiones(),
-    getReservasPendientesCobro(),
-    getCuadresAnteriores(),
-    getMediosTodos(),
-    getAdelantosHoy(),
-  ]);
+  const [cuadre, sedes, barberos, cajas, pendientes, anteriores, medios, adelantos, servicios, preciosServicios, productos] =
+    await Promise.all([
+      getCuadre(),
+      getSedes(),
+      getBarberos(),
+      getCajaSesiones(),
+      getReservasPendientesCobro(),
+      getCuadresAnteriores(),
+      getMediosTodos(),
+      getAdelantosHoy(),
+      getServicios(),
+      getPreciosServiciosStaff(),
+      getProductos(),
+    ]);
   const fecha = new Date().toLocaleDateString("es-CO", { timeZone: "America/Bogota", weekday: "long", day: "numeric", month: "long" });
   const totalPendiente = pendientes.reduce((a, p) => a + p.monto, 0);
 
@@ -86,6 +94,18 @@ export default async function CuadrePage() {
         <section className="min-w-0">
       <div>
         <CajaSesiones cajas={cajas} medios={medios} />
+      </div>
+
+      {/* Cobro sin cita desde el admin: el mismo formulario del mostrador. */}
+      <div className="mt-4 flex justify-end">
+        <CobroDirectoAdmin
+          sedes={sedes}
+          barberos={barberos}
+          servicios={servicios}
+          preciosServicios={preciosServicios}
+          productos={productos}
+          medios={medios.filter((m) => m.activo)}
+        />
       </div>
 
       {/* Con cobro AHÍ MISMO (medio + propina): antes era solo lectura y había

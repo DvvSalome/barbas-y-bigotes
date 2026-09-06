@@ -30,22 +30,38 @@ export function ConsumoBarbero({
   const [abierto, setAbierto] = useState(false);
   const [productoId, setProductoId] = useState("");
   const [barberoId, setBarberoId] = useState(miBarberoId ?? "");
-  const [cantidad, setCantidad] = useState(1);
+  // Cantidad y precio como TEXTO mientras se escriben: con el número controlado,
+  // borrar el "1" para poner "2" lo devolvía a 1 y terminaba en "12" (foto del
+  // dueño, 5-sep). El precio arranca en el del producto y se puede cambiar acá
+  // mismo (una cerveza al costo, una gaseosa del combo…).
+  const [cantidadTxt, setCantidadTxt] = useState("1");
+  const [precioTxt, setPrecioTxt] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hecho, setHecho] = useState<string | null>(null);
 
   const prod = productos.find((p) => p.id === productoId) ?? null;
-  const total = prod ? prod.precio * cantidad : 0;
+  const cantidad = Math.max(1, Math.min(20, Math.round(Number(cantidadTxt) || 1)));
+  const precioUnit = precioTxt === null || precioTxt.trim() === "" ? (prod?.precio ?? 0) : Number(precioTxt);
+  const total = prod ? precioUnit * cantidad : 0;
 
   async function guardar() {
     if (!productoId || !barberoId) {
       setError("Elegí el producto y de quién es.");
       return;
     }
+    if (!Number.isInteger(precioUnit) || precioUnit < 0) {
+      setError("El precio tiene que ser un número entero de pesos (0 o más).");
+      return;
+    }
     setSaving(true);
     setError(null);
-    const res = await registrarConsumoBarbero({ barberoId, productoId, cantidad });
+    const res = await registrarConsumoBarbero({
+      barberoId,
+      productoId,
+      cantidad,
+      precioUnitario: prod && precioUnit !== prod.precio ? precioUnit : undefined,
+    });
     setSaving(false);
     if (!res.ok) {
       setError(res.error ?? "No se pudo registrar.");
@@ -53,7 +69,8 @@ export function ConsumoBarbero({
     }
     setHecho(`${cantidad > 1 ? `${cantidad}× ` : ""}${prod?.nombre ?? "Producto"} · ${cop(total)}`);
     setProductoId("");
-    setCantidad(1);
+    setCantidadTxt("1");
+    setPrecioTxt(null);
     router.refresh();
   }
 
@@ -98,7 +115,10 @@ export function ConsumoBarbero({
       <div className="mt-3 space-y-2.5">
         <select
           value={productoId}
-          onChange={(e) => setProductoId(e.target.value)}
+          onChange={(e) => {
+            setProductoId(e.target.value);
+            setPrecioTxt(null); // el precio vuelve a seguir al producto elegido
+          }}
           className="w-full rounded-xl border border-line bg-bg px-3.5 py-3 text-sm text-ink focus:border-accent focus:outline-none"
         >
           <option value="">¿Qué se tomó?</option>
@@ -128,16 +148,32 @@ export function ConsumoBarbero({
           </select>
         )}
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <label className="text-[12px] text-muted">
             Cuántos
             <input
               type="number"
+              inputMode="numeric"
               min={1}
               max={20}
-              value={cantidad}
-              onChange={(e) => setCantidad(Math.max(1, Math.round(Number(e.target.value) || 1)))}
+              value={cantidadTxt}
+              onChange={(e) => setCantidadTxt(e.target.value)}
+              onBlur={() => setCantidadTxt(String(cantidad))}
               className="ml-2 min-h-11 w-20 rounded-xl border border-line bg-bg px-3 text-sm text-ink tabular-nums focus:border-accent focus:outline-none"
+            />
+          </label>
+          <label className="text-[12px] text-muted">
+            Precio c/u
+            <input
+              type="number"
+              inputMode="numeric"
+              min={0}
+              step={100}
+              value={precioTxt ?? (prod ? String(prod.precio) : "")}
+              onChange={(e) => setPrecioTxt(e.target.value)}
+              placeholder="$"
+              disabled={!prod}
+              className="ml-2 min-h-11 w-28 rounded-xl border border-line bg-bg px-3 text-sm text-ink tabular-nums focus:border-accent focus:outline-none disabled:opacity-50"
             />
           </label>
           {prod && (
