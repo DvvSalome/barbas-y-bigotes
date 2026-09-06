@@ -16,7 +16,8 @@ Dos caminos de salida, a propósito separados:
 | Camino | Qué manda | Cómo | Estado |
 |---|---|---|---|
 | **Buzón Hostinger** `reservas@barbasybigotes.com` | Los 6 correos de citas: confirmación, recordatorio, "cupo libre", reseña de Google, cambio/cancelación, aviso al barbero | SMTP `smtp.hostinger.com:465` desde **n8n**, con contraseña de aplicación | En producción |
-| **Resend** (remitente `avisos@barbasybigotes.com`) | Marketing: el aviso "te toca corte" cada X días | API `POST api.resend.com/emails` desde **n8n** | Listo, apagado hasta que el dueño lo active |
+| **Buzón Hostinger** (mismo) | Marketing: el aviso "te toca corte" cada X días | SMTP desde n8n, **con Resend de respaldo** si el SMTP falla | Listo, apagado hasta que el dueño lo active |
+| **Resend** (remitente `avisos@barbasybigotes.com`) | Respaldo del anterior | API `POST api.resend.com/emails` | Conectado |
 
 **Piezas y credenciales** (ninguna en el repo; todas en archivos del scratchpad de
 la sesión, que se poda — si no están, hay que pedirlas de nuevo):
@@ -65,6 +66,11 @@ la sesión, que se poda — si no están, hay que pedirlas de nuevo):
 6. **La zona horaria de la instancia n8n es `America/New_York`.** Los workflows con
    hora fija necesitan `settings.timezone = "America/Bogota"` y un ciclo de
    desactivar/reactivar (el cron se registra al activar).
+7. **El nodo Code de n8n corre en un sandbox sin APIs del navegador.**
+   `URLSearchParams` **no existe** ahí: el workflow quedaba activo y "verde" porque
+   la cola venía vacía, y habría reventado en el primer envío real. Se cazó con un
+   workflow espejo alimentado con una fila de prueba. Regla: en un nodo Code, solo
+   JavaScript pelado — y **probar siempre con datos, no con la cola vacía**.
 
 ---
 
@@ -78,8 +84,12 @@ consultando su propio Gmail por categoría:
 | Hostinger (`reservas@`, los 6 de citas) | 16 mensajes | **Principal**, y Gmail los marca "importante" |
 | Resend (`avisos@` y `reservas@`, el de marketing) | 3 mensajes | **Promociones** |
 
-Mismo dominio, misma plantilla de diseño, distinto resultado. Los sospechosos, en
-orden de peso:
+Mismo dominio, misma plantilla de diseño, distinto resultado. **Y la prueba que lo
+zanjó: la misma carta idéntica, enviada por el buzón de Hostinger, cayó en
+Principal y Gmail la marcó importante; por Resend, en Promociones.** O sea: lo que
+decide la pestaña es **el camino de envío y su historial**, no la plantilla.
+
+Los sospechosos, en orden de peso:
 
 1. **La cabecera `List-Unsubscribe` / `List-Unsubscribe-Post`.** Es la señal más
    documentada de "correo masivo" para Gmail. Los de Hostinger no la llevan.
@@ -251,12 +261,35 @@ después la categoría real en Gmail (`category:primary` vs `category:promotions
    siga en Principal, y hoy lo está (16 de 16 correos de citas por el buzón de
    Hostinger).
 
-**Decisión tomada en Barbas:** el "te toca corte" queda como **carta clara con
-enlace de texto y versión en texto plano** (`docs/emails/toca-corte.html`). No por
-la pestaña —que no está garantizada— sino porque se lee como un mensaje del barbero,
-pesa un tercio, funciona en cualquier cliente de correo y no depende de imágenes.
-Los seis correos de citas **no se tocan**: siguen por Hostinger, donde llevan meses
-entrando a Principal.
+**El experimento que lo zanjó** (después de los ocho de arriba):
+
+| # | Camino | Contenido | Resultado |
+|---|---|---|---|
+| HOST | **buzón Hostinger** (`reservas@`) | la misma carta, idéntica | **Principal + importante** |
+| PROD | **flujo real** (nodo Code + SMTP Hostinger) | lo que manda producción | **Principal + importante** |
+
+**Decisión tomada en Barbas (6-sep):**
+
+1. El "te toca corte" sale por el **buzón de Hostinger**, que es el camino con
+   historial en Principal, y usa **Resend solo como respaldo** si el SMTP falla
+   (nodo con `onError: continueErrorOutput` → nodo HTTP de Resend). Así una
+   suspensión del buzón no deja al cliente sin el aviso.
+2. La plantilla queda como **carta clara con enlace de texto y versión en texto
+   plano** (`docs/emails/toca-corte.html`): se lee como un mensaje del barbero, pesa
+   un tercio y funciona en cualquier cliente de correo.
+3. **El riesgo asumido, dicho claro:** ese buzón es el que manda las confirmaciones
+   de cita, y en agosto lo suspendieron tres veces. Lo que lo hace aceptable: las
+   direcciones pasan por el filtro de `src/lib/email.ts`, la cola entrega **de a 8
+   por hora** (migración 0069), y no se le escribe dos veces al mismo cliente en 30
+   días. **Si vuelve a haber una suspensión, lo primero que hay que mirar es este
+   aviso.**
+4. Los seis correos de citas **no se tocan**.
+
+**Deuda pendiente (para quien siga):** darles a los seis workflows transaccionales
+el mismo respaldo por Resend. Hoy sus plantillas viven dentro del nodo `emailSend`
+con expresiones de n8n, así que el respaldo exige moverlas a un nodo Code primero
+(como está el de "te toca corte"). Sin eso, una suspensión del buzón vuelve a dejar
+a los clientes sin confirmaciones.
 
 **Método reutilizable** (para medir esto en el CRM sin adivinar): mandar la variante,
 esperar un minuto y consultar el Gmail del destinatario con las herramientas de
