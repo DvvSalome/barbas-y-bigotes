@@ -1,0 +1,56 @@
+{
+  "packageId": "com.barbasybigotes.app",
+  "host": "barbasybigotes.com",
+  "name": "Barbas & Bigotes",
+  "launcherName": "Barbas & Bigotes",
+  "display": "standalone",
+  "themeColor": "#111111",
+  "themeColorDark": "#111111",
+  "navigationColor": "#111111",
+  "navigationColorDark": "#111111",
+  "navigationDividerColor": "#111111",
+  "navigationDividerColorDark": "#111111",
+  "backgroundColor": "#111111",
+  "enableNotifications": true,
+  "startUrl": "/",
+  "iconUrl": "https://barbasybigotes.com/brand/icon-512x512.png",
+  "maskableIconUrl": "https://barbasybigotes.com/brand/icon-512x512-maskable.png",
+  "splashScreenFadeOutDuration": 300,
+  "signingKey": {
+    "path": "./android.keystore",
+    "alias": "barbasybigotes"
+  },
+  "appVersionName": "1.0.0",
+  "appVersionCode": 1,
+  "shortcuts": [
+    {
+      "name": "Reservar turno",
+      "short_name": "Reservar",
+      "url": "/reservar",
+      "chosenIconUrl": "https://barbasybigotes.com/brand/icon-192x192.png"
+    },
+    {
+      "name": "Mis citas",
+      "short_name": "Mis citas",
+      "url": "/cuenta",
+      "chosenIconUrl": "https://barbasybigotes.com/brand/icon-192x192.png"
+    }
+  ],
+  "generatorApp": "bubblewrap-cli",
+  "webManifestUrl": "https://barbasybigotes.com/manifest.json",
+  "fallbackType": "customtabs",
+  "features": {},
+  "alphaDependencies": {
+    "enabled": false
+  },
+  "enableSiteSettingsShortcut": true,
+  "isChromeOSOnly": false,
+  "isMetaQuest": false,
+  "fullScopeUrl": "https://barbasybigotes.com/",
+  "minSdkVersion": 21,
+  "orientation": "portrait",
+  "fingerprints": [],
+  "additionalTrustedOrigins": [],
+  "retainedBundles": [],
+  "appVersion": "1.0.0"
+}

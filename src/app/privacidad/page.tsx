@@ -23,7 +23,7 @@ export default function PrivacidadPage() {
         <p>
           <strong>Barbas &amp; Bigotes Barbershop</strong>, con sedes en Parque Venezuela
           (Cl. 88 #44-10 Loc 4) y Plaza de la Paz (Cra. 45 #50-168), Barranquilla, Colombia.
-          Contacto para temas de datos: <a href="mailto:hola@barbasybigotes.com">hola@barbasybigotes.com</a>.
+          Contacto para temas de datos: <a href="mailto:reservas@barbasybigotes.com">reservas@barbasybigotes.com</a>.
         </p>
       </section>
 
@@ -104,12 +104,15 @@ export default function PrivacidadPage() {
         <ul>
           <li>Saber qué datos tuyos tenemos.</li>
           <li>Corregirlos si están mal o desactualizados.</li>
-          <li>Pedir que los borremos.</li>
+          <li>
+            Pedir que los borremos, o hacerlo vos mismo desde{" "}
+            <Link href="/cuenta/eliminar">Eliminar mi cuenta</Link>.
+          </li>
           <li>Revocar el permiso que nos diste para tratarlos.</li>
         </ul>
         <p>
           Para cualquiera de estas, escríbenos a{" "}
-          <a href="mailto:hola@barbasybigotes.com">hola@barbasybigotes.com</a>. Respondemos en
+          <a href="mailto:reservas@barbasybigotes.com">reservas@barbasybigotes.com</a>. Respondemos en
           un máximo de 15 días hábiles. Si entraste con Google, también puedes quitarle el acceso
           a esta aplicación desde{" "}
           <a href="https://myaccount.google.com/permissions" target="_blank" rel="noopener noreferrer">

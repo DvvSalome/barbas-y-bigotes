@@ -74,3 +74,9 @@ qa-out/
 .agents/
 .superpowers/
 skills-lock.json
+
+# Proyecto Android (TWA): solo se versiona el manifiesto; el resto lo regenera bubblewrap.
+# La llave de firma NUNCA va al repo.
+twa/*
+!twa/twa-manifest.json
+!twa/README.md

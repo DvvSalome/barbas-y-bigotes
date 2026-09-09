@@ -361,10 +361,18 @@ async function Portal({ clienteId, nombre, avatarUrl }: { clienteId: string; nom
               </div>
             ))}
           </div>
-        </section>
-      )}
-    </div>
-  );
+        </section>
+      )}
+
+      {/* Eliminación de cuenta: Play exige que sea alcanzable desde la app; discreto,
+          es una acción rara y sin vuelta atrás. */}
+      <p className="mt-12 text-center text-xs text-muted">
+        <Link href="/cuenta/eliminar" className="transition hover:text-ink">
+          Eliminar mi cuenta
+        </Link>
+      </p>
+    </div>
+  );
 }
 
 // Estado vacío con intención: onboarding en vez de una lista en blanco.

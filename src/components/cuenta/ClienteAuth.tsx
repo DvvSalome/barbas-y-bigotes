@@ -14,13 +14,15 @@ const GoogleG = () => (
   </svg>
 );
 
-export function ClienteLoginButton() {
+// `next`: a dónde volver después de Google. El portal (/cuenta) por defecto; la
+// página de eliminación de cuenta vuelve a sí misma.
+export function ClienteLoginButton({ next = "/cuenta" }: { next?: string }) {
   async function login() {
     const sb = supabaseBrowser();
     await sb.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/auth/callback?next=/cuenta`,
+        redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`,
         // Selector de cuenta siempre: sin esto Google reusa la última sesión y no
         // deja entrar con otra cuenta tras cerrar sesión.
         queryParams: { prompt: "select_account" },

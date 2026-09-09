@@ -562,3 +562,36 @@ export async function confirmarCitaPorToken(token: string): Promise<ConfirmarRes
   // mostrador (/barbero) se refresca por realtime sobre reservas, no necesita esto.
   return { estado: "ok", ...detalle };
 }
+
+// Eliminación de cuenta (Google Play la exige para toda app con inicio de sesión;
+// es además el derecho de supresión de la Ley 1581). La regla vive en la base
+// (eliminar_cuenta_cliente, 0072): anonimiza la ficha, cancela las citas futuras,
+// borra notas/push/lista de espera; las ventas quedan sin nombre (obligación
+// contable). Después se borra el usuario de Auth: eso es lo que cierra el acceso
+// con Google. Solo el propio usuario, y nunca una cuenta del equipo.
+export type EliminarCuentaResultado = { ok: true; citasCanceladas: number } | { ok: false; error: string };
+
+export async function eliminarMiCuenta(): Promise<EliminarCuentaResultado> {
+  const sb = await supabaseServerAuth();
+  const {
+    data: { user },
+  } = await sb.auth.getUser();
+  if (!user) return { ok: false, error: "Tenés que entrar con tu cuenta para eliminarla." };
+  const admin = supabaseAdmin();
+  const { data: prof } = await admin.from("profiles").select("rol").eq("auth_id", user.id).maybeSingle();
+  if (prof && (prof as { rol: string }).rol !== "cliente") {
+    return { ok: false, error: "Las cuentas del equipo las administra el dueño desde el panel." };
+  }
+  const { data, error } = await admin.rpc("eliminar_cuenta_cliente", { p_auth_id: user.id });
+  if (error) return { ok: false, error: errorPublico("eliminarMiCuenta", error) };
+  const fila = (Array.isArray(data) ? data[0] : data) as { citas_canceladas: number } | null | undefined;
+  const { error: errAuth } = await admin.auth.admin.deleteUser(user.id);
+  if (errAuth) {
+    console.error("eliminarMiCuenta: auth.deleteUser", errAuth.message);
+    return {
+      ok: false,
+      error: "Borramos tus datos, pero no pudimos cerrar el acceso con Google. Escribinos a reservas@barbasybigotes.com y lo terminamos a mano.",
+    };
+  }
+  return { ok: true, citasCanceladas: Number(fila?.citas_canceladas ?? 0) };
+}

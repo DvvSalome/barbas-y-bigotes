@@ -6,8 +6,9 @@
      Los bloques condicionales llegan ya armados desde el Code como HTML:
      badge_html (cliente nuevo / N.ª visita), telefono_html, nota_html.
      Asunto: 💈 Nueva cita: (cliente) · (cuándo)
-     Ojo: sin llaves dobles vacías (check-correos). El GIF del poste y el fondo de la
-     tarjeta comparten el color #0c0b0a a propósito. -->
+     Ojo: sin llaves dobles vacías (check-correos). Los dos GIF son opacos y comparten
+     color con su fondo a propósito: logo-anim.gif con la cabecera (#0a0908) y
+     aviso-poste.gif con la tarjeta (#0c0b0a). Si cambia un fondo, regenerar el GIF. -->
 <!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><meta name="color-scheme" content="dark"><meta name="supported-color-schemes" content="dark"><meta name="viewport" content="width=device-width"></head>
 <body style="margin:0;padding:0;background:#060504;background-image:linear-gradient(#060504,#060504);">
 <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;">{{ $json.preheader }}</div>
@@ -15,11 +16,9 @@
 <div style="max-width:560px;margin:0 auto;font-family:Arial,Helvetica,sans-serif;color:#f2ede4;">
 <div style="background:#0c0b0a;background-image:linear-gradient(#0c0b0a,#0c0b0a);border:1px solid rgba(242,237,228,.12);border-radius:18px;overflow:hidden;">
 <div style="height:5px;background:repeating-linear-gradient(115deg,#d23f34 0 14px,#f2ede4 14px 28px,#12100e 28px 42px);"></div>
-<div style="background:#0a0908 url(https://barbasybigotes.com/sedes/{{ $json.sede_id }}-interior.jpg) center/cover no-repeat;">
-<div style="background:rgba(10,9,8,.86);background-image:linear-gradient(rgba(10,9,8,.86),rgba(10,9,8,.86));padding:24px 24px 20px;text-align:center;">
-<img src="https://barbasybigotes.com/brand/logo-lockup.png" alt="Barbas &amp; Bigotes" height="40" style="height:40px;width:auto;">
-<div style="margin-top:8px;font-size:10px;text-transform:uppercase;letter-spacing:.34em;color:#cfc7ba;">Aviso para el equipo &middot; {{ $json.sede }}</div>
-</div>
+<div style="background:#0a0908;background-image:linear-gradient(#0a0908,#0a0908);padding:20px 24px 16px;text-align:center;">
+<img src="https://barbasybigotes.com/brand/logo-anim.gif" alt="Barbas &amp; Bigotes" width="300" height="97" style="display:block;margin:0 auto;width:300px;max-width:100%;height:auto;">
+<div style="margin-top:6px;font-size:10px;text-transform:uppercase;letter-spacing:.34em;color:#cfc7ba;">Aviso para el equipo &middot; {{ $json.sede }}</div>
 </div>
 <div style="padding:24px 22px 26px;">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
