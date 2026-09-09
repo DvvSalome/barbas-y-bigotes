@@ -1,6 +1,6 @@
 # Plantillas de correo
 
-Las 4 plantillas HTML que le llegan al cliente. Diseño: `.superpowers/design/correos.md`
+Las 4 plantillas HTML que le llegan al cliente, más el aviso al barbero. Diseño: `.superpowers/design/correos.md`
 (§2 a §5 del prototipo). La 5ª del prototipo, cierre de caja para el dueño, todavía
 no está cableada.
 
@@ -10,6 +10,7 @@ no está cableada.
 | `recordatorio.html` | Recordatorio de tu cita 🔔 | `x8B5l6NbG2supIbH` | 9:15, 13:15, 17:15, 20:15 | RPC `tomar_recordatorios_pendientes()` |
 | `cupo.html` | ¡Se liberó un cupo! 🎉 | `Psk61KioW7QM0tdA` | cada 10 min | vista `v_avisos_cola_pendientes` |
 | `resena.html` | ¿Cómo te quedó? Dejanos tu reseña ✂️ | `3Y5sa4e6ve1PuwpK` | cada 30 min | RPC `tomar_resenas_pendientes()` |
+| `aviso-barbero.html` | 💈 Nueva cita: (cliente) · (cuándo) — al BARBERO | `JJiAjBoc9NBQbky1` (rama) | cada 5 min + webhook al reservar | RPC `tomar_avisos_barbero()`; la renderiza el nodo Code (ver cabecera del archivo) |
 
 **`options.appendAttribution: false` en los 4 nodos de correo.** Por defecto n8n
 mete "This email was sent automatically with n8n" al pie. Son correos de cara al
