@@ -25,13 +25,13 @@
   "shortcuts": [
     {
       "name": "Reservar turno",
-      "short_name": "Reservar",
+      "shortName": "Reservar",
       "url": "/reservar",
       "chosenIconUrl": "https://barbasybigotes.com/brand/icon-192x192.png"
     },
     {
       "name": "Mis citas",
-      "short_name": "Mis citas",
+      "shortName": "Mis citas",
       "url": "/cuenta",
       "chosenIconUrl": "https://barbasybigotes.com/brand/icon-192x192.png"
     }
