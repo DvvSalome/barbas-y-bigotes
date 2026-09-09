@@ -92,15 +92,15 @@ export function FotoServicio({
           onClick={quitar}
           onBlur={() => setConfirmando(false)}
           disabled={quitando}
-          className={`inline-flex min-h-11 items-center px-2 text-[10px] font-semibold transition disabled:opacity-50 ${
+          className={`inline-flex min-h-11 items-center px-2 text-[12px] font-semibold transition disabled:opacity-50 ${
             confirmando ? "text-warn" : "text-muted hover:text-ink"
           }`}
         >
           {quitando ? "Quitando…" : confirmando ? "¿Seguro? Toca de nuevo" : "Quitar foto"}
         </button>
       )}
-      {subiendo && <span className="mt-1 text-[10px] text-muted">Subiendo…</span>}
-      {err && <span className="mt-1 max-w-36 text-center text-[10px] leading-tight text-accent-soft">{err}</span>}
+      {subiendo && <span className="mt-1 text-[12px] text-muted">Subiendo…</span>}
+      {err && <span className="mt-1 max-w-36 text-center text-[12px] leading-tight text-accent-soft">{err}</span>}
     </span>
   );
 }

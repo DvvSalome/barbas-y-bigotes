@@ -26,7 +26,7 @@ export default async function HorariosPage() {
       {/* La cara del local: la fachada que ve el cliente al elegir sede en la
           reserva. Vive acá porque esta es la página del LOCAL (0058). */}
       <div className="mt-5">
-        <h2 className="mb-3 text-xs uppercase tracking-[0.3em] text-accent">La foto de cada sede</h2>
+        <h2 className="mb-3 eyebrow">La foto de cada sede</h2>
         <div className="grid gap-3 sm:grid-cols-2">
           {sedes.map((s) => (
             <FotoSede
@@ -42,7 +42,7 @@ export default async function HorariosPage() {
       </div>
 
       <div className="mt-8">
-        <h2 className="mb-3 text-xs uppercase tracking-[0.3em] text-accent">Horario de la semana</h2>
+        <h2 className="mb-3 eyebrow">Horario de la semana</h2>
         <HorarioSemanalAdmin sedes={sedes} horario={horario} />
       </div>
 

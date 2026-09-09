@@ -192,7 +192,7 @@ export function DiasEspecialesAdmin({
           className={`${input} sm:col-span-4`}
         />
 
-        <p className="text-[11.5px] leading-relaxed text-muted sm:col-span-4">
+        <p className="text-[12px] leading-relaxed text-muted sm:col-span-4">
           Estas son EXCEPCIONES a un día puntual. El horario de siempre se cambia arriba. Si un
           barbero no va ese día, marcalo como ausente en Equipo.
         </p>
@@ -213,7 +213,7 @@ export function DiasEspecialesAdmin({
       </form>
 
       <div className="mt-5">
-        <h3 className="mb-2 text-xs uppercase tracking-[0.3em] text-accent">Días marcados</h3>
+        <h3 className="mb-2 eyebrow">Días marcados</h3>
         {dias.length === 0 ? (
           <p className="rounded-xl border border-line bg-panel px-4 py-4 text-sm text-muted">
             Sin excepciones. Se atiende de lunes a sábado y los domingos está cerrado.
@@ -229,19 +229,19 @@ export function DiasEspecialesAdmin({
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="text-sm font-semibold text-ink">{fechaLabel(d.fecha)}</span>
                     <span
-                      className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
+                      className={`rounded-full px-2 py-0.5 text-[12px] font-bold uppercase tracking-wide ${
                         d.abierta ? "bg-ok/15 text-ok" : "bg-accent/15 text-accent-soft"
                       }`}
                     >
                       {d.abierta ? "Abrimos" : "Cerramos"}
                     </span>
                     {d.abierta && d.abreMin != null && d.cierraMin != null && (
-                      <span className="rounded-full bg-accent/10 px-2 py-0.5 text-[10.5px] font-semibold text-accent-soft">
+                      <span className="rounded-full bg-accent/10 px-2 py-0.5 text-[12px] font-semibold text-accent-soft">
                         {horaCorta(d.abreMin)} – {horaCorta(d.cierraMin)}
                       </span>
                     )}
                     {d.abierta && esDomingo(d.fecha) && (
-                      <span className="rounded-full border border-line px-2 py-0.5 text-[10px] text-muted">
+                      <span className="rounded-full border border-line px-2 py-0.5 text-[12px] text-muted">
                         domingo
                       </span>
                     )}

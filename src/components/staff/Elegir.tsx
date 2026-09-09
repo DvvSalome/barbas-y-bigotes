@@ -105,7 +105,7 @@ export function ElegirBarbero({
         ) : (
           <span className="flex-1 truncate text-[13.5px] text-muted">{placeholder}</span>
         )}
-        <span aria-hidden className="text-[10px] text-muted">▾</span>
+        <span aria-hidden className="text-[12px] text-muted">▾</span>
       </button>
 
       {abierto && (
@@ -193,7 +193,7 @@ export function ElegirServicio({
         {sel?.precio != null && (
           <span className="shrink-0 text-[12.5px] font-bold tabular-nums text-accent-soft">{cop(sel.precio)}</span>
         )}
-        <span aria-hidden className="text-[10px] text-muted">▾</span>
+        <span aria-hidden className="text-[12px] text-muted">▾</span>
       </button>
 
       {abierto && (
@@ -239,7 +239,7 @@ export function ElegirServicio({
             >
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-[13.5px] text-ink">{s.nombre}</span>
-                {s.duracionMin != null && <span className="block text-[11px] text-muted">{s.duracionMin} min</span>}
+                {s.duracionMin != null && <span className="block text-[12px] text-muted">{s.duracionMin} min</span>}
               </span>
               {s.precio != null && (
                 <span className="shrink-0 text-[12.5px] font-bold tabular-nums text-ink">{cop(s.precio)}</span>

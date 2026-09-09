@@ -92,7 +92,7 @@ export function TarjetaAdmin({ inicial }: { inicial: ConfigTarjeta }) {
                 h ? "border-accent bg-accent/15 text-ink" : "border-line text-muted hover:border-accent/40"
               }`}
             >
-              <span className="text-[10px] font-bold uppercase tracking-wide opacity-70">{n}</span>
+              <span className="text-[12px] font-bold uppercase tracking-wide opacity-70">{n}</span>
               <span className="font-display text-[15px] font-bold leading-none">
                 {h ? (h.tipo === "regalo" ? "🎁" : `${h.valor}%`) : "—"}
               </span>

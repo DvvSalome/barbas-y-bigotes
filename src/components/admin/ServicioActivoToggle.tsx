@@ -1,5 +1,6 @@
 "use client";
 
+import { botonClases } from "@/components/ui/Boton";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { setServicioActivo } from "@/lib/actions";
@@ -35,16 +36,12 @@ export function ServicioActivoToggle({ id, activo }: { id: string; activo: boole
 
   return (
     <span className="inline-flex items-center gap-2">
-      {err && <span className="text-[11px] text-accent-soft">{err}</span>}
+      {err && <span className="text-[12px] text-warn">{err}</span>}
       <button
         type="button"
         onClick={toggle}
         disabled={busy}
-        className={`shrink-0 rounded-full border px-3 py-1.5 text-[11.5px] font-semibold transition disabled:opacity-50 ${
-          activo
-            ? "border-line text-muted hover:text-ink"
-            : "border-ok/40 bg-ok/10 text-ok hover:bg-ok/[0.16]"
-        }`}
+        className={botonClases(activo ? "secundario" : "primario", "sm")}
       >
         {busy ? "…" : activo ? "Desactivar" : "Activar"}
       </button>

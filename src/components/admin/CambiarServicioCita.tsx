@@ -69,7 +69,7 @@ export function CambiarServicioCita({
           </option>
         ))}
       </select>
-      <p className="text-[11.5px] text-muted">
+      <p className="text-[12px] text-muted">
         La cita toma la duración del servicio nuevo; si pisa la siguiente, conserva la de ahora y te avisamos.
       </p>
       {error && <p className="text-[12px] font-semibold text-warn">{error}</p>}

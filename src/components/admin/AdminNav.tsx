@@ -159,7 +159,7 @@ export function AdminTabs() {
             ref={act ? activa : undefined}
             href={sede ? `${n.href}?sede=${sede}` : n.href}
             aria-current={act ? "page" : undefined}
-            className={`-mb-px whitespace-nowrap border-b-2 px-3 py-2.5 text-[13px] font-semibold transition ${
+            className={`-mb-px inline-flex min-h-11 items-center whitespace-nowrap border-b-2 px-3 text-[13px] font-semibold transition ${
               act ? "border-accent text-ink" : "border-transparent text-muted hover:text-ink/80"
             }`}
           >
@@ -182,30 +182,29 @@ export function AdminSubTabs() {
   const grupo = grupoDe(path);
   if (!grupo?.hijos) return null;
 
+  // Segmentado DENTRO del contenido (lo monta el layout arriba de la página):
+  // 44 px tocables, el activo invierte (tinta sobre fondo). Antes era una banda
+  // más de la cabecera con pills rojas de 12,5 px.
   return (
-    <div className="border-b border-line/60 bg-panel/40">
-      <nav
-        aria-label={`Secciones de ${grupo.label}`}
-        className="mx-auto flex w-full max-w-[1400px] gap-1.5 overflow-x-auto px-4 py-2 sm:px-5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-      >
-        {grupo.hijos.map((h) => {
-          const act = esRuta(path, h.href);
-          return (
-            <Link
-              key={h.href}
-              href={sede ? `${h.href}?sede=${sede}` : h.href}
-              aria-current={act ? "page" : undefined}
-              className={`inline-flex min-h-11 items-center whitespace-nowrap rounded-full border px-3.5 text-[12.5px] font-semibold transition ${
-                act
-                  ? "border-accent/45 bg-accent/10 text-accent-soft"
-                  : "border-line text-muted hover:border-accent/30 hover:text-ink"
-              }`}
-            >
-              {h.label}
-            </Link>
-          );
-        })}
-      </nav>
-    </div>
+    <nav
+      aria-label={`Secciones de ${grupo.label}`}
+      className="mb-5 flex gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+    >
+      {grupo.hijos.map((h) => {
+        const act = esRuta(path, h.href);
+        return (
+          <Link
+            key={h.href}
+            href={sede ? `${h.href}?sede=${sede}` : h.href}
+            aria-current={act ? "page" : undefined}
+            className={`inline-flex min-h-11 shrink-0 items-center whitespace-nowrap rounded-full border px-4 text-[13px] font-semibold transition ${
+              act ? "border-ink bg-ink text-bg" : "border-line text-muted hover:border-ink/40 hover:text-ink"
+            }`}
+          >
+            {h.label}
+          </Link>
+        );
+      })}
+    </nav>
   );
 }

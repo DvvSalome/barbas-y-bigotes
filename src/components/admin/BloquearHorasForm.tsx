@@ -8,7 +8,7 @@ import type { Barbero } from "@/lib/data/types";
 // Bloquear un rato del barbero desde el calendario: almuerzo, diligencia, o el
 // día entero. El rango se elige en pasos de 30 min dentro de la ventana del día.
 
-const sLabel = "mb-1.5 text-[11px] font-bold uppercase tracking-wide text-muted";
+const sLabel = "mb-1.5 text-[12px] font-bold uppercase tracking-wide text-muted";
 const MOTIVOS = ["Almuerzo", "Diligencia", "Descanso"];
 
 export function BloquearHorasForm({

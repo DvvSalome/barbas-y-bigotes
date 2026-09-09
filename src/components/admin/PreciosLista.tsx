@@ -119,7 +119,7 @@ export function PreciosLista({
             return (
               <section key={grupo ?? "resultado"}>
                 {grupo && (
-                  <h2 className="mb-2 text-[11px] font-bold uppercase tracking-[0.18em] text-accent-soft">
+                  <h2 className="mb-2 eyebrow">
                     {etiquetas[grupo] ?? grupo}
                   </h2>
                 )}
@@ -144,10 +144,10 @@ export function PreciosLista({
                           <span className="min-w-0 flex-1">
                             <span className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
                               <span className="text-[14px] font-semibold leading-tight text-ink">{s.nombre}</span>
-                              {s.desde && <span className="text-[11px] text-muted">(desde)</span>}
+                              {s.desde && <span className="text-[12px] text-muted">(desde)</span>}
                               <DuracionEditable servicioId={s.id} min={s.duracionMin} />
                               {inactivo && (
-                                <span className="rounded-full border border-line px-2 py-0.5 text-[10px] uppercase tracking-wide text-muted">
+                                <span className="rounded-full border border-line px-2 py-0.5 text-[12px] uppercase tracking-wide text-muted">
                                   Fuera del catálogo
                                 </span>
                               )}
@@ -171,7 +171,7 @@ export function PreciosLista({
                               key={sd.id}
                               className="flex-1 rounded-lg border border-line bg-elevated px-2.5 py-1.5 text-right"
                             >
-                              <span className="block text-[9.5px] uppercase tracking-wide text-muted">
+                              <span className="block text-[12px] uppercase tracking-wide text-muted">
                                 {sd.nombre.split(" ")[0]}
                               </span>
                               <PrecioSedeEditable
@@ -212,7 +212,7 @@ function Chip({
       aria-pressed={activo}
       className={`inline-flex min-h-11 shrink-0 items-center whitespace-nowrap rounded-full border px-3.5 text-[12px] font-semibold transition ${
         activo
-          ? "border-accent bg-accent/15 text-accent-soft"
+          ? "border-ink bg-ink text-bg"
           : "border-line text-muted hover:border-accent/40 hover:text-ink"
       }`}
     >

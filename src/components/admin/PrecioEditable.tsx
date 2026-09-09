@@ -1,5 +1,6 @@
 "use client";
 
+import { PencilIcon, CheckIcon } from "@/components/icons";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { actualizarPrecioProducto } from "@/lib/actions";
@@ -60,7 +61,7 @@ export function PrecioEditable({ productoId, precio }: { productoId: string; pre
         {cop(precio)}
         {/* Lápiz SIEMPRE visible: en el celular no hay hover, así que si estaba
             oculto el dueño no sabía que el precio se toca para cambiarlo. */}
-        <span aria-hidden className="text-[12.5px] text-muted">✎</span>
+        <PencilIcon className="h-3.5 w-3.5 shrink-0 text-muted" />
       </button>
     );
   }
@@ -94,7 +95,7 @@ export function PrecioEditable({ productoId, precio }: { productoId: string; pre
           aria-label="Guardar precio"
           className="grid h-11 w-11 place-items-center rounded-full bg-accent text-sm font-bold text-on-accent transition hover:bg-accent-soft disabled:opacity-50"
         >
-          ✓
+          <CheckIcon className="h-4 w-4" />
         </button>
         <button
           type="button"

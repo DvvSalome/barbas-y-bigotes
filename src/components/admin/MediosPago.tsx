@@ -61,7 +61,7 @@ export function MediosPago({ medios }: { medios: MedioPago[] }) {
               <div className="flex items-center justify-between gap-2">
                 <div className="min-w-0">
                   <span className={m.activo ? "" : "text-muted line-through"}>{m.nombre}</span>
-                  <span className="ml-2 text-[10px] uppercase tracking-wide text-muted">{m.slug}</span>
+                  <span className="ml-2 text-[12px] uppercase tracking-wide text-muted">{m.slug}</span>
                 </div>
                 {/* Botón con la consecuencia escrita, no un badge de estado.
                     Activar es directo; desactivar pide confirmar abajo. */}

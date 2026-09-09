@@ -102,7 +102,7 @@ export function FotoSede({
       <div className="flex items-center justify-between gap-2 px-4 py-3">
         <span className="min-w-0">
           <span className="block truncate text-sm font-semibold text-ink">{nombre}</span>
-          <span className="block truncate text-[11.5px] text-muted">
+          <span className="block truncate text-[12px] text-muted">
             {direccion || "Sin dirección"} ·{" "}
             {fotoUrl
               ? "foto tuya — la ve el cliente al reservar"
@@ -116,7 +116,7 @@ export function FotoSede({
             type="button"
             onClick={() => inputRef.current?.click()}
             disabled={subiendo}
-            className="min-h-9 rounded-full border border-line px-3 text-[11.5px] font-semibold text-muted transition hover:text-ink disabled:opacity-50"
+            className="min-h-9 rounded-full border border-line px-3 text-[12px] font-semibold text-muted transition hover:text-ink disabled:opacity-50"
           >
             {subiendo ? "Subiendo…" : fotoUrl ? "Cambiar foto" : "Subir foto"}
           </button>
@@ -126,7 +126,7 @@ export function FotoSede({
               onClick={quitar}
               onBlur={() => setConfirmando(false)}
               disabled={quitando}
-              className={`min-h-9 rounded-full border px-3 text-[11.5px] font-semibold transition disabled:opacity-50 ${
+              className={`min-h-9 rounded-full border px-3 text-[12px] font-semibold transition disabled:opacity-50 ${
                 confirmando ? "border-warn/50 text-warn" : "border-line text-muted hover:text-ink"
               }`}
             >
@@ -135,7 +135,7 @@ export function FotoSede({
           )}
         </span>
       </div>
-      {err && <p className="px-4 pb-3 text-[11px] text-accent-soft">{err}</p>}
+      {err && <p className="px-4 pb-3 text-[12px] text-accent-soft">{err}</p>}
     </div>
   );
 }

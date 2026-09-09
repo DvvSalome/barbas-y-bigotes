@@ -161,9 +161,9 @@ export function HorarioSemanalAdmin({ sedes, horario }: { sedes: Sede[]; horario
                 <span className="text-[12.5px] text-muted">No se atiende</span>
               )}
 
-              {busy === d.dow && <span className="text-[11.5px] text-muted">…</span>}
+              {busy === d.dow && <span className="text-[12px] text-muted">…</span>}
               {msg?.dow === d.dow && (
-                <span className={`text-[11.5px] ${msg.ok ? "text-ok" : "text-accent-soft"}`}>{msg.text}</span>
+                <span className={`text-[12px] ${msg.ok ? "text-ok" : "text-accent-soft"}`}>{msg.text}</span>
               )}
             </div>
           );

@@ -64,7 +64,7 @@ export default async function ComisionesPage() {
               <CaraBarbero b={{ id: b.id, nombre: b.nombre, fotoUrl: b.fotoUrl }} size={36} />
               <span className="min-w-0">
                 <span className="block truncate text-[13.5px] font-semibold text-ink">{b.nombre}</span>
-                <span className="block truncate text-[11.5px] text-muted">{sedeNombre(b.sede)}</span>
+                <span className="block truncate text-[12px] text-muted">{sedeNombre(b.sede)}</span>
               </span>
             </div>
             <ContratoEditable

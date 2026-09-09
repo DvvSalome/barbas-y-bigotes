@@ -10,8 +10,8 @@ import type { Sede } from "@/lib/data/types";
 
 const input =
   "min-h-11 rounded-lg border border-line bg-bg px-3 py-2 text-ink placeholder:text-muted focus:border-accent focus:outline-none";
-const lbl = "mb-1 block text-[11.5px] font-semibold text-ink";
-const ayuda = "mt-1 block text-[11px] leading-snug text-muted";
+const lbl = "mb-1 block text-[12px] font-semibold text-ink";
+const ayuda = "mt-1 block text-[12px] leading-snug text-muted";
 
 export function AddProductForm({
   sedes,

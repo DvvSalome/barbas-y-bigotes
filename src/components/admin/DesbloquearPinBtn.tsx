@@ -28,7 +28,7 @@ export function DesbloquearPinBtn({ barberoId }: { barberoId: string }) {
       >
         {busy ? "Desbloqueando…" : "Desbloquear"}
       </button>
-      {err && <span className="text-[10px] text-accent-soft">{err}</span>}
+      {err && <span className="text-[12px] text-accent-soft">{err}</span>}
     </span>
   );
 }

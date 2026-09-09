@@ -11,7 +11,7 @@ import { supabaseBrowser } from "@/lib/supabase/client";
 import type { Sede, SedeId, Servicio, Barbero, Categoria } from "@/lib/data/types";
 import type { BebidaUpsell, Ausencia, DiaEspecial, HorarioSemanal } from "@/lib/data/queries";
 import { cop } from "@/lib/format";
-import { ScissorsIcon } from "@/components/icons";
+import { ScissorsIcon, CategoriaIcon, StarIcon } from "@/components/icons";
 import { DOW, MON, STEP, OPEN, CLOSE, fmtTime, slotsDisponibles, horarioEfectivo, instanteBogota, type VentanaDia } from "@/lib/slots";
 
 // YYYY-MM-DD de un Date por sus componentes LOCALES (mismo criterio con que se
@@ -1028,9 +1028,7 @@ export function BookingWizard({
                 {servicioFoto ? (
                   <Image src={servicioFoto} alt="" fill sizes="46px" className="object-cover" />
                 ) : (
-                  <span className="flex h-full w-full items-center justify-center bg-elevated text-lg text-muted/50" aria-hidden>
-                    ✂
-                  </span>
+                  <span className="flex h-full w-full items-center justify-center bg-elevated text-muted/60" aria-hidden><CategoriaIcon categoria={servicio?.categoria} className="h-5 w-5" /></span>
                 )}
               </div>
               <div className="min-w-0">
@@ -1316,9 +1314,7 @@ export function BookingWizard({
                           <Image src={foto} alt="" fill sizes="(max-width:768px) 50vw, 240px" className="object-cover" />
                         ) : (
                           // Sin foto real no se inventa una: fondo neutro con tijera.
-                          <span className="absolute inset-0 flex items-center justify-center bg-elevated text-3xl text-muted/40" aria-hidden>
-                            ✂
-                          </span>
+                          <span className="absolute inset-0 flex items-center justify-center bg-elevated text-muted/50" aria-hidden><CategoriaIcon categoria={s.categoria} className="h-9 w-9" /></span>
                         )}
                         <span
                           className="absolute bottom-1.5 left-1.5 flex items-center gap-1 rounded-[5px] px-2 py-0.5 font-display text-[11px] font-extrabold text-white"
@@ -1446,7 +1442,7 @@ export function BookingWizard({
                         style={{ background: "linear-gradient(180deg, rgba(12,11,10,0) 45%, rgba(12,11,10,.82))" }}
                       />
                       {b.destacado && (
-                        <span className="absolute left-2 top-2 rounded-full bg-accent px-2 py-0.5 text-[9.5px] font-extrabold uppercase tracking-[0.08em] text-on-accent">★ TOP</span>
+                        <span className="absolute left-2 top-2 rounded-full bg-accent px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-[0.08em] text-on-accent"><StarIcon className="inline h-3 w-3 fill-current" /> TOP</span>
                       )}
                       {sel && (
                         <span className="absolute right-2 top-2 flex h-[22px] w-[22px] items-center justify-center rounded-full bg-accent text-[11px] font-extrabold text-on-accent">✓</span>
@@ -1456,7 +1452,7 @@ export function BookingWizard({
                         <div className="font-display text-[21px] font-extrabold uppercase leading-none text-white">{b.nombre}</div>
                         {b.rating != null && (
                           <div className="mt-1 text-[10px] text-[#c9c2b6]">
-                            ★ {b.rating.toFixed(1)}
+                            <StarIcon className="inline h-3.5 w-3.5 fill-current" /> {b.rating.toFixed(1)}
                             {b.resenas ? ` · ${b.resenas} reseñas` : ""}
                           </div>
                         )}
@@ -1889,7 +1885,7 @@ export function BookingWizard({
                     />
                   ) : (
                     <span className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-elevated font-display text-lg font-bold text-accent-soft ring-2 ring-line">
-                      ✂
+                      <CategoriaIcon categoria={servicio?.categoria} className="h-6 w-6" />
                     </span>
                   )}
                   <div className="min-w-0">

@@ -1,5 +1,6 @@
 "use client";
 
+import { PencilIcon } from "@/components/icons";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { actualizarDescripcionServicio } from "@/lib/actions";
@@ -34,12 +35,12 @@ export function DescripcionServicio({ servicioId, descripcion }: { servicioId: s
           setErr(null);
           setEditando(true);
         }}
-        className="block max-w-prose text-left text-[11.5px] leading-snug text-muted transition hover:text-ink"
+        className="block max-w-prose text-left text-[12px] leading-snug text-muted transition hover:text-ink"
         title="El cliente lee esto al reservar"
       >
         {descripcion ? (
           <>
-            {descripcion} <span aria-hidden className="text-[10px]">✎</span>
+            {descripcion} <PencilIcon className="h-3.5 w-3.5 shrink-0 text-muted" />
           </>
         ) : (
           <span className="text-accent-soft">
@@ -61,20 +62,20 @@ export function DescripcionServicio({ servicioId, descripcion }: { servicioId: s
         placeholder="Ej: Corte a tijera y máquina con lavado y peinado incluidos."
         className="w-full rounded-lg border border-accent/60 bg-bg px-2.5 py-1.5 text-[12.5px] text-ink placeholder:text-muted focus:outline-none"
       />
-      {err && <p className="text-[11px] text-accent-soft">{err}</p>}
+      {err && <p className="text-[12px] text-accent-soft">{err}</p>}
       <div className="flex gap-1.5">
         <button
           type="button"
           onClick={guardar}
           disabled={busy}
-          className="rounded-full bg-accent px-4 py-2 text-[11.5px] font-bold uppercase tracking-wide text-on-accent transition hover:bg-accent-soft disabled:opacity-50"
+          className="rounded-full bg-accent px-4 py-2 text-[12px] font-bold uppercase tracking-wide text-on-accent transition hover:bg-accent-soft disabled:opacity-50"
         >
           {busy ? "Guardando…" : "Guardar"}
         </button>
         <button
           type="button"
           onClick={() => setEditando(false)}
-          className="rounded-full border border-line px-4 py-2 text-[11.5px] text-muted transition hover:text-ink"
+          className="rounded-full border border-line px-4 py-2 text-[12px] text-muted transition hover:text-ink"
         >
           Cancelar
         </button>

@@ -12,7 +12,7 @@ import type { AgendaDiaItem, HorarioSemanal, DiaEspecial } from "@/lib/data/quer
 // slots ocupados por getDisponibilidad), pero sin datos del cliente — la cita
 // ya existe, solo cambia de lugar.
 
-const sLabel = "mb-1.5 text-[11px] font-bold uppercase tracking-wide text-muted";
+const sLabel = "mb-1.5 text-[12px] font-bold uppercase tracking-wide text-muted";
 
 const ymdLocal = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;

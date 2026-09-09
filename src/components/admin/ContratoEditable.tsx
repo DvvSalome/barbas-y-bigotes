@@ -1,5 +1,6 @@
 "use client";
 
+import { PencilIcon } from "@/components/icons";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { actualizarContratoBarbero } from "@/lib/actions";
@@ -76,14 +77,14 @@ export function ContratoEditable({
       >
         {tipo === "porcentaje" ? (
           <span className="inline-flex items-center gap-1.5">
-            <span className="rounded-full border border-accent/35 px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-wide text-accent-soft">
+            <span className="rounded-full border border-accent/35 px-2 py-0.5 text-[12px] font-bold uppercase tracking-wide text-accent-soft">
               Comisión
             </span>
             <span className="font-semibold text-ink tabular-nums">{comisionPct ?? 0}%</span>
           </span>
         ) : (
           <span className="inline-flex items-center gap-1.5">
-            <span className="rounded-full border border-line px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-wide text-muted">
+            <span className="rounded-full border border-line px-2 py-0.5 text-[12px] font-bold uppercase tracking-wide text-muted">
               Arriendo
             </span>
             <span className="font-semibold text-ink tabular-nums">
@@ -93,7 +94,7 @@ export function ContratoEditable({
         )}
         {/* ✎ SIEMPRE visible: en el celular no hay hover, así que el chip del
             contrato parecía una etiqueta muerta y el dueño no sabía que se toca. */}
-        <span aria-hidden className="text-[11px] text-muted">✎</span>
+        <PencilIcon className="h-3.5 w-3.5 shrink-0 text-muted" />
       </button>
     );
   }
@@ -110,8 +111,8 @@ export function ContratoEditable({
               setT(op);
               setError(null);
             }}
-            className={`rounded-full border px-3 py-1 text-[11.5px] font-bold uppercase tracking-wide transition ${
-              t === op ? "border-accent bg-accent/15 text-accent-soft" : "border-line text-muted hover:text-ink"
+            className={`rounded-full border px-3 py-1 text-[12px] font-bold uppercase tracking-wide transition ${
+              t === op ? "border-ink bg-ink text-bg" : "border-line text-muted hover:text-ink"
             }`}
           >
             {op === "porcentaje" ? "Comisión" : "Arriendo"}
@@ -161,7 +162,7 @@ export function ContratoEditable({
         </label>
       )}
 
-      {error && <p className="text-[11.5px] text-accent-soft">{error}</p>}
+      {error && <p className="text-[12px] text-accent-soft">{error}</p>}
 
       <div className="flex gap-2">
         <button

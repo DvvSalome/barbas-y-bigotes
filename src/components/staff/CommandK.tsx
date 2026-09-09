@@ -265,7 +265,7 @@ export function CommandK() {
           ) : (
             grupos.map((g) => (
               <div key={g.nombre} role="group" aria-label={g.nombre} className="pb-1">
-                <div aria-hidden="true" className="px-2.5 pb-1 pt-2 text-[10.5px] font-bold uppercase tracking-[0.14em] text-muted">
+                <div aria-hidden="true" className="px-2.5 pb-1 pt-2 text-[12px] font-bold uppercase tracking-[0.14em] text-muted">
                   {g.nombre}
                 </div>
                 {g.items.map((it, j) => {
@@ -299,11 +299,11 @@ export function CommandK() {
             ))
           )}
           {buscando && items.length > 0 && (
-            <p className="px-2.5 py-1.5 text-[11px] text-muted">Buscando clientes y productos…</p>
+            <p className="px-2.5 py-1.5 text-[12px] text-muted">Buscando clientes y productos…</p>
           )}
         </div>
         {/* Atajos de teclado: en táctil no aplican, se ocultan. */}
-        <div className="hidden gap-4 border-t border-line px-4 py-2.5 text-[11px] text-muted sm:flex">
+        <div className="hidden gap-4 border-t border-line px-4 py-2.5 text-[12px] text-muted sm:flex">
           <span>↑↓ navegar</span>
           <span>↵ ir</span>
           <span>esc cerrar</span>

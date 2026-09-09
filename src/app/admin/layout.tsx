@@ -2,8 +2,10 @@ import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import { supabaseServerAuth } from "@/lib/supabase/server";
 import { TEMA_COOKIE, temaDesdeCookie } from "@/lib/tema";
-import { getSedes, getCajaChip } from "@/lib/data/queries";
+import { getSedes } from "@/lib/data/queries";
+import { Suspense } from "react";
 import { AdminTopbar } from "@/components/admin/AdminTopbar";
+import { AdminSubTabs } from "@/components/admin/AdminNav";
 import { CommandK } from "@/components/staff/CommandK";
 import { RealtimeRefresh } from "@/components/motion/RealtimeRefresh";
 
@@ -25,7 +27,7 @@ export default async function AdminLayout({
     .maybeSingle();
   if ((profile as { rol?: string } | null)?.rol !== "admin") redirect("/barbero");
 
-  const [sedes, caja] = await Promise.all([getSedes(), getCajaChip()]);
+  const sedes = await getSedes();
 
   // Tema del staff desde la cookie (SSR sin flash). cookies() vuelve dinámico
   // el layout, pero /admin ya lo es (sesión Supabase en cada request).
@@ -41,8 +43,14 @@ export default async function AdminLayout({
           { table: "caja_sesiones" },
         ]}
       />
-      <AdminTopbar email={user.email ?? ""} sedes={sedes} caja={caja} />
-      <main className="mx-auto w-full max-w-[1400px] flex-1 px-4 pb-20 pt-6 sm:px-5">{children}</main>
+      <AdminTopbar email={user.email ?? ""} sedes={sedes} />
+      <main className="mx-auto w-full max-w-[1400px] flex-1 px-4 pb-20 pt-4 sm:px-5 sm:pt-5">
+        {/* Segunda fila de las secciones con varias pantallas (Catálogo, Equipo, Marketing): dentro del contenido, no en la cabecera. */}
+        <Suspense fallback={null}>
+          <AdminSubTabs />
+        </Suspense>
+        {children}
+      </main>
       <CommandK />
     </div>
   );

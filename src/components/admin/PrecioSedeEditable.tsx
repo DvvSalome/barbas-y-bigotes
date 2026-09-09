@@ -1,5 +1,6 @@
 "use client";
 
+import { PencilIcon, CheckIcon } from "@/components/icons";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { actualizarPrecioServicioSede } from "@/lib/actions";
@@ -71,8 +72,8 @@ export function PrecioSedeEditable({
             Sin precio
           </span>
         )}
-        <span aria-hidden className="text-[10px] text-muted opacity-0 transition group-hover:opacity-100">
-          ✎
+        <span aria-hidden className="text-[12px] text-muted opacity-0 transition group-hover:opacity-100">
+          <PencilIcon className="h-3.5 w-3.5 text-muted" />
         </span>
       </button>
     );
@@ -108,7 +109,7 @@ export function PrecioSedeEditable({
           aria-label="Guardar precio"
           className="grid h-7 w-7 place-items-center rounded-full bg-accent text-xs font-bold text-on-accent transition hover:bg-accent-soft disabled:opacity-50"
         >
-          ✓
+          <CheckIcon className="h-4 w-4" />
         </button>
         <button
           type="button"
@@ -122,7 +123,7 @@ export function PrecioSedeEditable({
           ×
         </button>
       </span>
-      {error && <span className="max-w-[190px] text-right text-[11px] leading-tight text-accent-soft">{error}</span>}
+      {error && <span className="max-w-[190px] text-right text-[12px] leading-tight text-accent-soft">{error}</span>}
     </span>
   );
 }

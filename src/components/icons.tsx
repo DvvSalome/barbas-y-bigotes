@@ -203,3 +203,100 @@ export function CheckIcon({ className }: IconProps) {
     </svg>
   );
 }
+
+// --- Tanda 1 (9-sep): íconos de trazo para lo que antes eran glifos de texto
+// (✎ ✓ ★ ✂ 🎫) y un ícono por categoría de servicio (en vez de la foto de
+// archivo). Trazo 2, 24×24, color del texto: se colorean y alinean solos.
+
+export function PencilIcon({ className }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M12 20h9" />
+      <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
+    </svg>
+  );
+}
+
+export function RazorIcon({ className }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M3 21 13 11" />
+      <path d="m13 11 6.5-6.5a2.1 2.1 0 0 1 3 3L16 14l-3-3Z" />
+      <path d="m8 16-3-3" />
+    </svg>
+  );
+}
+
+export function BrowIcon({ className }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M3 11c3-4 6-5.5 9-5.5S18 7 21 11" />
+      <path d="M6 15.5c2-1.5 4-2 6-2s4 .5 6 2" />
+    </svg>
+  );
+}
+
+export function SparkIcon({ className }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M12 3v3M12 18v3M3 12h3M18 12h3M6.3 6.3l2.1 2.1M15.6 15.6l2.1 2.1M6.3 17.7l2.1-2.1M15.6 8.4l2.1-2.1" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
+  );
+}
+
+export function DropIcon({ className }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M12 22a7 7 0 0 0 7-7c0-4-7-13-7-13S5 11 5 15a7 7 0 0 0 7 7Z" />
+    </svg>
+  );
+}
+
+export function WaxIcon({ className }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <rect x="2.5" y="9" width="19" height="6" rx="3" transform="rotate(-25 12 12)" />
+      <path d="m9 10.5 1 1M12 9.5l1 1M15 8.5l1 1" />
+    </svg>
+  );
+}
+
+export function LayersIcon({ className }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="m12 2 9 5-9 5-9-5 9-5Z" />
+      <path d="m3 12 9 5 9-5" />
+      <path d="m3 17 9 5 9-5" />
+    </svg>
+  );
+}
+
+export function CalendarIcon({ className }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <rect x="3" y="4" width="18" height="18" rx="2" />
+      <path d="M16 2v4M8 2v4M3 10h18" />
+    </svg>
+  );
+}
+
+export function ChevronDownIcon({ className }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="m6 9 6 6 6-6" />
+    </svg>
+  );
+}
+
+/** El ícono de una categoría de servicio (por su id o su nombre): reemplaza a la foto de archivo. */
+export function CategoriaIcon({ categoria, className }: { categoria?: string | null; className?: string }) {
+  const c = (categoria ?? "").toLowerCase();
+  if (c.startsWith("barb")) return <RazorIcon className={className} />;
+  if (c.startsWith("cej")) return <BrowIcon className={className} />;
+  if (c.startsWith("fac")) return <SparkIcon className={className} />;
+  if (c.startsWith("cap") || c.startsWith("color")) return <DropIcon className={className} />;
+  if (c.startsWith("dep")) return <WaxIcon className={className} />;
+  if (c.startsWith("comb")) return <LayersIcon className={className} />;
+  return <ScissorsIcon className={className} />;
+}

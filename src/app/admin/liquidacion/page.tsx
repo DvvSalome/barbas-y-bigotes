@@ -69,7 +69,7 @@ export default async function LiquidacionPage({
         </Link>
         <span className="rounded-xl border border-accent/45 bg-accent/[0.07] px-4 py-2.5 font-display text-[15px] font-bold text-ink">
           {fechaCorta(desdeYmd)} – {fechaCorta(hastaYmd)}
-          {esSemanaActual && <span className="ml-2 text-[11px] font-bold uppercase text-accent-soft">en curso</span>}
+          {esSemanaActual && <span className="ml-2 text-[12px] font-bold uppercase text-accent-soft">en curso</span>}
         </span>
         <Link
           href={qs(masDias(desdeYmd, 7))}
@@ -129,9 +129,9 @@ export default async function LiquidacionPage({
                       { l: "Consumos", v: f.consumos ? `−${cop(f.consumos)}` : "—", sub: "bebidas y mecatos" },
                     ].map((k) => (
                       <div key={k.l} className="bg-panel px-4 py-3">
-                        <div className="text-[10px] font-bold uppercase tracking-wide text-muted">{k.l}</div>
+                        <div className="text-[12px] font-bold uppercase tracking-wide text-muted">{k.l}</div>
                         <div className="font-display text-[19px] font-bold tabular-nums text-ink">{k.v}</div>
-                        <div className="text-[11px] leading-tight text-muted">{k.sub}</div>
+                        <div className="text-[12px] leading-tight text-muted">{k.sub}</div>
                       </div>
                     ))}
                   </div>
@@ -147,7 +147,7 @@ export default async function LiquidacionPage({
                   )}
 
                   <div className="flex items-baseline justify-between gap-3 border-t border-line bg-elevated/40 px-4 py-3">
-                    <span className="text-[11px] font-bold uppercase tracking-[0.16em] text-muted">
+                    <span className="text-[12px] font-bold uppercase tracking-[0.16em] text-muted">
                       {arriendo ? "Le queda a él" : "A pagar"}
                     </span>
                     <span
@@ -179,7 +179,7 @@ export default async function LiquidacionPage({
               Descontado <b className="ml-1 tabular-nums text-ink">{cop(totales.adelantos + totales.consumos)}</b>
             </span>
             <span className="font-semibold text-ink">
-              Total a pagar <b className="ml-1 tabular-nums text-accent-soft">{cop(totales.neto)}</b>
+              Total a pagar <b className="ml-1 tabular-nums text-ink">{cop(totales.neto)}</b>
             </span>
           </div>
         </>

@@ -30,7 +30,7 @@ export function RankingMetrica({
     <section className="rounded-2xl border border-line bg-panel p-5">
       <div className="mb-3 flex items-baseline justify-between gap-2">
         <h3 className="font-display text-lg">{titulo}</h3>
-        <span className="text-[10.5px] font-semibold uppercase tracking-wide text-muted">{orden}</span>
+        <span className="text-[12px] font-semibold uppercase tracking-wide text-muted">{orden}</span>
       </div>
       {filas.length === 0 ? (
         <p className="text-[12.5px] text-muted">{vacio}</p>
@@ -53,7 +53,7 @@ export function RankingMetrica({
                 <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-elevated">
                   <div className="h-full rounded-full bg-accent/70" style={{ width: `${(f.peso / max) * 100}%` }} />
                 </div>
-                <div className="mt-0.5 text-[11.5px] text-muted">{f.sub}</div>
+                <div className="mt-0.5 text-[12px] text-muted">{f.sub}</div>
               </li>
             ))}
           </ul>

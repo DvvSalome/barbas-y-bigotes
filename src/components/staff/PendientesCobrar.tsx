@@ -143,7 +143,7 @@ export function PendientesCobrar({
               {abiertaEsta && (
                 <div className="space-y-3 border-t border-line/60 px-4 py-3">
                   <div>
-                    <p className="mb-1.5 text-[11px] font-bold uppercase tracking-wide text-muted">Pagó con</p>
+                    <p className="mb-1.5 text-[12px] font-bold uppercase tracking-wide text-muted">Pagó con</p>
                     <div className="flex flex-wrap gap-1.5">
                       {medios.map((m) => (
                         <button key={m.slug} type="button" onClick={() => setMedio(m.slug)} className={chip(medio === m.slug)}>
@@ -153,7 +153,7 @@ export function PendientesCobrar({
                     </div>
                   </div>
                   <div className="flex flex-wrap items-end gap-2">
-                    <label className="text-[11px] font-bold uppercase tracking-wide text-muted">
+                    <label className="text-[12px] font-bold uppercase tracking-wide text-muted">
                       Propina (opcional)
                       <input
                         type="number"

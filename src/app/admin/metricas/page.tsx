@@ -156,7 +156,7 @@ export default async function MetricasPage({
           { name: "desde", label: "Desde", valor: mesYmd },
           { name: "hasta", label: "Hasta", valor: hoyYmd },
         ].map((f) => (
-          <label key={f.name} className="text-[11px] font-semibold uppercase tracking-wide text-muted">
+          <label key={f.name} className="text-[12px] font-semibold uppercase tracking-wide text-muted">
             {f.label}
             <input
               type="date"
@@ -258,7 +258,7 @@ export default async function MetricasPage({
               ].map((k) => (
                 <div key={k.l} className="rounded-xl border border-line bg-elevated px-3 py-2.5">
                   <div className={`font-display text-2xl font-bold tabular-nums ${k.tono}`}>{k.n}</div>
-                  <div className="text-[11px] leading-tight text-muted">{k.l}</div>
+                  <div className="text-[12px] leading-tight text-muted">{k.l}</div>
                 </div>
               ))}
             </div>

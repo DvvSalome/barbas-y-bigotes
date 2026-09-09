@@ -42,7 +42,7 @@ export function AvisarWhatsApp({
           </a>
           {/* Copia textual del mensaje: el dueño quiere saber qué se manda en su
               nombre antes de tocar el botón. */}
-          <p className="mt-2.5 whitespace-pre-line rounded-lg bg-bg/60 px-3 py-2 text-[11.5px] leading-relaxed text-muted">
+          <p className="mt-2.5 whitespace-pre-line rounded-lg bg-bg/60 px-3 py-2 text-[12px] leading-relaxed text-muted">
             {mensaje}
           </p>
         </>

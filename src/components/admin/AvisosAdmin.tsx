@@ -90,7 +90,7 @@ export function AvisosAdmin({
         </div>
 
         <div className={`mt-5 ${activo ? "" : "pointer-events-none opacity-40"}`}>
-          <div className="mb-2 text-[11px] font-bold uppercase tracking-[0.14em] text-muted">
+          <div className="mb-2 eyebrow">
             ¿Con cuánto tiempo?
           </div>
           <div className="flex flex-wrap gap-2">
@@ -110,7 +110,7 @@ export function AvisosAdmin({
               </button>
             ))}
           </div>
-          <p className="mt-3 text-[11.5px] leading-relaxed text-muted">
+          <p className="mt-3 text-[12px] leading-relaxed text-muted">
             Solo le llega a quien reservó con más de {horas === 1 ? "una hora" : `${horas} horas`} de
             anticipación. Al que acaba de reservar no se le avisa: ya lo sabe.
           </p>
@@ -161,7 +161,7 @@ export function AvisosAdmin({
         </div>
 
         <div className={`mt-5 ${corteActivo ? "" : "opacity-60"}`}>
-          <div className="mb-2 text-[11px] font-bold uppercase tracking-[0.14em] text-muted">
+          <div className="mb-2 eyebrow">
             ¿Cada cuántos días sin venir?
           </div>
           <div className="flex flex-wrap gap-2">
@@ -184,14 +184,14 @@ export function AvisosAdmin({
           <div className="mt-4 grid grid-cols-2 gap-3">
             <div className="rounded-xl bg-elevated px-4 py-3">
               <div className="font-display text-2xl font-extrabold tabular-nums text-ink">{resumen.elegiblesHoy}</div>
-              <div className="text-[11.5px] text-muted">le tocaría hoy con la cadencia guardada</div>
+              <div className="text-[12px] text-muted">le tocaría hoy con la cadencia guardada</div>
             </div>
             <div className="rounded-xl bg-elevated px-4 py-3">
               <div className="font-display text-2xl font-extrabold tabular-nums text-ink">{resumen.enviados30d}</div>
-              <div className="text-[11.5px] text-muted">avisos enviados en los últimos 30 días</div>
+              <div className="text-[12px] text-muted">avisos enviados en los últimos 30 días</div>
             </div>
           </div>
-          <p className="mt-3 text-[11.5px] leading-relaxed text-muted">
+          <p className="mt-3 text-[12px] leading-relaxed text-muted">
             Sale por el proveedor de marketing (Brevo), no por el correo de reservas: si un aviso rebota, las
             confirmaciones de citas no se ven afectadas.
           </p>

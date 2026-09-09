@@ -1,5 +1,7 @@
 "use client";
 
+import { Estrellas } from "@/components/ui/Estrellas";
+import { PencilIcon, StarIcon } from "@/components/icons";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "motion/react";
@@ -96,7 +98,7 @@ export function ClienteDetalle({
         {d.ratingProm !== null && (
           <div className="text-right">
             <div className="text-xs uppercase tracking-wide text-muted">Nota del staff</div>
-            <div className="font-display text-2xl text-accent-soft">★ {d.ratingProm}</div>
+            <div className="flex items-center gap-1.5 font-display text-2xl text-ink"><StarIcon className="h-5 w-5 fill-current text-warn" /> {d.ratingProm}</div>
           </div>
         )}
       </div>
@@ -213,7 +215,7 @@ function NotaFicha({ clienteRef, nota }: { clienteRef: string; nota: string | nu
         >
           {nota ? (
             <>
-              {nota} <span aria-hidden className="text-[11px] text-muted">✎</span>
+              {nota} <PencilIcon className="h-3.5 w-3.5 shrink-0 text-muted" />
             </>
           ) : (
             <span className="text-accent-soft">+ Agregar (alergias, gustos…)</span>
@@ -227,8 +229,8 @@ function NotaFicha({ clienteRef, nota }: { clienteRef: string; nota: string | nu
     <div className="space-y-2">
       <span className="text-muted">Nota de ficha</span>
       <textarea value={texto} onChange={(e) => setTexto(e.target.value)} rows={2} maxLength={500} autoFocus className={fld} />
-      <p className="text-[11px] text-muted">Lo permanente (alergias, gustos). Las notas del día a día van en la pestaña Notas.</p>
-      {err && <p className="text-[11px] text-accent-soft">{err}</p>}
+      <p className="text-[12px] text-muted">Lo permanente (alergias, gustos). Las notas del día a día van en la pestaña Notas.</p>
+      {err && <p className="text-[12px] text-accent-soft">{err}</p>}
       <div className="flex gap-1.5">
         <button type="button" onClick={guardar} disabled={busy} className={btn}>
           {busy ? "Guardando…" : "Guardar"}
@@ -267,7 +269,7 @@ function HistorialTab({ d }: { d: Detalle }) {
             <div>{h.items.join(", ") || "Servicio"}</div>
             <div className="text-xs text-muted">{fecha(h.fecha)} · {h.barbero || "—"} · {h.medio}</div>
           </div>
-          <span className="shrink-0 text-accent-soft">{cop(h.total)}</span>
+          <span className="shrink-0 tabular-nums text-ink">{cop(h.total)}</span>
         </div>
       ))}
     </div>
@@ -367,7 +369,7 @@ function WalletTab({ d }: { d: Detalle }) {
     <div>
       <div className="mb-5 rounded-2xl border border-line bg-panel p-5">
         <div className="text-xs uppercase tracking-wide text-muted">Saldo a favor</div>
-        <div className="font-display text-3xl text-accent-soft">{cop(d.walletBalance)}</div>
+        <div className="font-display text-3xl tabular-nums text-ink">{cop(d.walletBalance)}</div>
         <p className="mt-1 text-xs text-muted">Registro manual. No es un cobro: refleja el saldo que el cliente dejó a favor.</p>
 
         <form onSubmit={add} className="mt-4 space-y-2">
@@ -509,7 +511,7 @@ function CalificacionesTab({ d }: { d: Detalle }) {
       {d.calificaciones.map((c) => (
         <div key={c.id} className="rounded-xl border border-line bg-panel px-4 py-3 text-sm">
           <div className="flex items-center justify-between">
-            <span className="text-accent">{"★".repeat(c.score)}<span className="text-line">{"★".repeat(5 - c.score)}</span></span>
+            <Estrellas score={c.score} />
             <span className="text-xs text-muted">{fecha(c.fecha)}</span>
           </div>
           {c.comentario ? <div className="mt-1">{c.comentario}</div> : null}
@@ -560,7 +562,7 @@ function ResenasTab({ d, barberos }: { d: Detalle; barberos: Barbero[] }) {
               aria-pressed={score === n}
               className={`flex min-h-11 min-w-11 items-center justify-center p-1.5 text-2xl transition ${n <= score ? "text-accent" : "text-line"}`}
             >
-              ★
+              <StarIcon className="h-4 w-4 fill-current" />
             </button>
           ))}
         </div>
@@ -581,7 +583,7 @@ function ResenasTab({ d, barberos }: { d: Detalle; barberos: Barbero[] }) {
           {d.resenas.map((r) => (
             <div key={r.id} className="rounded-xl border border-line bg-panel px-4 py-3 text-sm">
               <div className="flex items-center justify-between">
-                <span className="text-accent">{"★".repeat(r.score)}<span className="text-line">{"★".repeat(5 - r.score)}</span></span>
+                <Estrellas score={r.score} />
                 <span className="flex items-center gap-2">
                   <span className="text-xs text-muted">{fecha(r.fecha)}</span>
                   <BorrarChico
@@ -624,13 +626,13 @@ function BorrarChico({ label, onBorrar }: { label: string; onBorrar: () => Promi
 
   return (
     <span className="inline-flex items-center gap-1.5">
-      {err && <span className="text-[10px] text-accent-soft">{err}</span>}
+      {err && <span className="text-[12px] text-accent-soft">{err}</span>}
       <button
         type="button"
         onClick={click}
         onBlur={() => setConfirmando(false)}
         disabled={busy}
-        className={`min-h-8 rounded-full border px-2.5 text-[10.5px] font-semibold transition disabled:opacity-50 ${
+        className={`min-h-8 rounded-full border px-2.5 text-[12px] font-semibold transition disabled:opacity-50 ${
           confirmando ? "border-warn/50 text-warn" : "border-line text-muted hover:text-ink"
         }`}
       >
@@ -671,7 +673,7 @@ function NotaFila({ clienteRef, id, nota, fechaTxt }: { clienteRef: string; id: 
             autoFocus
             className={fld}
           />
-          {err && <p className="text-[11px] text-accent-soft">{err}</p>}
+          {err && <p className="text-[12px] text-accent-soft">{err}</p>}
           <div className="flex gap-1.5">
             <button type="button" onClick={guardar} disabled={busy} className={btn}>
               {busy ? "Guardando…" : "Guardar"}
@@ -698,9 +700,9 @@ function NotaFila({ clienteRef, id, nota, fechaTxt }: { clienteRef: string; id: 
               <button
                 type="button"
                 onClick={() => setEditando(true)}
-                className="min-h-8 rounded-full border border-line px-2.5 text-[10.5px] font-semibold text-muted transition hover:text-ink"
+                className="min-h-8 rounded-full border border-line px-2.5 text-[12px] font-semibold text-muted transition hover:text-ink"
               >
-                Editar ✎
+                Editar <PencilIcon className="h-3.5 w-3.5" />
               </button>
               <BorrarChico label="nota" onBorrar={() => borrarNotaCliente({ id, clienteRef })} />
             </span>

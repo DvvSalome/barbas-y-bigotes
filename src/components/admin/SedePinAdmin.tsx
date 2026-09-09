@@ -61,18 +61,18 @@ export function SedePinAdmin({ sedes, estado }: { sedes: Sede[]; estado: Estado 
                 </div>
                 <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
                   <span
-                    className={`rounded-full px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-wide ${
+                    className={`rounded-full px-2 py-0.5 text-[12px] font-bold uppercase tracking-wide ${
                       e?.tienePin ? "bg-ok/15 text-ok" : "bg-warn/15 text-warn"
                     }`}
                   >
                     {e?.tienePin ? "PIN listo" : "Sin PIN"}
                   </span>
                   {e?.bloqueado && (
-                    <span className="rounded-full bg-accent/15 px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-wide text-accent-soft">
+                    <span className="rounded-full bg-accent/15 px-2 py-0.5 text-[12px] font-bold uppercase tracking-wide text-accent-soft">
                       Bloqueado 5 min
                     </span>
                   )}
-                  <span className="text-[11.5px] text-muted">lo usa todo el equipo del local</span>
+                  <span className="text-[12px] text-muted">lo usa todo el equipo del local</span>
                 </div>
               </div>
             </div>

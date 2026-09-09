@@ -1,5 +1,6 @@
 "use client";
 
+import { PencilIcon, CheckIcon } from "@/components/icons";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { actualizarDuracionServicio } from "@/lib/actions";
@@ -54,10 +55,10 @@ export function DuracionEditable({ servicioId, min }: { servicioId: string; min:
           setEditing(true);
         }}
         aria-label={`Duración: ${min} minutos. Tocar para cambiar`}
-        className="inline-flex min-h-11 items-center gap-1 text-[11.5px] text-muted underline decoration-dotted decoration-line underline-offset-4 transition hover:decoration-accent hover:text-ink"
+        className="inline-flex min-h-11 items-center gap-1 text-[12px] text-muted underline decoration-dotted decoration-line underline-offset-4 transition hover:decoration-accent hover:text-ink"
       >
         <span className="tabular-nums">{min} min</span>
-        <span aria-hidden className="text-[10px]">✎</span>
+        <PencilIcon className="h-3.5 w-3.5 shrink-0 text-muted" />
       </button>
     );
   }
@@ -93,7 +94,7 @@ export function DuracionEditable({ servicioId, min }: { servicioId: string; min:
           aria-label="Guardar duración"
           className="grid h-11 w-11 place-items-center rounded-full bg-accent text-sm font-bold text-on-accent transition hover:bg-accent-soft disabled:opacity-50"
         >
-          ✓
+          <CheckIcon className="h-4 w-4" />
         </button>
         <button
           type="button"
@@ -107,7 +108,7 @@ export function DuracionEditable({ servicioId, min }: { servicioId: string; min:
           ×
         </button>
       </span>
-      {error && <span className="text-[11px] leading-tight text-accent-soft">{error}</span>}
+      {error && <span className="text-[12px] leading-tight text-accent-soft">{error}</span>}
     </span>
   );
 }

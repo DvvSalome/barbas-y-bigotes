@@ -20,6 +20,8 @@ import { fmtTime, CLOSE } from "@/lib/slots";
 import { DesbloquearPinBtn } from "@/components/admin/DesbloquearPinBtn";
 import { AlertIcon, ScissorsIcon, CheckIcon, StarIcon, PercentIcon, CashIcon, TicketIcon, GridIcon } from "@/components/icons";
 import type { SedeId } from "@/lib/data/types";
+import { AvisoCaja } from "@/components/admin/AvisoCaja";
+import { Estrellas } from "@/components/ui/Estrellas";
 
 export const metadata: Metadata = { title: "Hoy · Admin" };
 
@@ -113,7 +115,7 @@ function iniciales(nombre: string) {
 
 // Label de sección: 11px 700 uppercase ls .14em, color muted.
 const SEC =
-  "flex items-baseline justify-between text-[11px] font-bold uppercase tracking-[0.14em] text-muted " +
+  "flex items-baseline justify-between eyebrow " +
   // Marca roja al inicio del título: las secciones se leen como capítulos.
   "[&>span:first-of-type]:relative [&>span:first-of-type]:pl-3 [&>span:first-of-type]:before:absolute " +
   "[&>span:first-of-type]:before:left-0 [&>span:first-of-type]:before:top-1/2 [&>span:first-of-type]:before:h-3 " +
@@ -121,7 +123,7 @@ const SEC =
   "[&>span:first-of-type]:before:rounded-full [&>span:first-of-type]:before:bg-accent [&>span:first-of-type]:before:content-['']";
 // Link de acción a la derecha del label (rojo suave, 12px 600). min-h-11 + padding:
 // antes era texto de 12px sin área táctil, imposible de acertar en el celular.
-const SEC_ACTION = "inline-flex items-center min-h-11 px-2 text-xs font-semibold normal-case tracking-normal text-accent-soft transition hover:text-ink";
+const SEC_ACTION = "inline-flex items-center min-h-11 px-2 text-[13px] font-semibold normal-case tracking-normal text-ink/85 underline decoration-line underline-offset-4 transition hover:text-ink";
 // Superficie de panel. Un solo vocabulario para todas las listas de la pantalla.
 const PANEL = "overflow-hidden rounded-2xl border border-line bg-panel";
 // Opacidades del token --bar para distinguir medios de pago sin inventar colores
@@ -189,6 +191,7 @@ export default async function AdminHoy({
 
   return (
     <div>
+      <AvisoCaja />
       {/* ── La banda del día ───────────────────────────────────
           Encabezado y plata son la MISMA unidad, no una card flotante encima de
           otra (anti-referencia de PRODUCT.md: la plantilla hero-métrica). Vive
@@ -235,13 +238,13 @@ export default async function AdminHoy({
               <div className="flex items-baseline justify-end gap-1.5 font-display text-[15px] font-extrabold leading-none text-ink tabular-nums">
                 <span>{compacto(serie.semana)}</span>
                 {variacion && (
-                  <span className={`text-[11px] ${variacion.clase}`}>
+                  <span className={`text-[12px] ${variacion.clase}`}>
                     <span aria-hidden>{variacion.flecha}</span>
                     <span className="sr-only">{variacion.srTexto}</span> {variacion.etiqueta}
                   </span>
                 )}
               </div>
-              <div className="mt-1 text-[11px] text-muted tabular-nums">vs {compacto(serie.semanaAnterior)} semana pasada</div>
+              <div className="mt-1 text-[12px] text-muted tabular-nums">vs {compacto(serie.semanaAnterior)} semana pasada</div>
             </div>
             <Barras7 dias={serie.dias} className="h-9 w-[160px]" />
           </div>
@@ -290,7 +293,7 @@ export default async function AdminHoy({
                   <span className="text-muted">{m.nombre}</span>
                   <span className="font-semibold text-ink">{cop(m.total)}</span>
                   {/* El % hace legible la barra sin depender de distinguir tonos */}
-                  <span className="text-[11px] text-muted">
+                  <span className="text-[12px] text-muted">
                     {Math.round((m.total / Math.max(1, plata.total)) * 100)}%
                   </span>
                 </span>
@@ -304,7 +307,7 @@ export default async function AdminHoy({
         {/* Tendencia en móvil */}
         <div className="mt-4 flex items-center gap-3 lg:hidden">
           <Barras7 dias={serie.dias} className="h-8 flex-1" />
-          <div className="shrink-0 text-right text-[11px] text-muted tabular-nums">
+          <div className="shrink-0 text-right text-[12px] text-muted tabular-nums">
             <span className="font-display text-[14px] font-extrabold text-ink">{compacto(serie.semana)}</span>{" "}
             {variacion && (
               <span className={`font-bold ${variacion.clase}`}>
@@ -328,16 +331,16 @@ export default async function AdminHoy({
           seis en una fila que por fin usa el ancho del monitor. */}
       <section aria-label="Pulso del día" className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
         {[
-          { l: "Entró hoy", v: cop(plata.total), s: plata.medios.length > 0 ? `${plata.medios.length} ${plata.medios.length === 1 ? "medio" : "medios"} de pago` : "todavía sin cobros", tono: "text-accent-soft", Icono: CashIcon, aro: "border-accent/35 text-accent-soft" },
+          { l: "Entró hoy", v: cop(plata.total), s: plata.medios.length > 0 ? `${plata.medios.length} ${plata.medios.length === 1 ? "medio" : "medios"} de pago` : "todavía sin cobros", tono: "text-ink", Icono: CashIcon, aro: "border-line text-muted" },
           { l: "Atenciones", v: String(plata.atenciones), s: `${pulso.citasHoy} ${pulso.citasHoy === 1 ? "cita agendada" : "citas agendadas"} hoy`, tono: "text-ink", Icono: ScissorsIcon, aro: "border-line text-muted" },
           { l: "Ticket promedio", v: plata.atenciones > 0 ? cop(Math.round(plata.total / plata.atenciones)) : "—", s: "por cliente cobrado", tono: "text-ink", Icono: TicketIcon, aro: "border-line text-muted" },
-          { l: "Propinas", v: cop(plata.propinas), s: plata.total > 0 ? `${Math.round((plata.propinas / plata.total) * 100)}% de lo cobrado` : "van aparte del corte", tono: "text-ok", Icono: PercentIcon, aro: "border-ok/35 text-ok" },
+          { l: "Propinas", v: cop(plata.propinas), s: plata.total > 0 ? `${Math.round((plata.propinas / plata.total) * 100)}% de lo cobrado` : "van aparte del corte", tono: "text-ink", Icono: PercentIcon, aro: "border-line text-muted" },
           { l: "Agenda llena", v: `${Math.round(pulso.ocupacion.ratio * 100)}%`, s: pulso.ocupacion.disponible > 0 ? `${Math.round(pulso.ocupacion.agendado / 60)} h de ${Math.round(pulso.ocupacion.disponible / 60)} h del equipo` : "hoy no se abre", tono: pulso.ocupacion.ratio >= 0.6 ? "text-ok" : "text-ink", Icono: GridIcon, aro: "border-line text-muted", barra: pulso.ocupacion.ratio },
           { l: "Sin cobrar", v: cop(montoSinCobrar), s: sinCobrar.length === 0 ? "todo pasó por caja" : `${sinCobrar.length} ${sinCobrar.length === 1 ? "cita cerrada" : "citas cerradas"} sin cobro`, tono: montoSinCobrar > 0 ? "text-warn" : "text-muted", Icono: AlertIcon, aro: montoSinCobrar > 0 ? "border-warn/40 text-warn" : "border-line text-muted" },
         ].map((k) => (
           <div key={k.l} className={`${PANEL} bb-relieve px-3.5 py-3`}>
             <div className="flex items-start justify-between gap-2">
-              <div className="text-[10.5px] font-bold uppercase tracking-[0.12em] text-muted">{k.l}</div>
+              <div className="text-[12px] font-bold uppercase tracking-[0.12em] text-muted">{k.l}</div>
               <span className={`grid h-7 w-7 shrink-0 place-items-center rounded-full border ${k.aro}`}>
                 <k.Icono className="h-3.5 w-3.5" />
               </span>
@@ -352,7 +355,7 @@ export default async function AdminHoy({
                 />
               </div>
             )}
-            <div className="mt-1.5 text-[11px] leading-tight text-muted">{k.s}</div>
+            <div className="mt-1.5 text-[12px] leading-tight text-muted">{k.s}</div>
           </div>
         ))}
       </section>
@@ -363,7 +366,7 @@ export default async function AdminHoy({
         <section aria-label="Atendidas sin cobrar" className="mt-5 overflow-hidden rounded-2xl border border-accent/45 bg-accent/[0.06]">
           <div className="px-4 pb-3 pt-3.5">
             <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-              <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-accent-soft">Atendidas sin cobrar</span>
+              <span className="eyebrow">Atendidas sin cobrar</span>
               <Link href="/admin/cuadre" className={SEC_ACTION}>
                 Ver cuadre
               </Link>
@@ -388,7 +391,7 @@ export default async function AdminHoy({
                 </span>
                 <span className="min-w-0">
                   <span className="block truncate text-[13.5px] font-semibold text-ink">{c.cliente}</span>
-                  <span className="block truncate text-[11.5px] text-muted">
+                  <span className="block truncate text-[12px] text-muted">
                     {c.servicio} · {c.barbero} · {TAG_SEDE[c.sede] ?? c.sede}
                   </span>
                 </span>
@@ -466,12 +469,12 @@ export default async function AdminHoy({
                           </span>
                           <span className="min-w-0 flex-1">
                             <span className="block truncate text-[14px] font-bold leading-tight text-ink">{b.nombre}</span>
-                            <span className="block truncate text-[11px] text-muted">{NOMBRE_SEDE[b.sede] ?? b.sede}</span>
+                            <span className="block truncate text-[12px] text-muted">{NOMBRE_SEDE[b.sede] ?? b.sede}</span>
                           </span>
                           <span
-                            className={`shrink-0 whitespace-nowrap rounded-full border px-2 py-[3px] text-[10px] font-bold uppercase tracking-wide ${
+                            className={`shrink-0 whitespace-nowrap rounded-full border px-2 py-[3px] text-[12px] font-bold uppercase tracking-wide ${
                               pasadoDeHora
-                                ? "border-accent bg-accent/15 text-accent-soft"
+                                ? "border-ink bg-ink text-bg"
                                 : b.enSilla
                                   ? "border-ok/40 text-ok"
                                   : "border-line text-muted"
@@ -496,7 +499,7 @@ export default async function AdminHoy({
                         </p>
 
                         <div className="mt-2.5 flex items-baseline justify-between border-t border-line/60 pt-2.5">
-                          <span className="text-[11.5px] text-muted tabular-nums">
+                          <span className="text-[12px] text-muted tabular-nums">
                             {suyo ? `${suyo.cobros} ${suyo.cobros === 1 ? "cobro" : "cobros"} hoy` : "sin cobros hoy"}
                           </span>
                           <span className="font-display text-[15px] font-extrabold text-ink tabular-nums">
@@ -506,7 +509,7 @@ export default async function AdminHoy({
 
                         {b.pinBloqueado && (
                           <div className="mt-2.5 flex items-center justify-between gap-2 rounded-lg border border-warn/40 bg-warn/[0.08] px-2.5 py-1.5">
-                            <span className="text-[11px] font-bold text-warn">PIN bloqueado</span>
+                            <span className="text-[12px] font-bold text-warn">PIN bloqueado</span>
                             <DesbloquearPinBtn barberoId={b.id} />
                           </div>
                         )}
@@ -531,7 +534,7 @@ export default async function AdminHoy({
                 <div className="px-4 py-6 text-center">
                   <ScissorsIcon className="mx-auto h-4 w-4 text-muted" />
                   <p className="mt-1 text-[13px] font-semibold text-ink">No quedan citas para hoy</p>
-                  <p className="text-[11.5px] text-muted">Los walk-ins siguen entrando por el mostrador.</p>
+                  <p className="text-[12px] text-muted">Los walk-ins siguen entrando por el mostrador.</p>
                 </div>
               )}
 
@@ -541,19 +544,19 @@ export default async function AdminHoy({
                   key={c.id}
                   className="grid grid-cols-[56px_1fr_auto] items-center gap-3 border-b border-line/60 bg-accent/[0.06] px-4 py-2.5 last:border-b-0 lg:grid-cols-[64px_1fr_auto]"
                 >
-                  <span className="font-display text-[15px] font-extrabold tracking-tight text-accent-soft tabular-nums lg:text-base">
+                  <span className="font-display text-[15px] font-extrabold tracking-tight text-ink tabular-nums lg:text-base">
                     {horaBogota(c.inicio)}
                   </span>
                   <span className="min-w-0">
                     <span className="block truncate text-[13.5px] font-semibold text-ink">{c.cliente}</span>
-                    <span className="block truncate text-[11.5px] text-muted">
+                    <span className="block truncate text-[12px] text-muted">
                       {c.servicio} · {c.barbero}
                     </span>
-                    <span className="mt-1 inline-block rounded-full border border-accent/45 bg-accent/15 px-2 py-[2px] text-[10.5px] font-bold text-accent-soft">
+                    <span className="mt-1 inline-block rounded-full border border-accent/45 bg-accent/15 px-2 py-[2px] text-[12px] font-bold text-accent-soft">
                       Debía entrar {horaBogota(c.inicio)} · sin registrar
                     </span>
                   </span>
-                  <span className="text-[11px] font-extrabold tracking-[0.06em] text-muted">{TAG_SEDE[c.sede] ?? c.sede}</span>
+                  <span className="text-[12px] font-extrabold tracking-[0.06em] text-muted">{TAG_SEDE[c.sede] ?? c.sede}</span>
                 </div>
               ))}
 
@@ -567,11 +570,11 @@ export default async function AdminHoy({
                   </span>
                   <span className="min-w-0">
                     <span className="block truncate text-[13.5px] font-semibold text-ink">{c.cliente}</span>
-                    <span className="block truncate text-[11.5px] text-muted">
+                    <span className="block truncate text-[12px] text-muted">
                       {c.servicio} · {c.barbero}
                     </span>
                   </span>
-                  <span className="text-[11px] font-extrabold tracking-[0.06em] text-muted">{TAG_SEDE[c.sede] ?? c.sede}</span>
+                  <span className="text-[12px] font-extrabold tracking-[0.06em] text-muted">{TAG_SEDE[c.sede] ?? c.sede}</span>
                 </div>
               ))}
             </div>
@@ -595,11 +598,10 @@ export default async function AdminHoy({
                 </span>
                 {postventa.promedio !== null && (
                   <span className="text-[13px] tracking-[1.5px] text-warn">
-                    {"★".repeat(Math.round(postventa.promedio))}
-                    <span className="text-line">{"★".repeat(5 - Math.round(postventa.promedio))}</span>
+                    <Estrellas score={postventa.promedio} className="h-4 w-4" />
                   </span>
                 )}
-                <span className="text-[11.5px] text-muted">
+                <span className="text-[12px] text-muted">
                   {postventa.total > 0
                     ? `${postventa.total} ${postventa.total === 1 ? "calificación" : "calificaciones"}`
                     : "Sin calificaciones todavía"}
@@ -608,9 +610,8 @@ export default async function AdminHoy({
               {postventa.ultimas.map((c) => (
                 <div key={c.id} className="mt-3 border-t border-line/60 pt-3 text-[12.5px]">
                   <p className="text-ink/85">“{c.comentario}”</p>
-                  <p className="mt-0.5 text-[11px] text-muted">
-                    {"★".repeat(c.score)}
-                    {"☆".repeat(5 - c.score)} · {c.barbero} · {c.sede} · {fechaCorta(c.fecha)}
+                  <p className="mt-0.5 text-[12px] text-muted">
+                    <Estrellas score={c.score} /> · {c.barbero} · {c.sede} · {fechaCorta(c.fecha)}
                   </p>
                 </div>
               ))}
@@ -704,7 +705,7 @@ export default async function AdminHoy({
               <div className={`${PANEL} px-4 py-5 text-center`}>
                 <CheckIcon className="mx-auto h-4 w-4 text-ok" />
                 <p className="mt-1 text-[13px] font-semibold text-ink">Todo al día</p>
-                <p className="text-[11.5px] text-muted">Sin stock bajo, malas calificaciones ni cupones por vencer.</p>
+                <p className="text-[12px] text-muted">Sin stock bajo, malas calificaciones ni cupones por vencer.</p>
               </div>
             ) : (
               <div className={PANEL}>
@@ -719,7 +720,7 @@ export default async function AdminHoy({
                           ? "1 producto bajo mínimo"
                           : `${tareas.bajoMinimo.length} productos bajo mínimo`}
                       </span>
-                      <span className="block truncate text-[11px] text-muted">
+                      <span className="block truncate text-[12px] text-muted">
                         {tareas.bajoMinimo
                           .slice(0, 3)
                           .map((p) => `${p.nombre} (${TAG_SEDE[p.sede] ?? p.sede})`)
@@ -743,9 +744,9 @@ export default async function AdminHoy({
                     </span>
                     <span className="min-w-0">
                       <span className="block text-[12.5px] font-semibold text-ink">
-                        Calificación de {r.score}★ · {r.barbero}
+                        Calificación {r.score}/5 · {r.barbero}
                       </span>
-                      <span className="block truncate text-[11px] text-muted">
+                      <span className="block truncate text-[12px] text-muted">
                         {r.comentario ? `“${r.comentario}”` : "Sin comentario"} · {TAG_SEDE[r.sede] ?? r.sede} ·{" "}
                         {fechaCorta(r.fecha)}
                       </span>
@@ -773,7 +774,7 @@ export default async function AdminHoy({
                       <span className="block text-[12.5px] font-semibold text-ink">
                         Cupón {c.codigo} vence {fechaCorta(`${c.venceEn}T12:00:00-05:00`)}
                       </span>
-                      <span className="block text-[11px] text-muted tabular-nums">
+                      <span className="block text-[12px] text-muted tabular-nums">
                         {c.usosMax != null ? `${c.usos} de ${c.usosMax} usos` : `${c.usos} usos`}
                       </span>
                     </span>

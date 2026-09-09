@@ -1,5 +1,6 @@
 "use client";
 
+import { chipFiltroClases } from "@/components/ui/Chip";
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -163,11 +164,7 @@ export function ClientesLista({
               type="button"
               onClick={() => setFiltro(f.id)}
               aria-pressed={filtro === f.id}
-              className={`rounded-full border px-3.5 py-2 text-xs font-semibold transition ${
-                filtro === f.id
-                  ? "border-accent bg-accent/15 text-accent-soft"
-                  : "border-line text-muted hover:border-accent/40 hover:text-ink"
-              }`}
+              className={chipFiltroClases(filtro === f.id)}
             >
               {f.label}
             </button>
@@ -221,7 +218,7 @@ export function ClientesLista({
                           c.sedes.map((s) => (
                             <span
                               key={s}
-                              className="shrink-0 rounded-full border border-line px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-muted"
+                              className="shrink-0 rounded-full border border-line px-2 py-0.5 text-[12px] font-bold uppercase tracking-wide text-muted"
                             >
                               {nombreCorto.get(s) ?? s}
                             </span>
@@ -237,7 +234,7 @@ export function ClientesLista({
                               e.stopPropagation();
                               setUnirGrupo(c.email!.trim().toLowerCase());
                             }}
-                            className="relative inline-flex shrink-0 items-center rounded-full bg-warn/15 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-warn transition after:absolute after:-inset-y-[9px] after:inset-x-0 after:content-[''] hover:bg-warn/25"
+                            className="relative inline-flex shrink-0 items-center rounded-full bg-warn/15 px-2.5 py-1 text-[12px] font-bold uppercase tracking-wide text-warn transition after:absolute after:-inset-y-[9px] after:inset-x-0 after:content-[''] hover:bg-warn/25"
                           >
                             Repetida ×{dup} · Unir
                           </button>
@@ -254,10 +251,10 @@ export function ClientesLista({
                     <span className="shrink-0 text-right">
                       {c.visitas > 0 ? (
                         <>
-                          <span className="block font-display text-[15px] font-bold tabular-nums text-accent-soft">
+                          <span className="block font-display text-[15px] font-bold tabular-nums text-ink">
                             {cop(c.facturado)}
                           </span>
-                          <span className="block text-[11.5px] text-muted">
+                          <span className="block text-[12px] text-muted">
                             {c.visitas === 1 ? "1 visita" : `${c.visitas} visitas`} · {fechaCorta(c.ultima)}
                           </span>
                         </>
@@ -286,7 +283,7 @@ export function ClientesLista({
 
         {/* El CRM de un vistazo: cuadros que FILTRAN (escritorio) */}
         <aside className="hidden lg:sticky lg:top-28 lg:block">
-          <h2 className="mb-2.5 text-[11px] font-bold uppercase tracking-[0.14em] text-muted">De un vistazo</h2>
+          <h2 className="mb-2.5 eyebrow">De un vistazo</h2>
           <div className="grid gap-2.5">
             {(
               [
@@ -315,11 +312,11 @@ export function ClientesLista({
                     activo ? "border-accent bg-accent/10" : "border-line bg-panel hover:border-accent/40"
                   }`}
                 >
-                  <div className={`font-display text-2xl font-bold tabular-nums ${k.alerta ? "text-warn" : "text-accent-soft"}`}>
+                  <div className={`font-display text-2xl font-bold tabular-nums ${k.alerta ? "text-warn" : "text-ink"}`}>
                     {k.n}
                   </div>
                   <div className="text-[12px] font-semibold leading-tight text-ink">{k.l}</div>
-                  <div className="text-[11px] text-muted">{k.sub}</div>
+                  <div className="text-[12px] text-muted">{k.sub}</div>
                 </button>
               );
             })}
@@ -412,13 +409,13 @@ function UnirFichasSheet({ fichas, onClose }: { fichas: ClienteRow[]; onClose: (
                 <span className="min-w-0">
                   <span className="block truncate text-sm font-semibold text-ink">
                     {f.nombre}
-                    {f.id === sugerida?.id && <span className="ml-2 text-[10px] font-bold uppercase text-accent-soft">Sugerida</span>}
+                    {f.id === sugerida?.id && <span className="ml-2 text-[12px] font-bold uppercase text-accent-soft">Sugerida</span>}
                   </span>
-                  <span className="block text-[11.5px] text-muted">
+                  <span className="block text-[12px] text-muted">
                     {f.telefono || "sin teléfono"} · {f.visitas} {f.visitas === 1 ? "visita" : "visitas"} · {cop(f.facturado)}
                   </span>
                 </span>
-                <span className={`shrink-0 text-[11px] font-bold ${activa ? "text-accent-soft" : "text-muted"}`}>
+                <span className={`shrink-0 text-[12px] font-bold ${activa ? "text-accent-soft" : "text-muted"}`}>
                   {activa ? "Se conserva ✓" : "Conservar esta"}
                 </span>
               </button>

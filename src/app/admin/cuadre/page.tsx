@@ -21,6 +21,7 @@ import { PendientesCobrar } from "@/components/staff/PendientesCobrar";
 import { cop } from "@/lib/format";
 import type { TotalesPorMedio } from "@/lib/cobro";
 import { SectionHeader } from "@/components/admin/SectionHeader";
+import { AvisoCaja } from "@/components/admin/AvisoCaja";
 
 export const metadata: Metadata = { title: "Cuadre de caja · Admin" };
 
@@ -70,7 +71,8 @@ export default async function CuadrePage() {
 
   return (
     <div className="max-w-7xl">
-      <SectionHeader eyebrow="Hoy" title="Cuadre de caja" description={<span className="first-letter:uppercase">{fecha}</span>} />
+      <AvisoCaja enlace={false} />
+      <SectionHeader eyebrow="Caja" title="Cuadre de caja" subtitulo={<span className="first-letter:uppercase">{fecha}</span>} />
 
       {/* El pulso de la plata en cuadros, de un vistazo y sin scroll */}
       <div className="mt-5 grid grid-cols-2 gap-3 sm:max-w-2xl sm:grid-cols-4">
@@ -82,7 +84,7 @@ export default async function CuadrePage() {
         ].map((k) => (
           <div key={k.l} className="rounded-2xl border border-line bg-panel px-3.5 py-3">
             <div className={`font-display text-xl font-bold tabular-nums ${k.tono}`}>{k.n}</div>
-            <div className="text-[11px] leading-tight text-muted">{k.l}</div>
+            <div className="text-[12px] leading-tight text-muted">{k.l}</div>
           </div>
         ))}
       </div>
@@ -116,7 +118,7 @@ export default async function CuadrePage() {
         </div>
       )}
 
-      <h2 className="mt-8 text-xs uppercase tracking-[0.3em] text-accent">Corte del día (solo lo de hoy)</h2>
+      <h2 className="mt-8 eyebrow">Corte del día (solo lo de hoy)</h2>
       {/* La tarjeta de caja de arriba acumula desde la apertura (puede abarcar
           varios días); sin esta aclaración los dos totales parecen contradecirse. */}
       <p className="mt-1 text-xs text-muted">
@@ -150,7 +152,7 @@ export default async function CuadrePage() {
         <div className="mt-8 grid gap-6 md:grid-cols-2">
           {cuadre.gastosHoy.length > 0 && (
             <div>
-              <h2 className="mb-3 text-xs uppercase tracking-[0.3em] text-accent">Gastos de hoy</h2>
+              <h2 className="mb-3 eyebrow">Gastos de hoy</h2>
               <ul className="divide-y divide-line/60 overflow-hidden rounded-2xl border border-line bg-panel">
                 {cuadre.gastosHoy.map((g) => (
                   <li key={g.id} className="flex items-center justify-between gap-3 px-4 py-3 text-sm">
@@ -160,7 +162,7 @@ export default async function CuadrePage() {
                     </span>
                     <span className="flex shrink-0 items-center gap-2">
                       {/* Con qué se pagó (0067): del cajón solo descuenta el efectivo. */}
-                      <span className="rounded-full border border-line px-2 py-0.5 text-[10px] uppercase tracking-wide text-muted">
+                      <span className="rounded-full border border-line px-2 py-0.5 text-[12px] uppercase tracking-wide text-muted">
                         {medios.find((m) => m.slug === (g.medio ?? "efectivo"))?.nombre ?? g.medio ?? "Efectivo"}
                       </span>
                       <span className="tabular-nums text-muted">−{cop(g.monto)}</span>
@@ -175,7 +177,7 @@ export default async function CuadrePage() {
               en ninguna parte y el dueño dudaba si guardó (o lo metía dos veces). */}
           {adelantos.length > 0 && (
             <div>
-              <h2 className="mb-3 text-xs uppercase tracking-[0.3em] text-accent">Adelantos de hoy</h2>
+              <h2 className="mb-3 eyebrow">Adelantos de hoy</h2>
               <ul className="divide-y divide-line/60 overflow-hidden rounded-2xl border border-line bg-panel">
                 {adelantos.map((a) => (
                   <li key={a.id} className="flex items-center justify-between gap-3 px-4 py-3 text-sm">
@@ -184,7 +186,7 @@ export default async function CuadrePage() {
                       {a.nota && <span className="block text-xs text-muted">{a.nota}</span>}
                     </span>
                     <span className="flex shrink-0 items-center gap-2">
-                      <span className="rounded-full border border-line px-2 py-0.5 text-[10px] uppercase tracking-wide text-muted">
+                      <span className="rounded-full border border-line px-2 py-0.5 text-[12px] uppercase tracking-wide text-muted">
                         {medios.find((m) => m.slug === (a.medio ?? "efectivo"))?.nombre ?? a.medio ?? "Efectivo"}
                       </span>
                       <span className="tabular-nums text-muted">−{cop(a.monto)}</span>
@@ -199,7 +201,7 @@ export default async function CuadrePage() {
 
       {anteriores.length > 0 && (
         <div className="mt-10">
-          <h2 className="mb-3 text-xs uppercase tracking-[0.3em] text-accent">Cuadres anteriores</h2>
+          <h2 className="mb-3 eyebrow">Cuadres anteriores</h2>
 
           {/* Una sola lista (antes: cards en móvil + tabla en escritorio). Lo
               que se mira de un cierre viejo es si CUADRÓ; por eso la diferencia
@@ -219,7 +221,7 @@ export default async function CuadrePage() {
                       · {horaCorta(c.fecha)}
                     </span>
                   </span>
-                  <span className="block text-[11.5px] text-muted">
+                  <span className="block text-[12px] text-muted">
                     {c.totales
                       ? desgloseCierre(c.totales, medios)
                       : `Efectivo ${cop(c.efectivo)} · Datáfono ${cop(c.datafono)}`}
@@ -230,7 +232,7 @@ export default async function CuadrePage() {
                   <span className="block font-display text-[15px] font-bold tabular-nums text-accent-soft">
                     {cop(c.ingresos)}
                   </span>
-                  <span className="block text-[11.5px] text-muted">
+                  <span className="block text-[12px] text-muted">
                     {c.citas === 1 ? "1 cita" : `${c.citas} citas`}
                     {c.gastos > 0 && ` · gastos −${cop(c.gastos)}`}
                     {c.metaDia ? ` · meta ${cop(c.metaDia)}` : ""}
@@ -238,7 +240,7 @@ export default async function CuadrePage() {
                 </span>
 
                 <span
-                  className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-bold ${
+                  className={`shrink-0 rounded-full px-2.5 py-1 text-[12px] font-bold ${
                     c.diferencia === null
                       ? "bg-ink/10 text-muted"
                       : c.diferencia === 0
@@ -281,13 +283,13 @@ function CorteSede({
     >
       <div className="flex items-baseline justify-between gap-2">
         <span className="font-display text-[17px] font-bold uppercase leading-tight">{nombre}</span>
-        <span className="text-[11.5px] text-muted">{d.citas === 1 ? "1 cita" : `${d.citas} citas`}</span>
+        <span className="text-[12px] text-muted">{d.citas === 1 ? "1 cita" : `${d.citas} citas`}</span>
       </div>
 
       <div className="mt-3 font-display text-[26px] font-bold leading-none tabular-nums text-accent-soft">
         {cop(d.ingresos)}
       </div>
-      <div className="mt-1 text-[11.5px] text-muted">
+      <div className="mt-1 text-[12px] text-muted">
         {cop(d.efectivo)} efectivo · {cop(d.datafono)} datáfono
         {d.otros > 0 && ` · ${cop(d.otros)} otros`}
       </div>

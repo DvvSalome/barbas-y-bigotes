@@ -5,7 +5,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { crearCombo } from "@/lib/actions";
 import { cop } from "@/lib/format";
-import { SearchIcon } from "@/components/icons";
+import { SearchIcon, CheckIcon, ScissorsIcon } from "@/components/icons";
 import type { Categoria, SedeId, Servicio } from "@/lib/data/types";
 
 // Armador de combos (proto §7.1). Las partes se eligen de la MISMA forma que se
@@ -146,7 +146,7 @@ export function ComboBuilder({
 
   return (
     <div className="rounded-2xl border border-accent/30 bg-accent/5 p-4 sm:p-5">
-      <div className="text-[11px] font-bold uppercase tracking-[0.14em] text-accent-soft">
+      <div className="eyebrow">
         Arma el combo · toca lo que incluye
       </div>
       <p className="mt-1 text-xs text-muted">
@@ -174,7 +174,7 @@ export function ComboBuilder({
       )}
       {grupos.map((g) => (
         <div key={g.cat} className="mt-4">
-          <div className="mb-2 text-[10.5px] font-bold uppercase tracking-[0.12em] text-muted">
+          <div className="mb-2 text-[12px] font-bold uppercase tracking-[0.12em] text-muted">
             {etiquetas[g.cat]}
           </div>
           {/* 2 columnas fijas: el armador ahora vive en un panel angosto a la
@@ -197,12 +197,12 @@ export function ComboBuilder({
                       <Image src={p.fotoUrl} alt="" fill sizes="(max-width:640px) 50vw, 190px" className="object-cover" />
                     ) : (
                       <span className="absolute inset-0 flex items-center justify-center bg-elevated text-2xl text-muted/35" aria-hidden>
-                        ✂
+                        <ScissorsIcon className="h-5 w-5" />
                       </span>
                     )}
                     {on && (
                       <span className="absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-accent text-[12px] font-extrabold text-on-accent">
-                        ✓
+                        <CheckIcon className="h-4 w-4" />
                       </span>
                     )}
                   </span>
@@ -214,7 +214,7 @@ export function ComboBuilder({
                       <span className="text-[12px] font-bold tabular-nums text-accent-soft">
                         +{cop(p.precios[sedeActiva] ?? 0)}
                       </span>
-                      <span className="text-[10.5px] text-muted">{p.duracionMin} min</span>
+                      <span className="text-[12px] text-muted">{p.duracionMin} min</span>
                     </span>
                   </span>
                 </button>
@@ -240,7 +240,7 @@ export function ComboBuilder({
           por el scroll, lo seleccionado quedaba lejos); tocar una ficha la quita. */}
       {cantidad >= 1 && (
         <div className="mt-4 border-t border-line pt-3">
-          <div className="mb-1.5 text-[10.5px] font-bold uppercase tracking-[0.12em] text-muted">
+          <div className="mb-1.5 text-[12px] font-bold uppercase tracking-[0.12em] text-muted">
             Tu combo · {cantidad} {cantidad === 1 ? "servicio" : "servicios"}
             {conBebida ? " + bebida" : ""} · tocá una ficha para quitarla
           </div>
@@ -258,7 +258,7 @@ export function ComboBuilder({
                     <Image src={p.fotoUrl} alt="" fill sizes="32px" className="object-cover" />
                   ) : (
                     <span className="flex h-full w-full items-center justify-center bg-elevated text-[13px] text-muted/50" aria-hidden>
-                      ✂
+                      <ScissorsIcon className="h-5 w-5" />
                     </span>
                   )}
                 </span>
@@ -284,7 +284,7 @@ export function ComboBuilder({
       {/* Editables */}
       <div className="mt-3 grid gap-3">
         <label className="block">
-          <span className="mb-1 block text-[11px] font-bold uppercase tracking-[0.14em] text-muted">
+          <span className="mb-1 block eyebrow">
             Nombre del combo
           </span>
           <input
@@ -301,7 +301,7 @@ export function ComboBuilder({
         </label>
         <div className="flex flex-wrap items-end gap-4">
           <div>
-            <span className="mb-1 block text-[11px] font-bold uppercase tracking-[0.14em] text-muted">
+            <span className="mb-1 block eyebrow">
               Duración (min)
             </span>
             <div className="inline-flex items-center rounded-full border border-line bg-elevated" role="group" aria-label="duración">
@@ -317,7 +317,7 @@ export function ComboBuilder({
             </div>
           </div>
           <div>
-            <span className="mb-1 block text-[11px] font-bold uppercase tracking-[0.14em] text-muted">
+            <span className="mb-1 block eyebrow">
               Precio (COP) — tocá el número para escribirlo
             </span>
             <div className="inline-flex items-center rounded-full border border-line bg-elevated" role="group" aria-label="precio">
@@ -347,7 +347,7 @@ export function ComboBuilder({
                   setPrecio(sugerido);
                   setManual((m) => ({ ...m, precio: false }));
                 }}
-                className="mt-1.5 block text-[11.5px] font-semibold text-accent-soft transition hover:text-accent"
+                className="mt-1.5 block text-[12px] font-semibold text-accent-soft transition hover:text-accent"
               >
                 Usar el sugerido ({cop(sugerido)})
               </button>
@@ -376,7 +376,7 @@ export function ComboBuilder({
         {saving ? "Creando…" : "Crear combo"}
       </button>
       {!valido && (
-        <p className="mt-2 text-center text-[11.5px] text-muted">
+        <p className="mt-2 text-center text-[12px] text-muted">
           {cantidad === 0
             ? "Tocá al menos 2 servicios (o 1 servicio + la bebida) para armar el combo."
             : cantidad === 1 && !conBebida

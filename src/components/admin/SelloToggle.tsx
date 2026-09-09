@@ -1,5 +1,6 @@
 "use client";
 
+import { Switch } from "@/components/admin/Switch";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { setServicioCuentaSello } from "@/lib/actions";
@@ -33,19 +34,9 @@ export function SelloToggle({ id, suma }: { id: string; suma: boolean }) {
 
   return (
     <span className="inline-flex items-center gap-2">
-      {err && <span className="text-[11px] text-accent-soft">{err}</span>}
-      <button
-        type="button"
-        onClick={toggle}
-        disabled={busy}
-        aria-pressed={suma}
-        title={suma ? "Suma sello en la tarjeta de cortes" : "No suma sello"}
-        className={`shrink-0 rounded-full border px-3 py-1.5 text-[11.5px] font-semibold transition disabled:opacity-50 ${
-          suma ? "border-accent/45 bg-accent/10 text-accent-soft" : "border-line text-muted hover:text-ink"
-        }`}
-      >
-        {busy ? "…" : suma ? "🎫 Suma sello" : "No suma sello"}
-      </button>
+      {err && <span className="text-[12px] text-warn">{err}</span>}
+      <span className="text-[12px] font-semibold text-muted">Suma sello</span>
+      <Switch checked={suma} onChange={toggle} disabled={busy} label="Suma sello en la tarjeta de cortes" />
     </span>
   );
 }

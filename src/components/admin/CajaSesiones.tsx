@@ -10,7 +10,7 @@ import type { CajaSesionSede, MedioPago } from "@/lib/data/queries";
 
 const fld =
   "w-full rounded-lg border border-line bg-bg px-3 py-2 text-ink placeholder:text-muted focus:border-accent focus:outline-none";
-const lbl = "mb-1 block text-[11px] font-semibold uppercase tracking-wide text-muted";
+const lbl = "mb-1 block text-[12px] font-semibold uppercase tracking-wide text-muted";
 
 
 
@@ -111,7 +111,7 @@ function CajaCard({ caja, medios }: { caja: CajaSesionSede; medios: MedioPago[] 
           <div className="font-display text-2xl">{caja.nombre}</div>
         </div>
         <span
-          className={`flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide ${
+          className={`flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1 text-[12px] font-semibold uppercase tracking-wide ${
             abierta ? "bg-ok/15 text-ok" : "bg-ink/10 text-muted"
           }`}
         >
@@ -138,7 +138,7 @@ function CajaCard({ caja, medios }: { caja: CajaSesionSede; medios: MedioPago[] 
           <div className="text-xs uppercase tracking-wide text-muted">
             {abierta && dias > 0 ? "Recaudado desde que abrió" : "Recaudado"}
           </div>
-          <div className="font-display text-3xl text-accent-soft">{cop(caja.ingresos)}</div>
+          <div className="font-display text-3xl tabular-nums text-ink">{cop(caja.ingresos)}</div>
           <div className="mt-0.5 text-xs text-muted">
             {desglose ? `${desglose} · ` : ""}{caja.citas === 1 ? "1 cita" : `${caja.citas} citas`}
           </div>
@@ -180,7 +180,7 @@ function CajaCard({ caja, medios }: { caja: CajaSesionSede; medios: MedioPago[] 
                 ? `Caja cerrada · sobró ${cop(cierre.diferencia)}`
                 : `Caja cerrada · faltó ${cop(-cierre.diferencia)}`}
           </div>
-          <div className="mt-0.5 text-[11.5px] opacity-90">
+          <div className="mt-0.5 text-[12px] opacity-90">
             Esperaba {cop(cierre.esperado)} · contaste {cop(cierre.contado)}
           </div>
         </div>

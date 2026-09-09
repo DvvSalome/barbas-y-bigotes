@@ -1,5 +1,7 @@
 "use client";
 
+import { botonClases } from "@/components/ui/Boton";
+import { chipFiltroClases } from "@/components/ui/Chip";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -293,13 +295,13 @@ export function AgendaDia({
                   ? "Hoy"
                   : labelFecha(fecha)}
             </div>
-            {vistaActiva === "dia" && esHoy && <div className="text-[11px] text-muted">{labelFecha(fecha)}</div>}
+            {vistaActiva === "dia" && esHoy && <div className="text-[12px] text-muted">{labelFecha(fecha)}</div>}
           </div>
           <Link href={href(ymdMas(fecha, paso))} aria-label={vistaActiva === "semana" ? "Semana siguiente" : "Día siguiente"} className={btnNav}>
             ›
           </Link>
           {!esHoy && (
-            <Link href={href(hoy)} className="ml-1 inline-flex min-h-11 items-center rounded-full border border-accent/40 px-3.5 text-xs font-bold text-accent-soft transition hover:bg-accent/10">
+            <Link href={href(hoy)} className={botonClases("secundario", "md", "ml-1")}>
               Volver a hoy
             </Link>
           )}
@@ -308,15 +310,13 @@ export function AgendaDia({
             de fecha empujaba la fila de botones a un tercer renglón, y el
             calendario —lo único que se viene a ver— arrancaba fuera de pantalla. */}
         <div className="flex flex-wrap items-center gap-2">
-          <div className="flex gap-0.5 rounded-[9px] border border-line bg-panel p-[3px]" role="group" aria-label="Vista">
+          <div className="flex gap-2" role="group" aria-label="Vista">
             {(["dia", "semana"] as const).map((v) => (
               <Link
                 key={v}
                 href={href(fecha, v)}
                 aria-current={vistaActiva === v ? "page" : undefined}
-                className={`flex min-h-11 items-center rounded-md px-3.5 text-xs font-semibold transition ${
-                  vistaActiva === v ? "bg-elevated text-ink shadow-[inset_0_0_0_1px_var(--line)]" : "text-muted hover:text-ink"
-                }`}
+                className={chipFiltroClases(vistaActiva === v)}
               >
                 {v === "dia" ? "Día" : "Semana"}
               </Link>
@@ -324,20 +324,20 @@ export function AgendaDia({
           </div>
           <button
             onClick={() => setBloqueoSheet({})}
-            className="inline-flex min-h-11 items-center rounded-full border border-line px-4 text-xs font-bold uppercase tracking-wide text-muted transition hover:text-ink"
+            className={botonClases("secundario")}
           >
             Bloquear
           </button>
           <button
             onClick={() => setSheet({})}
-            className="inline-flex min-h-11 items-center rounded-full bg-accent px-5 text-xs font-bold uppercase tracking-wide text-on-accent transition hover:bg-accent-soft"
+            className={botonClases("primario")}
           >
             + Cita
           </button>
         </div>
       </div>
 
-      <div className="mt-2.5 flex flex-wrap gap-x-3 gap-y-1 text-[10.5px] text-muted">
+      <div className="mt-2.5 flex flex-wrap gap-x-3 gap-y-1 text-[12px] text-muted">
         {Object.entries(ESTILO_ESTADO).map(([k, v]) => (
           <span key={k} className="inline-flex items-center gap-1.5">
             <span className={`h-2.5 w-2.5 rounded-[4px] border ${v.card.split(" ").slice(0, 2).join(" ")}`} />
@@ -379,7 +379,7 @@ export function AgendaDia({
                     }`}
                   >
                     <span
-                      className={`block text-[10.5px] font-bold uppercase tracking-wide ${
+                      className={`block text-[12px] font-bold uppercase tracking-wide ${
                         esHoyCol ? "text-accent-soft" : "text-muted"
                       }`}
                     >
@@ -396,9 +396,9 @@ export function AgendaDia({
                   </Link>
                   <div className="space-y-1 p-1.5">
                     {!abiertaDia ? (
-                      <p className="px-1 py-2 text-center text-[10.5px] text-muted">Cerrado</p>
+                      <p className="px-1 py-2 text-center text-[12px] text-muted">Cerrado</p>
                     ) : citasDia.length === 0 ? (
-                      <p className="px-1 py-2 text-center text-[10.5px] text-muted/60">—</p>
+                      <p className="px-1 py-2 text-center text-[12px] text-muted/60">—</p>
                     ) : (
                       citasDia.map((c) => {
                         const est = estiloDe(c.estado);
@@ -407,7 +407,7 @@ export function AgendaDia({
                             key={c.id}
                             href={href(ymd, "dia")}
                             title={`${fmtTime(minutoDeISO(c.inicio))} · ${c.cliente || "Sin nombre"} · ${c.servicio} · ${c.barbero} (${est.label})`}
-                            className={`block truncate rounded-md border px-1.5 py-1 text-[10.5px] leading-tight ${est.card}`}
+                            className={`block truncate rounded-md border px-1.5 py-1 text-[12px] leading-tight ${est.card}`}
                           >
                             <span className="font-bold tabular-nums">{fmtTime(minutoDeISO(c.inicio))}</span>{" "}
                             {c.cliente?.split(" ")[0] || "Cliente"}
@@ -471,7 +471,7 @@ export function AgendaDia({
                 {horas.map((m) => (
                   <span
                     key={m}
-                    className="absolute right-1.5 -translate-y-1/2 text-[10.5px] tabular-nums text-muted sm:right-2"
+                    className="absolute right-1.5 -translate-y-1/2 text-[12px] tabular-nums text-muted sm:right-2"
                     style={{ top: (m - abre) * PX_MIN }}
                   >
                     {/* "9 am" en el celular: con el canal de 48px, "9:00 am" se
@@ -482,7 +482,7 @@ export function AgendaDia({
                 ))}
                 {/* La hora de CIERRE también se etiqueta (el día no termina en el aire) */}
                 <span
-                  className="absolute right-1.5 -translate-y-1/2 text-[10.5px] tabular-nums text-muted sm:right-2"
+                  className="absolute right-1.5 -translate-y-1/2 text-[12px] tabular-nums text-muted sm:right-2"
                   style={{ top: (cierra - abre) * PX_MIN }}
                 >
                   <span className="sm:hidden">{fmtTime(cierra).replace(":00", "")}</span>
@@ -543,7 +543,7 @@ export function AgendaDia({
                             setErrBloqueo(null);
                             setBloqueoSel(x);
                           }}
-                          className="absolute inset-x-1 z-[5] overflow-hidden rounded-lg border border-line bg-[repeating-linear-gradient(45deg,transparent,transparent_6px,rgba(120,120,120,0.12)_6px,rgba(120,120,120,0.12)_12px)] px-2 py-1 text-left text-[11px] leading-tight text-muted"
+                          className="absolute inset-x-1 z-[5] overflow-hidden rounded-lg border border-line bg-[repeating-linear-gradient(45deg,transparent,transparent_6px,rgba(120,120,120,0.12)_6px,rgba(120,120,120,0.12)_12px)] px-2 py-1 text-left text-[12px] leading-tight text-muted"
                           style={{ top: (Math.max(desde, abre) - abre) * PX_MIN + 1, height: Math.max(26, (Math.min(hastaB, cierra) - Math.max(desde, abre)) * PX_MIN - 3) }}
                           title={`Bloqueado${x.motivo ? ` · ${x.motivo}` : ""} — tocá para quitar`}
                         >
@@ -572,7 +572,7 @@ export function AgendaDia({
                             setMoviendo(false);
                             setDetalle(c);
                           }}
-                          className={`absolute overflow-hidden rounded-lg border px-1.5 py-1 text-left text-[11px] leading-tight shadow-sm sm:px-2 ${
+                          className={`absolute overflow-hidden rounded-lg border px-1.5 py-1 text-left text-[12px] leading-tight shadow-sm sm:px-2 ${
                             arrastrando
                               ? "z-30 cursor-grabbing opacity-90 shadow-xl ring-2 ring-accent"
                               : `transition hover:brightness-110 ${movible ? "lg:cursor-grab" : ""}`
@@ -607,7 +607,7 @@ export function AgendaDia({
                             <span className="hidden sm:inline">{c.cliente || "Sin nombre"}</span>
                           </span>
                           {alto >= 40 && (
-                            <span className="block truncate text-[10px] tabular-nums opacity-75">
+                            <span className="block truncate text-[12px] tabular-nums opacity-75">
                               {fmtTime(ini)} – {fmtTime(ini + c.duracionMin)} · {c.servicio}
                             </span>
                           )}
@@ -755,7 +755,7 @@ export function AgendaDia({
                 <div className="rounded-2xl border border-line bg-elevated p-4">
                   <div className="flex items-baseline justify-between gap-2">
                     <span className="font-display text-2xl tabular-nums">{fmtTime(minutoDeISO(detalle.inicio))}</span>
-                    <span className={`rounded-full border px-2.5 py-1 text-[10.5px] font-bold uppercase tracking-wide ${estiloDe(detalle.estado).card}`}>
+                    <span className={`rounded-full border px-2.5 py-1 text-[12px] font-bold uppercase tracking-wide ${estiloDe(detalle.estado).card}`}>
                       {estiloDe(detalle.estado).label}
                     </span>
                   </div>

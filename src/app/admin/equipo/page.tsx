@@ -36,10 +36,10 @@ export default async function EquipoPage() {
           columna eterna. En móvil se apila en el mismo orden de siempre. */}
       <div className="mt-5 grid gap-6 lg:grid-cols-[minmax(0,1fr)_400px] lg:items-start">
         <section className="min-w-0">
-          <h2 className="mb-3 text-xs uppercase tracking-[0.3em] text-accent">PIN del mostrador</h2>
+          <h2 className="mb-3 eyebrow">PIN del mostrador</h2>
           <SedePinAdmin sedes={sedes} estado={estadoSedes} />
 
-          <h2 className="mb-3 mt-8 text-xs uppercase tracking-[0.3em] text-accent">PIN de cada barbero</h2>
+          <h2 className="mb-3 mt-8 eyebrow">PIN de cada barbero</h2>
           <EquipoPinAdmin
             barberos={barberos}
             sedes={sedes}
@@ -47,7 +47,7 @@ export default async function EquipoPage() {
             ausentesHoy={ausencias.filter((a) => a.fecha === bogotaYmd()).map((a) => a.barberoId)}
           />
 
-          <h2 className="mb-3 mt-8 text-xs uppercase tracking-[0.3em] text-accent">Correo de avisos</h2>
+          <h2 className="mb-3 mt-8 eyebrow">Correo de avisos</h2>
           <p className="mb-3 text-[12.5px] text-muted">
             Cuando un cliente reserva, al barbero le llega un correo con la cita al instante. Poné acá el correo de
             cada uno; se guarda solo al salir del campo. Vacío = sin aviso (le queda solo la notificación push, si
@@ -63,7 +63,7 @@ export default async function EquipoPage() {
           )}
           <CorreosBarberos barberos={barberos} emails={emails} />
 
-          <h2 className="mb-3 mt-8 text-xs uppercase tracking-[0.3em] text-accent">Google Calendar</h2>
+          <h2 className="mb-3 mt-8 eyebrow">Google Calendar</h2>
           <p className="mb-3 text-[12.5px] text-muted">
             Cada barbero tiene una agenda de Google que la app llena sola con sus citas (altas, cambios y
             cancelaciones). Se comparte al correo de avisos de arriba; el barbero la acepta una vez y la ve en su
@@ -73,7 +73,7 @@ export default async function EquipoPage() {
         </section>
 
         <aside className="lg:sticky lg:top-28 lg:max-h-[calc(100dvh-8.5rem)] lg:overflow-y-auto">
-          <h2 className="mb-3 text-xs uppercase tracking-[0.3em] text-accent">Ausencias</h2>
+          <h2 className="mb-3 eyebrow">Ausencias</h2>
           <p className="mb-4 text-[12.5px] text-muted">
             Si un barbero no va un día, marcalo acá: deja de aparecer para reservar esa fecha. Los bloqueos por horas
             (almuerzo) se crean desde el calendario y también se listan abajo.

@@ -116,7 +116,7 @@ export function CuponesAdmin({ cupones }: { cupones: Cupon[] }) {
                         {c.codigo}
                       </span>
                       {(vencido || agotado) && (
-                        <span className="rounded-full bg-warn/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-warn">
+                        <span className="rounded-full bg-warn/15 px-2 py-0.5 text-[12px] font-bold uppercase tracking-wide text-warn">
                           {vencido ? "Vencido" : "Agotado"}
                         </span>
                       )}
@@ -124,7 +124,7 @@ export function CuponesAdmin({ cupones }: { cupones: Cupon[] }) {
                     <button
                       onClick={() => toggle(c.codigo, !c.activo)}
                       disabled={toggling === c.codigo}
-                      className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide transition disabled:opacity-50 ${c.activo ? "bg-ok/15 text-ok" : "bg-ink/10 text-muted"}`}
+                      className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-semibold uppercase tracking-wide transition disabled:opacity-50 ${c.activo ? "bg-ok/15 text-ok" : "bg-ink/10 text-muted"}`}
                     >
                       <span className={`h-1.5 w-1.5 rounded-full ${c.activo ? "bg-ok" : "bg-muted"}`} />
                       {c.activo ? "Activo" : "Inactivo"}

@@ -585,3 +585,11 @@ body {
 [data-staff] ::-webkit-scrollbar-thumb:hover {
   background-color: var(--barra-viva);
 }
+
+/* Eyebrow único del panel (tanda 1, 9-sep): 12 px, gris, tracking .12em. El rojo de
+   marca a 12 px medía 4,21:1 sobre el fondo (AA pide 4,5) y competía con los botones. */
+@layer components {
+  .eyebrow {
+    @apply text-[12px] font-semibold uppercase tracking-[0.12em] text-muted;
+  }
+}

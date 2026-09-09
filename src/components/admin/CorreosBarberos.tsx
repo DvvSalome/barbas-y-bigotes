@@ -1,5 +1,6 @@
 "use client";
 
+import { botonClases } from "@/components/ui/Boton";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { guardarEmailBarbero, probarCorreoBarbero } from "@/lib/actions";
@@ -79,12 +80,12 @@ export function CorreosBarberos({ barberos, emails }: { barberos: Barbero[]; ema
               <span className="min-w-28 text-[13px] font-semibold text-ink">
                 {b.nombre}
                 {!guardado && !cambiado && (
-                  <span className="ml-2 rounded-full bg-warn/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-warn">
+                  <span className="ml-2 rounded-full bg-warn/15 px-2 py-0.5 text-[12px] font-bold uppercase tracking-wide text-warn">
                     sin correo
                   </span>
                 )}
                 {cambiado && (
-                  <span className="ml-2 rounded-full bg-accent/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-accent">
+                  <span className="ml-2 rounded-full bg-accent/15 px-2 py-0.5 text-[12px] font-bold uppercase tracking-wide text-accent">
                     sin guardar
                   </span>
                 )}
@@ -101,14 +102,14 @@ export function CorreosBarberos({ barberos, emails }: { barberos: Barbero[]; ema
                 onClick={() => probar(b.id)}
                 disabled={ocupado || !valor.trim()}
                 title="Manda un aviso de prueba a ese correo, sin guardarlo"
-                className="min-h-11 rounded-full border border-line px-4 py-2.5 text-xs font-bold uppercase tracking-wide text-ink transition hover:border-accent disabled:opacity-40"
+                className={botonClases("secundario")}
               >
                 {busy === `${b.id}:probar` ? "Enviando…" : "Probar"}
               </button>
               <button
                 type="submit"
                 disabled={ocupado || !cambiado}
-                className="min-h-11 rounded-full bg-accent px-4 py-2.5 text-xs font-bold uppercase tracking-wide text-on-accent transition hover:bg-accent-soft disabled:opacity-40"
+                className={botonClases("primario")}
               >
                 {busy === `${b.id}:guardar` ? "…" : "Guardar"}
               </button>

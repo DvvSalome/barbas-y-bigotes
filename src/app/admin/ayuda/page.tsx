@@ -169,7 +169,7 @@ export default function AyudaPage() {
         <div className="mt-3 grid gap-3 sm:grid-cols-2">
           {PANEL.map((p) => (
             <div key={p.n} className={`${CAJA} bb-relieve px-4 py-3.5`}>
-              <span className="inline-block rounded-full border border-line px-2.5 py-0.5 font-display text-[11px] font-bold uppercase tracking-wide text-accent-soft">
+              <span className="inline-block rounded-full border border-line px-2.5 py-0.5 font-display text-[12px] font-bold uppercase tracking-wide text-accent-soft">
                 {p.n}
               </span>
               <span className="mt-2 block text-[14.5px] font-bold text-ink">{p.que}</span>

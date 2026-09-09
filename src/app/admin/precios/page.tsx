@@ -52,7 +52,7 @@ export default async function PreciosPage({
             <div className={`font-display text-2xl font-bold tabular-nums ${k.alerta ? "text-warn" : "text-accent-soft"}`}>
               {k.n}
             </div>
-            <div className="text-[11px] leading-tight text-muted">{k.l}</div>
+            <div className="text-[12px] leading-tight text-muted">{k.l}</div>
           </div>
         ))}
       </div>

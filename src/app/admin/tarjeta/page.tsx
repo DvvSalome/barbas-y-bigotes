@@ -39,13 +39,13 @@ export default async function TarjetaPage() {
 
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
           <div>
-            <div className="text-[11px] font-bold uppercase tracking-wide text-ok">Suman ({suman.length})</div>
+            <div className="text-[12px] font-bold uppercase tracking-wide text-ok">Suman ({suman.length})</div>
             <p className="mt-1 text-[12.5px] leading-relaxed text-muted">
               {suman.length ? suman.map((s) => s.nombre).join(" · ") : "Ninguno: la tarjeta no se llenaría nunca."}
             </p>
           </div>
           <div>
-            <div className="text-[11px] font-bold uppercase tracking-wide text-muted">No suman ({noSuman.length})</div>
+            <div className="text-[12px] font-bold uppercase tracking-wide text-muted">No suman ({noSuman.length})</div>
             <p className="mt-1 text-[12.5px] leading-relaxed text-muted">
               {noSuman.length ? noSuman.map((s) => s.nombre).join(" · ") : "Todos los cortes y combos suman."}
             </p>

@@ -1,5 +1,6 @@
 "use client";
 
+import { PencilIcon, CheckIcon } from "@/components/icons";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { actualizarComisionProducto } from "@/lib/actions";
@@ -51,7 +52,7 @@ export function ComisionEditable({ productoId, pct }: { productoId: string; pct:
         className="inline-flex min-h-11 items-center gap-1 text-[12.5px] text-muted underline decoration-dotted decoration-line underline-offset-4 transition hover:decoration-accent"
       >
         {pct}% para el barbero
-        <span aria-hidden className="text-[12.5px] text-muted">✎</span>
+        <PencilIcon className="h-3.5 w-3.5 shrink-0 text-muted" />
       </button>
     );
   }
@@ -87,7 +88,7 @@ export function ComisionEditable({ productoId, pct }: { productoId: string; pct:
           aria-label="Guardar comisión"
           className="grid h-11 w-11 place-items-center rounded-full bg-accent text-sm font-bold text-on-accent transition hover:bg-accent-soft disabled:opacity-50"
         >
-          ✓
+          <CheckIcon className="h-4 w-4" />
         </button>
         <button
           type="button"

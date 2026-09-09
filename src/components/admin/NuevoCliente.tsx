@@ -1,5 +1,6 @@
 "use client";
 
+import { botonClases } from "@/components/ui/Boton";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { registrarClienteManual } from "@/lib/actions";
@@ -52,7 +53,7 @@ export function NuevoCliente() {
           setAbierto(true);
           setHecho(null);
         }}
-        className="min-h-11 rounded-full bg-[linear-gradient(180deg,var(--cta-1),var(--cta-2))] px-5 text-[13px] font-bold uppercase tracking-wide text-on-accent transition hover:brightness-105"
+        className={botonClases("primario")}
       >
         + Registrar cliente
       </button>
@@ -88,7 +89,7 @@ export function NuevoCliente() {
         type="button"
         onClick={guardar}
         disabled={saving}
-        className="rounded-full bg-accent px-5 py-2.5 text-sm font-bold uppercase tracking-wide text-on-accent transition hover:bg-accent-soft disabled:opacity-50"
+        className={botonClases("primario")}
       >
         {saving ? "Guardando…" : "Guardar cliente"}
       </button>

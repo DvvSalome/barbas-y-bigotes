@@ -1,5 +1,7 @@
 "use client";
 
+import { botonClases } from "@/components/ui/Boton";
+import { CloseIcon } from "@/components/icons";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -39,8 +41,7 @@ export function CalendarGoogle({
   }
 
   const conAgenda = barberos.filter((b) => estado.agendas[b.id]);
-  const btn = "min-h-11 rounded-full px-4 py-2.5 text-xs font-bold uppercase tracking-wide transition disabled:opacity-40";
-
+  
   if (!estado.configurado) {
     return (
       <div className="rounded-2xl border border-warn/40 bg-panel p-4 text-[13px] text-warn">
@@ -57,7 +58,7 @@ export function CalendarGoogle({
             type="button"
             onClick={() => correr("preparar", prepararCalendarios)}
             disabled={busy !== null}
-            className={`${btn} bg-accent text-on-accent hover:bg-accent-soft`}
+            className={botonClases("primario")}
           >
             {busy === "preparar" ? "Creando…" : conAgenda.length ? "Revisar agendas" : "1 · Crear las agendas"}
           </button>
@@ -65,7 +66,7 @@ export function CalendarGoogle({
             type="button"
             onClick={() => correr("compartir", compartirAgendasConBarberos)}
             disabled={busy !== null || !conAgenda.length}
-            className={`${btn} border border-line text-ink hover:border-accent`}
+            className={botonClases("secundario")}
           >
             {busy === "compartir" ? "Compartiendo…" : "2 · Compartir con los barberos"}
           </button>
@@ -73,7 +74,7 @@ export function CalendarGoogle({
             type="button"
             onClick={() => correr("sync", sincronizarCalendarAhora)}
             disabled={busy !== null || !conAgenda.length}
-            className={`${btn} border border-line text-ink hover:border-accent`}
+            className={botonClases("secundario")}
           >
             {busy === "sync" ? "Sincronizando…" : "Sincronizar ahora"}
           </button>
@@ -133,23 +134,23 @@ export function CalendarGoogle({
             placeholder="dueno@gmail.com"
             className="min-h-11 min-w-0 flex-1 rounded-xl border border-line bg-elevated px-3.5 py-2.5 text-sm text-ink placeholder:text-muted focus:border-accent focus:outline-none"
           />
-          <button type="submit" disabled={busy !== null || !correo.trim() || !conAgenda.length} className={`${btn} bg-accent text-on-accent hover:bg-accent-soft`}>
+          <button type="submit" disabled={busy !== null || !correo.trim() || !conAgenda.length} className={botonClases("primario")}>
             {busy === "dueno" ? "Compartiendo…" : "Compartir"}
           </button>
         </div>
         {estado.compartidos.length > 0 && (
           <ul className="mt-3 flex flex-wrap gap-2">
             {estado.compartidos.map((c) => (
-              <li key={c.email} className="flex items-center gap-2 rounded-full border border-line px-3 py-1.5 text-[12px] text-ink">
+              <li key={c.email} className="flex items-center gap-1 rounded-full border border-line pl-3 text-[12px] text-ink">
                 {c.email}
                 <button
                   type="button"
                   onClick={() => correr(`quitar:${c.email}`, () => quitarCompartido(c.email))}
                   disabled={busy !== null}
-                  className="text-muted transition hover:text-warn"
+                  className="grid h-11 w-11 place-items-center rounded-full text-muted transition hover:text-warn"
                   aria-label={`Quitar ${c.email}`}
                 >
-                  ×
+                  <CloseIcon className="h-4 w-4" />
                 </button>
               </li>
             ))}

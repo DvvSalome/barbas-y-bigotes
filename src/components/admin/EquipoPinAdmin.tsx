@@ -1,5 +1,6 @@
 "use client";
 
+import { botonClases } from "@/components/ui/Boton";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { setearPinBarbero, desbloquearBarbero } from "@/lib/barbero-auth";
@@ -94,7 +95,7 @@ export function EquipoPinAdmin({
         if (!list.length) return null;
         return (
           <section key={s.id}>
-            <h2 className="mb-3 text-xs uppercase tracking-[0.3em] text-accent">{s.nombre}</h2>
+            <h2 className="mb-3 eyebrow">{s.nombre}</h2>
             <div className="grid gap-2.5 sm:grid-cols-2">
               {list.map((b) => {
                 const e = estado[b.id];
@@ -118,23 +119,23 @@ export function EquipoPinAdmin({
                             que leer seis frases iguales para encontrarlo. */}
                         <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
                           <span
-                            className={`rounded-full px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-wide ${
+                            className={`rounded-full px-2 py-0.5 text-[12px] font-bold uppercase tracking-wide ${
                               e?.tienePin ? "bg-ok/15 text-ok" : "bg-warn/15 text-warn"
                             }`}
                           >
                             {e?.tienePin ? "PIN listo" : "Sin PIN"}
                           </span>
                           {e?.bloqueado && (
-                            <span className="rounded-full bg-accent/15 px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-wide text-accent-soft">
+                            <span className="rounded-full bg-accent/15 px-2 py-0.5 text-[12px] font-bold uppercase tracking-wide text-accent-soft">
                               Bloqueado
                             </span>
                           )}
                           {ausente && (
-                            <span className="rounded-full bg-ink/10 px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-wide text-muted">
+                            <span className="rounded-full bg-ink/10 px-2 py-0.5 text-[12px] font-bold uppercase tracking-wide text-muted">
                               Hoy no viene
                             </span>
                           )}
-                          <span className="text-[11.5px] text-muted">
+                          <span className="text-[12px] text-muted">
                             {b.especialidades.length
                               ? `${b.especialidades.length} especialidades`
                               : "sin especialidades"}
@@ -152,17 +153,13 @@ export function EquipoPinAdmin({
                         </button>
                       )}
                       <button onClick={() => abrirPerfil(b)}
-                        className="min-h-9 rounded-full border border-line px-3.5 text-[12px] font-semibold text-muted transition hover:text-ink">
+                        className={botonClases("secundario", "sm")}>
                         {perfilEditing === b.id ? "Cerrar perfil" : "Perfil y especialidades"}
                       </button>
                       {/* Cambiar el PIN es raro (una vez por barbero): no merece el
                           botón rojo de acción principal repetido seis veces. */}
                       <button onClick={() => { setEditing(editing === b.id ? null : b.id); setPin(""); setPerfilEditing(null); setMsg(null); }}
-                        className={`min-h-9 rounded-full px-3.5 text-[12px] font-semibold transition ${
-                          e?.tienePin
-                            ? "border border-line text-muted hover:text-ink"
-                            : "bg-accent text-on-accent hover:bg-accent-soft"
-                        }`}>
+                        className={botonClases(e?.tienePin ? "secundario" : "primario", "sm")}>
                         {e?.tienePin ? "Cambiar PIN" : "Poner PIN"}
                       </button>
                     </div>
@@ -187,7 +184,7 @@ export function EquipoPinAdmin({
                     {perfilEditing === b.id && (
                       <div className="mt-3 space-y-3 border-t border-line pt-3">
                         <label className="block">
-                          <span className="mb-1 block text-[11px] uppercase tracking-[0.2em] text-muted">Bio</span>
+                          <span className="mb-1 block text-[12px] uppercase tracking-[0.2em] text-muted">Bio</span>
                           <textarea
                             value={bioDraft}
                             onChange={(ev) => setBioDraft(ev.target.value)}
@@ -197,7 +194,7 @@ export function EquipoPinAdmin({
                           />
                         </label>
                         <label className="block">
-                          <span className="mb-1 block text-[11px] uppercase tracking-[0.2em] text-muted">
+                          <span className="mb-1 block text-[12px] uppercase tracking-[0.2em] text-muted">
                             Especialidades <span className="normal-case tracking-normal text-muted/70">(una por línea o separadas por coma · máx {MAX_ESPECIALIDADES})</span>
                           </span>
                           <textarea
