@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { getBarberos, getSedes, getAusenciasAdmin, getEmailsBarberos } from "@/lib/data/queries";
+import { getBarberos, getSedes, getAusenciasAdmin, getEmailsBarberos, getCalendarEstado } from "@/lib/data/queries";
 import { bogotaYmd } from "@/lib/slots";
 import { getBarberosPinEstado, getSedesPinEstado } from "@/lib/barbero-auth";
 import { SectionHeader } from "@/components/admin/SectionHeader";
@@ -8,17 +8,19 @@ import { EquipoPinAdmin } from "@/components/admin/EquipoPinAdmin";
 import { SedePinAdmin } from "@/components/admin/SedePinAdmin";
 import { AusenciasAdmin } from "@/components/admin/AusenciasAdmin";
 import { CorreosBarberos } from "@/components/admin/CorreosBarberos";
+import { CalendarGoogle } from "@/components/admin/CalendarGoogle";
 
 export const metadata: Metadata = { title: "Equipo · Admin" };
 
 export default async function EquipoPage() {
-  const [barberos, sedes, estado, estadoSedes, ausencias, emails] = await Promise.all([
+  const [barberos, sedes, estado, estadoSedes, ausencias, emails, calendar] = await Promise.all([
     getBarberos(),
     getSedes(),
     getBarberosPinEstado(),
     getSedesPinEstado(),
     getAusenciasAdmin(),
     getEmailsBarberos(),
+    getCalendarEstado(),
   ]);
   return (
     <div className="max-w-6xl">
@@ -60,6 +62,14 @@ export default async function EquipoPage() {
             </p>
           )}
           <CorreosBarberos barberos={barberos} emails={emails} />
+
+          <h2 className="mb-3 mt-8 text-xs uppercase tracking-[0.3em] text-accent">Google Calendar</h2>
+          <p className="mb-3 text-[12.5px] text-muted">
+            Cada barbero tiene una agenda de Google que la app llena sola con sus citas (altas, cambios y
+            cancelaciones). Se comparte al correo de avisos de arriba; el barbero la acepta una vez y la ve en su
+            Google Calendar, con recordatorios en el celular.
+          </p>
+          <CalendarGoogle estado={calendar} barberos={barberos.map((b) => ({ id: b.id, nombre: b.nombre }))} emails={emails} />
         </section>
 
         <aside className="lg:sticky lg:top-28 lg:max-h-[calc(100dvh-8.5rem)] lg:overflow-y-auto">

@@ -2646,3 +2646,47 @@ export async function getLiquidacion(
   // Primero el que más produjo: es el orden en que el dueño quiere leerlo.
   return [...porBarbero.values()].sort((a, b) => b.facturado - a.facturado);
 }
+
+// Google Calendar (0073): qué agenda tiene cada barbero y cómo va la cola. Solo
+// admin → service role (las tablas son deny-all). Sin credencial en el servidor
+// devuelve configurado=false y la pantalla lo dice.
+export type CalendarEstado = {
+  configurado: boolean;
+  agendas: Record<string, { calendarId: string; compartidoCon: string | null }>;
+  compartidos: { email: string; rol: string }[];
+  sincronizadas: number;
+  pendientes: number;
+  errores: { reservaId: string; error: string }[];
+};
+
+export async function getCalendarEstado(): Promise<CalendarEstado> {
+  const vacio: CalendarEstado = { configurado: false, agendas: {}, compartidos: [], sincronizadas: 0, pendientes: 0, errores: [] };
+  const auth = await supabaseServerAuth();
+  const {
+    data: { user },
+  } = await auth.auth.getUser();
+  if (!user) return vacio;
+  const { data: prof } = await auth.from("profiles").select("rol").eq("auth_id", user.id).maybeSingle();
+  if ((prof as { rol?: string } | null)?.rol !== "admin") return vacio;
+  const admin = supabaseAdmin();
+  const [agendas, compartidos, sincronizadas, pendientes, errores] = await Promise.all([
+    admin.from("barbero_calendar").select("barbero_id,calendar_id,compartido_con"),
+    admin.from("calendar_compartidos").select("email,rol").order("creado_en"),
+    admin.from("reserva_calendar").select("reserva_id", { count: "exact", head: true }),
+    admin.from("calendar_cola").select("id", { count: "exact", head: true }).is("procesado_en", null),
+    admin.from("calendar_cola").select("reserva_id,error").is("procesado_en", null).not("error", "is", null).order("id", { ascending: false }).limit(5),
+  ]);
+  return {
+    configurado: !!process.env.GOOGLE_CALENDAR_SA_JSON,
+    agendas: Object.fromEntries(
+      ((agendas.data ?? []) as { barbero_id: string; calendar_id: string; compartido_con: string | null }[]).map((a) => [
+        a.barbero_id,
+        { calendarId: a.calendar_id, compartidoCon: a.compartido_con },
+      ]),
+    ),
+    compartidos: (compartidos.data ?? []) as { email: string; rol: string }[],
+    sincronizadas: sincronizadas.count ?? 0,
+    pendientes: pendientes.count ?? 0,
+    errores: ((errores.data ?? []) as { reserva_id: string; error: string }[]).map((e) => ({ reservaId: e.reserva_id, error: e.error })),
+  };
+}
