@@ -1,5 +1,6 @@
 "use client";
 
+import { chipFiltroClases } from "@/components/ui/Chip";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { registrarGasto, registrarAdelanto } from "@/lib/actions";
@@ -120,9 +121,7 @@ export function CuadreForms({
               key={c}
               type="button"
               onClick={() => setGCat(gCat === c ? "" : c)}
-              className={`min-h-[38px] rounded-full border px-3 text-xs font-semibold transition ${
-                gCat === c ? "border-accent bg-accent/15 text-ink" : "border-line text-muted hover:text-ink"
-              }`}
+              className={chipFiltroClases(gCat === c)}
             >
               {c}
             </button>

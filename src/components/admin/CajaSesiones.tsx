@@ -1,5 +1,6 @@
 "use client";
 
+import { botonClases } from "@/components/ui/Boton";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { abrirCaja, cerrarCaja } from "@/lib/actions";
@@ -229,7 +230,7 @@ function CajaCard({ caja, medios }: { caja: CajaSesionSede; medios: MedioPago[] 
           </div>
           <input value={nota} onChange={(e) => setNota(e.target.value)} placeholder="Nota de cierre (opcional)" className={fld} />
           <div className="flex gap-2">
-            <button disabled={busy} className="rounded-full bg-accent px-5 py-3 text-sm font-semibold uppercase tracking-wide text-on-accent transition hover:bg-accent-soft disabled:opacity-50">
+            <button disabled={busy} className={botonClases("primario")}>
               {busy ? "Cerrando…" : "Confirmar cierre"}
             </button>
             <button type="button" onClick={() => setOpenForm(false)} className="rounded-full border border-line px-5 py-3 text-sm text-muted">
@@ -248,7 +249,7 @@ function CajaCard({ caja, medios }: { caja: CajaSesionSede; medios: MedioPago[] 
             <input type="number" value={apertura} onChange={(e) => setApertura(e.target.value)} placeholder="Ej: 50000" className={fld} />
           </div>
           <div className="flex gap-2">
-            <button disabled={busy} className="rounded-full bg-accent px-5 py-3 text-sm font-semibold uppercase tracking-wide text-on-accent transition hover:bg-accent-soft disabled:opacity-50">
+            <button disabled={busy} className={botonClases("primario")}>
               {busy ? "Abriendo…" : "Abrir caja"}
             </button>
             <button type="button" onClick={() => setOpenForm(false)} className="rounded-full border border-line px-5 py-3 text-sm text-muted">

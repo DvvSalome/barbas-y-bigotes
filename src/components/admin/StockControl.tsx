@@ -1,5 +1,6 @@
 "use client";
 
+import { botonClases } from "@/components/ui/Boton";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ingresarStock, ajustarStock } from "@/lib/actions";
@@ -84,7 +85,7 @@ export function StockControl({
             onClick={enviar}
             disabled={guardando}
             aria-label="Guardar"
-            className="grid h-11 w-11 place-items-center rounded-full bg-accent text-sm font-bold text-on-accent transition hover:bg-accent-soft disabled:opacity-50"
+            className={botonClases("primario")}
           >
             ✓
           </button>

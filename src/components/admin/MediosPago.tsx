@@ -1,5 +1,6 @@
 "use client";
 
+import { botonClases } from "@/components/ui/Boton";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { crearMedioPago, toggleMedioPago } from "@/lib/actions";
@@ -122,7 +123,7 @@ export function MediosPago({ medios }: { medios: MedioPago[] }) {
         />
         <button
           disabled={busy}
-          className="shrink-0 rounded-full bg-accent px-5 py-2 text-xs font-semibold uppercase tracking-wide text-on-accent transition hover:bg-accent-soft disabled:opacity-50"
+          className={botonClases("primario")}
         >
           {busy ? "Guardando…" : "Agregar"}
         </button>

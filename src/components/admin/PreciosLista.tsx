@@ -97,11 +97,11 @@ export function PreciosLista({
             comían media pantalla antes del primer servicio. */}
         <div className="flex w-full min-w-0 gap-2 overflow-x-auto pb-1 sm:flex-wrap sm:overflow-visible [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           <Chip activo={cat === "todas"} onClick={() => setCat("todas")}>
-            Todos <b className="ml-1 font-semibold text-muted">{servicios.length}</b>
+            Todos <b className="ml-1 font-semibold opacity-70">{servicios.length}</b>
           </Chip>
           {cats.map(([c, n]) => (
             <Chip key={c} activo={cat === c} onClick={() => setCat(c)}>
-              {etiquetas[c] ?? c} <b className="ml-1 font-semibold text-muted">{n}</b>
+              {etiquetas[c] ?? c} <b className="ml-1 font-semibold opacity-70">{n}</b>
             </Chip>
           ))}
         </div>
@@ -135,7 +135,7 @@ export function PreciosLista({
                           inactivo ? "border-line/60 opacity-60" : "border-line"
                         }`}
                       >
-                        <div className="flex items-start gap-3">
+                        <div className="flex flex-wrap items-start gap-3">
                           {/* Foto + descripción: es LO QUE VE EL CLIENTE al reservar,
                               y se administra acá, junto al precio. */}
                           <span className="shrink-0">
@@ -154,7 +154,7 @@ export function PreciosLista({
                             </span>
                             <DescripcionServicio servicioId={s.id} descripcion={s.descripcion} />
                           </span>
-                          <span className="shrink-0">
+                          <span className="flex w-full flex-wrap items-center justify-end gap-2 sm:w-auto sm:shrink-0">
                             {/* Solo cortes y combos entran al conteo de la
                                 tarjeta; en el resto el interruptor mentiría. */}
                             {(s.categoria === "cortes" || s.categoria === "combos") && (
@@ -213,7 +213,7 @@ function Chip({
       className={`inline-flex min-h-11 shrink-0 items-center whitespace-nowrap rounded-full border px-3.5 text-[12px] font-semibold transition ${
         activo
           ? "border-ink bg-ink text-bg"
-          : "border-line text-muted hover:border-accent/40 hover:text-ink"
+          : "border-line text-muted hover:border-ink/40 hover:text-ink"
       }`}
     >
       {children}

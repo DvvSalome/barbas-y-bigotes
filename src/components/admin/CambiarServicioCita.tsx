@@ -1,5 +1,6 @@
 "use client";
 
+import { botonClases } from "@/components/ui/Boton";
 import { useState } from "react";
 import { cambiarServicioCita } from "@/lib/actions";
 import type { Servicio } from "@/lib/data/types";
@@ -78,7 +79,7 @@ export function CambiarServicioCita({
           type="button"
           onClick={guardar}
           disabled={saving || !elegido}
-          className="flex-1 rounded-full bg-accent px-5 py-2.5 text-sm font-bold uppercase tracking-wide text-on-accent transition hover:bg-accent-soft disabled:opacity-50"
+          className={botonClases("primario", "md", "flex-1")}
         >
           {saving ? "Guardando…" : "Guardar servicio"}
         </button>

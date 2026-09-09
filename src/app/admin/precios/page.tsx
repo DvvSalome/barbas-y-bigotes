@@ -49,7 +49,7 @@ export default async function PreciosPage({
           { n: sinFoto, l: "sin foto aún", alerta: sinFoto > 0 },
         ].map((k) => (
           <div key={k.l} className="rounded-2xl border border-line bg-panel px-3.5 py-3">
-            <div className={`font-display text-2xl font-bold tabular-nums ${k.alerta ? "text-warn" : "text-accent-soft"}`}>
+            <div className={`font-display text-2xl font-bold tabular-nums ${k.alerta ? "text-warn" : "text-ink"}`}>
               {k.n}
             </div>
             <div className="text-[12px] leading-tight text-muted">{k.l}</div>

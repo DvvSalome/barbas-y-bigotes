@@ -1,5 +1,6 @@
 "use client";
 
+import { botonClases } from "@/components/ui/Boton";
 import { PencilIcon } from "@/components/icons";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -169,7 +170,7 @@ export function ContratoEditable({
           type="button"
           onClick={guardar}
           disabled={guardando}
-          className="rounded-full bg-accent px-4 py-2.5 text-[12px] font-bold uppercase tracking-wide text-on-accent transition hover:bg-accent-soft disabled:opacity-50"
+          className={botonClases("primario")}
         >
           {guardando ? "Guardando…" : "Guardar"}
         </button>

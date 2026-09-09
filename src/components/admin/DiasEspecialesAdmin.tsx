@@ -1,5 +1,6 @@
 "use client";
 
+import { botonClases } from "@/components/ui/Boton";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { marcarDiaEspecial, quitarDiaEspecial } from "@/lib/actions";
@@ -205,7 +206,7 @@ export function DiasEspecialesAdmin({
         <div className="sm:col-span-4">
           <button
             disabled={saving}
-            className="rounded-full bg-accent px-6 py-2.5 text-sm font-semibold uppercase tracking-wide text-on-accent transition hover:bg-accent-soft disabled:opacity-50"
+            className={botonClases("primario")}
           >
             {saving ? "Guardando…" : "Guardar día"}
           </button>

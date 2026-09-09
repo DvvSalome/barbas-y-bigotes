@@ -138,7 +138,7 @@ export default function AyudaPage() {
       <section aria-label="Mostrador" className="mt-7">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <h2 className="font-display text-2xl font-bold uppercase text-ink">En el mostrador</h2>
-          <Link href="/barbero" className="text-[13px] font-semibold text-accent-soft transition hover:text-ink">
+          <Link href="/barbero" className="inline-flex min-h-11 items-center text-[13px] font-semibold text-ink/85 underline decoration-line underline-offset-4 transition hover:text-ink">
             Abrir el mostrador →
           </Link>
         </div>

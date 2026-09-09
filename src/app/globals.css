@@ -27,8 +27,8 @@
      tema claro "soft" se redefinió como color de TEXTO (más oscuro que accent),
      y usarlo de tope dejaba el botón iluminado desde ABAJO. Regla: --cta-1
      SIEMPRE más claro que --cta-2. */
-  --cta-1: #e8675c;
-  --cta-2: #d23f34;
+  --cta-1: #c93a2e; /* con --on-accent da 4,9:1 (AA); antes #e8675c = 3,4:1 */
+  --cta-2: #ad2f24; /* 5,9:1; antes #d23f34 = 4,37:1 */
 
   color-scheme: dark;
 }
@@ -47,8 +47,8 @@
   --accent: #d23f34;
   --accent-soft: #e8675c;
   --on-accent: #fbf7f0;
-  --cta-1: #e8675c;
-  --cta-2: #d23f34;
+  --cta-1: #c93a2e; /* con --on-accent da 4,9:1 (AA); antes #e8675c = 3,4:1 */
+  --cta-2: #ad2f24; /* 5,9:1; antes #d23f34 = 4,37:1 */
   /* Estados sobrios (DESIGN.md: verde/ámbar solo para ok/alerta) y neutrales
      de gráficos. Viven acá y no en las clases para que el claro los re-resuelva. */
   --ok: #34d399;

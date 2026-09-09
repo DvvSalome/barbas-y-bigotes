@@ -18,11 +18,11 @@ const BASE =
   "inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-full transition disabled:cursor-not-allowed disabled:opacity-40";
 const TAM: Record<BotonTam, string> = {
   md: "min-h-11 px-4 text-[12.5px]",
-  sm: "min-h-9 px-3.5 text-[12px]",
+  sm: "min-h-10 px-3.5 text-[12px]",
 };
 const VARIANTE: Record<BotonVariante, string> = {
   primario:
-    "bg-linear-to-b from-accent-soft to-accent font-bold uppercase tracking-[0.06em] text-on-accent shadow-[0_10px_24px_-8px_rgba(210,63,52,0.55)] hover:brightness-105",
+    "bg-[linear-gradient(180deg,var(--cta-1),var(--cta-2))] font-bold uppercase tracking-[0.06em] text-on-accent shadow-[0_10px_24px_-8px_rgba(173,47,36,0.55)] hover:brightness-110",
   secundario: "border border-line bg-transparent font-bold uppercase tracking-[0.06em] text-ink hover:border-ink/40",
   terciario: "bg-transparent px-2 font-semibold text-muted hover:text-ink",
   peligro: "border border-warn/45 bg-transparent font-bold uppercase tracking-[0.06em] text-warn hover:bg-warn/10",

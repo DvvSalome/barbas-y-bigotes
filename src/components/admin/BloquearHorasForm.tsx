@@ -1,5 +1,6 @@
 "use client";
 
+import { botonClases } from "@/components/ui/Boton";
 import { useState } from "react";
 import { bloquearHoras } from "@/lib/actions";
 import { fmtTime } from "@/lib/slots";
@@ -143,7 +144,7 @@ export function BloquearHorasForm({
         <button
           onClick={guardar}
           disabled={saving}
-          className="flex-1 rounded-full bg-accent px-5 py-3 text-sm font-bold uppercase tracking-wide text-on-accent transition hover:bg-accent-soft disabled:opacity-50"
+          className={botonClases("primario", "md", "flex-1")}
         >
           {saving ? "Bloqueando…" : todoElDia ? "Bloquear el día" : "Bloquear ese rato"}
         </button>

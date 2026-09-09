@@ -1,5 +1,6 @@
 "use client";
 
+import { botonClases } from "@/components/ui/Boton";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { guardarConfigTarjeta } from "@/lib/actions";
@@ -94,7 +95,7 @@ export function TarjetaAdmin({ inicial }: { inicial: ConfigTarjeta }) {
             >
               <span className="text-[12px] font-bold uppercase tracking-wide opacity-70">{n}</span>
               <span className="font-display text-[15px] font-bold leading-none">
-                {h ? (h.tipo === "regalo" ? "🎁" : `${h.valor}%`) : "—"}
+                {h ? (h.tipo === "regalo" ? "Regalo" : `${h.valor}%`) : "—"}
               </span>
             </button>
           );
@@ -144,7 +145,7 @@ export function TarjetaAdmin({ inicial }: { inicial: ConfigTarjeta }) {
         type="button"
         onClick={guardar}
         disabled={saving || !cambio}
-        className="mt-4 min-h-12 rounded-full bg-accent px-6 text-sm font-bold uppercase tracking-wide text-on-accent transition hover:bg-accent-soft disabled:opacity-50"
+        className={botonClases("primario", "md", "mt-4")}
       >
         {saving ? "Guardando…" : "Guardar la tarjeta"}
       </button>

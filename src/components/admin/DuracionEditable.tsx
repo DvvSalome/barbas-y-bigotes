@@ -1,5 +1,6 @@
 "use client";
 
+import { botonClases } from "@/components/ui/Boton";
 import { PencilIcon, CheckIcon } from "@/components/icons";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -92,7 +93,7 @@ export function DuracionEditable({ servicioId, min }: { servicioId: string; min:
           onClick={guardar}
           disabled={saving}
           aria-label="Guardar duración"
-          className="grid h-11 w-11 place-items-center rounded-full bg-accent text-sm font-bold text-on-accent transition hover:bg-accent-soft disabled:opacity-50"
+          className={botonClases("primario")}
         >
           <CheckIcon className="h-4 w-4" />
         </button>

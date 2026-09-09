@@ -1,5 +1,7 @@
 "use client";
 
+import { Switch } from "@/components/admin/Switch";
+import { botonClases } from "@/components/ui/Boton";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { actualizarAjustesAvisos } from "@/lib/actions";
@@ -72,21 +74,7 @@ export function AvisosAdmin({
             </p>
           </div>
           {/* Interruptor: el dueño puede apagarlo sin perder la antelación elegida. */}
-          <button
-            type="button"
-            role="switch"
-            aria-checked={activo}
-            onClick={() => setActivo((v) => !v)}
-            className={`relative h-[30px] w-[54px] shrink-0 rounded-full border transition ${
-              activo ? "border-ok/50 bg-ok/25" : "border-line bg-elevated"
-            }`}
-          >
-            <span
-              className={`absolute top-[3px] h-[22px] w-[22px] rounded-full transition-all ${
-                activo ? "left-[28px] bg-ok" : "left-[3px] bg-muted"
-              }`}
-            />
-          </button>
+          <Switch checked={activo} onChange={(v) => setActivo(v)} label="Recordatorio antes de la cita" />
         </div>
 
         <div className={`mt-5 ${activo ? "" : "pointer-events-none opacity-40"}`}>
@@ -122,7 +110,7 @@ export function AvisosAdmin({
             disabled={saving || sinCambios}
             // bg-accent plano: el MISMO botón "Guardar" que usan las demás
             // secciones del admin (el degradado era un one-off que desentonaba).
-            className="rounded-full bg-accent px-6 py-2.5 text-sm font-semibold uppercase tracking-wide text-on-accent transition hover:bg-accent-soft disabled:cursor-not-allowed disabled:opacity-40"
+            className={botonClases("primario")}
           >
             {saving ? "Guardando…" : "Guardar"}
           </button>
@@ -143,21 +131,7 @@ export function AvisosAdmin({
               quien ya tiene cita, y siempre con enlace para darse de baja.
             </p>
           </div>
-          <button
-            type="button"
-            role="switch"
-            aria-checked={corteActivo}
-            onClick={() => setCorteActivo((v) => !v)}
-            className={`relative h-[30px] w-[54px] shrink-0 rounded-full border transition ${
-              corteActivo ? "border-ok/50 bg-ok/25" : "border-line bg-elevated"
-            }`}
-          >
-            <span
-              className={`absolute top-[3px] h-[22px] w-[22px] rounded-full transition-all ${
-                corteActivo ? "left-[28px] bg-ok" : "left-[3px] bg-muted"
-              }`}
-            />
-          </button>
+          <Switch checked={corteActivo} onChange={(v) => setCorteActivo(v)} label="Aviso te toca corte" />
         </div>
 
         <div className={`mt-5 ${corteActivo ? "" : "opacity-60"}`}>
@@ -201,7 +175,7 @@ export function AvisosAdmin({
           <button
             onClick={guardar}
             disabled={saving || sinCambios}
-            className="rounded-full bg-accent px-6 py-2.5 text-sm font-semibold uppercase tracking-wide text-on-accent transition hover:bg-accent-soft disabled:cursor-not-allowed disabled:opacity-40"
+            className={botonClases("primario")}
           >
             {saving ? "Guardando…" : "Guardar"}
           </button>

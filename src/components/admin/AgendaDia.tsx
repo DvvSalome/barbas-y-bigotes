@@ -388,7 +388,7 @@ export function AgendaDia({
                     {/* Hoy con su círculo lleno (firma Google Calendar) */}
                     <span
                       className={`mx-auto grid h-7 w-7 place-items-center font-display text-lg leading-none ${
-                        esHoyCol ? "rounded-full bg-accent text-on-accent" : ""
+                        esHoyCol ? "rounded-full bg-ink text-bg" : ""
                       }`}
                     >
                       {Number(ymd.slice(8))}

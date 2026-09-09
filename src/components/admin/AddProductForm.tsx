@@ -1,5 +1,6 @@
 "use client";
 
+import { botonClases } from "@/components/ui/Boton";
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { addProducto, subirFotoProducto } from "@/lib/actions";
@@ -173,7 +174,7 @@ export function AddProductForm({
         <div className="rounded-lg border border-accent/40 bg-accent/10 px-3 py-2 text-sm text-accent-soft sm:col-span-6">{err}</div>
       )}
       <div className="flex gap-2 sm:col-span-6">
-        <button disabled={saving} className="rounded-full bg-accent px-6 py-2.5 text-sm font-semibold uppercase tracking-wide text-on-accent transition hover:bg-accent-soft disabled:opacity-50">
+        <button disabled={saving} className={botonClases("primario")}>
           {saving ? "Guardando…" : "Guardar"}
         </button>
         <button type="button" onClick={() => onListo?.()} className="rounded-full border border-line px-6 py-2.5 text-sm text-muted transition hover:text-ink">

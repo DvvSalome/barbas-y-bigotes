@@ -1,5 +1,6 @@
 "use client";
 
+import { botonClases } from "@/components/ui/Boton";
 import { useMemo, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -371,7 +372,7 @@ export function ComboBuilder({
         type="button"
         disabled={!valido || saving}
         onClick={submit}
-        className="mt-4 w-full rounded-[13px] bg-accent px-6 py-3 text-sm font-extrabold uppercase tracking-[0.05em] text-on-accent transition hover:bg-accent-soft disabled:cursor-not-allowed disabled:opacity-50"
+        className={botonClases("primario", "md", "mt-4 w-full")}
       >
         {saving ? "Creando…" : "Crear combo"}
       </button>

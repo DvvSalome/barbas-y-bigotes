@@ -1,5 +1,6 @@
 "use client";
 
+import { botonClases } from "@/components/ui/Boton";
 import { PencilIcon, CheckIcon } from "@/components/icons";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -107,7 +108,7 @@ export function PrecioSedeEditable({
           onClick={guardar}
           disabled={guardando}
           aria-label="Guardar precio"
-          className="grid h-7 w-7 place-items-center rounded-full bg-accent text-xs font-bold text-on-accent transition hover:bg-accent-soft disabled:opacity-50"
+          className={botonClases("primario")}
         >
           <CheckIcon className="h-4 w-4" />
         </button>

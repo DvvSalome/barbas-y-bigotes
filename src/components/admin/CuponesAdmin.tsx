@@ -1,5 +1,7 @@
 "use client";
 
+import { chipFiltroClases } from "@/components/ui/Chip";
+import { botonClases } from "@/components/ui/Boton";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { crearCupon, toggleCupon } from "@/lib/actions";
@@ -80,7 +82,7 @@ export function CuponesAdmin({ cupones }: { cupones: Cupon[] }) {
         <input value={descripcion} onChange={(e) => setDescripcion(e.target.value)} placeholder="Descripción (opcional)" className={fld} />
         <div className="flex gap-2">
           {(["porcentaje", "monto"] as const).map((t) => (
-            <button type="button" key={t} onClick={() => setTipo(t)} className={`flex-1 rounded-lg border px-3 py-2 text-xs transition ${tipo === t ? "border-accent bg-accent/10 text-ink" : "border-line text-muted"}`}>
+            <button type="button" key={t} onClick={() => setTipo(t)} className={chipFiltroClases(tipo === t, "flex-1")}>
               {t === "porcentaje" ? "Porcentaje (%)" : "Monto fijo ($)"}
             </button>
           ))}
@@ -90,7 +92,7 @@ export function CuponesAdmin({ cupones }: { cupones: Cupon[] }) {
           <input type="number" value={usosMax} onChange={(e) => setUsosMax(e.target.value)} placeholder="Usos máx (vacío = ∞)" className={fld} />
           <input type="date" value={venceEn} onChange={(e) => setVenceEn(e.target.value)} className={fld} />
         </div>
-        <button disabled={busy} className="rounded-full bg-accent px-5 py-3 text-sm font-semibold uppercase tracking-wide text-on-accent transition hover:bg-accent-soft disabled:opacity-50">
+        <button disabled={busy} className={botonClases("primario")}>
           {busy ? "Creando…" : "Crear cupón"}
         </button>
       </form>

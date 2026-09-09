@@ -58,7 +58,7 @@ export default async function AgendaPage({
   return (
     <div>
       <SectionHeader
-        eyebrow="Agenda"
+        eyebrow="Citas"
         title="Agenda"
         // La sede ya la dicen las pastillas de acá abajo (antes el título era el
         // único lugar donde figuraba). El instructivo es de leer una vez: en el
@@ -74,32 +74,6 @@ export default async function AgendaPage({
       {/* Cambiar de sede acá se hacía SOLO desde el selector del topbar, que en
           el celular vive dentro del menú (dos toques y a ciegas). La agenda es
           por sede: la elección va a la vista, al lado del título. */}
-      {sedes.length > 1 && (
-        <div
-          role="group"
-          aria-label="Sede de la agenda"
-          className="mt-3 flex gap-0.5 rounded-[9px] border border-line bg-panel p-[3px] sm:w-fit"
-        >
-          {sedes.map((s) => {
-            const activa = s.id === sede;
-            return (
-              <Link
-                key={s.id}
-                href={`/admin/agenda?sede=${s.id}&fecha=${fecha}${vista === "semana" ? "&vista=semana" : ""}`}
-                aria-current={activa ? "page" : undefined}
-                // En el celular las dos se reparten el ancho; en PC medían 1140px entre ambas.
-                className={`flex min-h-10 flex-1 items-center justify-center whitespace-nowrap rounded-md px-3 text-xs font-semibold transition sm:flex-none sm:px-7 ${
-                  activa
-                    ? "bg-elevated text-ink shadow-[inset_0_0_0_1px_var(--line)]"
-                    : "text-muted hover:text-ink"
-                }`}
-              >
-                {s.nombre}
-              </Link>
-            );
-          })}
-        </div>
-      )}
       <AgendaDia
         sede={sede}
         fecha={fecha}

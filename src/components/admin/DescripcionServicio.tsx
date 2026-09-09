@@ -1,5 +1,6 @@
 "use client";
 
+import { botonClases } from "@/components/ui/Boton";
 import { PencilIcon } from "@/components/icons";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -35,7 +36,7 @@ export function DescripcionServicio({ servicioId, descripcion }: { servicioId: s
           setErr(null);
           setEditando(true);
         }}
-        className="block max-w-prose text-left text-[12px] leading-snug text-muted transition hover:text-ink"
+        className="flex min-h-10 max-w-prose items-center text-left text-[12px] leading-snug text-muted transition hover:text-ink"
         title="El cliente lee esto al reservar"
       >
         {descripcion ? (
@@ -43,7 +44,7 @@ export function DescripcionServicio({ servicioId, descripcion }: { servicioId: s
             {descripcion} <PencilIcon className="h-3.5 w-3.5 shrink-0 text-muted" />
           </>
         ) : (
-          <span className="text-accent-soft">
+          <span className="font-semibold text-ink/85 underline decoration-line underline-offset-4">
             + Descripción<span className="hidden sm:inline"> (la ve el cliente al reservar)</span>
           </span>
         )}
@@ -68,7 +69,7 @@ export function DescripcionServicio({ servicioId, descripcion }: { servicioId: s
           type="button"
           onClick={guardar}
           disabled={busy}
-          className="rounded-full bg-accent px-4 py-2 text-[12px] font-bold uppercase tracking-wide text-on-accent transition hover:bg-accent-soft disabled:opacity-50"
+          className={botonClases("primario")}
         >
           {busy ? "Guardando…" : "Guardar"}
         </button>
