@@ -193,7 +193,7 @@ function CajaCard({ caja, medios }: { caja: CajaSesionSede; medios: MedioPago[] 
             setCierre(null);
             setOpenForm(true);
           }}
-          className="mt-4 w-full rounded-full bg-accent px-5 py-3 text-sm font-semibold uppercase tracking-wide text-on-accent transition hover:bg-accent-soft"
+          className={botonClases("primario", "md", "mt-4 w-full")}
         >
           {abierta ? "Cerrar caja" : "Abrir caja"}
         </button>

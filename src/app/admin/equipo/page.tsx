@@ -88,7 +88,7 @@ export default async function EquipoPage() {
       <div className="mt-10 rounded-2xl border border-line bg-panel px-4 py-4">
         <p className="text-[13px] text-muted">
           ¿Buscas los horarios de la barbería (abrir un festivo, cambiar un sábado)? Ahora están en{" "}
-          <Link href="/admin/horarios" className="font-semibold text-accent-soft hover:underline">
+          <Link href="/admin/horarios" className="inline-flex min-h-11 items-center font-semibold text-ink/85 underline decoration-line underline-offset-4 transition hover:text-ink">
             Equipo → Horarios
           </Link>
           .

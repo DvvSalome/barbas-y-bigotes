@@ -1,5 +1,6 @@
 "use client";
 
+import { botonClases } from "@/components/ui/Boton";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { CheckoutForm, HojaInferior } from "@/components/barbero/AgendaList";
@@ -17,7 +18,7 @@ export function CobroDirectoAdmin(props: Props) {
       <button
         type="button"
         onClick={() => setAbierto(true)}
-        className="min-h-11 rounded-full bg-accent px-5 text-[13px] font-bold uppercase tracking-wide text-on-accent transition hover:bg-accent-soft"
+        className={botonClases("primario")}
       >
         Cobrar directo (sin cita)
       </button>

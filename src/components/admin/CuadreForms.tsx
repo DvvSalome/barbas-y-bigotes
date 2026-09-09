@@ -1,5 +1,6 @@
 "use client";
 
+import { botonClases } from "@/components/ui/Boton";
 import { chipFiltroClases } from "@/components/ui/Chip";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -11,8 +12,7 @@ import type { Sede, Barbero } from "@/lib/data/types";
 
 const fld =
   "w-full rounded-lg border border-line bg-bg px-3 py-2 text-ink placeholder:text-muted focus:border-accent focus:outline-none";
-const btn =
-  "rounded-full bg-accent px-5 py-3 text-sm font-semibold uppercase tracking-wide text-on-accent transition hover:bg-accent-soft disabled:opacity-50";
+const btn = botonClases("primario");
 
 // Categorías frecuentes del gasto: con texto libre cada quien escribía distinto
 // ("papeleria"/"Papelería"/"aseo") y la lista quedaba inagrupable.
@@ -47,11 +47,6 @@ export function CuadreForms({
   const [aSaving, setASaving] = useState(false);
   const [aError, setAError] = useState("");
   const [aOk, setAOk] = useState("");
-
-  const chipMedio = (activo: boolean) =>
-    `min-h-[38px] rounded-full border px-3 text-xs font-semibold transition ${
-      activo ? "border-accent bg-accent/15 text-ink" : "border-line text-muted hover:text-ink"
-    }`;
 
   async function submitGasto(e: React.FormEvent) {
     e.preventDefault();
@@ -134,7 +129,7 @@ export function CuadreForms({
         {medios.length > 0 && (
           <div className="flex flex-wrap gap-1.5">
             {medios.map((m) => (
-              <button key={m.slug} type="button" onClick={() => setGMedio(m.slug)} className={chipMedio(gMedio === m.slug)}>
+              <button key={m.slug} type="button" onClick={() => setGMedio(m.slug)} className={chipFiltroClases(gMedio === m.slug)}>
                 {m.nombre}
               </button>
             ))}
@@ -163,7 +158,7 @@ export function CuadreForms({
         {medios.length > 0 && (
           <div className="flex flex-wrap gap-1.5">
             {medios.map((m) => (
-              <button key={m.slug} type="button" onClick={() => setAMedio(m.slug)} className={chipMedio(aMedio === m.slug)}>
+              <button key={m.slug} type="button" onClick={() => setAMedio(m.slug)} className={chipFiltroClases(aMedio === m.slug)}>
                 {m.nombre}
               </button>
             ))}

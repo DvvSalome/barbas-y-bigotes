@@ -1,5 +1,7 @@
 "use client";
 
+import { botonClases } from "@/components/ui/Boton";
+import { chipFiltroClases } from "@/components/ui/Chip";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { completarReserva } from "@/lib/actions";
@@ -89,11 +91,6 @@ export function PendientesCobrar({
     router.refresh();
   }
 
-  const chip = (activo: boolean) =>
-    `min-h-[38px] rounded-full border px-3 text-xs font-semibold transition ${
-      activo ? "border-accent bg-accent/15 text-ink" : "border-line text-muted hover:text-ink"
-    }`;
-
   return (
     <div className="rounded-2xl border border-line bg-panel p-5">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -146,7 +143,7 @@ export function PendientesCobrar({
                     <p className="mb-1.5 text-[12px] font-bold uppercase tracking-wide text-muted">Pagó con</p>
                     <div className="flex flex-wrap gap-1.5">
                       {medios.map((m) => (
-                        <button key={m.slug} type="button" onClick={() => setMedio(m.slug)} className={chip(medio === m.slug)}>
+                        <button key={m.slug} type="button" onClick={() => setMedio(m.slug)} className={chipFiltroClases(medio === m.slug)}>
                           {m.nombre}
                         </button>
                       ))}
@@ -173,7 +170,7 @@ export function PendientesCobrar({
                             key={m.slug}
                             type="button"
                             onClick={() => setPropinaMedio(m.slug)}
-                            className={chip((propinaMedio ?? medio) === m.slug)}
+                            className={chipFiltroClases((propinaMedio ?? medio) === m.slug)}
                           >
                             propina {m.nombre}
                           </button>
@@ -186,7 +183,7 @@ export function PendientesCobrar({
                     type="button"
                     onClick={() => cobrar(p)}
                     disabled={saving}
-                    className="w-full rounded-full bg-accent px-5 py-3 text-sm font-bold uppercase tracking-wide text-on-accent transition hover:bg-accent-soft disabled:opacity-50"
+                    className={botonClases("primario", "md", "w-full")}
                   >
                     {saving ? "Cobrando…" : `Cobrar ${cop(p.monto)}`}
                   </button>

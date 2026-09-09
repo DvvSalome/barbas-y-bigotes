@@ -1,5 +1,6 @@
 "use client";
 
+import { botonClases } from "@/components/ui/Boton";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { setearPinSede } from "@/lib/barbero-auth";
@@ -68,7 +69,7 @@ export function SedePinAdmin({ sedes, estado }: { sedes: Sede[]; estado: Estado 
                     {e?.tienePin ? "PIN listo" : "Sin PIN"}
                   </span>
                   {e?.bloqueado && (
-                    <span className="rounded-full bg-accent/15 px-2 py-0.5 text-[12px] font-bold uppercase tracking-wide text-accent-soft">
+                    <span className="rounded-full bg-warn/15 px-2 py-0.5 text-[12px] font-bold uppercase tracking-wide text-warn">
                       Bloqueado 5 min
                     </span>
                   )}
@@ -84,11 +85,7 @@ export function SedePinAdmin({ sedes, estado }: { sedes: Sede[]; estado: Estado 
                   setPin("");
                   setMsg(null);
                 }}
-                className={`min-h-9 rounded-full px-3.5 text-[12px] font-semibold transition ${
-                  e?.tienePin
-                    ? "border border-line text-muted hover:text-ink"
-                    : "bg-accent text-on-accent hover:bg-accent-soft"
-                }`}
+                className={botonClases(e?.tienePin ? "secundario" : "primario", "sm")}
               >
                 {e?.tienePin ? "Cambiar PIN" : "Poner PIN"}
               </button>
@@ -106,7 +103,7 @@ export function SedePinAdmin({ sedes, estado }: { sedes: Sede[]; estado: Estado 
                 <button
                   onClick={() => guardar(s.id)}
                   disabled={busy || pin.length !== 6}
-                  className="rounded-full bg-accent px-4 py-2 text-xs font-semibold uppercase text-on-accent transition hover:bg-accent-soft disabled:opacity-50"
+                  className={botonClases("primario", "sm")}
                 >
                   {busy ? "…" : "Guardar"}
                 </button>
@@ -115,7 +112,7 @@ export function SedePinAdmin({ sedes, estado }: { sedes: Sede[]; estado: Estado 
                     setEditando(null);
                     setPin("");
                   }}
-                  className="text-xs text-muted transition hover:text-ink"
+                  className={botonClases("terciario", "sm")}
                 >
                   Cancelar
                 </button>
@@ -123,7 +120,7 @@ export function SedePinAdmin({ sedes, estado }: { sedes: Sede[]; estado: Estado 
             )}
 
             {msg?.id === s.id && (
-              <div className={`mt-2 text-xs ${msg.ok ? "text-ok" : "text-accent-soft"}`}>{msg.text}</div>
+              <div className={`mt-2 text-xs ${msg.ok ? "text-ok" : "text-warn"}`}>{msg.text}</div>
             )}
           </div>
         );
