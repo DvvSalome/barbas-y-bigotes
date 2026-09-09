@@ -1,5 +1,6 @@
 import { type SupabaseClient } from "@supabase/supabase-js";
 import { supabaseServer, supabaseServerAuth, supabaseAdmin } from "@/lib/supabase/server";
+import { calendarConfigurado } from "@/lib/google-calendar";
 import { bogotaDayRange, bogotaDayRangeDeFecha, bogotaYmd, horarioEfectivo, rangoPeriodo, type Periodo } from "@/lib/slots";
 import {
   totalesPorMedio,
@@ -2677,7 +2678,7 @@ export async function getCalendarEstado(): Promise<CalendarEstado> {
     admin.from("calendar_cola").select("reserva_id,error").is("procesado_en", null).not("error", "is", null).order("id", { ascending: false }).limit(5),
   ]);
   return {
-    configurado: !!process.env.GOOGLE_CALENDAR_SA_JSON,
+    configurado: calendarConfigurado(),
     agendas: Object.fromEntries(
       ((agendas.data ?? []) as { barbero_id: string; calendar_id: string; compartido_con: string | null }[]).map((a) => [
         a.barbero_id,
