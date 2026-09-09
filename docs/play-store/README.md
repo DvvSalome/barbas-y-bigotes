@@ -17,12 +17,12 @@ menos 12 testers durante 14 días seguidos**.
 | Pieza | Estado |
 |---|---|
 | PWA lista (manifest, íconos 192/512/maskable, standalone, es-CO) | ✅ ya estaba |
-| `public/.well-known/assetlinks.json` | ✅ publicado, **sin huella todavía** (ver paso 4) |
+| `public/.well-known/assetlinks.json` | ✅ publicado con la huella de la llave de subida; **falta la de firma de Play** (paso 4) |
 | Página de eliminación de cuenta `/cuenta/eliminar` | ✅ (Play la exige por el login con Google) |
-| Proyecto TWA `twa/twa-manifest.json` (Bubblewrap) | ✅ configurado, `com.barbasybigotes.app` |
+| Proyecto TWA `twa/twa-manifest.json` (Bubblewrap) | ✅ configurado, `com.barbasybigotes.app` · **compilado 9-sep: `twa/app-release-bundle.aab` (2,5 MB) y `twa/app-release-signed.apk`**, firmados con la llave de subida |
 | Bubblewrap CLI instalado en la máquina de FourG | ✅ (`npm i -g @bubblewrap/cli`) |
-| Android SDK + licencia | ⏳ pide permiso: Bubblewrap lo descarga (~1 GB) y hay que aceptar la licencia de Google |
-| Llave de subida (keystore) | ⏳ la crea FourG (comando abajo); la contraseña no pasa por el chat |
+| Android SDK + licencia | ✅ instalado en `~/.bubblewrap/android_sdk` (licencia aceptada 9-sep con permiso de FourG) |
+| Llave de subida (keystore) | ✅ `twa/android.keystore` (alias `barbasybigotes`, 9-sep). Huella `32:E8:F2:E8:9A:4E:53:64:33:8C:89:0F:90:6B:E2:AF:AF:0A:AA:6F:BB:26:2D:DB:65:BC:8D:81:3A:99:D4:07`. Guardar copia + contraseña en el gestor |
 | Gráfico destacado 1024×500 | ✅ `docs/play-store/grafico-1024x500.png` |
 | Capturas de teléfono | ✅ `public/screenshots/home-movil.png`, `reservar-movil.png` (500×844; mínimo 320 px, relación ≤ 2:1 ✓). Mejor sacar 4–6 reales de la app instalada antes de publicar. |
 | Ficha (textos) | ✅ abajo |
@@ -42,17 +42,43 @@ titular (nombre: Barbas & Bigotes Barbershop, ciudad: Barranquilla, país: CO). 
 la contraseña en el gestor de contraseñas.** Con Play App Signing, si esta llave se pierde
 Google permite registrar una nueva, así que no es catastrófico, pero sí una gestión.
 
-### 2. Generar y compilar
+### 2. Generar y compilar (así quedó funcionando el 9-sep)
+
+Bubblewrap es interactivo (inquirer) y no acepta respuestas por tubería, así que la
+configuración se dejó escrita a mano en `~/.bubblewrap/config.json`:
+
+```json
+{ "jdkPath": "C:/jdk17", "androidSdkPath": "C:/Users/jhanf/.bubblewrap/android_sdk" }
+```
+
+`C:/jdk17` es un *junction* (enlace de carpeta, sin admin) al Temurin 17 de `C:/Program Files/Eclipse Adoptium/`:
+Bubblewrap no entrecomilla la ruta del JDK al firmar y el espacio de "Program Files" rompe apksigner
+(`New-Item -ItemType Junction -Path C:/jdk17 -Target <ruta del JDK>` en PowerShell).
+
+El Android SDK se instaló a mano en esa carpeta (cmdline-tools 11076708 → `cmdline-tools/latest`
+**y una copia en `tools/`**, porque Bubblewrap busca `tools/bin/sdkmanager.bat`), con
+`yes | sdkmanager --licenses` (licencia de Google aceptada con permiso de FourG) y
+`platform-tools`, `platforms;android-34`, `build-tools;34.0.0`.
 
 ```bash
 cd "D:/TRABAJOS PROPIOS/projects/barbas-y-bigotes/twa"
-bubblewrap update      # genera el proyecto Android desde twa-manifest.json
-bubblewrap build       # pide la contraseña de la llave → app-release-bundle.aab + app-release-signed.apk
+export JAVA_HOME="C:/jdk17"
+export BUBBLEWRAP_KEYSTORE_PASSWORD="$(cat /ruta/segura/keystore-pass.txt)"
+export BUBBLEWRAP_KEY_PASSWORD="$BUBBLEWRAP_KEYSTORE_PASSWORD"
+bubblewrap update --skipVersionUpgrade          # regenera el proyecto desde twa-manifest.json
+env -u NoDefaultCurrentDirectoryInExePath bubblewrap build --skipPwaValidation
 ```
 
-La primera vez Bubblewrap ofrece descargar el JDK y el Android SDK: decir **no** al JDK
-(ya está Temurin 17 en `C:\Program Files\Eclipse Adoptium\jdk-17.0.19.10-hotspot`) y
-**sí** al SDK (queda en `~/.bubblewrap/android_sdk`, ~1 GB, acepta la licencia de Google).
+- `--skipVersionUpgrade`: sin eso `update` pregunta versionName/versionCode (prompt interactivo).
+  Para una versión nueva: editar `appVersionName`/`appVersionCode` en `twa-manifest.json`.
+- `--skipPwaValidation`: evita la consulta a PageSpeed y su prompt.
+- Las contraseñas van por variables de entorno, nunca en el comando.
+- Si sale **"gradlew.bat no se reconoce"**: el entorno tiene `NoDefaultCurrentDirectoryInExePath=1`
+  y `cmd` no busca en la carpeta actual; de ahí el `env -u`.
+- En `twa-manifest.json` los atajos usan `shortName` (camelCase), no `short_name`.
+
+Salida: `app-release-bundle.aab` (para Play) y `app-release-signed.apk` (para instalar a mano y
+probar; con la huella de la llave de subida ya en assetlinks abre sin barra de navegador).
 
 ### 3. Crear la app en Play Console (el dueño, con FourG al lado)
 
