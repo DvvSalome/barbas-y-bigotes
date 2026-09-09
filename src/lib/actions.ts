@@ -1079,6 +1079,40 @@ export async function guardarEmailBarbero(barberoId: string, email: string): Pro
   return { ok: true };
 }
 
+// "Probar" en /admin/equipo: manda el aviso de PRUEBA a la dirección escrita
+// por el MISMO camino del aviso real (cola → n8n → Hostinger, misma plantilla),
+// sin guardar nada. Así el dueño confirma con el barbero que le llegó y recién
+// ahí guarda. La cola es barbero_correo_prueba (0070) y la toma el mismo RPC
+// tomar_avisos_barbero; el ping a n8n solo adelanta la vuelta, como al reservar.
+export async function probarCorreoBarbero(barberoId: string, email: string): Promise<ActionResult> {
+  const sb = await supabaseServerAuth();
+  const denied = await requireAdmin(sb);
+  if (denied) return { ok: false, error: denied };
+  const limpio = (email ?? "").trim().toLowerCase().slice(0, 120);
+  if (!esEmailEnviable(limpio)) return { ok: false, error: "Ese correo no parece real. Revisá el dominio." };
+  const admin = supabaseAdmin();
+  // Una prueba por correo por minuto: el buzón ya pagó tres suspensiones por
+  // volumen raro, y un dedo nervioso no debería poder mandar veinte.
+  const haceUnMinuto = new Date(Date.now() - 60_000).toISOString();
+  const { data: reciente, error: errLee } = await admin
+    .from("barbero_correo_prueba")
+    .select("id")
+    .eq("email", limpio)
+    .gte("creado_en", haceUnMinuto)
+    .limit(1);
+  if (errLee) {
+    if (errLee.code === "42P01" || errLee.code === "PGRST205")
+      return { ok: false, error: "Falta aplicar la migración 0070 en Supabase." };
+    return { ok: false, error: errorPublico("probarCorreoBarbero", errLee) };
+  }
+  if (reciente?.length) return { ok: false, error: "Ya se mandó una prueba a ese correo hace menos de un minuto. Esperá un poco." };
+  const { error } = await admin.from("barbero_correo_prueba").insert({ barbero_id: barberoId, email: limpio });
+  if (error) return { ok: false, error: errorPublico("probarCorreoBarbero", error) };
+  // Que n8n mire la cola ya. Si el ping falla, el cron de 5 min la toma igual.
+  await avisarConfirmacionPendiente();
+  return { ok: true, aviso: `Prueba enviada a ${limpio}: le llega "💈 Nueva cita: Correo de prueba ✅" en un momento.` };
+}
+
 const RESERVA_POR_IP = { porMinuto: 3, porHora: 10 };
 // Techo global por hora, contado en la BASE (el de memoria es por instancia
 // serverless, así que no es un techo de verdad). 25/hora es holgadísimo para
