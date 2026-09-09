@@ -4,7 +4,9 @@
     "target": {
       "namespace": "android_app",
       "package_name": "com.barbasybigotes.app",
-      "sha256_cert_fingerprints": []
+      "sha256_cert_fingerprints": [
+        "32:E8:F2:E8:9A:4E:53:64:33:8C:89:0F:90:6B:E2:AF:AF:0A:AA:6F:BB:26:2D:DB:65:BC:8D:81:3A:99:D4:07"
+      ]
     }
   }
 ]
