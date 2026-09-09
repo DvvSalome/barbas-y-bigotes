@@ -1,0 +1,25 @@
+pantalla                       cromo       tam   botones      <12%    AA mal       <40   emoji
+Agenda día                   250→146       8→6       8→6    40%→0%       2→0       1→0     0→0
+Agenda semana                250→146       7→7       8→6    38%→0%       3→0       1→0     0→0
+Avisos                       368→206      10→7      11→6    11%→0%       3→0       3→0     0→0
+Ayuda                        307→146       9→7       4→2    11%→0%       1→0       2→0     0→0
+Caja (cuadre)                307→198     14→12      11→6    22%→0%       9→0      17→0     0→0
+Clientes                     250→146       8→6       7→5    19%→0%       1→0       5→0     0→0
+Comisiones                   368→206      10→5       6→4    31%→0%       1→0       1→0     6→0
+Cupones                      368→206       7→6       9→4     3%→0%       2→0       3→0     0→0
+Equipo                       368→206      12→8      11→7    15%→0%      18→0      17→0     0→0
+Horarios                     368→206       9→7       8→5     7%→0%       6→0     34→33     0→0
+Liquidación                  311→206      10→6       8→6    41%→0%       1→0       1→0     0→0
+Métricas                     250→146      12→9       7→5    16%→0%       1→0       1→0     0→0
+Productos y stock            311→206       8→7       8→6     0%→0%       1→0       1→0    30→0
+Servicios y precios          311→206      12→7      10→7    43%→0%       1→0      22→0    11→0
+Tarjeta de fidelidad         368→206       9→6      10→7    21%→0%       2→0       1→0     1→0
+
+AGREGADOS (celular, admin):
+  cromo: 250–368 → 146–206 px
+  estilos de botón por pantalla: máx 11 → 7
+  tamaños de letra por pantalla: 7–14 → 5–12
+  texto < 12 px: 20 % → 0 %
+  textos bajo AA: 52 → 0
+  controles < 40 px: 110 → 33
+  emoji en la interfaz: 48 → 0

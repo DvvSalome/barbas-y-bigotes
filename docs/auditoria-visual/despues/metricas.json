@@ -1,0 +1,6353 @@
+[
+ {
+  "area": "admin",
+  "pantalla": "Hoy",
+  "ruta": "/admin",
+  "vp": "movil",
+  "error": "Page.goto: net::ERR_NETWORK_CHANGED at https://barbasybigotes.com/admin\nCall log:\n  - navigating to \"https://barbasybigotes.com/admin\", waiting until \"networkidle\"\n"
+ },
+ {
+  "sw": 1280,
+  "vw": 1280,
+  "alto": 1271,
+  "cromo": 184,
+  "interactivos": 22,
+  "nChicos": 4,
+  "chicos": [
+   {
+    "t": "Barbas & Bigotes · Hoy",
+    "w": 94,
+    "h": 32
+   },
+   {
+    "t": "Ambas sedes",
+    "w": 113,
+    "h": 36
+   },
+   {
+    "t": "Parque Venezuela",
+    "w": 141,
+    "h": 36
+   },
+   {
+    "t": "Plaza de la Paz",
+    "w": 122,
+    "h": 36
+   }
+  ],
+  "textoTotal": 106,
+  "textoChico": 0,
+  "nSizes": 10,
+  "sizes": [
+   [
+    "12",
+    49
+   ],
+   [
+    "13",
+    24
+   ],
+   [
+    "15",
+    9
+   ],
+   [
+    "12.5",
+    7
+   ],
+   [
+    "14",
+    6
+   ],
+   [
+    "24",
+    6
+   ],
+   [
+    "13.5",
+    2
+   ],
+   [
+    "26",
+    1
+   ],
+   [
+    "30",
+    1
+   ],
+   [
+    "52",
+    1
+   ]
+  ],
+  "nWeights": 4,
+  "weights": [
+   [
+    "400",
+    37
+   ],
+   [
+    "600",
+    30
+   ],
+   [
+    "700",
+    20
+   ],
+   [
+    "800",
+    19
+   ]
+  ],
+  "fams": [
+   [
+    "Inter",
+    87
+   ],
+   [
+    "Barlow Condensed",
+    18
+   ],
+   [
+    "ui-monospace",
+    1
+   ]
+  ],
+  "nTextColors": 6,
+  "tcolors": [
+   [
+    "rgb(156, 149, 138)",
+    65
+   ],
+   [
+    "rgb(242, 237, 228)",
+    30
+   ],
+   [
+    "oklab(0.947513 0.00178179 0.0130511 / 0.85)",
+    5
+   ],
+   [
+    "rgb(251, 191, 36)",
+    4
+   ],
+   [
+    "rgb(12, 11, 10)",
+    1
+   ],
+   [
+    "rgb(52, 211, 153)",
+    1
+   ]
+  ],
+  "nEyebrowSizes": 1,
+  "eyebrows": [
+   [
+    "12",
+    12
+   ]
+  ],
+  "emojiUI": 0,
+  "nBgs": 5,
+  "bgs": [
+   [
+    "rgb(21, 19, 17)",
+    18
+   ],
+   [
+    "rgb(33, 29, 25)",
+    8
+   ],
+   [
+    "rgb(251, 191, 36)",
+    3
+   ],
+   [
+    "rgb(12, 11, 10)",
+    1
+   ],
+   [
+    "rgb(242, 237, 228)",
+    1
+   ]
+  ],
+  "nBorders": 3,
+  "nRadii": 5,
+  "radii": [
+   [
+    "3.35544e+07px",
+    25
+   ],
+   [
+    "16px",
+    16
+   ],
+   [
+    "0px",
+    7
+   ],
+   [
+    "12px",
+    1
+   ],
+   [
+    "8px",
+    1
+   ]
+  ],
+  "nPads": 5,
+  "nBotones": 4,
+  "nFirmasBoton": 4,
+  "firmas": [
+   [
+    "rgb(242, 237, 228) | rgb(12, 11, 10) | rgb(12, 11, 10) | 3.35544e+07px | 36px | 13px | up",
+    1
+   ],
+   [
+    "rgb(21, 19, 17) | rgb(156, 149, 138) | rgba(242, 237, 228, 0.1) | 3.35544e+07px | 44px | 13px | up",
+    1
+   ],
+   [
+    "rgb(33, 29, 25) | rgb(242, 237, 228) | rgba(242, 237, 228, 0.1) | 3.35544e+07px | 44px | 13px | up",
+    1
+   ],
+   [
+    "oklab(0.836863 0.0160027 0.163654 / 0.1) | rgb(251, 191, 36) | oklab(0.836863 0.0160027 0.163654 / 0.35) | 12px | 44px | 13px | up",
+    1
+   ]
+  ],
+  "contrasteMedidos": 85,
+  "contrasteSinMedir": 21,
+  "nContrasteMal": 0,
+  "contrasteMal": [],
+  "imgDeformadas": 0,
+  "imgSinAlt": 0,
+  "h1": "EL DÍA EN LAS DOS SEDES",
+  "area": "admin",
+  "pantalla": "Hoy",
+  "ruta": "/admin",
+  "vp": "escritorio",
+  "http": 200,
+  "url": "https://barbasybigotes.com/admin",
+  "errores": [],
+  "captura": "vis-admin-hoy-escritorio.png"
+ },
+ {
+  "sw": 390,
+  "vw": 390,
+  "alto": 979,
+  "cromo": 146,
+  "interactivos": 23,
+  "nChicos": 0,
+  "chicos": [],
+  "textoTotal": 45,
+  "textoChico": 0,
+  "nSizes": 6,
+  "sizes": [
+   [
+    "12",
+    20
+   ],
+   [
+    "13",
+    16
+   ],
+   [
+    "12.5",
+    5
+   ],
+   [
+    "16",
+    2
+   ],
+   [
+    "20",
+    1
+   ],
+   [
+    "28",
+    1
+   ]
+  ],
+  "nWeights": 4,
+  "weights": [
+   [
+    "400",
+    22
+   ],
+   [
+    "600",
+    15
+   ],
+   [
+    "700",
+    7
+   ],
+   [
+    "800",
+    1
+   ]
+  ],
+  "fams": [
+   [
+    "Inter",
+    43
+   ],
+   [
+    "Barlow Condensed",
+    2
+   ]
+  ],
+  "nTextColors": 4,
+  "tcolors": [
+   [
+    "rgb(156, 149, 138)",
+    31
+   ],
+   [
+    "rgb(242, 237, 228)",
+    12
+   ],
+   [
+    "rgb(12, 11, 10)",
+    1
+   ],
+   [
+    "rgb(251, 247, 240)",
+    1
+   ]
+  ],
+  "nEyebrowSizes": 2,
+  "eyebrows": [
+   [
+    "12.5",
+    2
+   ],
+   [
+    "12",
+    1
+   ]
+  ],
+  "emojiUI": 0,
+  "nBgs": 5,
+  "bgs": [
+   [
+    "rgb(21, 19, 17)",
+    4
+   ],
+   [
+    "rgb(12, 11, 10)",
+    1
+   ],
+   [
+    "rgb(33, 29, 25)",
+    1
+   ],
+   [
+    "rgb(242, 237, 228)",
+    1
+   ],
+   [
+    "rgb(210, 63, 52)",
+    1
+   ]
+  ],
+  "nBorders": 7,
+  "nRadii": 4,
+  "radii": [
+   [
+    "0px",
+    69
+   ],
+   [
+    "3.35544e+07px",
+    9
+   ],
+   [
+    "4px",
+    6
+   ],
+   [
+    "16px",
+    1
+   ]
+  ],
+  "nPads": 1,
+  "nBotones": 7,
+  "nFirmasBoton": 6,
+  "firmas": [
+   [
+    "rgba(0, 0, 0, 0) | rgb(242, 237, 228) | rgba(242, 237, 228, 0.1) | 3.35544e+07px | 44px | 16px | up",
+    2
+   ],
+   [
+    "rgb(21, 19, 17) | rgb(242, 237, 228) | rgba(242, 237, 228, 0.1) | 3.35544e+07px | 44px | 16px | up",
+    1
+   ],
+   [
+    "rgb(33, 29, 25) | rgb(242, 237, 228) | rgba(242, 237, 228, 0.1) | 3.35544e+07px | 44px | 13px | up",
+    1
+   ],
+   [
+    "rgb(242, 237, 228) | rgb(12, 11, 10) | rgb(242, 237, 228) | 3.35544e+07px | 44px | 13px | up",
+    1
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(156, 149, 138) | rgba(242, 237, 228, 0.1) | 3.35544e+07px | 44px | 13px | up",
+    1
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(242, 237, 228) | rgba(242, 237, 228, 0.1) | 3.35544e+07px | 44px | 13px | UP",
+    1
+   ]
+  ],
+  "contrasteMedidos": 35,
+  "contrasteSinMedir": 10,
+  "nContrasteMal": 0,
+  "contrasteMal": [],
+  "imgDeformadas": 0,
+  "imgSinAlt": 0,
+  "h1": "AGENDA",
+  "area": "admin",
+  "pantalla": "Agenda día",
+  "ruta": "/admin/agenda?sede=parque-venezuela",
+  "vp": "movil",
+  "http": 200,
+  "url": "https://barbasybigotes.com/admin/agenda?sede=parque-venezuela",
+  "errores": [],
+  "captura": "vis-admin-agenda-d-a-movil.png",
+  "capturaFull": "vis-admin-agenda-d-a-movil-full.png"
+ },
+ {
+  "sw": 1280,
+  "vw": 1280,
+  "alto": 1088,
+  "cromo": 152,
+  "interactivos": 25,
+  "nChicos": 3,
+  "chicos": [
+   {
+    "t": "Barbas & Bigotes · Hoy",
+    "w": 94,
+    "h": 32
+   },
+   {
+    "t": "Parque Venezuela",
+    "w": 141,
+    "h": 36
+   },
+   {
+    "t": "Plaza de la Paz",
+    "w": 122,
+    "h": 36
+   }
+  ],
+  "textoTotal": 49,
+  "textoChico": 0,
+  "nSizes": 6,
+  "sizes": [
+   [
+    "12",
+    22
+   ],
+   [
+    "13",
+    18
+   ],
+   [
+    "12.5",
+    5
+   ],
+   [
+    "16",
+    2
+   ],
+   [
+    "20",
+    1
+   ],
+   [
+    "32",
+    1
+   ]
+  ],
+  "nWeights": 4,
+  "weights": [
+   [
+    "400",
+    25
+   ],
+   [
+    "600",
+    16
+   ],
+   [
+    "700",
+    7
+   ],
+   [
+    "800",
+    1
+   ]
+  ],
+  "fams": [
+   [
+    "Inter",
+    46
+   ],
+   [
+    "Barlow Condensed",
+    2
+   ],
+   [
+    "ui-monospace",
+    1
+   ]
+  ],
+  "nTextColors": 5,
+  "tcolors": [
+   [
+    "rgb(156, 149, 138)",
+    34
+   ],
+   [
+    "rgb(242, 237, 228)",
+    11
+   ],
+   [
+    "rgb(12, 11, 10)",
+    2
+   ],
+   [
+    "rgb(251, 247, 240)",
+    1
+   ],
+   [
+    "oklab(0.672627 0.00335035 0.0176046 / 0.7)",
+    1
+   ]
+  ],
+  "nEyebrowSizes": 2,
+  "eyebrows": [
+   [
+    "12.5",
+    2
+   ],
+   [
+    "12",
+    1
+   ]
+  ],
+  "emojiUI": 0,
+  "nBgs": 5,
+  "bgs": [
+   [
+    "rgb(21, 19, 17)",
+    5
+   ],
+   [
+    "rgb(242, 237, 228)",
+    2
+   ],
+   [
+    "rgb(12, 11, 10)",
+    1
+   ],
+   [
+    "rgb(33, 29, 25)",
+    1
+   ],
+   [
+    "rgb(210, 63, 52)",
+    1
+   ]
+  ],
+  "nBorders": 7,
+  "nRadii": 4,
+  "radii": [
+   [
+    "0px",
+    69
+   ],
+   [
+    "3.35544e+07px",
+    11
+   ],
+   [
+    "4px",
+    6
+   ],
+   [
+    "16px",
+    1
+   ]
+  ],
+  "nPads": 2,
+  "nBotones": 8,
+  "nFirmasBoton": 7,
+  "firmas": [
+   [
+    "rgba(0, 0, 0, 0) | rgb(242, 237, 228) | rgba(242, 237, 228, 0.1) | 3.35544e+07px | 44px | 16px | up",
+    2
+   ],
+   [
+    "rgb(242, 237, 228) | rgb(12, 11, 10) | rgb(12, 11, 10) | 3.35544e+07px | 36px | 13px | up",
+    1
+   ],
+   [
+    "rgb(21, 19, 17) | rgb(156, 149, 138) | rgba(242, 237, 228, 0.1) | 3.35544e+07px | 44px | 13px | up",
+    1
+   ],
+   [
+    "rgb(33, 29, 25) | rgb(242, 237, 228) | rgba(242, 237, 228, 0.1) | 3.35544e+07px | 44px | 13px | up",
+    1
+   ],
+   [
+    "rgb(242, 237, 228) | rgb(12, 11, 10) | rgb(242, 237, 228) | 3.35544e+07px | 44px | 13px | up",
+    1
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(156, 149, 138) | rgba(242, 237, 228, 0.1) | 3.35544e+07px | 44px | 13px | up",
+    1
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(242, 237, 228) | rgba(242, 237, 228, 0.1) | 3.35544e+07px | 44px | 13px | UP",
+    1
+   ]
+  ],
+  "contrasteMedidos": 38,
+  "contrasteSinMedir": 11,
+  "nContrasteMal": 0,
+  "contrasteMal": [],
+  "imgDeformadas": 0,
+  "imgSinAlt": 0,
+  "h1": "AGENDA",
+  "area": "admin",
+  "pantalla": "Agenda día",
+  "ruta": "/admin/agenda?sede=parque-venezuela",
+  "vp": "escritorio",
+  "http": 200,
+  "url": "https://barbasybigotes.com/admin/agenda?sede=parque-venezuela",
+  "errores": [],
+  "captura": "vis-admin-agenda-d-a-escritorio.png"
+ },
+ {
+  "sw": 390,
+  "vw": 390,
+  "alto": 844,
+  "cromo": 146,
+  "interactivos": 27,
+  "nChicos": 0,
+  "chicos": [],
+  "textoTotal": 50,
+  "textoChico": 0,
+  "nSizes": 7,
+  "sizes": [
+   [
+    "12",
+    21
+   ],
+   [
+    "13",
+    16
+   ],
+   [
+    "18",
+    7
+   ],
+   [
+    "16",
+    2
+   ],
+   [
+    "12.5",
+    2
+   ],
+   [
+    "20",
+    1
+   ],
+   [
+    "28",
+    1
+   ]
+  ],
+  "nWeights": 4,
+  "weights": [
+   [
+    "400",
+    23
+   ],
+   [
+    "600",
+    15
+   ],
+   [
+    "700",
+    11
+   ],
+   [
+    "800",
+    1
+   ]
+  ],
+  "fams": [
+   [
+    "Inter",
+    41
+   ],
+   [
+    "Barlow Condensed",
+    9
+   ]
+  ],
+  "nTextColors": 6,
+  "tcolors": [
+   [
+    "rgb(156, 149, 138)",
+    24
+   ],
+   [
+    "rgb(242, 237, 228)",
+    15
+   ],
+   [
+    "oklab(0.672627 0.00335035 0.0176046 / 0.6)",
+    7
+   ],
+   [
+    "rgb(12, 11, 10)",
+    2
+   ],
+   [
+    "rgb(251, 247, 240)",
+    1
+   ],
+   [
+    "rgb(232, 103, 92)",
+    1
+   ]
+  ],
+  "nEyebrowSizes": 2,
+  "eyebrows": [
+   [
+    "12.5",
+    2
+   ],
+   [
+    "12",
+    1
+   ]
+  ],
+  "emojiUI": 0,
+  "nBgs": 4,
+  "bgs": [
+   [
+    "rgb(21, 19, 17)",
+    2
+   ],
+   [
+    "rgb(242, 237, 228)",
+    2
+   ],
+   [
+    "rgb(12, 11, 10)",
+    1
+   ],
+   [
+    "rgb(33, 29, 25)",
+    1
+   ]
+  ],
+  "nBorders": 4,
+  "nRadii": 4,
+  "radii": [
+   [
+    "3.35544e+07px",
+    9
+   ],
+   [
+    "4px",
+    6
+   ],
+   [
+    "0px",
+    1
+   ],
+   [
+    "16px",
+    1
+   ]
+  ],
+  "nPads": 1,
+  "nBotones": 7,
+  "nFirmasBoton": 6,
+  "firmas": [
+   [
+    "rgba(0, 0, 0, 0) | rgb(242, 237, 228) | rgba(242, 237, 228, 0.1) | 3.35544e+07px | 44px | 16px | up",
+    2
+   ],
+   [
+    "rgb(21, 19, 17) | rgb(242, 237, 228) | rgba(242, 237, 228, 0.1) | 3.35544e+07px | 44px | 16px | up",
+    1
+   ],
+   [
+    "rgb(33, 29, 25) | rgb(242, 237, 228) | rgba(242, 237, 228, 0.1) | 3.35544e+07px | 44px | 13px | up",
+    1
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(156, 149, 138) | rgba(242, 237, 228, 0.1) | 3.35544e+07px | 44px | 13px | up",
+    1
+   ],
+   [
+    "rgb(242, 237, 228) | rgb(12, 11, 10) | rgb(242, 237, 228) | 3.35544e+07px | 44px | 13px | up",
+    1
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(242, 237, 228) | rgba(242, 237, 228, 0.1) | 3.35544e+07px | 44px | 13px | UP",
+    1
+   ]
+  ],
+  "contrasteMedidos": 32,
+  "contrasteSinMedir": 18,
+  "nContrasteMal": 0,
+  "contrasteMal": [],
+  "imgDeformadas": 0,
+  "imgSinAlt": 0,
+  "h1": "AGENDA",
+  "area": "admin",
+  "pantalla": "Agenda semana",
+  "ruta": "/admin/agenda?sede=parque-venezuela&vista=semana",
+  "vp": "movil",
+  "http": 200,
+  "url": "https://barbasybigotes.com/admin/agenda?sede=parque-venezuela&vista=semana",
+  "errores": [],
+  "captura": "vis-admin-agenda-semana-movil.png",
+  "capturaFull": "vis-admin-agenda-semana-movil-full.png"
+ },
+ {
+  "sw": 1280,
+  "vw": 1280,
+  "alto": 900,
+  "cromo": 152,
+  "interactivos": 29,
+  "nChicos": 3,
+  "chicos": [
+   {
+    "t": "Barbas & Bigotes · Hoy",
+    "w": 94,
+    "h": 32
+   },
+   {
+    "t": "Parque Venezuela",
+    "w": 141,
+    "h": 36
+   },
+   {
+    "t": "Plaza de la Paz",
+    "w": 122,
+    "h": 36
+   }
+  ],
+  "textoTotal": 54,
+  "textoChico": 0,
+  "nSizes": 7,
+  "sizes": [
+   [
+    "12",
+    23
+   ],
+   [
+    "13",
+    18
+   ],
+   [
+    "18",
+    7
+   ],
+   [
+    "16",
+    2
+   ],
+   [
+    "12.5",
+    2
+   ],
+   [
+    "20",
+    1
+   ],
+   [
+    "32",
+    1
+   ]
+  ],
+  "nWeights": 4,
+  "weights": [
+   [
+    "400",
+    26
+   ],
+   [
+    "600",
+    16
+   ],
+   [
+    "700",
+    11
+   ],
+   [
+    "800",
+    1
+   ]
+  ],
+  "fams": [
+   [
+    "Inter",
+    44
+   ],
+   [
+    "Barlow Condensed",
+    9
+   ],
+   [
+    "ui-monospace",
+    1
+   ]
+  ],
+  "nTextColors": 7,
+  "tcolors": [
+   [
+    "rgb(156, 149, 138)",
+    27
+   ],
+   [
+    "rgb(242, 237, 228)",
+    14
+   ],
+   [
+    "oklab(0.672627 0.00335035 0.0176046 / 0.6)",
+    7
+   ],
+   [
+    "rgb(12, 11, 10)",
+    3
+   ],
+   [
+    "rgb(251, 247, 240)",
+    1
+   ],
+   [
+    "oklab(0.672627 0.00335035 0.0176046 / 0.7)",
+    1
+   ],
+   [
+    "rgb(232, 103, 92)",
+    1
+   ]
+  ],
+  "nEyebrowSizes": 2,
+  "eyebrows": [
+   [
+    "12.5",
+    2
+   ],
+   [
+    "12",
+    1
+   ]
+  ],
+  "emojiUI": 0,
+  "nBgs": 4,
+  "bgs": [
+   [
+    "rgb(21, 19, 17)",
+    3
+   ],
+   [
+    "rgb(242, 237, 228)",
+    3
+   ],
+   [
+    "rgb(12, 11, 10)",
+    1
+   ],
+   [
+    "rgb(33, 29, 25)",
+    1
+   ]
+  ],
+  "nBorders": 4,
+  "nRadii": 4,
+  "radii": [
+   [
+    "3.35544e+07px",
+    11
+   ],
+   [
+    "4px",
+    6
+   ],
+   [
+    "0px",
+    1
+   ],
+   [
+    "16px",
+    1
+   ]
+  ],
+  "nPads": 2,
+  "nBotones": 8,
+  "nFirmasBoton": 7,
+  "firmas": [
+   [
+    "rgba(0, 0, 0, 0) | rgb(242, 237, 228) | rgba(242, 237, 228, 0.1) | 3.35544e+07px | 44px | 16px | up",
+    2
+   ],
+   [
+    "rgb(242, 237, 228) | rgb(12, 11, 10) | rgb(12, 11, 10) | 3.35544e+07px | 36px | 13px | up",
+    1
+   ],
+   [
+    "rgb(21, 19, 17) | rgb(156, 149, 138) | rgba(242, 237, 228, 0.1) | 3.35544e+07px | 44px | 13px | up",
+    1
+   ],
+   [
+    "rgb(33, 29, 25) | rgb(242, 237, 228) | rgba(242, 237, 228, 0.1) | 3.35544e+07px | 44px | 13px | up",
+    1
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(156, 149, 138) | rgba(242, 237, 228, 0.1) | 3.35544e+07px | 44px | 13px | up",
+    1
+   ],
+   [
+    "rgb(242, 237, 228) | rgb(12, 11, 10) | rgb(242, 237, 228) | 3.35544e+07px | 44px | 13px | up",
+    1
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(242, 237, 228) | rgba(242, 237, 228, 0.1) | 3.35544e+07px | 44px | 13px | UP",
+    1
+   ]
+  ],
+  "contrasteMedidos": 35,
+  "contrasteSinMedir": 19,
+  "nContrasteMal": 0,
+  "contrasteMal": [],
+  "imgDeformadas": 0,
+  "imgSinAlt": 0,
+  "h1": "AGENDA",
+  "area": "admin",
+  "pantalla": "Agenda semana",
+  "ruta": "/admin/agenda?sede=parque-venezuela&vista=semana",
+  "vp": "escritorio",
+  "http": 200,
+  "url": "https://barbasybigotes.com/admin/agenda?sede=parque-venezuela&vista=semana",
+  "errores": [],
+  "captura": "vis-admin-agenda-semana-escritorio.png"
+ },
+ {
+  "sw": 390,
+  "vw": 390,
+  "alto": 3734,
+  "cromo": 198,
+  "interactivos": 48,
+  "nChicos": 0,
+  "chicos": [],
+  "textoTotal": 116,
+  "textoChico": 0,
+  "nSizes": 12,
+  "sizes": [
+   [
+    "12",
+    40
+   ],
+   [
+    "13",
+    30
+   ],
+   [
+    "12.5",
+    10
+   ],
+   [
+    "20",
+    7
+   ],
+   [
+    "13.5",
+    7
+   ],
+   [
+    "15",
+    6
+   ],
+   [
+    "14",
+    5
+   ],
+   [
+    "17",
+    3
+   ],
+   [
+    "26",
+    3
+   ],
+   [
+    "24",
+    2
+   ],
+   [
+    "30",
+    2
+   ],
+   [
+    "28",
+    1
+   ]
+  ],
+  "nWeights": 5,
+  "weights": [
+   [
+    "400",
+    48
+   ],
+   [
+    "600",
+    40
+   ],
+   [
+    "700",
+    26
+   ],
+   [
+    "500",
+    1
+   ],
+   [
+    "800",
+    1
+   ]
+  ],
+  "fams": [
+   [
+    "Inter",
+    92
+   ],
+   [
+    "Barlow Condensed",
+    24
+   ]
+  ],
+  "nTextColors": 8,
+  "tcolors": [
+   [
+    "rgb(156, 149, 138)",
+    63
+   ],
+   [
+    "rgb(242, 237, 228)",
+    25
+   ],
+   [
+    "rgb(52, 211, 153)",
+    8
+   ],
+   [
+    "rgb(232, 103, 92)",
+    7
+   ],
+   [
+    "rgb(251, 247, 240)",
+    6
+   ],
+   [
+    "rgb(251, 191, 36)",
+    4
+   ],
+   [
+    "rgb(12, 11, 10)",
+    2
+   ],
+   [
+    "oklab(0.836863 0.0160027 0.163654 / 0.8)",
+    1
+   ]
+  ],
+  "nEyebrowSizes": 2,
+  "eyebrows": [
+   [
+    "12.5",
+    6
+   ],
+   [
+    "12",
+    3
+   ]
+  ],
+  "emojiUI": 0,
+  "nBgs": 6,
+  "bgs": [
+   [
+    "rgb(12, 11, 10)",
+    14
+   ],
+   [
+    "rgb(21, 19, 17)",
+    10
+   ],
+   [
+    "rgb(242, 237, 228)",
+    2
+   ],
+   [
+    "rgb(33, 29, 25)",
+    1
+   ],
+   [
+    "rgb(156, 149, 138)",
+    1
+   ],
+   [
+    "rgb(52, 211, 153)",
+    1
+   ]
+  ],
+  "nBorders": 8,
+  "nRadii": 5,
+  "radii": [
+   [
+    "3.35544e+07px",
+    27
+   ],
+   [
+    "16px",
+    10
+   ],
+   [
+    "8px",
+    8
+   ],
+   [
+    "12px",
+    6
+   ],
+   [
+    "0px",
+    4
+   ]
+  ],
+  "nPads": 5,
+  "nBotones": 24,
+  "nFirmasBoton": 6,
+  "firmas": [
+   [
+    "rgba(0, 0, 0, 0) | rgb(156, 149, 138) | rgba(242, 237, 228, 0.1) | 3.35544e+07px | 44px | 13px | up",
+    14
+   ],
+   [
+    "oklab(0.772937 -0.14692 0.0443151 / 0.1) | rgb(52, 211, 153) | oklab(0.772937 -0.14692 0.0443151 / 0.4) | 3.35544e+07px | 44px | 12px | up",
+    5
+   ],
+   [
+    "rgb(242, 237, 228) | rgb(12, 11, 10) | rgb(242, 237, 228) | 3.35544e+07px | 44px | 13px | up",
+    2
+   ],
+   [
+    "rgb(21, 19, 17) | rgb(242, 237, 228) | rgba(242, 237, 228, 0.1) | 3.35544e+07px | 44px | 16px | up",
+    1
+   ],
+   [
+    "rgb(33, 29, 25) | rgb(242, 237, 228) | rgba(242, 237, 228, 0.1) | 3.35544e+07px | 44px | 13px | up",
+    1
+   ],
+   [
+    "rgb(12, 11, 10) | rgb(242, 237, 228) | rgba(242, 237, 228, 0.1) | 8px | 44px | 16px | up",
+    1
+   ]
+  ],
+  "contrasteMedidos": 87,
+  "contrasteSinMedir": 29,
+  "nContrasteMal": 0,
+  "contrasteMal": [],
+  "imgDeformadas": 0,
+  "imgSinAlt": 0,
+  "h1": "CUADRE DE CAJA",
+  "area": "admin",
+  "pantalla": "Caja (cuadre)",
+  "ruta": "/admin/cuadre",
+  "vp": "movil",
+  "http": 200,
+  "url": "https://barbasybigotes.com/admin/cuadre",
+  "errores": [],
+  "captura": "vis-admin-caja-cuadre-movil.png",
+  "capturaFull": "vis-admin-caja-cuadre-movil-full.png"
+ },
+ {
+  "sw": 1280,
+  "vw": 1280,
+  "alto": 1493,
+  "cromo": 206,
+  "interactivos": 48,
+  "nChicos": 1,
+  "chicos": [
+   {
+    "t": "Barbas & Bigotes · Hoy",
+    "w": 94,
+    "h": 32
+   }
+  ],
+  "textoTotal": 118,
+  "textoChico": 0,
+  "nSizes": 12,
+  "sizes": [
+   [
+    "12",
+    41
+   ],
+   [
+    "13",
+    31
+   ],
+   [
+    "12.5",
+    10
+   ],
+   [
+    "20",
+    7
+   ],
+   [
+    "13.5",
+    7
+   ],
+   [
+    "15",
+    6
+   ],
+   [
+    "14",
+    5
+   ],
+   [
+    "17",
+    3
+   ],
+   [
+    "26",
+    3
+   ],
+   [
+    "24",
+    2
+   ],
+   [
+    "30",
+    2
+   ],
+   [
+    "32",
+    1
+   ]
+  ],
+  "nWeights": 5,
+  "weights": [
+   [
+    "400",
+    49
+   ],
+   [
+    "600",
+    41
+   ],
+   [
+    "700",
+    26
+   ],
+   [
+    "500",
+    1
+   ],
+   [
+    "800",
+    1
+   ]
+  ],
+  "fams": [
+   [
+    "Inter",
+    93
+   ],
+   [
+    "Barlow Condensed",
+    24
+   ],
+   [
+    "ui-monospace",
+    1
+   ]
+  ],
+  "nTextColors": 8,
+  "tcolors": [
+   [
+    "rgb(156, 149, 138)",
+    65
+   ],
+   [
+    "rgb(242, 237, 228)",
+    25
+   ],
+   [
+    "rgb(52, 211, 153)",
+    8
+   ],
+   [
+    "rgb(232, 103, 92)",
+    7
+   ],
+   [
+    "rgb(251, 247, 240)",
+    6
+   ],
+   [
+    "rgb(251, 191, 36)",
+    4
+   ],
+   [
+    "rgb(12, 11, 10)",
+    2
+   ],
+   [
+    "oklab(0.836863 0.0160027 0.163654 / 0.8)",
+    1
+   ]
+  ],
+  "nEyebrowSizes": 2,
+  "eyebrows": [
+   [
+    "12.5",
+    6
+   ],
+   [
+    "12",
+    3
+   ]
+  ],
+  "emojiUI": 0,
+  "nBgs": 6,
+  "bgs": [
+   [
+    "rgb(12, 11, 10)",
+    14
+   ],
+   [
+    "rgb(21, 19, 17)",
+    10
+   ],
+   [
+    "rgb(242, 237, 228)",
+    2
+   ],
+   [
+    "rgb(33, 29, 25)",
+    1
+   ],
+   [
+    "rgb(156, 149, 138)",
+    1
+   ],
+   [
+    "rgb(52, 211, 153)",
+    1
+   ]
+  ],
+  "nBorders": 8,
+  "nRadii": 5,
+  "radii": [
+   [
+    "3.35544e+07px",
+    27
+   ],
+   [
+    "16px",
+    10
+   ],
+   [
+    "8px",
+    8
+   ],
+   [
+    "12px",
+    6
+   ],
+   [
+    "0px",
+    4
+   ]
+  ],
+  "nPads": 5,
+  "nBotones": 24,
+  "nFirmasBoton": 6,
+  "firmas": [
+   [
+    "rgba(0, 0, 0, 0) | rgb(156, 149, 138) | rgba(242, 237, 228, 0.1) | 3.35544e+07px | 44px | 13px | up",
+    14
+   ],
+   [
+    "oklab(0.772937 -0.14692 0.0443151 / 0.1) | rgb(52, 211, 153) | oklab(0.772937 -0.14692 0.0443151 / 0.4) | 3.35544e+07px | 44px | 12px | up",
+    5
+   ],
+   [
+    "rgb(242, 237, 228) | rgb(12, 11, 10) | rgb(242, 237, 228) | 3.35544e+07px | 44px | 13px | up",
+    2
+   ],
+   [
+    "rgb(21, 19, 17) | rgb(156, 149, 138) | rgba(242, 237, 228, 0.1) | 3.35544e+07px | 44px | 13px | up",
+    1
+   ],
+   [
+    "rgb(33, 29, 25) | rgb(242, 237, 228) | rgba(242, 237, 228, 0.1) | 3.35544e+07px | 44px | 13px | up",
+    1
+   ],
+   [
+    "rgb(12, 11, 10) | rgb(242, 237, 228) | rgba(242, 237, 228, 0.1) | 8px | 44px | 16px | up",
+    1
+   ]
+  ],
+  "contrasteMedidos": 89,
+  "contrasteSinMedir": 29,
+  "nContrasteMal": 0,
+  "contrasteMal": [],
+  "imgDeformadas": 0,
+  "imgSinAlt": 0,
+  "h1": "CUADRE DE CAJA",
+  "area": "admin",
+  "pantalla": "Caja (cuadre)",
+  "ruta": "/admin/cuadre",
+  "vp": "escritorio",
+  "http": 200,
+  "url": "https://barbasybigotes.com/admin/cuadre",
+  "errores": [],
+  "captura": "vis-admin-caja-cuadre-escritorio.png"
+ },
+ {
+  "sw": 390,
+  "vw": 390,
+  "alto": 2193,
+  "cromo": 146,
+  "interactivos": 43,
+  "nChicos": 0,
+  "chicos": [],
+  "textoTotal": 139,
+  "textoChico": 0,
+  "nSizes": 6,
+  "sizes": [
+   [
+    "12",
+    66
+   ],
+   [
+    "15",
+    29
+   ],
+   [
+    "17",
+    22
+   ],
+   [
+    "13",
+    20
+   ],
+   [
+    "28",
+    1
+   ],
+   [
+    "12.5",
+    1
+   ]
+  ],
+  "nWeights": 4,
+  "weights": [
+   [
+    "400",
+    68
+   ],
+   [
+    "700",
+    52
+   ],
+   [
+    "600",
+    18
+   ],
+   [
+    "800",
+    1
+   ]
+  ],
+  "fams": [
+   [
+    "Inter",
+    87
+   ],
+   [
+    "Barlow Condensed",
+    52
+   ]
+  ],
+  "nTextColors": 4,
+  "tcolors": [
+   [
+    "rgb(156, 149, 138)",
+    81
+   ],
+   [
+    "rgb(242, 237, 228)",
+    34
+   ],
+   [
+    "rgb(12, 11, 10)",
+    23
+   ],
+   [
+    "rgb(251, 247, 240)",
+    1
+   ]
+  ],
+  "nEyebrowSizes": 2,
+  "eyebrows": [
+   [
+    "12",
+    1
+   ],
+   [
+    "12.5",
+    1
+   ]
+  ],
+  "emojiUI": 0,
+  "nBgs": 9,
+  "bgs": [
+   [
+    "rgb(217, 160, 102)",
+    8
+   ],
+   [
+    "rgb(143, 122, 96)",
+    5
+   ],
+   [
+    "rgb(232, 103, 92)",
+    4
+   ],
+   [
+    "rgb(163, 144, 124)",
+    4
+   ],
+   [
+    "rgb(12, 11, 10)",
+    2
+   ],
+   [
+    "rgb(21, 19, 17)",
+    1
+   ],
+   [
+    "rgb(33, 29, 25)",
+    1
+   ],
+   [
+    "rgb(242, 237, 228)",
+    1
+   ]
+  ],
+  "nBorders": 3,
+  "nRadii": 3,
+  "radii": [
+   [
+    "3.35544e+07px",
+    49
+   ],
+   [
+    "12px",
+    2
+   ],
+   [
+    "0px",
+    1
+   ]
+  ],
+  "nPads": 1,
+  "nBotones": 7,
+  "nFirmasBoton": 5,
+  "firmas": [
+   [
+    "rgba(0, 0, 0, 0) | rgb(156, 149, 138) | rgba(242, 237, 228, 0.1) | 3.35544e+07px | 44px | 13px | up",
+    3
+   ],
+   [
+    "rgb(21, 19, 17) | rgb(242, 237, 228) | rgba(242, 237, 228, 0.1) | 3.35544e+07px | 44px | 16px | up",
+    1
+   ],
+   [
+    "rgb(33, 29, 25) | rgb(242, 237, 228) | rgba(242, 237, 228, 0.1) | 3.35544e+07px | 44px | 13px | up",
+    1
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(156, 149, 138) | rgba(242, 237, 228, 0.1) | 12px | 44px | 13px | up",
+    1
+   ],
+   [
+    "rgb(242, 237, 228) | rgb(12, 11, 10) | rgb(242, 237, 228) | 3.35544e+07px | 44px | 13px | up",
+    1
+   ]
+  ],
+  "contrasteMedidos": 129,
+  "contrasteSinMedir": 10,
+  "nContrasteMal": 0,
+  "contrasteMal": [],
+  "imgDeformadas": 0,
+  "imgSinAlt": 0,
+  "h1": "CLIENTES",
+  "area": "admin",
+  "pantalla": "Clientes",
+  "ruta": "/admin/clientes",
+  "vp": "movil",
+  "http": 200,
+  "url": "https://barbasybigotes.com/admin/clientes",
+  "errores": [],
+  "captura": "vis-admin-clientes-movil.png",
+  "capturaFull": "vis-admin-clientes-movil-full.png"
+ },
+ {
+  "sw": 1280,
+  "vw": 1280,
+  "alto": 1961,
+  "cromo": 152,
+  "interactivos": 46,
+  "nChicos": 4,
+  "chicos": [
+   {
+    "t": "Barbas & Bigotes · Hoy",
+    "w": 94,
+    "h": 32
+   },
+   {
+    "t": "Ambas sedes",
+    "w": 113,
+    "h": 36
+   },
+   {
+    "t": "Parque Venezuela",
+    "w": 141,
+    "h": 36
+   },
+   {
+    "t": "Plaza de la Paz",
+    "w": 122,
+    "h": 36
+   }
+  ],
+  "textoTotal": 151,
+  "textoChico": 0,
+  "nSizes": 7,
+  "sizes": [
+   [
+    "12",
+    76
+   ],
+   [
+    "15",
+    29
+   ],
+   [
+    "17",
+    22
+   ],
+   [
+    "13",
+    18
+   ],
+   [
+    "24",
+    4
+   ],
+   [
+    "32",
+    1
+   ],
+   [
+    "12.5",
+    1
+   ]
+  ],
+  "nWeights": 4,
+  "weights": [
+   [
+    "400",
+    73
+   ],
+   [
+    "700",
+    56
+   ],
+   [
+    "600",
+    21
+   ],
+   [
+    "800",
+    1
+   ]
+  ],
+  "fams": [
+   [
+    "Inter",
+    94
+   ],
+   [
+    "Barlow Condensed",
+    56
+   ],
+   [
+    "ui-monospace",
+    1
+   ]
+  ],
+  "nTextColors": 4,
+  "tcolors": [
+   [
+    "rgb(156, 149, 138)",
+    86
+   ],
+   [
+    "rgb(242, 237, 228)",
+    41
+   ],
+   [
+    "rgb(12, 11, 10)",
+    23
+   ],
+   [
+    "rgb(251, 247, 240)",
+    1
+   ]
+  ],
+  "nEyebrowSizes": 2,
+  "eyebrows": [
+   [
+    "12",
+    2
+   ],
+   [
+    "12.5",
+    1
+   ]
+  ],
+  "emojiUI": 0,
+  "nBgs": 9,
+  "bgs": [
+   [
+    "rgb(217, 160, 102)",
+    8
+   ],
+   [
+    "rgb(21, 19, 17)",
+    5
+   ],
+   [
+    "rgb(143, 122, 96)",
+    5
+   ],
+   [
+    "rgb(232, 103, 92)",
+    4
+   ],
+   [
+    "rgb(163, 144, 124)",
+    4
+   ],
+   [
+    "rgb(12, 11, 10)",
+    2
+   ],
+   [
+    "rgb(242, 237, 228)",
+    1
+   ],
+   [
+    "rgb(33, 29, 25)",
+    1
+   ]
+  ],
+  "nBorders": 3,
+  "nRadii": 4,
+  "radii": [
+   [
+    "3.35544e+07px",
+    47
+   ],
+   [
+    "16px",
+    4
+   ],
+   [
+    "12px",
+    2
+   ],
+   [
+    "0px",
+    1
+   ]
+  ],
+  "nPads": 2,
+  "nBotones": 8,
+  "nFirmasBoton": 6,
+  "firmas": [
+   [
+    "rgb(21, 19, 17) | rgb(242, 237, 228) | rgba(242, 237, 228, 0.1) | 16px | 92px | 16px | up",
+    3
+   ],
+   [
+    "rgb(242, 237, 228) | rgb(12, 11, 10) | rgb(12, 11, 10) | 3.35544e+07px | 36px | 13px | up",
+    1
+   ],
+   [
+    "rgb(21, 19, 17) | rgb(156, 149, 138) | rgba(242, 237, 228, 0.1) | 3.35544e+07px | 44px | 13px | up",
+    1
+   ],
+   [
+    "rgb(33, 29, 25) | rgb(242, 237, 228) | rgba(242, 237, 228, 0.1) | 3.35544e+07px | 44px | 13px | up",
+    1
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(156, 149, 138) | rgba(242, 237, 228, 0.1) | 12px | 44px | 13px | up",
+    1
+   ],
+   [
+    "oklab(0.581255 0.163163 0.0885327 / 0.1) | rgb(242, 237, 228) | rgb(210, 63, 52) | 16px | 92px | 16px | up",
+    1
+   ]
+  ],
+  "contrasteMedidos": 138,
+  "contrasteSinMedir": 13,
+  "nContrasteMal": 0,
+  "contrasteMal": [],
+  "imgDeformadas": 0,
+  "imgSinAlt": 0,
+  "h1": "CLIENTES",
+  "area": "admin",
+  "pantalla": "Clientes",
+  "ruta": "/admin/clientes",
+  "vp": "escritorio",
+  "http": 200,
+  "url": "https://barbasybigotes.com/admin/clientes",
+  "errores": [],
+  "captura": "vis-admin-clientes-escritorio.png"
+ },
+ {
+  "sw": 390,
+  "vw": 390,
+  "alto": 2842,
+  "cromo": 206,
+  "interactivos": 74,
+  "nChicos": 0,
+  "chicos": [],
+  "textoTotal": 114,
+  "textoChico": 0,
+  "nSizes": 7,
+  "sizes": [
+   [
+    "12",
+    62
+   ],
+   [
+    "16",
+    21
+   ],
+   [
+    "13",
+    18
+   ],
+   [
+    "14",
+    8
+   ],
+   [
+    "24",
+    3
+   ],
+   [
+    "18",
+    1
+   ],
+   [
+    "28",
+    1
+   ]
+  ],
+  "nWeights": 4,
+  "weights": [
+   [
+    "600",
+    73
+   ],
+   [
+    "400",
+    28
+   ],
+   [
+    "700",
+    12
+   ],
+   [
+    "800",
+    1
+   ]
+  ],
+  "fams": [
+   [
+    "Inter",
+    102
+   ],
+   [
+    "Barlow Condensed",
+    12
+   ]
+  ],
+  "nTextColors": 6,
+  "tcolors": [
+   [
+    "rgb(156, 149, 138)",
+    59
+   ],
+   [
+    "rgb(242, 237, 228)",
+    36
+   ],
+   [
+    "oklab(0.947519 0.00173855 0.0130325 / 0.85)",
+    7
+   ],
+   [
+    "oklab(0.947513 0.00178179 0.0130511 / 0.85)",
+    7
+   ],
+   [
+    "rgb(12, 11, 10)",
+    3
+   ],
+   [
+    "rgb(251, 191, 36)",
+    2
+   ]
+  ],
+  "nEyebrowSizes": 1,
+  "eyebrows": [
+   [
+    "12",
+    8
+   ]
+  ],
+  "emojiUI": 0,
+  "nBgs": 12,
+  "bgs": [
+   [
+    "rgb(33, 29, 25)",
+    18
+   ],
+   [
+    "rgb(21, 19, 17)",
+    11
+   ],
+   [
+    "rgb(210, 63, 52)",
+    7
+   ],
+   [
+    "rgb(52, 211, 153)",
+    4
+   ],
+   [
+    "rgb(156, 149, 138)",
+    3
+   ],
+   [
+    "rgb(12, 11, 10)",
+    2
+   ],
+   [
+    "rgb(242, 237, 228)",
+    2
+   ],
+   [
+    "rgb(51, 47, 28)",
+    2
+   ]
+  ],
+  "nBorders": 7,
+  "nRadii": 6,
+  "radii": [
+   [
+    "3.35544e+07px",
+    41
+   ],
+   [
+    "8px",
+    14
+   ],
+   [
+    "16px",
+    11
+   ],
+   [
+    "0px",
+    8
+   ],
+   [
+    "10px",
+    7
+   ],
+   [
+    "12px",
+    1
+   ]
+  ],
+  "nPads": 3,
+  "nBotones": 19,
+  "nFirmasBoton": 7,
+  "firmas": [
+   [
+    "rgba(0, 0, 0, 0) | rgb(156, 149, 138) | rgba(242, 237, 228, 0.1) | 3.35544e+07px | 44px | 12px | up",
+    7
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(242, 237, 228) | rgba(242, 237, 228, 0.1) | 3.35544e+07px | 40px | 12px | UP",
+    7
+   ],
+   [
+    "rgb(21, 19, 17) | rgb(242, 237, 228) | rgba(242, 237, 228, 0.1) | 3.35544e+07px | 44px | 16px | up",
+    1
+   ],
+   [
+    "rgb(33, 29, 25) | rgb(242, 237, 228) | rgba(242, 237, 228, 0.1) | 3.35544e+07px | 44px | 13px | up",
+    1
+   ],
+   [
+    "rgb(242, 237, 228) | rgb(12, 11, 10) | rgb(242, 237, 228) | 3.35544e+07px | 44px | 13px | up",
+    1
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(156, 149, 138) | rgba(242, 237, 228, 0.1) | 3.35544e+07px | 44px | 13px | up",
+    1
+   ],
+   [
+    "rgb(242, 237, 228) | rgb(12, 11, 10) | rgb(242, 237, 228) | 3.35544e+07px | 44px | 12px | up",
+    1
+   ]
+  ],
+  "contrasteMedidos": 88,
+  "contrasteSinMedir": 26,
+  "nContrasteMal": 0,
+  "contrasteMal": [],
+  "imgDeformadas": 0,
+  "imgSinAlt": 0,
+  "h1": "SERVICIOS Y PRECIOS",
+  "area": "admin",
+  "pantalla": "Servicios y precios",
+  "ruta": "/admin/precios",
+  "vp": "movil",
+  "http": 200,
+  "url": "https://barbasybigotes.com/admin/precios",
+  "errores": [],
+  "captura": "vis-admin-servicios-y-precios-movil.png",
+  "capturaFull": "vis-admin-servicios-y-precios-movil-full.png"
+ },
+ {
+  "sw": 1280,
+  "vw": 1280,
+  "alto": 2254,
+  "cromo": 212,
+  "interactivos": 77,
+  "nChicos": 4,
+  "chicos": [
+   {
+    "t": "Barbas & Bigotes · Hoy",
+    "w": 94,
+    "h": 32
+   },
+   {
+    "t": "Ambas sedes",
+    "w": 113,
+    "h": 36
+   },
+   {
+    "t": "Parque Venezuela",
+    "w": 141,
+    "h": 36
+   },
+   {
+    "t": "Plaza de la Paz",
+    "w": 122,
+    "h": 36
+   }
+  ],
+  "textoTotal": 124,
+  "textoChico": 0,
+  "nSizes": 7,
+  "sizes": [
+   [
+    "12",
+    70
+   ],
+   [
+    "16",
+    21
+   ],
+   [
+    "13",
+    20
+   ],
+   [
+    "14",
+    8
+   ],
+   [
+    "24",
+    3
+   ],
+   [
+    "18",
+    1
+   ],
+   [
+    "32",
+    1
+   ]
+  ],
+  "nWeights": 4,
+  "weights": [
+   [
+    "600",
+    82
+   ],
+   [
+    "400",
+    29
+   ],
+   [
+    "700",
+    12
+   ],
+   [
+    "800",
+    1
+   ]
+  ],
+  "fams": [
+   [
+    "Inter",
+    111
+   ],
+   [
+    "Barlow Condensed",
+    12
+   ],
+   [
+    "ui-monospace",
+    1
+   ]
+  ],
+  "nTextColors": 6,
+  "tcolors": [
+   [
+    "rgb(156, 149, 138)",
+    62
+   ],
+   [
+    "rgb(242, 237, 228)",
+    35
+   ],
+   [
+    "oklab(0.947513 0.00178179 0.0130511 / 0.85)",
+    14
+   ],
+   [
+    "oklab(0.947519 0.00173855 0.0130325 / 0.85)",
+    7
+   ],
+   [
+    "rgb(12, 11, 10)",
+    4
+   ],
+   [
+    "rgb(251, 191, 36)",
+    2
+   ]
+  ],
+  "nEyebrowSizes": 1,
+  "eyebrows": [
+   [
+    "12",
+    8
+   ]
+  ],
+  "emojiUI": 0,
+  "nBgs": 12,
+  "bgs": [
+   [
+    "rgb(33, 29, 25)",
+    18
+   ],
+   [
+    "rgb(21, 19, 17)",
+    12
+   ],
+   [
+    "rgb(210, 63, 52)",
+    7
+   ],
+   [
+    "rgb(52, 211, 153)",
+    4
+   ],
+   [
+    "rgb(242, 237, 228)",
+    3
+   ],
+   [
+    "rgb(156, 149, 138)",
+    3
+   ],
+   [
+    "rgb(12, 11, 10)",
+    2
+   ],
+   [
+    "rgb(51, 47, 28)",
+    2
+   ]
+  ],
+  "nBorders": 7,
+  "nRadii": 6,
+  "radii": [
+   [
+    "3.35544e+07px",
+    43
+   ],
+   [
+    "8px",
+    14
+   ],
+   [
+    "16px",
+    11
+   ],
+   [
+    "0px",
+    8
+   ],
+   [
+    "10px",
+    7
+   ],
+   [
+    "12px",
+    1
+   ]
+  ],
+  "nPads": 4,
+  "nBotones": 20,
+  "nFirmasBoton": 8,
+  "firmas": [
+   [
+    "rgba(0, 0, 0, 0) | rgb(156, 149, 138) | rgba(242, 237, 228, 0.1) | 3.35544e+07px | 44px | 12px | up",
+    7
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(242, 237, 228) | rgba(242, 237, 228, 0.1) | 3.35544e+07px | 40px | 12px | UP",
+    7
+   ],
+   [
+    "rgb(242, 237, 228) | rgb(12, 11, 10) | rgb(12, 11, 10) | 3.35544e+07px | 36px | 13px | up",
+    1
+   ],
+   [
+    "rgb(21, 19, 17) | rgb(156, 149, 138) | rgba(242, 237, 228, 0.1) | 3.35544e+07px | 44px | 13px | up",
+    1
+   ],
+   [
+    "rgb(33, 29, 25) | rgb(242, 237, 228) | rgba(242, 237, 228, 0.1) | 3.35544e+07px | 44px | 13px | up",
+    1
+   ],
+   [
+    "rgb(242, 237, 228) | rgb(12, 11, 10) | rgb(242, 237, 228) | 3.35544e+07px | 44px | 13px | up",
+    1
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(156, 149, 138) | rgba(242, 237, 228, 0.1) | 3.35544e+07px | 44px | 13px | up",
+    1
+   ],
+   [
+    "rgb(242, 237, 228) | rgb(12, 11, 10) | rgb(242, 237, 228) | 3.35544e+07px | 44px | 12px | up",
+    1
+   ]
+  ],
+  "contrasteMedidos": 91,
+  "contrasteSinMedir": 33,
+  "nContrasteMal": 0,
+  "contrasteMal": [],
+  "imgDeformadas": 0,
+  "imgSinAlt": 0,
+  "h1": "SERVICIOS Y PRECIOS",
+  "area": "admin",
+  "pantalla": "Servicios y precios",
+  "ruta": "/admin/precios",
+  "vp": "escritorio",
+  "http": 200,
+  "url": "https://barbasybigotes.com/admin/precios",
+  "errores": [],
+  "captura": "vis-admin-servicios-y-precios-escritorio.png"
+ },
+ {
+  "sw": 390,
+  "vw": 390,
+  "alto": 4591,
+  "cromo": 206,
+  "interactivos": 107,
+  "nChicos": 0,
+  "chicos": [],
+  "textoTotal": 193,
+  "textoChico": 0,
+  "nSizes": 7,
+  "sizes": [
+   [
+    "13",
+    70
+   ],
+   [
+    "12",
+    46
+   ],
+   [
+    "12.5",
+    32
+   ],
+   [
+    "15",
+    15
+   ],
+   [
+    "18",
+    15
+   ],
+   [
+    "16",
+    14
+   ],
+   [
+    "28",
+    1
+   ]
+  ],
+  "nWeights": 4,
+  "weights": [
+   [
+    "400",
+    79
+   ],
+   [
+    "600",
+    61
+   ],
+   [
+    "700",
+    37
+   ],
+   [
+    "800",
+    16
+   ]
+  ],
+  "fams": [
+   [
+    "Inter",
+    163
+   ],
+   [
+    "Barlow Condensed",
+    30
+   ]
+  ],
+  "nTextColors": 7,
+  "tcolors": [
+   [
+    "rgb(156, 149, 138)",
+    74
+   ],
+   [
+    "rgb(242, 237, 228)",
+    63
+   ],
+   [
+    "rgb(232, 103, 92)",
+    30
+   ],
+   [
+    "oklab(0.947519 0.00173855 0.0130325 / 0.85)",
+    14
+   ],
+   [
+    "rgb(251, 191, 36)",
+    10
+   ],
+   [
+    "rgb(12, 11, 10)",
+    1
+   ],
+   [
+    "rgb(251, 247, 240)",
+    1
+   ]
+  ],
+  "nEyebrowSizes": 2,
+  "eyebrows": [
+   [
+    "13",
+    2
+   ],
+   [
+    "12",
+    1
+   ]
+  ],
+  "emojiUI": 0,
+  "nBgs": 12,
+  "bgs": [
+   [
+    "rgb(33, 29, 25)",
+    20
+   ],
+   [
+    "rgb(21, 19, 17)",
+    16
+   ],
+   [
+    "rgb(210, 63, 52)",
+    15
+   ],
+   [
+    "rgb(52, 211, 153)",
+    9
+   ],
+   [
+    "rgb(156, 149, 138)",
+    6
+   ],
+   [
+    "rgb(51, 47, 28)",
+    5
+   ],
+   [
+    "rgb(38, 40, 45)",
+    4
+   ],
+   [
+    "rgb(51, 38, 26)",
+    2
+   ]
+  ],
+  "nBorders": 8,
+  "nRadii": 4,
+  "radii": [
+   [
+    "3.35544e+07px",
+    93
+   ],
+   [
+    "0px",
+    16
+   ],
+   [
+    "16px",
+    15
+   ],
+   [
+    "10px",
+    14
+   ]
+  ],
+  "nPads": 2,
+  "nBotones": 34,
+  "nFirmasBoton": 6,
+  "firmas": [
+   [
+    "rgba(0, 0, 0, 0) | rgb(156, 149, 138) | rgba(242, 237, 228, 0.1) | 3.35544e+07px | 44px | 13px | up",
+    16
+   ],
+   [
+    "oklab(0.581255 0.163163 0.0885327 / 0.07) | rgb(232, 103, 92) | oklab(0.581255 0.163163 0.0885327 / 0.4) | 3.35544e+07px | 44px | 13px | up",
+    13
+   ],
+   [
+    "oklab(0.836863 0.0160027 0.163654 / 0.1) | rgb(251, 191, 36) | oklab(0.836863 0.0160027 0.163654 / 0.5) | 3.35544e+07px | 44px | 13px | up",
+    2
+   ],
+   [
+    "rgb(21, 19, 17) | rgb(242, 237, 228) | rgba(242, 237, 228, 0.1) | 3.35544e+07px | 44px | 16px | up",
+    1
+   ],
+   [
+    "rgb(33, 29, 25) | rgb(242, 237, 228) | rgba(242, 237, 228, 0.1) | 3.35544e+07px | 44px | 13px | up",
+    1
+   ],
+   [
+    "rgb(242, 237, 228) | rgb(12, 11, 10) | rgb(242, 237, 228) | 3.35544e+07px | 44px | 13px | up",
+    1
+   ]
+  ],
+  "contrasteMedidos": 148,
+  "contrasteSinMedir": 45,
+  "nContrasteMal": 0,
+  "contrasteMal": [],
+  "imgDeformadas": 0,
+  "imgSinAlt": 0,
+  "h1": "PRODUCTOS Y STOCK",
+  "area": "admin",
+  "pantalla": "Productos y stock",
+  "ruta": "/admin/inventario",
+  "vp": "movil",
+  "http": 200,
+  "url": "https://barbasybigotes.com/admin/inventario",
+  "errores": [],
+  "captura": "vis-admin-productos-y-stock-movil.png",
+  "capturaFull": "vis-admin-productos-y-stock-movil-full.png"
+ },
+ {
+  "sw": 1280,
+  "vw": 1280,
+  "alto": 2222,
+  "cromo": 212,
+  "interactivos": 110,
+  "nChicos": 4,
+  "chicos": [
+   {
+    "t": "Barbas & Bigotes · Hoy",
+    "w": 94,
+    "h": 32
+   },
+   {
+    "t": "Ambas sedes",
+    "w": 113,
+    "h": 36
+   },
+   {
+    "t": "Parque Venezuela",
+    "w": 141,
+    "h": 36
+   },
+   {
+    "t": "Plaza de la Paz",
+    "w": 122,
+    "h": 36
+   }
+  ],
+  "textoTotal": 196,
+  "textoChico": 0,
+  "nSizes": 7,
+  "sizes": [
+   [
+    "13",
+    72
+   ],
+   [
+    "12",
+    47
+   ],
+   [
+    "12.5",
+    32
+   ],
+   [
+    "15",
+    15
+   ],
+   [
+    "18",
+    15
+   ],
+   [
+    "16",
+    14
+   ],
+   [
+    "32",
+    1
+   ]
+  ],
+  "nWeights": 4,
+  "weights": [
+   [
+    "400",
+    80
+   ],
+   [
+    "600",
+    63
+   ],
+   [
+    "700",
+    37
+   ],
+   [
+    "800",
+    16
+   ]
+  ],
+  "fams": [
+   [
+    "Inter",
+    165
+   ],
+   [
+    "Barlow Condensed",
+    30
+   ],
+   [
+    "ui-monospace",
+    1
+   ]
+  ],
+  "nTextColors": 7,
+  "tcolors": [
+   [
+    "rgb(156, 149, 138)",
+    77
+   ],
+   [
+    "rgb(242, 237, 228)",
+    62
+   ],
+   [
+    "rgb(232, 103, 92)",
+    30
+   ],
+   [
+    "oklab(0.947519 0.00173855 0.0130325 / 0.85)",
+    14
+   ],
+   [
+    "rgb(251, 191, 36)",
+    10
+   ],
+   [
+    "rgb(12, 11, 10)",
+    2
+   ],
+   [
+    "rgb(251, 247, 240)",
+    1
+   ]
+  ],
+  "nEyebrowSizes": 2,
+  "eyebrows": [
+   [
+    "13",
+    2
+   ],
+   [
+    "12",
+    1
+   ]
+  ],
+  "emojiUI": 0,
+  "nBgs": 12,
+  "bgs": [
+   [
+    "rgb(33, 29, 25)",
+    20
+   ],
+   [
+    "rgb(21, 19, 17)",
+    17
+   ],
+   [
+    "rgb(210, 63, 52)",
+    15
+   ],
+   [
+    "rgb(52, 211, 153)",
+    9
+   ],
+   [
+    "rgb(156, 149, 138)",
+    6
+   ],
+   [
+    "rgb(51, 47, 28)",
+    5
+   ],
+   [
+    "rgb(38, 40, 45)",
+    4
+   ],
+   [
+    "rgb(242, 237, 228)",
+    2
+   ]
+  ],
+  "nBorders": 8,
+  "nRadii": 4,
+  "radii": [
+   [
+    "3.35544e+07px",
+    95
+   ],
+   [
+    "0px",
+    16
+   ],
+   [
+    "16px",
+    15
+   ],
+   [
+    "10px",
+    14
+   ]
+  ],
+  "nPads": 3,
+  "nBotones": 35,
+  "nFirmasBoton": 7,
+  "firmas": [
+   [
+    "rgba(0, 0, 0, 0) | rgb(156, 149, 138) | rgba(242, 237, 228, 0.1) | 3.35544e+07px | 44px | 13px | up",
+    16
+   ],
+   [
+    "oklab(0.581255 0.163163 0.0885327 / 0.07) | rgb(232, 103, 92) | oklab(0.581255 0.163163 0.0885327 / 0.4) | 3.35544e+07px | 44px | 13px | up",
+    13
+   ],
+   [
+    "oklab(0.836863 0.0160027 0.163654 / 0.1) | rgb(251, 191, 36) | oklab(0.836863 0.0160027 0.163654 / 0.5) | 3.35544e+07px | 44px | 13px | up",
+    2
+   ],
+   [
+    "rgb(242, 237, 228) | rgb(12, 11, 10) | rgb(12, 11, 10) | 3.35544e+07px | 36px | 13px | up",
+    1
+   ],
+   [
+    "rgb(21, 19, 17) | rgb(156, 149, 138) | rgba(242, 237, 228, 0.1) | 3.35544e+07px | 44px | 13px | up",
+    1
+   ],
+   [
+    "rgb(33, 29, 25) | rgb(242, 237, 228) | rgba(242, 237, 228, 0.1) | 3.35544e+07px | 44px | 13px | up",
+    1
+   ],
+   [
+    "rgb(242, 237, 228) | rgb(12, 11, 10) | rgb(242, 237, 228) | 3.35544e+07px | 44px | 13px | up",
+    1
+   ]
+  ],
+  "contrasteMedidos": 151,
+  "contrasteSinMedir": 45,
+  "nContrasteMal": 0,
+  "contrasteMal": [],
+  "imgDeformadas": 0,
+  "imgSinAlt": 0,
+  "h1": "PRODUCTOS Y STOCK",
+  "area": "admin",
+  "pantalla": "Productos y stock",
+  "ruta": "/admin/inventario",
+  "vp": "escritorio",
+  "http": 200,
+  "url": "https://barbasybigotes.com/admin/inventario",
+  "errores": [],
+  "captura": "vis-admin-productos-y-stock-escritorio.png"
+ },
+ {
+  "sw": 390,
+  "vw": 390,
+  "alto": 4993,
+  "cromo": 206,
+  "interactivos": 61,
+  "nChicos": 0,
+  "chicos": [],
+  "textoTotal": 114,
+  "textoChico": 0,
+  "nSizes": 8,
+  "sizes": [
+   [
+    "12",
+    44
+   ],
+   [
+    "13",
+    38
+   ],
+   [
+    "12.5",
+    20
+   ],
+   [
+    "17",
+    8
+   ],
+   [
+    "14",
+    1
+   ],
+   [
+    "18",
+    1
+   ],
+   [
+    "28",
+    1
+   ],
+   [
+    "13.5",
+    1
+   ]
+  ],
+  "nWeights": 4,
+  "weights": [
+   [
+    "700",
+    49
+   ],
+   [
+    "600",
+    37
+   ],
+   [
+    "400",
+    27
+   ],
+   [
+    "800",
+    1
+   ]
+  ],
+  "fams": [
+   [
+    "Inter",
+    104
+   ],
+   [
+    "Barlow Condensed",
+    10
+   ]
+  ],
+  "nTextColors": 6,
+  "tcolors": [
+   [
+    "rgb(242, 237, 228)",
+    49
+   ],
+   [
+    "rgb(156, 149, 138)",
+    46
+   ],
+   [
+    "rgb(251, 247, 240)",
+    9
+   ],
+   [
+    "rgb(52, 211, 153)",
+    8
+   ],
+   [
+    "rgb(12, 11, 10)",
+    1
+   ],
+   [
+    "oklab(0.947513 0.00178179 0.0130511 / 0.85)",
+    1
+   ]
+  ],
+  "nEyebrowSizes": 2,
+  "eyebrows": [
+   [
+    "12",
+    23
+   ],
+   [
+    "12.5",
+    17
+   ]
+  ],
+  "emojiUI": 0,
+  "nBgs": 4,
+  "bgs": [
+   [
+    "rgb(21, 19, 17)",
+    17
+   ],
+   [
+    "rgb(33, 29, 25)",
+    8
+   ],
+   [
+    "rgb(12, 11, 10)",
+    4
+   ],
+   [
+    "rgb(242, 237, 228)",
+    1
+   ]
+  ],
+  "nBorders": 4,
+  "nRadii": 5,
+  "radii": [
+   [
+    "3.35544e+07px",
+    30
+   ],
+   [
+    "16px",
+    16
+   ],
+   [
+    "12px",
+    9
+   ],
+   [
+    "8px",
+    3
+   ],
+   [
+    "0px",
+    1
+   ]
+  ],
+  "nPads": 3,
+  "nBotones": 29,
+  "nFirmasBoton": 7,
+  "firmas": [
+   [
+    "rgba(0, 0, 0, 0) | rgb(242, 237, 228) | rgba(242, 237, 228, 0.1) | 3.35544e+07px | 40px | 12px | UP",
+    14
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(242, 237, 228) | rgba(242, 237, 228, 0.1) | 3.35544e+07px | 44px | 13px | UP",
+    8
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(156, 149, 138) | rgba(242, 237, 228, 0.1) | 3.35544e+07px | 44px | 13px | up",
+    3
+   ],
+   [
+    "rgb(21, 19, 17) | rgb(242, 237, 228) | rgba(242, 237, 228, 0.1) | 3.35544e+07px | 44px | 16px | up",
+    1
+   ],
+   [
+    "rgb(33, 29, 25) | rgb(242, 237, 228) | rgba(242, 237, 228, 0.1) | 3.35544e+07px | 44px | 13px | up",
+    1
+   ],
+   [
+    "rgb(242, 237, 228) | rgb(12, 11, 10) | rgb(242, 237, 228) | 3.35544e+07px | 44px | 13px | up",
+    1
+   ],
+   [
+    "rgb(12, 11, 10) | rgb(242, 237, 228) | rgba(242, 237, 228, 0.1) | 8px | 44px | 16px | up",
+    1
+   ]
+  ],
+  "contrasteMedidos": 95,
+  "contrasteSinMedir": 19,
+  "nContrasteMal": 0,
+  "contrasteMal": [],
+  "imgDeformadas": 0,
+  "imgSinAlt": 0,
+  "h1": "QUIÉN ENTRA A LA APP",
+  "area": "admin",
+  "pantalla": "Equipo",
+  "ruta": "/admin/equipo",
+  "vp": "movil",
+  "http": 200,
+  "url": "https://barbasybigotes.com/admin/equipo",
+  "errores": [],
+  "captura": "vis-admin-equipo-movil.png",
+  "capturaFull": "vis-admin-equipo-movil-full.png"
+ },
+ {
+  "sw": 1280,
+  "vw": 1280,
+  "alto": 3020,
+  "cromo": 212,
+  "interactivos": 61,
+  "nChicos": 1,
+  "chicos": [
+   {
+    "t": "Barbas & Bigotes · Hoy",
+    "w": 94,
+    "h": 32
+   }
+  ],
+  "textoTotal": 116,
+  "textoChico": 0,
+  "nSizes": 8,
+  "sizes": [
+   [
+    "12",
+    45
+   ],
+   [
+    "13",
+    39
+   ],
+   [
+    "12.5",
+    20
+   ],
+   [
+    "17",
+    8
+   ],
+   [
+    "14",
+    1
+   ],
+   [
+    "18",
+    1
+   ],
+   [
+    "32",
+    1
+   ],
+   [
+    "13.5",
+    1
+   ]
+  ],
+  "nWeights": 4,
+  "weights": [
+   [
+    "700",
+    49
+   ],
+   [
+    "600",
+    38
+   ],
+   [
+    "400",
+    28
+   ],
+   [
+    "800",
+    1
+   ]
+  ],
+  "fams": [
+   [
+    "Inter",
+    105
+   ],
+   [
+    "Barlow Condensed",
+    10
+   ],
+   [
+    "ui-monospace",
+    1
+   ]
+  ],
+  "nTextColors": 6,
+  "tcolors": [
+   [
+    "rgb(242, 237, 228)",
+    49
+   ],
+   [
+    "rgb(156, 149, 138)",
+    48
+   ],
+   [
+    "rgb(251, 247, 240)",
+    9
+   ],
+   [
+    "rgb(52, 211, 153)",
+    8
+   ],
+   [
+    "rgb(12, 11, 10)",
+    1
+   ],
+   [
+    "oklab(0.947513 0.00178179 0.0130511 / 0.85)",
+    1
+   ]
+  ],
+  "nEyebrowSizes": 2,
+  "eyebrows": [
+   [
+    "12",
+    23
+   ],
+   [
+    "12.5",
+    17
+   ]
+  ],
+  "emojiUI": 0,
+  "nBgs": 4,
+  "bgs": [
+   [
+    "rgb(21, 19, 17)",
+    17
+   ],
+   [
+    "rgb(33, 29, 25)",
+    8
+   ],
+   [
+    "rgb(12, 11, 10)",
+    4
+   ],
+   [
+    "rgb(242, 237, 228)",
+    1
+   ]
+  ],
+  "nBorders": 4,
+  "nRadii": 5,
+  "radii": [
+   [
+    "3.35544e+07px",
+    30
+   ],
+   [
+    "16px",
+    16
+   ],
+   [
+    "12px",
+    9
+   ],
+   [
+    "8px",
+    3
+   ],
+   [
+    "0px",
+    1
+   ]
+  ],
+  "nPads": 3,
+  "nBotones": 29,
+  "nFirmasBoton": 7,
+  "firmas": [
+   [
+    "rgba(0, 0, 0, 0) | rgb(242, 237, 228) | rgba(242, 237, 228, 0.1) | 3.35544e+07px | 40px | 12px | UP",
+    14
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(242, 237, 228) | rgba(242, 237, 228, 0.1) | 3.35544e+07px | 44px | 13px | UP",
+    8
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(156, 149, 138) | rgba(242, 237, 228, 0.1) | 3.35544e+07px | 44px | 13px | up",
+    3
+   ],
+   [
+    "rgb(21, 19, 17) | rgb(156, 149, 138) | rgba(242, 237, 228, 0.1) | 3.35544e+07px | 44px | 13px | up",
+    1
+   ],
+   [
+    "rgb(33, 29, 25) | rgb(242, 237, 228) | rgba(242, 237, 228, 0.1) | 3.35544e+07px | 44px | 13px | up",
+    1
+   ],
+   [
+    "rgb(242, 237, 228) | rgb(12, 11, 10) | rgb(242, 237, 228) | 3.35544e+07px | 44px | 13px | up",
+    1
+   ],
+   [
+    "rgb(12, 11, 10) | rgb(242, 237, 228) | rgba(242, 237, 228, 0.1) | 8px | 44px | 16px | up",
+    1
+   ]
+  ],
+  "contrasteMedidos": 97,
+  "contrasteSinMedir": 19,
+  "nContrasteMal": 0,
+  "contrasteMal": [],
+  "imgDeformadas": 0,
+  "imgSinAlt": 0,
+  "h1": "QUIÉN ENTRA A LA APP",
+  "area": "admin",
+  "pantalla": "Equipo",
+  "ruta": "/admin/equipo",
+  "vp": "escritorio",
+  "http": 200,
+  "url": "https://barbasybigotes.com/admin/equipo",
+  "errores": [],
+  "captura": "vis-admin-equipo-escritorio.png"
+ },
+ {
+  "sw": 390,
+  "vw": 390,
+  "alto": 2383,
+  "cromo": 206,
+  "interactivos": 21,
+  "nChicos": 0,
+  "chicos": [],
+  "textoTotal": 131,
+  "textoChico": 0,
+  "nSizes": 6,
+  "sizes": [
+   [
+    "12",
+    63
+   ],
+   [
+    "13",
+    30
+   ],
+   [
+    "19",
+    30
+   ],
+   [
+    "26",
+    6
+   ],
+   [
+    "15",
+    1
+   ],
+   [
+    "28",
+    1
+   ]
+  ],
+  "nWeights": 5,
+  "weights": [
+   [
+    "700",
+    67
+   ],
+   [
+    "400",
+    35
+   ],
+   [
+    "600",
+    21
+   ],
+   [
+    "800",
+    7
+   ],
+   [
+    "900",
+    1
+   ]
+  ],
+  "fams": [
+   [
+    "Inter",
+    92
+   ],
+   [
+    "Barlow Condensed",
+    39
+   ]
+  ],
+  "nTextColors": 5,
+  "tcolors": [
+   [
+    "rgb(156, 149, 138)",
+    81
+   ],
+   [
+    "rgb(242, 237, 228)",
+    41
+   ],
+   [
+    "rgb(232, 103, 92)",
+    7
+   ],
+   [
+    "rgb(12, 11, 10)",
+    1
+   ],
+   [
+    "oklab(0.672627 0.00335035 0.0176046 / 0.4)",
+    1
+   ]
+  ],
+  "nEyebrowSizes": 1,
+  "eyebrows": [
+   [
+    "12",
+    7
+   ]
+  ],
+  "emojiUI": 0,
+  "nBgs": 4,
+  "bgs": [
+   [
+    "rgb(21, 19, 17)",
+    32
+   ],
+   [
+    "rgb(12, 11, 10)",
+    1
+   ],
+   [
+    "rgb(33, 29, 25)",
+    1
+   ],
+   [
+    "rgb(242, 237, 228)",
+    1
+   ]
+  ],
+  "nBorders": 5,
+  "nRadii": 4,
+  "radii": [
+   [
+    "0px",
+    31
+   ],
+   [
+    "3.35544e+07px",
+    7
+   ],
+   [
+    "16px",
+    7
+   ],
+   [
+    "12px",
+    4
+   ]
+  ],
+  "nPads": 3,
+  "nBotones": 9,
+  "nFirmasBoton": 6,
+  "firmas": [
+   [
+    "rgba(0, 0, 0, 0) | rgb(156, 149, 138) | rgba(242, 237, 228, 0.1) | 3.35544e+07px | 44px | 13px | up",
+    3
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(156, 149, 138) | rgba(242, 237, 228, 0.1) | 12px | 44px | 13px | up",
+    2
+   ],
+   [
+    "rgb(21, 19, 17) | rgb(242, 237, 228) | rgba(242, 237, 228, 0.1) | 3.35544e+07px | 44px | 16px | up",
+    1
+   ],
+   [
+    "rgb(33, 29, 25) | rgb(242, 237, 228) | rgba(242, 237, 228, 0.1) | 3.35544e+07px | 44px | 13px | up",
+    1
+   ],
+   [
+    "rgb(242, 237, 228) | rgb(12, 11, 10) | rgb(242, 237, 228) | 3.35544e+07px | 44px | 13px | up",
+    1
+   ],
+   [
+    "rgba(0, 0, 0, 0) | oklab(0.672627 0.00335035 0.0176046 / 0.4) | oklab(0.947513 0.00178179 0.0130511 / 0.0509804) | 12px | 44px | 13px | up",
+    1
+   ]
+  ],
+  "contrasteMedidos": 106,
+  "contrasteSinMedir": 25,
+  "nContrasteMal": 0,
+  "contrasteMal": [],
+  "imgDeformadas": 0,
+  "imgSinAlt": 0,
+  "h1": "LIQUIDACIÓN SEMANAL",
+  "area": "admin",
+  "pantalla": "Liquidación",
+  "ruta": "/admin/liquidacion",
+  "vp": "movil",
+  "http": 200,
+  "url": "https://barbasybigotes.com/admin/liquidacion",
+  "errores": [],
+  "captura": "vis-admin-liquidaci-n-movil.png",
+  "capturaFull": "vis-admin-liquidaci-n-movil-full.png"
+ },
+ {
+  "sw": 1280,
+  "vw": 1280,
+  "alto": 1753,
+  "cromo": 212,
+  "interactivos": 24,
+  "nChicos": 4,
+  "chicos": [
+   {
+    "t": "Barbas & Bigotes · Hoy",
+    "w": 94,
+    "h": 32
+   },
+   {
+    "t": "Ambas sedes",
+    "w": 113,
+    "h": 36
+   },
+   {
+    "t": "Parque Venezuela",
+    "w": 141,
+    "h": 36
+   },
+   {
+    "t": "Plaza de la Paz",
+    "w": 122,
+    "h": 36
+   }
+  ],
+  "textoTotal": 134,
+  "textoChico": 0,
+  "nSizes": 6,
+  "sizes": [
+   [
+    "12",
+    64
+   ],
+   [
+    "13",
+    32
+   ],
+   [
+    "19",
+    30
+   ],
+   [
+    "26",
+    6
+   ],
+   [
+    "15",
+    1
+   ],
+   [
+    "32",
+    1
+   ]
+  ],
+  "nWeights": 5,
+  "weights": [
+   [
+    "700",
+    67
+   ],
+   [
+    "400",
+    36
+   ],
+   [
+    "600",
+    23
+   ],
+   [
+    "800",
+    7
+   ],
+   [
+    "900",
+    1
+   ]
+  ],
+  "fams": [
+   [
+    "Inter",
+    94
+   ],
+   [
+    "Barlow Condensed",
+    39
+   ],
+   [
+    "ui-monospace",
+    1
+   ]
+  ],
+  "nTextColors": 5,
+  "tcolors": [
+   [
+    "rgb(156, 149, 138)",
+    84
+   ],
+   [
+    "rgb(242, 237, 228)",
+    40
+   ],
+   [
+    "rgb(232, 103, 92)",
+    7
+   ],
+   [
+    "rgb(12, 11, 10)",
+    2
+   ],
+   [
+    "oklab(0.672627 0.00335035 0.0176046 / 0.4)",
+    1
+   ]
+  ],
+  "nEyebrowSizes": 1,
+  "eyebrows": [
+   [
+    "12",
+    7
+   ]
+  ],
+  "emojiUI": 0,
+  "nBgs": 4,
+  "bgs": [
+   [
+    "rgb(21, 19, 17)",
+    33
+   ],
+   [
+    "rgb(242, 237, 228)",
+    2
+   ],
+   [
+    "rgb(12, 11, 10)",
+    1
+   ],
+   [
+    "rgb(33, 29, 25)",
+    1
+   ]
+  ],
+  "nBorders": 5,
+  "nRadii": 4,
+  "radii": [
+   [
+    "0px",
+    31
+   ],
+   [
+    "3.35544e+07px",
+    9
+   ],
+   [
+    "16px",
+    7
+   ],
+   [
+    "12px",
+    4
+   ]
+  ],
+  "nPads": 4,
+  "nBotones": 10,
+  "nFirmasBoton": 7,
+  "firmas": [
+   [
+    "rgba(0, 0, 0, 0) | rgb(156, 149, 138) | rgba(242, 237, 228, 0.1) | 3.35544e+07px | 44px | 13px | up",
+    3
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(156, 149, 138) | rgba(242, 237, 228, 0.1) | 12px | 44px | 13px | up",
+    2
+   ],
+   [
+    "rgb(242, 237, 228) | rgb(12, 11, 10) | rgb(12, 11, 10) | 3.35544e+07px | 36px | 13px | up",
+    1
+   ],
+   [
+    "rgb(21, 19, 17) | rgb(156, 149, 138) | rgba(242, 237, 228, 0.1) | 3.35544e+07px | 44px | 13px | up",
+    1
+   ],
+   [
+    "rgb(33, 29, 25) | rgb(242, 237, 228) | rgba(242, 237, 228, 0.1) | 3.35544e+07px | 44px | 13px | up",
+    1
+   ],
+   [
+    "rgb(242, 237, 228) | rgb(12, 11, 10) | rgb(242, 237, 228) | 3.35544e+07px | 44px | 13px | up",
+    1
+   ],
+   [
+    "rgba(0, 0, 0, 0) | oklab(0.672627 0.00335035 0.0176046 / 0.4) | oklab(0.947513 0.00178179 0.0130511 / 0.0509804) | 12px | 44px | 13px | up",
+    1
+   ]
+  ],
+  "contrasteMedidos": 109,
+  "contrasteSinMedir": 25,
+  "nContrasteMal": 0,
+  "contrasteMal": [],
+  "imgDeformadas": 0,
+  "imgSinAlt": 0,
+  "h1": "LIQUIDACIÓN SEMANAL",
+  "area": "admin",
+  "pantalla": "Liquidación",
+  "ruta": "/admin/liquidacion",
+  "vp": "escritorio",
+  "http": 200,
+  "url": "https://barbasybigotes.com/admin/liquidacion",
+  "errores": [],
+  "captura": "vis-admin-liquidaci-n-escritorio.png"
+ },
+ {
+  "sw": 390,
+  "vw": 390,
+  "alto": 1982,
+  "cromo": 146,
+  "interactivos": 23,
+  "nChicos": 0,
+  "chicos": [],
+  "textoTotal": 66,
+  "textoChico": 0,
+  "nSizes": 9,
+  "sizes": [
+   [
+    "13",
+    25
+   ],
+   [
+    "12",
+    23
+   ],
+   [
+    "18",
+    5
+   ],
+   [
+    "30",
+    4
+   ],
+   [
+    "24",
+    3
+   ],
+   [
+    "13.5",
+    3
+   ],
+   [
+    "15",
+    1
+   ],
+   [
+    "28",
+    1
+   ],
+   [
+    "12.5",
+    1
+   ]
+  ],
+  "nWeights": 4,
+  "weights": [
+   [
+    "600",
+    32
+   ],
+   [
+    "400",
+    26
+   ],
+   [
+    "700",
+    7
+   ],
+   [
+    "800",
+    1
+   ]
+  ],
+  "fams": [
+   [
+    "Inter",
+    52
+   ],
+   [
+    "Barlow Condensed",
+    14
+   ]
+  ],
+  "nTextColors": 4,
+  "tcolors": [
+   [
+    "rgb(156, 149, 138)",
+    39
+   ],
+   [
+    "rgb(242, 237, 228)",
+    24
+   ],
+   [
+    "rgb(232, 103, 92)",
+    2
+   ],
+   [
+    "rgb(52, 211, 153)",
+    1
+   ]
+  ],
+  "nEyebrowSizes": 1,
+  "eyebrows": [
+   [
+    "12",
+    5
+   ]
+  ],
+  "emojiUI": 0,
+  "nBgs": 3,
+  "bgs": [
+   [
+    "rgb(21, 19, 17)",
+    10
+   ],
+   [
+    "rgb(33, 29, 25)",
+    7
+   ],
+   [
+    "rgb(12, 11, 10)",
+    3
+   ]
+  ],
+  "nBorders": 4,
+  "nRadii": 4,
+  "radii": [
+   [
+    "12px",
+    12
+   ],
+   [
+    "3.35544e+07px",
+    10
+   ],
+   [
+    "16px",
+    9
+   ],
+   [
+    "0px",
+    1
+   ]
+  ],
+  "nPads": 3,
+  "nBotones": 9,
+  "nFirmasBoton": 5,
+  "firmas": [
+   [
+    "rgba(0, 0, 0, 0) | rgb(156, 149, 138) | rgba(242, 237, 228, 0.1) | 12px | 44px | 13px | up",
+    5
+   ],
+   [
+    "rgb(21, 19, 17) | rgb(242, 237, 228) | rgba(242, 237, 228, 0.1) | 3.35544e+07px | 44px | 16px | up",
+    1
+   ],
+   [
+    "rgb(33, 29, 25) | rgb(242, 237, 228) | rgba(242, 237, 228, 0.1) | 3.35544e+07px | 44px | 13px | up",
+    1
+   ],
+   [
+    "oklab(0.581255 0.163163 0.0885327 / 0.15) | rgb(242, 237, 228) | rgb(210, 63, 52) | 12px | 44px | 13px | up",
+    1
+   ],
+   [
+    "oklab(0.581255 0.163163 0.0885327 / 0.07) | rgb(232, 103, 92) | oklab(0.581255 0.163163 0.0885327 / 0.45) | 12px | 44px | 13px | up",
+    1
+   ]
+  ],
+  "contrasteMedidos": 54,
+  "contrasteSinMedir": 12,
+  "nContrasteMal": 0,
+  "contrasteMal": [],
+  "imgDeformadas": 0,
+  "imgSinAlt": 0,
+  "h1": "MÉTRICAS",
+  "area": "admin",
+  "pantalla": "Métricas",
+  "ruta": "/admin/metricas",
+  "vp": "movil",
+  "http": 200,
+  "url": "https://barbasybigotes.com/admin/metricas",
+  "errores": [],
+  "captura": "vis-admin-m-tricas-movil.png",
+  "capturaFull": "vis-admin-m-tricas-movil-full.png"
+ },
+ {
+  "sw": 1280,
+  "vw": 1280,
+  "alto": 1355,
+  "cromo": 152,
+  "interactivos": 26,
+  "nChicos": 4,
+  "chicos": [
+   {
+    "t": "Barbas & Bigotes · Hoy",
+    "w": 94,
+    "h": 32
+   },
+   {
+    "t": "Ambas sedes",
+    "w": 113,
+    "h": 36
+   },
+   {
+    "t": "Parque Venezuela",
+    "w": 141,
+    "h": 36
+   },
+   {
+    "t": "Plaza de la Paz",
+    "w": 122,
+    "h": 36
+   }
+  ],
+  "textoTotal": 69,
+  "textoChico": 0,
+  "nSizes": 9,
+  "sizes": [
+   [
+    "13",
+    27
+   ],
+   [
+    "12",
+    24
+   ],
+   [
+    "18",
+    5
+   ],
+   [
+    "36",
+    4
+   ],
+   [
+    "24",
+    3
+   ],
+   [
+    "13.5",
+    3
+   ],
+   [
+    "15",
+    1
+   ],
+   [
+    "32",
+    1
+   ],
+   [
+    "12.5",
+    1
+   ]
+  ],
+  "nWeights": 4,
+  "weights": [
+   [
+    "600",
+    34
+   ],
+   [
+    "400",
+    27
+   ],
+   [
+    "700",
+    7
+   ],
+   [
+    "800",
+    1
+   ]
+  ],
+  "fams": [
+   [
+    "Inter",
+    54
+   ],
+   [
+    "Barlow Condensed",
+    14
+   ],
+   [
+    "ui-monospace",
+    1
+   ]
+  ],
+  "nTextColors": 5,
+  "tcolors": [
+   [
+    "rgb(156, 149, 138)",
+    42
+   ],
+   [
+    "rgb(242, 237, 228)",
+    23
+   ],
+   [
+    "rgb(232, 103, 92)",
+    2
+   ],
+   [
+    "rgb(12, 11, 10)",
+    1
+   ],
+   [
+    "rgb(52, 211, 153)",
+    1
+   ]
+  ],
+  "nEyebrowSizes": 1,
+  "eyebrows": [
+   [
+    "12",
+    5
+   ]
+  ],
+  "emojiUI": 0,
+  "nBgs": 4,
+  "bgs": [
+   [
+    "rgb(21, 19, 17)",
+    11
+   ],
+   [
+    "rgb(33, 29, 25)",
+    7
+   ],
+   [
+    "rgb(12, 11, 10)",
+    3
+   ],
+   [
+    "rgb(242, 237, 228)",
+    1
+   ]
+  ],
+  "nBorders": 4,
+  "nRadii": 4,
+  "radii": [
+   [
+    "3.35544e+07px",
+    12
+   ],
+   [
+    "12px",
+    12
+   ],
+   [
+    "16px",
+    9
+   ],
+   [
+    "0px",
+    1
+   ]
+  ],
+  "nPads": 5,
+  "nBotones": 10,
+  "nFirmasBoton": 6,
+  "firmas": [
+   [
+    "rgba(0, 0, 0, 0) | rgb(156, 149, 138) | rgba(242, 237, 228, 0.1) | 12px | 44px | 13px | up",
+    5
+   ],
+   [
+    "rgb(242, 237, 228) | rgb(12, 11, 10) | rgb(12, 11, 10) | 3.35544e+07px | 36px | 13px | up",
+    1
+   ],
+   [
+    "rgb(21, 19, 17) | rgb(156, 149, 138) | rgba(242, 237, 228, 0.1) | 3.35544e+07px | 44px | 13px | up",
+    1
+   ],
+   [
+    "rgb(33, 29, 25) | rgb(242, 237, 228) | rgba(242, 237, 228, 0.1) | 3.35544e+07px | 44px | 13px | up",
+    1
+   ],
+   [
+    "oklab(0.581255 0.163163 0.0885327 / 0.15) | rgb(242, 237, 228) | rgb(210, 63, 52) | 12px | 44px | 13px | up",
+    1
+   ],
+   [
+    "oklab(0.581255 0.163163 0.0885327 / 0.07) | rgb(232, 103, 92) | oklab(0.581255 0.163163 0.0885327 / 0.45) | 12px | 44px | 13px | up",
+    1
+   ]
+  ],
+  "contrasteMedidos": 57,
+  "contrasteSinMedir": 12,
+  "nContrasteMal": 0,
+  "contrasteMal": [],
+  "imgDeformadas": 0,
+  "imgSinAlt": 0,
+  "h1": "MÉTRICAS",
+  "area": "admin",
+  "pantalla": "Métricas",
+  "ruta": "/admin/metricas",
+  "vp": "escritorio",
+  "http": 200,
+  "url": "https://barbasybigotes.com/admin/metricas",
+  "errores": [],
+  "captura": "vis-admin-m-tricas-escritorio.png"
+ },
+ {
+  "sw": 390,
+  "vw": 390,
+  "alto": 2140,
+  "cromo": 206,
+  "interactivos": 31,
+  "nChicos": 0,
+  "chicos": [],
+  "textoTotal": 56,
+  "textoChico": 0,
+  "nSizes": 7,
+  "sizes": [
+   [
+    "13",
+    26
+   ],
+   [
+    "12",
+    13
+   ],
+   [
+    "13.5",
+    6
+   ],
+   [
+    "12.5",
+    5
+   ],
+   [
+    "18",
+    3
+   ],
+   [
+    "24",
+    2
+   ],
+   [
+    "28",
+    1
+   ]
+  ],
+  "nWeights": 4,
+  "weights": [
+   [
+    "600",
+    32
+   ],
+   [
+    "400",
+    17
+   ],
+   [
+    "700",
+    4
+   ],
+   [
+    "800",
+    3
+   ]
+  ],
+  "fams": [
+   [
+    "Inter",
+    50
+   ],
+   [
+    "Barlow Condensed",
+    6
+   ]
+  ],
+  "nTextColors": 4,
+  "tcolors": [
+   [
+    "rgb(156, 149, 138)",
+    36
+   ],
+   [
+    "rgb(242, 237, 228)",
+    17
+   ],
+   [
+    "rgb(251, 247, 240)",
+    2
+   ],
+   [
+    "rgb(12, 11, 10)",
+    1
+   ]
+  ],
+  "nEyebrowSizes": 2,
+  "eyebrows": [
+   [
+    "12",
+    3
+   ],
+   [
+    "12.5",
+    2
+   ]
+  ],
+  "emojiUI": 0,
+  "nBgs": 6,
+  "bgs": [
+   [
+    "rgb(52, 211, 153)",
+    7
+   ],
+   [
+    "rgb(21, 19, 17)",
+    4
+   ],
+   [
+    "rgb(33, 29, 25)",
+    4
+   ],
+   [
+    "rgb(12, 11, 10)",
+    1
+   ],
+   [
+    "rgb(242, 237, 228)",
+    1
+   ],
+   [
+    "rgb(156, 149, 138)",
+    1
+   ]
+  ],
+  "nBorders": 5,
+  "nRadii": 4,
+  "radii": [
+   [
+    "3.35544e+07px",
+    16
+   ],
+   [
+    "12px",
+    12
+   ],
+   [
+    "16px",
+    3
+   ],
+   [
+    "0px",
+    1
+   ]
+  ],
+  "nPads": 3,
+  "nBotones": 15,
+  "nFirmasBoton": 6,
+  "firmas": [
+   [
+    "rgba(0, 0, 0, 0) | rgb(156, 149, 138) | rgba(242, 237, 228, 0.1) | 12px | 44px | 13px | up",
+    8
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(156, 149, 138) | rgba(242, 237, 228, 0.1) | 3.35544e+07px | 44px | 13px | up",
+    2
+   ],
+   [
+    "oklab(0.581255 0.163163 0.0885327 / 0.15) | rgb(242, 237, 228) | rgb(210, 63, 52) | 12px | 44px | 13px | up",
+    2
+   ],
+   [
+    "rgb(21, 19, 17) | rgb(242, 237, 228) | rgba(242, 237, 228, 0.1) | 3.35544e+07px | 44px | 16px | up",
+    1
+   ],
+   [
+    "rgb(33, 29, 25) | rgb(242, 237, 228) | rgba(242, 237, 228, 0.1) | 3.35544e+07px | 44px | 13px | up",
+    1
+   ],
+   [
+    "rgb(242, 237, 228) | rgb(12, 11, 10) | rgb(242, 237, 228) | 3.35544e+07px | 44px | 13px | up",
+    1
+   ]
+  ],
+  "contrasteMedidos": 44,
+  "contrasteSinMedir": 12,
+  "nContrasteMal": 0,
+  "contrasteMal": [],
+  "imgDeformadas": 0,
+  "imgSinAlt": 0,
+  "h1": "AVISOS AL CLIENTE",
+  "area": "admin",
+  "pantalla": "Avisos",
+  "ruta": "/admin/avisos",
+  "vp": "movil",
+  "http": 200,
+  "url": "https://barbasybigotes.com/admin/avisos",
+  "errores": [],
+  "captura": "vis-admin-avisos-movil.png",
+  "capturaFull": "vis-admin-avisos-movil-full.png"
+ },
+ {
+  "sw": 1280,
+  "vw": 1280,
+  "alto": 1681,
+  "cromo": 212,
+  "interactivos": 31,
+  "nChicos": 1,
+  "chicos": [
+   {
+    "t": "Barbas & Bigotes · Hoy",
+    "w": 94,
+    "h": 32
+   }
+  ],
+  "textoTotal": 58,
+  "textoChico": 0,
+  "nSizes": 7,
+  "sizes": [
+   [
+    "13",
+    27
+   ],
+   [
+    "12",
+    14
+   ],
+   [
+    "13.5",
+    6
+   ],
+   [
+    "12.5",
+    5
+   ],
+   [
+    "18",
+    3
+   ],
+   [
+    "24",
+    2
+   ],
+   [
+    "32",
+    1
+   ]
+  ],
+  "nWeights": 4,
+  "weights": [
+   [
+    "600",
+    33
+   ],
+   [
+    "400",
+    18
+   ],
+   [
+    "700",
+    4
+   ],
+   [
+    "800",
+    3
+   ]
+  ],
+  "fams": [
+   [
+    "Inter",
+    51
+   ],
+   [
+    "Barlow Condensed",
+    6
+   ],
+   [
+    "ui-monospace",
+    1
+   ]
+  ],
+  "nTextColors": 4,
+  "tcolors": [
+   [
+    "rgb(156, 149, 138)",
+    38
+   ],
+   [
+    "rgb(242, 237, 228)",
+    17
+   ],
+   [
+    "rgb(251, 247, 240)",
+    2
+   ],
+   [
+    "rgb(12, 11, 10)",
+    1
+   ]
+  ],
+  "nEyebrowSizes": 2,
+  "eyebrows": [
+   [
+    "12",
+    3
+   ],
+   [
+    "12.5",
+    2
+   ]
+  ],
+  "emojiUI": 0,
+  "nBgs": 6,
+  "bgs": [
+   [
+    "rgb(52, 211, 153)",
+    7
+   ],
+   [
+    "rgb(21, 19, 17)",
+    4
+   ],
+   [
+    "rgb(33, 29, 25)",
+    4
+   ],
+   [
+    "rgb(12, 11, 10)",
+    1
+   ],
+   [
+    "rgb(242, 237, 228)",
+    1
+   ],
+   [
+    "rgb(156, 149, 138)",
+    1
+   ]
+  ],
+  "nBorders": 5,
+  "nRadii": 4,
+  "radii": [
+   [
+    "3.35544e+07px",
+    16
+   ],
+   [
+    "12px",
+    12
+   ],
+   [
+    "16px",
+    3
+   ],
+   [
+    "0px",
+    1
+   ]
+  ],
+  "nPads": 3,
+  "nBotones": 15,
+  "nFirmasBoton": 6,
+  "firmas": [
+   [
+    "rgba(0, 0, 0, 0) | rgb(156, 149, 138) | rgba(242, 237, 228, 0.1) | 12px | 44px | 13px | up",
+    8
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(156, 149, 138) | rgba(242, 237, 228, 0.1) | 3.35544e+07px | 44px | 13px | up",
+    2
+   ],
+   [
+    "oklab(0.581255 0.163163 0.0885327 / 0.15) | rgb(242, 237, 228) | rgb(210, 63, 52) | 12px | 44px | 13px | up",
+    2
+   ],
+   [
+    "rgb(21, 19, 17) | rgb(156, 149, 138) | rgba(242, 237, 228, 0.1) | 3.35544e+07px | 44px | 13px | up",
+    1
+   ],
+   [
+    "rgb(33, 29, 25) | rgb(242, 237, 228) | rgba(242, 237, 228, 0.1) | 3.35544e+07px | 44px | 13px | up",
+    1
+   ],
+   [
+    "rgb(242, 237, 228) | rgb(12, 11, 10) | rgb(242, 237, 228) | 3.35544e+07px | 44px | 13px | up",
+    1
+   ]
+  ],
+  "contrasteMedidos": 46,
+  "contrasteSinMedir": 12,
+  "nContrasteMal": 0,
+  "contrasteMal": [],
+  "imgDeformadas": 0,
+  "imgSinAlt": 0,
+  "h1": "AVISOS AL CLIENTE",
+  "area": "admin",
+  "pantalla": "Avisos",
+  "ruta": "/admin/avisos",
+  "vp": "escritorio",
+  "http": 200,
+  "url": "https://barbasybigotes.com/admin/avisos",
+  "errores": [],
+  "captura": "vis-admin-avisos-escritorio.png"
+ },
+ {
+  "sw": 390,
+  "vw": 390,
+  "alto": 2572,
+  "cromo": 206,
+  "interactivos": 61,
+  "nChicos": 33,
+  "chicos": [
+   {
+    "t": "on",
+    "w": 13,
+    "h": 13
+   },
+   {
+    "t": "Abrimos",
+    "w": 151,
+    "h": 32
+   },
+   {
+    "t": "Cerramos",
+    "w": 151,
+    "h": 32
+   },
+   {
+    "t": "09:00",
+    "w": 123,
+    "h": 34
+   },
+   {
+    "t": "19:30",
+    "w": 122,
+    "h": 34
+   },
+   {
+    "t": "09:00",
+    "w": 123,
+    "h": 34
+   }
+  ],
+  "textoTotal": 79,
+  "textoChico": 0,
+  "nSizes": 7,
+  "sizes": [
+   [
+    "13",
+    36
+   ],
+   [
+    "12.5",
+    19
+   ],
+   [
+    "12",
+    11
+   ],
+   [
+    "15",
+    7
+   ],
+   [
+    "14",
+    3
+   ],
+   [
+    "28",
+    2
+   ],
+   [
+    "18",
+    1
+   ]
+  ],
+  "nWeights": 4,
+  "weights": [
+   [
+    "600",
+    43
+   ],
+   [
+    "400",
+    23
+   ],
+   [
+    "700",
+    11
+   ],
+   [
+    "800",
+    2
+   ]
+  ],
+  "fams": [
+   [
+    "Inter",
+    69
+   ],
+   [
+    "Barlow Condensed",
+    10
+   ]
+  ],
+  "nTextColors": 6,
+  "tcolors": [
+   [
+    "rgb(156, 149, 138)",
+    50
+   ],
+   [
+    "rgb(242, 237, 228)",
+    17
+   ],
+   [
+    "rgb(52, 211, 153)",
+    8
+   ],
+   [
+    "rgb(232, 103, 92)",
+    2
+   ],
+   [
+    "rgb(12, 11, 10)",
+    1
+   ],
+   [
+    "rgb(251, 247, 240)",
+    1
+   ]
+  ],
+  "nEyebrowSizes": 2,
+  "eyebrows": [
+   [
+    "12",
+    5
+   ],
+   [
+    "12.5",
+    1
+   ]
+  ],
+  "emojiUI": 0,
+  "nBgs": 5,
+  "bgs": [
+   [
+    "rgb(12, 11, 10)",
+    19
+   ],
+   [
+    "rgb(21, 19, 17)",
+    4
+   ],
+   [
+    "rgb(210, 63, 52)",
+    2
+   ],
+   [
+    "rgb(33, 29, 25)",
+    1
+   ],
+   [
+    "rgb(242, 237, 228)",
+    1
+   ]
+  ],
+  "nBorders": 4,
+  "nRadii": 4,
+  "radii": [
+   [
+    "8px",
+    25
+   ],
+   [
+    "3.35544e+07px",
+    12
+   ],
+   [
+    "16px",
+    3
+   ],
+   [
+    "0px",
+    1
+   ]
+  ],
+  "nPads": 3,
+  "nBotones": 8,
+  "nFirmasBoton": 5,
+  "firmas": [
+   [
+    "rgba(0, 0, 0, 0) | rgb(156, 149, 138) | rgba(242, 237, 228, 0.1) | 3.35544e+07px | 44px | 13px | up",
+    3
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(156, 149, 138) | rgba(242, 237, 228, 0.1) | 3.35544e+07px | 36px | 12px | up",
+    2
+   ],
+   [
+    "rgb(21, 19, 17) | rgb(242, 237, 228) | rgba(242, 237, 228, 0.1) | 3.35544e+07px | 44px | 16px | up",
+    1
+   ],
+   [
+    "rgb(33, 29, 25) | rgb(242, 237, 228) | rgba(242, 237, 228, 0.1) | 3.35544e+07px | 44px | 13px | up",
+    1
+   ],
+   [
+    "rgb(242, 237, 228) | rgb(12, 11, 10) | rgb(242, 237, 228) | 3.35544e+07px | 44px | 13px | up",
+    1
+   ]
+  ],
+  "contrasteMedidos": 59,
+  "contrasteSinMedir": 20,
+  "nContrasteMal": 0,
+  "contrasteMal": [],
+  "imgDeformadas": 0,
+  "imgSinAlt": 0,
+  "h1": "HORARIOS",
+  "area": "admin",
+  "pantalla": "Horarios",
+  "ruta": "/admin/horarios",
+  "vp": "movil",
+  "http": 200,
+  "url": "https://barbasybigotes.com/admin/horarios",
+  "errores": [],
+  "captura": "vis-admin-horarios-movil.png",
+  "capturaFull": "vis-admin-horarios-movil-full.png"
+ },
+ {
+  "sw": 1280,
+  "vw": 1280,
+  "alto": 1905,
+  "cromo": 212,
+  "interactivos": 61,
+  "nChicos": 34,
+  "chicos": [
+   {
+    "t": "on",
+    "w": 13,
+    "h": 13
+   },
+   {
+    "t": "Barbas & Bigotes · Hoy",
+    "w": 94,
+    "h": 32
+   },
+   {
+    "t": "09:00",
+    "w": 123,
+    "h": 34
+   },
+   {
+    "t": "19:30",
+    "w": 122,
+    "h": 34
+   },
+   {
+    "t": "09:00",
+    "w": 123,
+    "h": 34
+   },
+   {
+    "t": "19:30",
+    "w": 122,
+    "h": 34
+   }
+  ],
+  "textoTotal": 81,
+  "textoChico": 0,
+  "nSizes": 7,
+  "sizes": [
+   [
+    "13",
+    37
+   ],
+   [
+    "12.5",
+    19
+   ],
+   [
+    "12",
+    12
+   ],
+   [
+    "15",
+    7
+   ],
+   [
+    "14",
+    3
+   ],
+   [
+    "32",
+    2
+   ],
+   [
+    "18",
+    1
+   ]
+  ],
+  "nWeights": 4,
+  "weights": [
+   [
+    "600",
+    44
+   ],
+   [
+    "400",
+    24
+   ],
+   [
+    "700",
+    11
+   ],
+   [
+    "800",
+    2
+   ]
+  ],
+  "fams": [
+   [
+    "Inter",
+    70
+   ],
+   [
+    "Barlow Condensed",
+    10
+   ],
+   [
+    "ui-monospace",
+    1
+   ]
+  ],
+  "nTextColors": 6,
+  "tcolors": [
+   [
+    "rgb(156, 149, 138)",
+    52
+   ],
+   [
+    "rgb(242, 237, 228)",
+    17
+   ],
+   [
+    "rgb(52, 211, 153)",
+    8
+   ],
+   [
+    "rgb(232, 103, 92)",
+    2
+   ],
+   [
+    "rgb(12, 11, 10)",
+    1
+   ],
+   [
+    "rgb(251, 247, 240)",
+    1
+   ]
+  ],
+  "nEyebrowSizes": 2,
+  "eyebrows": [
+   [
+    "12",
+    5
+   ],
+   [
+    "12.5",
+    1
+   ]
+  ],
+  "emojiUI": 0,
+  "nBgs": 5,
+  "bgs": [
+   [
+    "rgb(12, 11, 10)",
+    19
+   ],
+   [
+    "rgb(21, 19, 17)",
+    4
+   ],
+   [
+    "rgb(210, 63, 52)",
+    2
+   ],
+   [
+    "rgb(33, 29, 25)",
+    1
+   ],
+   [
+    "rgb(242, 237, 228)",
+    1
+   ]
+  ],
+  "nBorders": 4,
+  "nRadii": 4,
+  "radii": [
+   [
+    "8px",
+    25
+   ],
+   [
+    "3.35544e+07px",
+    12
+   ],
+   [
+    "16px",
+    3
+   ],
+   [
+    "0px",
+    1
+   ]
+  ],
+  "nPads": 3,
+  "nBotones": 8,
+  "nFirmasBoton": 5,
+  "firmas": [
+   [
+    "rgba(0, 0, 0, 0) | rgb(156, 149, 138) | rgba(242, 237, 228, 0.1) | 3.35544e+07px | 44px | 13px | up",
+    3
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(156, 149, 138) | rgba(242, 237, 228, 0.1) | 3.35544e+07px | 36px | 12px | up",
+    2
+   ],
+   [
+    "rgb(21, 19, 17) | rgb(156, 149, 138) | rgba(242, 237, 228, 0.1) | 3.35544e+07px | 44px | 13px | up",
+    1
+   ],
+   [
+    "rgb(33, 29, 25) | rgb(242, 237, 228) | rgba(242, 237, 228, 0.1) | 3.35544e+07px | 44px | 13px | up",
+    1
+   ],
+   [
+    "rgb(242, 237, 228) | rgb(12, 11, 10) | rgb(242, 237, 228) | 3.35544e+07px | 44px | 13px | up",
+    1
+   ]
+  ],
+  "contrasteMedidos": 61,
+  "contrasteSinMedir": 20,
+  "nContrasteMal": 0,
+  "contrasteMal": [],
+  "imgDeformadas": 0,
+  "imgSinAlt": 0,
+  "h1": "HORARIOS",
+  "area": "admin",
+  "pantalla": "Horarios",
+  "ruta": "/admin/horarios",
+  "vp": "escritorio",
+  "http": 200,
+  "url": "https://barbasybigotes.com/admin/horarios",
+  "errores": [],
+  "captura": "vis-admin-horarios-escritorio.png"
+ },
+ {
+  "sw": 390,
+  "vw": 390,
+  "alto": 924,
+  "cromo": 206,
+  "interactivos": 25,
+  "nChicos": 0,
+  "chicos": [],
+  "textoTotal": 24,
+  "textoChico": 0,
+  "nSizes": 6,
+  "sizes": [
+   [
+    "13",
+    18
+   ],
+   [
+    "20",
+    2
+   ],
+   [
+    "12",
+    1
+   ],
+   [
+    "14",
+    1
+   ],
+   [
+    "28",
+    1
+   ],
+   [
+    "12.5",
+    1
+   ]
+  ],
+  "nWeights": 4,
+  "weights": [
+   [
+    "600",
+    16
+   ],
+   [
+    "400",
+    4
+   ],
+   [
+    "700",
+    3
+   ],
+   [
+    "800",
+    1
+   ]
+  ],
+  "fams": [
+   [
+    "Inter",
+    21
+   ],
+   [
+    "Barlow Condensed",
+    3
+   ]
+  ],
+  "nTextColors": 4,
+  "tcolors": [
+   [
+    "rgb(156, 149, 138)",
+    15
+   ],
+   [
+    "rgb(242, 237, 228)",
+    6
+   ],
+   [
+    "rgb(12, 11, 10)",
+    2
+   ],
+   [
+    "rgb(251, 247, 240)",
+    1
+   ]
+  ],
+  "nEyebrowSizes": 2,
+  "eyebrows": [
+   [
+    "12",
+    1
+   ],
+   [
+    "12.5",
+    1
+   ]
+  ],
+  "emojiUI": 0,
+  "nBgs": 4,
+  "bgs": [
+   [
+    "rgb(12, 11, 10)",
+    6
+   ],
+   [
+    "rgb(242, 237, 228)",
+    2
+   ],
+   [
+    "rgb(21, 19, 17)",
+    1
+   ],
+   [
+    "rgb(33, 29, 25)",
+    1
+   ]
+  ],
+  "nBorders": 3,
+  "nRadii": 3,
+  "radii": [
+   [
+    "3.35544e+07px",
+    8
+   ],
+   [
+    "8px",
+    5
+   ],
+   [
+    "0px",
+    1
+   ]
+  ],
+  "nPads": 1,
+  "nBotones": 7,
+  "nFirmasBoton": 4,
+  "firmas": [
+   [
+    "rgba(0, 0, 0, 0) | rgb(156, 149, 138) | rgba(242, 237, 228, 0.1) | 3.35544e+07px | 44px | 13px | up",
+    3
+   ],
+   [
+    "rgb(242, 237, 228) | rgb(12, 11, 10) | rgb(242, 237, 228) | 3.35544e+07px | 44px | 13px | up",
+    2
+   ],
+   [
+    "rgb(21, 19, 17) | rgb(242, 237, 228) | rgba(242, 237, 228, 0.1) | 3.35544e+07px | 44px | 16px | up",
+    1
+   ],
+   [
+    "rgb(33, 29, 25) | rgb(242, 237, 228) | rgba(242, 237, 228, 0.1) | 3.35544e+07px | 44px | 13px | up",
+    1
+   ]
+  ],
+  "contrasteMedidos": 14,
+  "contrasteSinMedir": 10,
+  "nContrasteMal": 0,
+  "contrasteMal": [],
+  "imgDeformadas": 0,
+  "imgSinAlt": 0,
+  "h1": "CUPONES",
+  "area": "admin",
+  "pantalla": "Cupones",
+  "ruta": "/admin/cupones",
+  "vp": "movil",
+  "http": 200,
+  "url": "https://barbasybigotes.com/admin/cupones",
+  "errores": [],
+  "captura": "vis-admin-cupones-movil.png",
+  "capturaFull": "vis-admin-cupones-movil-full.png"
+ },
+ {
+  "sw": 1280,
+  "vw": 1280,
+  "alto": 900,
+  "cromo": 212,
+  "interactivos": 25,
+  "nChicos": 1,
+  "chicos": [
+   {
+    "t": "Barbas & Bigotes · Hoy",
+    "w": 94,
+    "h": 32
+   }
+  ],
+  "textoTotal": 26,
+  "textoChico": 0,
+  "nSizes": 6,
+  "sizes": [
+   [
+    "13",
+    19
+   ],
+   [
+    "12",
+    2
+   ],
+   [
+    "20",
+    2
+   ],
+   [
+    "14",
+    1
+   ],
+   [
+    "32",
+    1
+   ],
+   [
+    "12.5",
+    1
+   ]
+  ],
+  "nWeights": 4,
+  "weights": [
+   [
+    "600",
+    17
+   ],
+   [
+    "400",
+    5
+   ],
+   [
+    "700",
+    3
+   ],
+   [
+    "800",
+    1
+   ]
+  ],
+  "fams": [
+   [
+    "Inter",
+    22
+   ],
+   [
+    "Barlow Condensed",
+    3
+   ],
+   [
+    "ui-monospace",
+    1
+   ]
+  ],
+  "nTextColors": 4,
+  "tcolors": [
+   [
+    "rgb(156, 149, 138)",
+    17
+   ],
+   [
+    "rgb(242, 237, 228)",
+    6
+   ],
+   [
+    "rgb(12, 11, 10)",
+    2
+   ],
+   [
+    "rgb(251, 247, 240)",
+    1
+   ]
+  ],
+  "nEyebrowSizes": 2,
+  "eyebrows": [
+   [
+    "12",
+    1
+   ],
+   [
+    "12.5",
+    1
+   ]
+  ],
+  "emojiUI": 0,
+  "nBgs": 4,
+  "bgs": [
+   [
+    "rgb(12, 11, 10)",
+    6
+   ],
+   [
+    "rgb(242, 237, 228)",
+    2
+   ],
+   [
+    "rgb(21, 19, 17)",
+    1
+   ],
+   [
+    "rgb(33, 29, 25)",
+    1
+   ]
+  ],
+  "nBorders": 3,
+  "nRadii": 3,
+  "radii": [
+   [
+    "3.35544e+07px",
+    8
+   ],
+   [
+    "8px",
+    5
+   ],
+   [
+    "0px",
+    1
+   ]
+  ],
+  "nPads": 1,
+  "nBotones": 7,
+  "nFirmasBoton": 4,
+  "firmas": [
+   [
+    "rgba(0, 0, 0, 0) | rgb(156, 149, 138) | rgba(242, 237, 228, 0.1) | 3.35544e+07px | 44px | 13px | up",
+    3
+   ],
+   [
+    "rgb(242, 237, 228) | rgb(12, 11, 10) | rgb(242, 237, 228) | 3.35544e+07px | 44px | 13px | up",
+    2
+   ],
+   [
+    "rgb(21, 19, 17) | rgb(156, 149, 138) | rgba(242, 237, 228, 0.1) | 3.35544e+07px | 44px | 13px | up",
+    1
+   ],
+   [
+    "rgb(33, 29, 25) | rgb(242, 237, 228) | rgba(242, 237, 228, 0.1) | 3.35544e+07px | 44px | 13px | up",
+    1
+   ]
+  ],
+  "contrasteMedidos": 16,
+  "contrasteSinMedir": 10,
+  "nContrasteMal": 0,
+  "contrasteMal": [],
+  "imgDeformadas": 0,
+  "imgSinAlt": 0,
+  "h1": "CUPONES",
+  "area": "admin",
+  "pantalla": "Cupones",
+  "ruta": "/admin/cupones",
+  "vp": "escritorio",
+  "http": 200,
+  "url": "https://barbasybigotes.com/admin/cupones",
+  "errores": [],
+  "captura": "vis-admin-cupones-escritorio.png"
+ },
+ {
+  "sw": 390,
+  "vw": 390,
+  "alto": 1113,
+  "cromo": 206,
+  "interactivos": 24,
+  "nChicos": 0,
+  "chicos": [],
+  "textoTotal": 50,
+  "textoChico": 0,
+  "nSizes": 5,
+  "sizes": [
+   [
+    "13",
+    24
+   ],
+   [
+    "12",
+    13
+   ],
+   [
+    "16",
+    6
+   ],
+   [
+    "13.5",
+    6
+   ],
+   [
+    "28",
+    1
+   ]
+  ],
+  "nWeights": 4,
+  "weights": [
+   [
+    "600",
+    29
+   ],
+   [
+    "400",
+    12
+   ],
+   [
+    "700",
+    8
+   ],
+   [
+    "800",
+    1
+   ]
+  ],
+  "fams": [
+   [
+    "Inter",
+    49
+   ],
+   [
+    "Barlow Condensed",
+    1
+   ]
+  ],
+  "nTextColors": 4,
+  "tcolors": [
+   [
+    "rgb(156, 149, 138)",
+    23
+   ],
+   [
+    "rgb(242, 237, 228)",
+    20
+   ],
+   [
+    "rgb(232, 103, 92)",
+    6
+   ],
+   [
+    "rgb(12, 11, 10)",
+    1
+   ]
+  ],
+  "nEyebrowSizes": 1,
+  "eyebrows": [
+   [
+    "12",
+    1
+   ]
+  ],
+  "emojiUI": 0,
+  "nBgs": 4,
+  "bgs": [
+   [
+    "rgb(21, 19, 17)",
+    3
+   ],
+   [
+    "rgb(12, 11, 10)",
+    1
+   ],
+   [
+    "rgb(33, 29, 25)",
+    1
+   ],
+   [
+    "rgb(242, 237, 228)",
+    1
+   ]
+  ],
+  "nBorders": 4,
+  "nRadii": 3,
+  "radii": [
+   [
+    "3.35544e+07px",
+    13
+   ],
+   [
+    "16px",
+    2
+   ],
+   [
+    "0px",
+    1
+   ]
+  ],
+  "nPads": 2,
+  "nBotones": 6,
+  "nFirmasBoton": 4,
+  "firmas": [
+   [
+    "rgba(0, 0, 0, 0) | rgb(156, 149, 138) | rgba(242, 237, 228, 0.1) | 3.35544e+07px | 44px | 13px | up",
+    3
+   ],
+   [
+    "rgb(21, 19, 17) | rgb(242, 237, 228) | rgba(242, 237, 228, 0.1) | 3.35544e+07px | 44px | 16px | up",
+    1
+   ],
+   [
+    "rgb(33, 29, 25) | rgb(242, 237, 228) | rgba(242, 237, 228, 0.1) | 3.35544e+07px | 44px | 13px | up",
+    1
+   ],
+   [
+    "rgb(242, 237, 228) | rgb(12, 11, 10) | rgb(242, 237, 228) | 3.35544e+07px | 44px | 13px | up",
+    1
+   ]
+  ],
+  "contrasteMedidos": 40,
+  "contrasteSinMedir": 10,
+  "nContrasteMal": 0,
+  "contrasteMal": [],
+  "imgDeformadas": 0,
+  "imgSinAlt": 0,
+  "h1": "COMISIONES Y CONTRATOS",
+  "area": "admin",
+  "pantalla": "Comisiones",
+  "ruta": "/admin/comisiones",
+  "vp": "movil",
+  "http": 200,
+  "url": "https://barbasybigotes.com/admin/comisiones",
+  "errores": [],
+  "captura": "vis-admin-comisiones-movil.png",
+  "capturaFull": "vis-admin-comisiones-movil-full.png"
+ },
+ {
+  "sw": 1280,
+  "vw": 1280,
+  "alto": 900,
+  "cromo": 212,
+  "interactivos": 24,
+  "nChicos": 1,
+  "chicos": [
+   {
+    "t": "Barbas & Bigotes · Hoy",
+    "w": 94,
+    "h": 32
+   }
+  ],
+  "textoTotal": 52,
+  "textoChico": 0,
+  "nSizes": 5,
+  "sizes": [
+   [
+    "13",
+    25
+   ],
+   [
+    "12",
+    14
+   ],
+   [
+    "16",
+    6
+   ],
+   [
+    "13.5",
+    6
+   ],
+   [
+    "32",
+    1
+   ]
+  ],
+  "nWeights": 4,
+  "weights": [
+   [
+    "600",
+    30
+   ],
+   [
+    "400",
+    13
+   ],
+   [
+    "700",
+    8
+   ],
+   [
+    "800",
+    1
+   ]
+  ],
+  "fams": [
+   [
+    "Inter",
+    50
+   ],
+   [
+    "ui-monospace",
+    1
+   ],
+   [
+    "Barlow Condensed",
+    1
+   ]
+  ],
+  "nTextColors": 4,
+  "tcolors": [
+   [
+    "rgb(156, 149, 138)",
+    25
+   ],
+   [
+    "rgb(242, 237, 228)",
+    20
+   ],
+   [
+    "rgb(232, 103, 92)",
+    6
+   ],
+   [
+    "rgb(12, 11, 10)",
+    1
+   ]
+  ],
+  "nEyebrowSizes": 1,
+  "eyebrows": [
+   [
+    "12",
+    1
+   ]
+  ],
+  "emojiUI": 0,
+  "nBgs": 4,
+  "bgs": [
+   [
+    "rgb(21, 19, 17)",
+    3
+   ],
+   [
+    "rgb(12, 11, 10)",
+    1
+   ],
+   [
+    "rgb(33, 29, 25)",
+    1
+   ],
+   [
+    "rgb(242, 237, 228)",
+    1
+   ]
+  ],
+  "nBorders": 4,
+  "nRadii": 3,
+  "radii": [
+   [
+    "3.35544e+07px",
+    13
+   ],
+   [
+    "16px",
+    2
+   ],
+   [
+    "0px",
+    1
+   ]
+  ],
+  "nPads": 2,
+  "nBotones": 6,
+  "nFirmasBoton": 4,
+  "firmas": [
+   [
+    "rgba(0, 0, 0, 0) | rgb(156, 149, 138) | rgba(242, 237, 228, 0.1) | 3.35544e+07px | 44px | 13px | up",
+    3
+   ],
+   [
+    "rgb(21, 19, 17) | rgb(156, 149, 138) | rgba(242, 237, 228, 0.1) | 3.35544e+07px | 44px | 13px | up",
+    1
+   ],
+   [
+    "rgb(33, 29, 25) | rgb(242, 237, 228) | rgba(242, 237, 228, 0.1) | 3.35544e+07px | 44px | 13px | up",
+    1
+   ],
+   [
+    "rgb(242, 237, 228) | rgb(12, 11, 10) | rgb(242, 237, 228) | 3.35544e+07px | 44px | 13px | up",
+    1
+   ]
+  ],
+  "contrasteMedidos": 42,
+  "contrasteSinMedir": 10,
+  "nContrasteMal": 0,
+  "contrasteMal": [],
+  "imgDeformadas": 0,
+  "imgSinAlt": 0,
+  "h1": "COMISIONES Y CONTRATOS",
+  "area": "admin",
+  "pantalla": "Comisiones",
+  "ruta": "/admin/comisiones",
+  "vp": "escritorio",
+  "http": 200,
+  "url": "https://barbasybigotes.com/admin/comisiones",
+  "errores": [],
+  "captura": "vis-admin-comisiones-escritorio.png"
+ },
+ {
+  "sw": 390,
+  "vw": 390,
+  "alto": 1678,
+  "cromo": 206,
+  "interactivos": 31,
+  "nChicos": 0,
+  "chicos": [],
+  "textoTotal": 56,
+  "textoChico": 0,
+  "nSizes": 6,
+  "sizes": [
+   [
+    "13",
+    24
+   ],
+   [
+    "12",
+    17
+   ],
+   [
+    "15",
+    10
+   ],
+   [
+    "12.5",
+    3
+   ],
+   [
+    "18",
+    1
+   ],
+   [
+    "28",
+    1
+   ]
+  ],
+  "nWeights": 4,
+  "weights": [
+   [
+    "700",
+    31
+   ],
+   [
+    "600",
+    15
+   ],
+   [
+    "400",
+    9
+   ],
+   [
+    "800",
+    1
+   ]
+  ],
+  "fams": [
+   [
+    "Inter",
+    44
+   ],
+   [
+    "Barlow Condensed",
+    12
+   ]
+  ],
+  "nTextColors": 5,
+  "tcolors": [
+   [
+    "rgb(156, 149, 138)",
+    38
+   ],
+   [
+    "rgb(242, 237, 228)",
+    15
+   ],
+   [
+    "rgb(12, 11, 10)",
+    1
+   ],
+   [
+    "rgb(251, 247, 240)",
+    1
+   ],
+   [
+    "rgb(52, 211, 153)",
+    1
+   ]
+  ],
+  "nEyebrowSizes": 2,
+  "eyebrows": [
+   [
+    "12",
+    1
+   ],
+   [
+    "12.5",
+    1
+   ]
+  ],
+  "emojiUI": 0,
+  "nBgs": 4,
+  "bgs": [
+   [
+    "rgb(12, 11, 10)",
+    3
+   ],
+   [
+    "rgb(21, 19, 17)",
+    3
+   ],
+   [
+    "rgb(33, 29, 25)",
+    1
+   ],
+   [
+    "rgb(242, 237, 228)",
+    1
+   ]
+  ],
+  "nBorders": 4,
+  "nRadii": 4,
+  "radii": [
+   [
+    "12px",
+    13
+   ],
+   [
+    "3.35544e+07px",
+    6
+   ],
+   [
+    "16px",
+    2
+   ],
+   [
+    "0px",
+    1
+   ]
+  ],
+  "nPads": 2,
+  "nBotones": 16,
+  "nFirmasBoton": 7,
+  "firmas": [
+   [
+    "rgba(0, 0, 0, 0) | rgb(156, 149, 138) | rgba(242, 237, 228, 0.1) | 12px | 64px | 16px | up",
+    8
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(156, 149, 138) | rgba(242, 237, 228, 0.1) | 3.35544e+07px | 44px | 13px | up",
+    2
+   ],
+   [
+    "oklab(0.581255 0.163163 0.0885327 / 0.15) | rgb(242, 237, 228) | rgb(210, 63, 52) | 12px | 64px | 16px | up",
+    2
+   ],
+   [
+    "rgb(21, 19, 17) | rgb(242, 237, 228) | rgba(242, 237, 228, 0.1) | 3.35544e+07px | 44px | 16px | up",
+    1
+   ],
+   [
+    "rgb(33, 29, 25) | rgb(242, 237, 228) | rgba(242, 237, 228, 0.1) | 3.35544e+07px | 44px | 13px | up",
+    1
+   ],
+   [
+    "rgb(242, 237, 228) | rgb(12, 11, 10) | rgb(242, 237, 228) | 3.35544e+07px | 44px | 13px | up",
+    1
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(156, 149, 138) | rgba(242, 237, 228, 0.1) | 12px | 44px | 13px | up",
+    1
+   ]
+  ],
+  "contrasteMedidos": 42,
+  "contrasteSinMedir": 14,
+  "nContrasteMal": 0,
+  "contrasteMal": [],
+  "imgDeformadas": 0,
+  "imgSinAlt": 0,
+  "h1": "TARJETA DE CORTES",
+  "area": "admin",
+  "pantalla": "Tarjeta de fidelidad",
+  "ruta": "/admin/tarjeta",
+  "vp": "movil",
+  "http": 200,
+  "url": "https://barbasybigotes.com/admin/tarjeta",
+  "errores": [],
+  "captura": "vis-admin-tarjeta-de-fidelidad-movil.png",
+  "capturaFull": "vis-admin-tarjeta-de-fidelidad-movil-full.png"
+ },
+ {
+  "sw": 1280,
+  "vw": 1280,
+  "alto": 1280,
+  "cromo": 212,
+  "interactivos": 31,
+  "nChicos": 1,
+  "chicos": [
+   {
+    "t": "Barbas & Bigotes · Hoy",
+    "w": 94,
+    "h": 32
+   }
+  ],
+  "textoTotal": 58,
+  "textoChico": 0,
+  "nSizes": 6,
+  "sizes": [
+   [
+    "13",
+    25
+   ],
+   [
+    "12",
+    18
+   ],
+   [
+    "15",
+    10
+   ],
+   [
+    "12.5",
+    3
+   ],
+   [
+    "18",
+    1
+   ],
+   [
+    "32",
+    1
+   ]
+  ],
+  "nWeights": 4,
+  "weights": [
+   [
+    "700",
+    31
+   ],
+   [
+    "600",
+    16
+   ],
+   [
+    "400",
+    10
+   ],
+   [
+    "800",
+    1
+   ]
+  ],
+  "fams": [
+   [
+    "Inter",
+    45
+   ],
+   [
+    "Barlow Condensed",
+    12
+   ],
+   [
+    "ui-monospace",
+    1
+   ]
+  ],
+  "nTextColors": 5,
+  "tcolors": [
+   [
+    "rgb(156, 149, 138)",
+    40
+   ],
+   [
+    "rgb(242, 237, 228)",
+    15
+   ],
+   [
+    "rgb(12, 11, 10)",
+    1
+   ],
+   [
+    "rgb(251, 247, 240)",
+    1
+   ],
+   [
+    "rgb(52, 211, 153)",
+    1
+   ]
+  ],
+  "nEyebrowSizes": 2,
+  "eyebrows": [
+   [
+    "12",
+    1
+   ],
+   [
+    "12.5",
+    1
+   ]
+  ],
+  "emojiUI": 0,
+  "nBgs": 4,
+  "bgs": [
+   [
+    "rgb(12, 11, 10)",
+    3
+   ],
+   [
+    "rgb(21, 19, 17)",
+    3
+   ],
+   [
+    "rgb(33, 29, 25)",
+    1
+   ],
+   [
+    "rgb(242, 237, 228)",
+    1
+   ]
+  ],
+  "nBorders": 4,
+  "nRadii": 4,
+  "radii": [
+   [
+    "12px",
+    13
+   ],
+   [
+    "3.35544e+07px",
+    6
+   ],
+   [
+    "16px",
+    2
+   ],
+   [
+    "0px",
+    1
+   ]
+  ],
+  "nPads": 2,
+  "nBotones": 16,
+  "nFirmasBoton": 7,
+  "firmas": [
+   [
+    "rgba(0, 0, 0, 0) | rgb(156, 149, 138) | rgba(242, 237, 228, 0.1) | 12px | 64px | 16px | up",
+    8
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(156, 149, 138) | rgba(242, 237, 228, 0.1) | 3.35544e+07px | 44px | 13px | up",
+    2
+   ],
+   [
+    "oklab(0.581255 0.163163 0.0885327 / 0.15) | rgb(242, 237, 228) | rgb(210, 63, 52) | 12px | 64px | 16px | up",
+    2
+   ],
+   [
+    "rgb(21, 19, 17) | rgb(156, 149, 138) | rgba(242, 237, 228, 0.1) | 3.35544e+07px | 44px | 13px | up",
+    1
+   ],
+   [
+    "rgb(33, 29, 25) | rgb(242, 237, 228) | rgba(242, 237, 228, 0.1) | 3.35544e+07px | 44px | 13px | up",
+    1
+   ],
+   [
+    "rgb(242, 237, 228) | rgb(12, 11, 10) | rgb(242, 237, 228) | 3.35544e+07px | 44px | 13px | up",
+    1
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(156, 149, 138) | rgba(242, 237, 228, 0.1) | 12px | 44px | 13px | up",
+    1
+   ]
+  ],
+  "contrasteMedidos": 44,
+  "contrasteSinMedir": 14,
+  "nContrasteMal": 0,
+  "contrasteMal": [],
+  "imgDeformadas": 0,
+  "imgSinAlt": 0,
+  "h1": "TARJETA DE CORTES",
+  "area": "admin",
+  "pantalla": "Tarjeta de fidelidad",
+  "ruta": "/admin/tarjeta",
+  "vp": "escritorio",
+  "http": 200,
+  "url": "https://barbasybigotes.com/admin/tarjeta",
+  "errores": [],
+  "captura": "vis-admin-tarjeta-de-fidelidad-escritorio.png"
+ },
+ {
+  "sw": 390,
+  "vw": 390,
+  "alto": 3571,
+  "cromo": 146,
+  "interactivos": 15,
+  "nChicos": 0,
+  "chicos": [],
+  "textoTotal": 76,
+  "textoChico": 0,
+  "nSizes": 7,
+  "sizes": [
+   [
+    "13",
+    42
+   ],
+   [
+    "14.5",
+    14
+   ],
+   [
+    "12",
+    9
+   ],
+   [
+    "24",
+    4
+   ],
+   [
+    "13.5",
+    3
+   ],
+   [
+    "12.5",
+    3
+   ],
+   [
+    "28",
+    1
+   ]
+  ],
+  "nWeights": 4,
+  "weights": [
+   [
+    "700",
+    37
+   ],
+   [
+    "400",
+    26
+   ],
+   [
+    "600",
+    12
+   ],
+   [
+    "800",
+    1
+   ]
+  ],
+  "fams": [
+   [
+    "Inter",
+    57
+   ],
+   [
+    "Barlow Condensed",
+    19
+   ]
+  ],
+  "nTextColors": 5,
+  "tcolors": [
+   [
+    "rgb(156, 149, 138)",
+    37
+   ],
+   [
+    "rgb(242, 237, 228)",
+    21
+   ],
+   [
+    "rgb(232, 103, 92)",
+    14
+   ],
+   [
+    "rgb(251, 191, 36)",
+    3
+   ],
+   [
+    "oklab(0.947513 0.00178179 0.0130511 / 0.85)",
+    1
+   ]
+  ],
+  "nEyebrowSizes": 1,
+  "eyebrows": [
+   [
+    "12",
+    1
+   ]
+  ],
+  "emojiUI": 0,
+  "nBgs": 4,
+  "bgs": [
+   [
+    "rgb(21, 19, 17)",
+    9
+   ],
+   [
+    "rgb(52, 211, 153)",
+    5
+   ],
+   [
+    "rgb(12, 11, 10)",
+    1
+   ],
+   [
+    "rgb(33, 29, 25)",
+    1
+   ]
+  ],
+  "nBorders": 4,
+  "nRadii": 3,
+  "radii": [
+   [
+    "3.35544e+07px",
+    22
+   ],
+   [
+    "16px",
+    11
+   ],
+   [
+    "0px",
+    1
+   ]
+  ],
+  "nPads": 2,
+  "nBotones": 2,
+  "nFirmasBoton": 2,
+  "firmas": [
+   [
+    "rgb(21, 19, 17) | rgb(242, 237, 228) | rgba(242, 237, 228, 0.1) | 3.35544e+07px | 44px | 16px | up",
+    1
+   ],
+   [
+    "rgb(33, 29, 25) | rgb(242, 237, 228) | rgba(242, 237, 228, 0.1) | 3.35544e+07px | 44px | 13px | up",
+    1
+   ]
+  ],
+  "contrasteMedidos": 59,
+  "contrasteSinMedir": 17,
+  "nContrasteMal": 0,
+  "contrasteMal": [],
+  "imgDeformadas": 0,
+  "imgSinAlt": 0,
+  "h1": "GUÍA RÁPIDA",
+  "area": "admin",
+  "pantalla": "Ayuda",
+  "ruta": "/admin/ayuda",
+  "vp": "movil",
+  "http": 200,
+  "url": "https://barbasybigotes.com/admin/ayuda",
+  "errores": [],
+  "captura": "vis-admin-ayuda-movil.png",
+  "capturaFull": "vis-admin-ayuda-movil-full.png"
+ },
+ {
+  "sw": 1280,
+  "vw": 1280,
+  "alto": 2295,
+  "cromo": 152,
+  "interactivos": 15,
+  "nChicos": 1,
+  "chicos": [
+   {
+    "t": "Barbas & Bigotes · Hoy",
+    "w": 94,
+    "h": 32
+   }
+  ],
+  "textoTotal": 78,
+  "textoChico": 0,
+  "nSizes": 7,
+  "sizes": [
+   [
+    "13",
+    43
+   ],
+   [
+    "14.5",
+    14
+   ],
+   [
+    "12",
+    10
+   ],
+   [
+    "24",
+    4
+   ],
+   [
+    "13.5",
+    3
+   ],
+   [
+    "12.5",
+    3
+   ],
+   [
+    "32",
+    1
+   ]
+  ],
+  "nWeights": 4,
+  "weights": [
+   [
+    "700",
+    37
+   ],
+   [
+    "400",
+    27
+   ],
+   [
+    "600",
+    13
+   ],
+   [
+    "800",
+    1
+   ]
+  ],
+  "fams": [
+   [
+    "Inter",
+    58
+   ],
+   [
+    "Barlow Condensed",
+    19
+   ],
+   [
+    "ui-monospace",
+    1
+   ]
+  ],
+  "nTextColors": 5,
+  "tcolors": [
+   [
+    "rgb(156, 149, 138)",
+    39
+   ],
+   [
+    "rgb(242, 237, 228)",
+    21
+   ],
+   [
+    "rgb(232, 103, 92)",
+    14
+   ],
+   [
+    "rgb(251, 191, 36)",
+    3
+   ],
+   [
+    "oklab(0.947513 0.00178179 0.0130511 / 0.85)",
+    1
+   ]
+  ],
+  "nEyebrowSizes": 1,
+  "eyebrows": [
+   [
+    "12",
+    1
+   ]
+  ],
+  "emojiUI": 0,
+  "nBgs": 4,
+  "bgs": [
+   [
+    "rgb(21, 19, 17)",
+    9
+   ],
+   [
+    "rgb(52, 211, 153)",
+    5
+   ],
+   [
+    "rgb(12, 11, 10)",
+    1
+   ],
+   [
+    "rgb(33, 29, 25)",
+    1
+   ]
+  ],
+  "nBorders": 4,
+  "nRadii": 3,
+  "radii": [
+   [
+    "3.35544e+07px",
+    22
+   ],
+   [
+    "16px",
+    11
+   ],
+   [
+    "0px",
+    1
+   ]
+  ],
+  "nPads": 2,
+  "nBotones": 2,
+  "nFirmasBoton": 2,
+  "firmas": [
+   [
+    "rgb(21, 19, 17) | rgb(156, 149, 138) | rgba(242, 237, 228, 0.1) | 3.35544e+07px | 44px | 13px | up",
+    1
+   ],
+   [
+    "rgb(33, 29, 25) | rgb(242, 237, 228) | rgba(242, 237, 228, 0.1) | 3.35544e+07px | 44px | 13px | up",
+    1
+   ]
+  ],
+  "contrasteMedidos": 61,
+  "contrasteSinMedir": 17,
+  "nContrasteMal": 0,
+  "contrasteMal": [],
+  "imgDeformadas": 0,
+  "imgSinAlt": 0,
+  "h1": "GUÍA RÁPIDA",
+  "area": "admin",
+  "pantalla": "Ayuda",
+  "ruta": "/admin/ayuda",
+  "vp": "escritorio",
+  "http": 200,
+  "url": "https://barbasybigotes.com/admin/ayuda",
+  "errores": [],
+  "captura": "vis-admin-ayuda-escritorio.png"
+ }
+]
