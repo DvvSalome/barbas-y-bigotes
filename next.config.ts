@@ -41,7 +41,13 @@ const nextConfig: NextConfig = {
           // latencia en cada visita pública. Lo que sí cierra esta versión es lo
           // que un XSS necesita para hacer daño de verdad:
           //  · connect-src — a dónde puede MANDAR datos (robar una sesión pasa
-          //    por acá). Solo el propio sitio, Supabase y Sentry.
+          //    por acá). El propio sitio, Supabase y Sentry… y el CDN
+          //    de fotos de Google, que NO está acá por gusto: el service
+          //    worker de la PWA intercepta TODO lo cross-origin y lo vuelve a
+          //    pedir con fetch(), y un fetch() dentro del worker se rige por
+          //    connect-src, no por img-src. Sin esta entrada el avatar de quien
+          //    entra con Google carga en la primera visita y se rompe en todas
+          //    las siguientes (medido en producción: sin SW 96x96, con SW onerror).
           //  · form-action — a dónde puede enviarse un formulario.
           //  · base-uri — evita que inyecten <base> y reescriban todas las URL.
           //  · object-src — nada de Flash/embed heredado.
@@ -57,7 +63,7 @@ const nextConfig: NextConfig = {
               "img-src 'self' data: blob: https://wvmdsxznujklgfezqtfy.supabase.co https://lh3.googleusercontent.com",
               "font-src 'self' data:",
               "media-src 'self' blob:",
-              "connect-src 'self' https://wvmdsxznujklgfezqtfy.supabase.co wss://wvmdsxznujklgfezqtfy.supabase.co https://*.ingest.sentry.io https://*.ingest.us.sentry.io",
+              "connect-src 'self' https://wvmdsxznujklgfezqtfy.supabase.co wss://wvmdsxznujklgfezqtfy.supabase.co https://lh3.googleusercontent.com https://*.ingest.sentry.io https://*.ingest.us.sentry.io",
               "worker-src 'self' blob:",
               "manifest-src 'self'",
               // El mapa de la sección Ubicación es un embed de Google Maps.
