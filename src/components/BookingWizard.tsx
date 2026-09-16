@@ -954,6 +954,11 @@ export function BookingWizard({
         </p>
         <button
           onClick={() => {
+            // Recarga ENTERA a propósito, no router.push: ya estamos en /reservar,
+            // así que empujar la misma ruta no reinicia el asistente y la pantalla
+            // se quedaría en "la cancelamos". La regla nueva de Next 16.3 pide
+            // router.push, pero acá lo que se quiere es justamente volver a cero.
+            // eslint-disable-next-line @next/next/no-location-assign-relative-destination
             window.location.href = "/reservar";
           }}
           className="mt-2 flex min-h-[50px] items-center justify-center rounded-2xl px-8 font-display text-[15px] font-extrabold uppercase tracking-wide text-on-accent"
