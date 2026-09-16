@@ -96,6 +96,8 @@ Calendario día×barbero con carriles, línea de «ahora», drag y mover · bloq
 ## 4. Plan
 
 > Cada paso se deploya solo. `dep.` = de qué paso depende.
+>
+> **Hechos al 16-sep: 1, 2, 3, 4, 5 y 6.** Sigue el 7.
 
 | # | Paso | Esf. | Valor | dep. | Migración |
 |---|---|---|---|---|---|
@@ -105,7 +107,7 @@ Calendario día×barbero con carriles, línea de «ahora», drag y mover · bloq
 | 4 | Mostrador: nav de 4, FAB de una acción, cabecera fundida, `?cobrar=` | M | alto | 2 | — |
 | 5 | Una sola `Hoja`; fuera `confirm()` y `alert()` (sin `CierreCaja`) | M | alto | 2 | — |
 | 6 | Mostrador · Cierre como hub (dueño único de `CierreCaja`) | M | alto | 2, 5 | — |
-| 7 | **«El local»: Perfil \| Horario \| Días especiales — cierra la deuda de la tanda 1** | M | alto | 2, 3 | **0074** |
+| 7 | **«El local»: Perfil \| Horario \| Días especiales — cierra la deuda de la tanda 1** | M | alto | 2, 3 | **0075** |
 | 8 | Agenda: cabecera compacta + tira de semana + FAB; leyenda al «?» | M | alto | 2, 3 | — |
 | 9 | **Agenda: filtro por barbero «Solo yo» + hora grande** | M | alto | 8 | — |
 | 10 | `HojaCita`: registrar desde el calendario | M | alto | 4, 5, 8 | — |
@@ -118,14 +120,18 @@ Calendario día×barbero con carriles, línea de «ahora», drag y mover · bloq
 | 17 | Hub `Estadísticas e informes` (+ Gastos y Reseñas) | M | medio | 16 | — |
 | 18 | Inicio B: cifras del mes, últimas visitas, «Ahora mismo» | M | medio | 15 | — |
 | 19 | Catálogo e Inventario: filas + `ServicioSheet` / `ProductoSheet` | M | medio | 2, 5 | *(RLS)* |
-| 20 | Equipo: una ficha por colaborador + baja | M | medio | 2, 16 | **0075** |
+| 20 | Equipo: una ficha por colaborador + baja | M | medio | 2, 16 | **0076** |
 | 21 | **Marketing y sueltos: `Campo` y `EstadoVacio` donde el hub señala** | S | medio | 2, 16 | — |
 | 22 | Ficha del cliente: secciones apiladas en vez de 8 pestañas | L | medio | 12 | *(RLS)* |
 | 23 | **Cierre de medición: re-correr el arnés y publicar el «después»** | S | alto | 1,3,7,8,12,14 | — |
 
 ### Migraciones — el dueño las aplica a mano en el SQL Editor, **antes** del deploy que las usa
 
-**`0074_sedes_contacto.sql`** — antes del paso 7.
+**`0075_sedes_contacto.sql`** — antes del paso 7.
+
+> **Renumerada el 16-sep.** El plan la había llamado `0074`, pero ese número se lo llevó
+> `0074_ajustes_equipo.sql` (el interruptor de «que el barbero vea su semana»), aplicada y
+> verificada ese mismo día. Los dos números de este bloque corren uno: 0075 y 0076.
 
 ```sql
 alter table public.sedes
@@ -139,7 +145,7 @@ notify pgrst, 'reload schema';
 
 `google_review_url` ya existe (0018) y `foto_url` también (0058). `getSedes` debe tolerar columnas ausentes mientras no esté aplicada — el patrón ya está en el repo: `getCuadre` hace `select("*")` sobre `gastos` justamente por eso.
 
-**`0075_bucket_barberos.sql`** — antes del paso 20.
+**`0076_bucket_barberos.sql`** — antes del paso 20.
 
 ```sql
 insert into storage.buckets (id, name, public)
