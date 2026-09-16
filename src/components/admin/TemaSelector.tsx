@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { aplicarTema, temaActual, type TemaStaff } from "@/lib/tema";
+import { useSyncExternalStore } from "react";
+import { leerTema, ponerTema, suscribirTema, temaServidor, type TemaStaff } from "@/lib/tema";
 import { Segmentado } from "@/components/ui/Segmentado";
 
 /*
@@ -16,16 +16,10 @@ import { Segmentado } from "@/components/ui/Segmentado";
   dos escriben la misma cookie y el mismo atributo, así que no pueden discrepar.
 */
 export function TemaSelector() {
-  // El servidor ya pintó data-theme en el wrapper; se lee de ahí para no tener
-  // dos fuentes de verdad. El componente solo se dibuja tras hidratar.
-  const [tema, setTema] = useState<TemaStaff>(() =>
-    typeof document === "undefined" ? "dark" : temaActual(),
-  );
-
-  function cambiar(v: TemaStaff) {
-    setTema(v);
-    aplicarTema(v); // aplica en vivo y guarda la cookie un año
-  }
+  // Del lugar común: si el tema se toca desde el botón de la cabecera o desde
+  // el menú del avatar, este selector se entera y no queda marcando el viejo.
+  const tema = useSyncExternalStore(suscribirTema, leerTema, temaServidor);
+  const cambiar = (v: TemaStaff) => ponerTema(v);
 
   return (
     <div className="rounded-2xl border border-line bg-panel p-4">

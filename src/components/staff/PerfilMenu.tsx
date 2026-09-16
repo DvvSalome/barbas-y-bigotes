@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { supabaseBrowser } from "@/lib/supabase/client";
-import { aplicarTema, temaActual, type TemaStaff } from "@/lib/tema";
+import { leerTema, ponerTema, suscribirTema, temaServidor, type TemaStaff } from "@/lib/tema";
 import { LogoutIcon } from "@/components/icons";
 
 // Rueda de perfil del staff (admin y barbero): el avatar abre un menú con la
@@ -37,9 +37,9 @@ export function PerfilMenu({
   // El server ya pintó data-theme en el wrapper: se lee de ahí como valor
   // inicial (lazy, con guard para SSR; el menú solo se pinta tras hidratar,
   // así que no hay riesgo de mismatch). Evita duplicar la fuente de verdad.
-  const [tema, setTema] = useState<TemaStaff>(() =>
-    typeof document === "undefined" ? "dark" : temaActual(),
-  );
+  // Del lugar común (lib/tema): el tema también se toca desde el botón de la
+  // cabecera y desde Ajustes, y los tres tienen que mostrar lo mismo.
+  const tema = useSyncExternalStore(suscribirTema, leerTema, temaServidor);
 
   // Click afuera + Esc (Esc devuelve el foco al avatar).
   useEffect(() => {
@@ -62,8 +62,7 @@ export function PerfilMenu({
   }, [open]);
 
   function cambiarTema(t: TemaStaff) {
-    aplicarTema(t); // atributo en vivo en [data-staff] + cookie (T2)
-    setTema(t);
+    ponerTema(t); // atributo en vivo + cookie + aviso a las otras vistas
   }
 
   async function cerrarSesion() {

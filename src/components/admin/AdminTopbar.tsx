@@ -7,6 +7,7 @@ import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { AdminTabs } from "@/components/admin/AdminNav";
 import { seccionFiltraPorSede, seccionExigeSede } from "@/components/admin/nav-mapa";
 import { PerfilMenu } from "@/components/staff/PerfilMenu";
+import { TemaBoton } from "@/components/staff/TemaBoton";
 import { SearchIcon, PinIcon } from "@/components/icons";
 import type { Sede } from "@/lib/data/types";
 
@@ -139,6 +140,10 @@ export function AdminTopbar({ email, sedes }: { email: string; sedes: Sede[] }) 
             <span className="truncate">Buscar o hacer algo…</span>
             <kbd className="ml-auto rounded border border-line bg-bg px-1.5 py-0.5 font-mono text-[12px] font-semibold">Ctrl K</kbd>
           </button>
+          {/* Accesibilidad: claro/oscuro a un toque. De día entra sol al local
+              y el tema oscuro se lava; quien lo necesita lo necesita ahora, no
+              después de entrar a Ajustes. */}
+          <TemaBoton />
           <PerfilMenu nombre={name} detalle={email} salidaHref="/login" />
         </div>
       </div>

@@ -5,6 +5,7 @@ import { cookies } from "next/headers";
 import { getStaffContext } from "@/lib/data/queries";
 import { TEMA_COOKIE, temaDesdeCookie } from "@/lib/tema";
 import { PerfilMenu } from "@/components/staff/PerfilMenu";
+import { TemaBoton } from "@/components/staff/TemaBoton";
 
 export default async function BarberoLayout({
   children,
@@ -33,6 +34,9 @@ export default async function BarberoLayout({
             {staff.nombre && (
               <span className="text-sm font-semibold text-ink">{staff.nombre.split(" ")[0]}</span>
             )}
+            {/* Claro/oscuro a un toque: la tablet del local pasa del sol de la
+                mañana a la luz artificial de la noche en la misma jornada. */}
+            <TemaBoton />
             <PerfilMenu nombre={staff.nombre || "Barbero"} fotoUrl={staff.fotoUrl} salidaHref="/login" />
           </div>
         </div>

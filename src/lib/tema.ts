@@ -30,3 +30,48 @@ export function temaActual(): TemaStaff {
   const el = document.querySelector<HTMLElement>("[data-staff]");
   return temaDesdeCookie(el?.getAttribute("data-theme") ?? undefined);
 }
+
+/* ─────────────────────────────────────────────────────────────
+   El tema se toca desde TRES lugares: el botón de la cabecera, el
+   selector de Ajustes y el menú del avatar. Sin un lugar común, tocar
+   uno dejaba a los otros dos mostrando el valor viejo hasta que algo
+   los re-dibujara: el selector decía "Oscuro" con la pantalla en claro.
+
+   Esto es ese lugar común. Cada vista se suscribe con
+   useSyncExternalStore y todas se enteran del mismo cambio.
+   ───────────────────────────────────────────────────────────── */
+
+const oyentes = new Set<() => void>();
+
+/** Para useSyncExternalStore: avisa cuando el tema cambia desde cualquier vista. */
+export function suscribirTema(avisar: () => void) {
+  oyentes.add(avisar);
+  return () => {
+    oyentes.delete(avisar);
+  };
+}
+
+/**
+ * Instantánea del tema. Devuelve un string, así que React lo compara por valor
+ * y no re-dibuja de más. En el servidor no hay DOM: se usa `temaServidor`.
+ */
+export function leerTema(): TemaStaff {
+  if (typeof document === "undefined") return "dark";
+  return temaActual();
+}
+
+/** Instantánea del servidor. El layout ya pintó el atributo, así que al hidratar se corrige solo. */
+export const temaServidor = (): TemaStaff => "dark";
+
+/** Cambia el tema y avisa a todas las vistas suscritas. Usar esto, no aplicarTema. */
+export function ponerTema(tema: TemaStaff) {
+  aplicarTema(tema);
+  oyentes.forEach((f) => f());
+}
+
+/** Del oscuro al claro y al revés. Lo que hace el botón de la cabecera. */
+export function alternarTema(): TemaStaff {
+  const proximo: TemaStaff = leerTema() === "dark" ? "light" : "dark";
+  ponerTema(proximo);
+  return proximo;
+}
