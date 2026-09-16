@@ -171,7 +171,11 @@ export function Recepcion({
             </p>
           )}
         </div>
-        <div className="text-right">
+        {/* En el celular del barbero esto cae a su propio renglón: alineado a la
+            derecha quedaba el monto flotando lejos de su etiqueta. A la
+            izquierda se lee como un bloque. En tablet vuelve a la derecha, que
+            es donde acompaña al título. */}
+        <div className="text-left sm:text-right">
           <div className="font-display text-[30px] font-bold leading-none tabular-nums text-ok">{cop(cobrado)}</div>
           <div className="text-[11px] uppercase tracking-[0.14em] text-muted">cobrado hoy en la sede</div>
         </div>
@@ -382,7 +386,13 @@ export function Recepcion({
           {/* La TARJETA ENTERA es el botón: de pie, con un dedo, apuntarle a un
               pill de 30px al borde de la tarjeta falla una de cada tres veces.
               Tocar al barbero libre = anotarle el cliente que acaba de entrar. */}
-          <div className="grid grid-cols-2 gap-2.5 xl:grid-cols-3">
+          {/* UNA columna en el celular. Con dos, la tarjeta queda en ~174 px y
+              al nombre le sobran 26: "Jhon" y "Junior" salían los dos como
+              "J...". Y esta tarjeta ES el botón que le asigna el cliente al
+              barbero, así que dos nombres idénticos no es un detalle feo, es
+              anotarle el corte al que no era. Desde tablet (640 px) vuelven las
+              dos columnas, que ahí sí entran enteras. */}
+          <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-3">
             {libres.map((b) => {
               const contenido = (
                 <>
