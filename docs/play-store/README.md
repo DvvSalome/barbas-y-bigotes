@@ -17,7 +17,7 @@ menos 12 testers durante 14 días seguidos**.
 | Pieza | Estado |
 |---|---|
 | PWA lista (manifest, íconos 192/512/maskable, standalone, es-CO) | ✅ ya estaba |
-| `public/.well-known/assetlinks.json` | ✅ publicado con la huella de la llave de subida; **falta la de firma de Play** (paso 4) |
+| `public/.well-known/assetlinks.json` | ✅ publicado con las DOS huellas: la de firma de Play (`41:4D:…:E6:A5`, tomada de Play Console → Firma de apps el 15-sep) y la de subida. Sin la de Play la app instalada desde la tienda abría como Custom Tab con barra de URL |
 | Página de eliminación de cuenta `/cuenta/eliminar` | ✅ (Play la exige por el login con Google) |
 | Proyecto TWA `twa/twa-manifest.json` (Bubblewrap) | ✅ configurado, `com.barbasybigotes.app` · **compilado 9-sep: `twa/app-release-bundle.aab` (2,5 MB) y `twa/app-release-signed.apk`**, firmados con la llave de subida |
 | Bubblewrap CLI instalado en la máquina de FourG | ✅ (`npm i -g @bubblewrap/cli`) |
@@ -96,7 +96,7 @@ probar; con la huella de la llave de subida ya en assetlinks abre sin barra de n
    instalar; los 14 días cuentan desde que hay 12 activos.**
 5. Cuando Play habilite *Producción*, solicitar acceso, responder el formulario y publicar.
 
-### 4. La huella (assetlinks) — apenas exista la app en Play
+### 4. La huella (assetlinks) — HECHO el 15-sep (queda como referencia)
 
 Play Console → *Configuración* → *Integridad de la app* → *Firma de apps* → copiar la
 **huella SHA-256 del certificado de firma de la app** (la de Google, no la de subida).

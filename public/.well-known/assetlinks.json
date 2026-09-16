@@ -1,10 +1,13 @@
 [
   {
-    "relation": ["delegate_permission/common.handle_all_urls"],
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
     "target": {
       "namespace": "android_app",
       "package_name": "com.barbasybigotes.app",
       "sha256_cert_fingerprints": [
+        "41:4D:DD:78:E9:46:82:59:0A:DA:7C:84:8A:FF:48:B1:36:98:A6:5E:EE:37:06:42:F2:57:FF:B1:C3:0A:E6:A5",
         "32:E8:F2:E8:9A:4E:53:64:33:8C:89:0F:90:6B:E2:AF:AF:0A:AA:6F:BB:26:2D:DB:65:BC:8D:81:3A:99:D4:07"
       ]
     }
