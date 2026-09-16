@@ -47,14 +47,38 @@ export async function proxy(request: NextRequest) {
   // resolviendo los layouts; acá solo se veta la ausencia total de sesión.
   const { pathname } = request.nextUrl;
   const zonaStaff = pathname.startsWith("/admin") || pathname.startsWith("/barbero");
-  if (!user && zonaStaff) {
+
+  // Redirige conservando las cookies que getUser() haya rotado; si no, una
+  // sesión recién refrescada se perdería justo al ser expulsada.
+  const irA = (destino: string) => {
     const url = request.nextUrl.clone();
-    url.pathname = "/login";
-    const redirect = NextResponse.redirect(url);
-    // Un anónimo no tiene cookies que rotar, pero copiamos las de `response`
-    // por si getUser limpió tokens vencidos.
-    response.cookies.getAll().forEach((cookie) => redirect.cookies.set(cookie));
-    return redirect;
+    url.pathname = destino;
+    const salida = NextResponse.redirect(url);
+    response.cookies.getAll().forEach((cookie) => salida.cookies.set(cookie));
+    return salida;
+  };
+
+  // Sin sesión en zona de staff: cortar ANTES de cualquier render.
+  if (!user && zonaStaff) return irA("/login");
+
+  // Y el rol FINO de /admin se decide acá también, no solo en el layout. El
+  // layout redirige, sí, pero Next renderiza layout y página en PARALELO: su
+  // redirect() no llega a tiempo para frenar los fetches de la página, y
+  // varios de esos leen con service_role (bypassan RLS). Medido en producción
+  // con una sesión de barbero: /admin/liquidacion respondía 307 a /barbero y
+  // aun así entregaba 54 KB con la liquidación del equipo (nombres y montos);
+  // lo mismo en las otras 7 pantallas probadas. El gate propio que ya tenían
+  // Hoy, Cupones y Horarios tapaba solo esas tres. Acá corre en el borde,
+  // antes de que exista el Server Component, así que la página ni se ejecuta.
+  if (user && pathname.startsWith("/admin")) {
+    const { data: perfil } = await supabase
+      .from("profiles")
+      .select("rol")
+      .eq("auth_id", user.id)
+      .maybeSingle();
+    const rol = (perfil as { rol?: string } | null)?.rol;
+    // Sin fila en profiles es un CLIENTE (entró con Google), no un barbero.
+    if (rol !== "admin") return irA(rol ? "/barbero" : "/cuenta");
   }
 
   return response;
