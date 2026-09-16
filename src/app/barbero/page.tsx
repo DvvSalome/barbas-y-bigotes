@@ -169,6 +169,10 @@ export default async function BarberoPage({
         medios={medios}
         elegirBarbero={staff.rol !== "barbero"}
         mostrador={mostrador}
+        // Los avisos vivían en la pestaña CIERRE, que se abre una vez al día al
+        // cerrar: el barbero nuevo no los encontraba nunca. Van a Turnos, que es
+        // donde entra. Ya activos, el componente se encoge a una línea.
+        avisosSlot={(staff.sedeId || staff.barberoId) ? <AvisosBarbero /> : null}
         miDiaSlot={
           esBarbero ? (
             <MiDia
@@ -274,7 +278,6 @@ export default async function BarberoPage({
             )}
             {/* El aviso se ata a la sede o al barbero del perfil; el dueño no
                 tiene ninguno de los dos, así que para él no se dibuja. */}
-            {(staff.sedeId || staff.barberoId) && <AvisosBarbero />}
           </div>
         }
       />

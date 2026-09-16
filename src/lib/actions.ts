@@ -3606,6 +3606,46 @@ export async function actualizarAjusteVerSemana(activo: boolean): Promise<Action
 
 // ---------- Avisos al barbero en su celular (web push del staff, 0047) ----------
 /**
+ * Manda UN aviso de prueba al aparato del que está logueado.
+ *
+ * Hasta ahora no había forma de saber si los avisos funcionaban: se activaban y
+ * había que esperar a que entrara una reserva de verdad. Si el aparato tenía el
+ * permiso revocado, o la suscripción vencida, nadie se enteraba hasta que se
+ * perdió una cita. Esto lo responde en dos segundos.
+ *
+ * Va al MISMO destino que los avisos reales: el barbero a su ficha, el mostrador
+ * a su sede. No inventa destinatario ni acepta uno por parámetro.
+ */
+export async function probarAvisoStaff(): Promise<ActionResult> {
+  const staff = await getStaffContext();
+  if (!["admin", "barbero", "sede"].includes(staff.rol)) return { ok: false, error: "No autorizado" };
+
+  const aviso = {
+    title: "Prueba de avisos",
+    body: "Si ves esto, los avisos de este aparato funcionan.",
+    url: "/barbero",
+    tag: "prueba-staff",
+  };
+
+  const r = staff.barberoId
+    ? await pushABarbero(staff.barberoId, aviso)
+    : staff.sedeId
+      ? await pushASede(staff.sedeId, aviso)
+      : null;
+
+  if (!r) return { ok: false, error: "Este perfil no tiene aparato al que avisar." };
+  if (!r.configurado) return { ok: false, error: "El servidor no tiene las llaves de avisos configuradas." };
+  if (r.enviadas === 0) {
+    return {
+      ok: false,
+      error: "No se pudo entregar. Volvé a activarlos en este aparato: la suscripción venció o el permiso se revocó.",
+    };
+  }
+  return { ok: true };
+}
+
+
+/**
  * Guarda la suscripción push del STAFF logueado. El dueño de la suscripción sale
  * del PERFIL, no del cliente: un perfil por sede la ata a la sede (el aparato del
  * mostrador, que es el destinatario que importa) y un login de barbero a su ficha.

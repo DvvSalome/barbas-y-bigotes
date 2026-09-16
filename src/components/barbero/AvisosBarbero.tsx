@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { guardarPushStaff } from "@/lib/actions";
+import { guardarPushStaff, probarAvisoStaff } from "@/lib/actions";
 
 // Avisos de cita en el aparato del STAFF (migración 0047).
 // El ding del mostrador solo suena con la app abierta en pantalla: con el
@@ -45,6 +45,23 @@ export function AvisosBarbero() {
   const [estado, setEstado] = useState<Estado>("cargando");
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [prueba, setPrueba] = useState<{ ok: boolean; texto: string } | null>(null);
+  const [probando, setProbando] = useState(false);
+
+  // Probar: el barbero activa los avisos y hasta ahora tenía que ESPERAR una
+  // reserva real para saber si funcionaban. Si el permiso estaba revocado o la
+  // suscripción vencida, se enteraba perdiendo una cita.
+  async function probar() {
+    setProbando(true);
+    setPrueba(null);
+    const res = await probarAvisoStaff();
+    setPrueba(
+      res.ok
+        ? { ok: true, texto: "Enviado. Debería aparecerte en un segundo." }
+        : { ok: false, texto: res.error ?? "No se pudo enviar." },
+    );
+    setProbando(false);
+  }
 
   useEffect(() => {
     let vivo = true;
@@ -117,10 +134,22 @@ export function AvisosBarbero() {
 
   if (estado === "activo") {
     return (
-      <p className="flex items-center gap-2 text-[12px] text-muted">
-        <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-ok" />
-        Avisos activos en este aparato: te llega la cita al celular aunque tengas la app cerrada.
-      </p>
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+        <p className="flex items-center gap-2 text-[12px] text-muted">
+          <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-ok" />
+          Avisos activos en este aparato: te llega la cita al celular aunque tengas la app cerrada.
+        </p>
+        <button
+          onClick={probar}
+          disabled={probando}
+          className="min-h-11 shrink-0 px-2 text-[12px] font-semibold text-muted underline decoration-line underline-offset-4 transition hover:text-ink disabled:opacity-50"
+        >
+          {probando ? "Enviando…" : "Probar"}
+        </button>
+        {prueba && (
+          <span className={`text-[12px] ${prueba.ok ? "text-ok" : "text-warn"}`}>{prueba.texto}</span>
+        )}
+      </div>
     );
   }
 
@@ -128,10 +157,25 @@ export function AvisosBarbero() {
     <div className="rounded-2xl border border-accent/35 bg-accent/[0.06] px-4 py-3.5">
       <p className="text-[13.5px] font-bold text-ink">Avisos de citas en tu celular</p>
       {estado === "ios-instalar" ? (
-        <p className="mt-1 text-[12.5px] text-muted">
-          En iPhone hay que instalar la app primero: toca Compartir → Agregar a pantalla de inicio, y
-          entra desde ahí.
-        </p>
+        <div className="mt-1.5 text-[12.5px] leading-relaxed text-muted">
+          {/* iPhone NO entrega avisos a una pestaña de Safari: solo a la app
+              instalada en la pantalla de inicio (iOS 16.4+). Por eso son pasos y
+              no una línea: es el punto donde el barbero abandona. */}
+          <p>En iPhone, Safari solo avisa si la app está instalada. Son tres toques:</p>
+          <ol className="mt-1.5 grid gap-1 pl-4 [counter-reset:p] [&>li]:list-decimal">
+            <li>
+              Tocá <span className="font-semibold text-ink">Compartir</span>, el cuadrito con la flecha para
+              arriba, abajo en el centro.
+            </li>
+            <li>
+              Bajá y tocá <span className="font-semibold text-ink">Agregar a pantalla de inicio</span>.
+            </li>
+            <li>
+              Abrí <span className="font-semibold text-ink">Barbas &amp; Bigotes</span> desde el ícono nuevo y
+              volvé acá: el botón de activar te va a aparecer.
+            </li>
+          </ol>
+        </div>
       ) : estado === "sin-sw" ? (
         <p className="mt-1 text-[12.5px] text-muted">Disponible en la app instalada.</p>
       ) : (
