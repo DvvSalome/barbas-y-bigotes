@@ -74,7 +74,7 @@ function CajaCard({ caja, medios }: { caja: CajaSesionSede; medios: MedioPago[] 
     // verdad, se escribe 0 a propósito.
     const n = Number(contado);
     if (contado.trim() === "" || !Number.isFinite(n) || n < 0) {
-      setErr("Escribí cuánto efectivo contaste en la caja (0 si está vacía).");
+      setErr("Escribe cuánto efectivo contaste en la caja (0 si está vacía).");
       return;
     }
     setBusy(true);

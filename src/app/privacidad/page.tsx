@@ -5,7 +5,7 @@ import { LegalLayout } from "@/components/LegalLayout";
 export const metadata: Metadata = {
   title: "Política de privacidad",
   description:
-    "Cómo Barbas & Bigotes Barbershop trata los datos personales de sus clientes: qué recolectamos, para qué, con quién se comparte y cómo ejercés tus derechos (Ley 1581 de 2012).",
+    "Cómo Barbas & Bigotes Barbershop trata los datos personales de sus clientes: qué recolectamos, para qué, con quién se comparte y cómo ejerces tus derechos (Ley 1581 de 2012).",
 };
 
 // Página exigida por Google (pantalla de consentimiento OAuth) y por la Ley 1581
@@ -45,7 +45,7 @@ export default function PrivacidadPage() {
             valor cobrado y tu avance en la tarjeta de cortes.
           </li>
           <li>
-            <strong>Si activás las notificaciones:</strong> un identificador técnico de tu
+            <strong>Si activas las notificaciones:</strong> un identificador técnico de tu
             navegador para poder enviarte el aviso. No identifica tu dispositivo ni tu ubicación.
           </li>
         </ul>
@@ -82,7 +82,7 @@ export default function PrivacidadPage() {
         </ul>
         <p>
           Algunos de estos proveedores procesan la información en servidores fuera de Colombia.
-          Al usar la aplicación aceptás esa transferencia, hecha bajo los estándares de
+          Al usar la aplicación aceptas esa transferencia, hecha bajo los estándares de
           seguridad de cada proveedor.
         </p>
       </section>

@@ -43,7 +43,7 @@ export default function GlobalError({ error }: { error: Error & { digest?: strin
               rel="noopener noreferrer"
               className="min-h-11 rounded-full border border-line px-7 py-3 text-sm text-accent-soft transition hover:border-accent/50"
             >
-              Escribinos por WhatsApp
+              Escríbenos por WhatsApp
             </a>
           </div>
         </main>

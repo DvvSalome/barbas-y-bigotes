@@ -76,7 +76,7 @@ export function TarjetaAdmin({ inicial }: { inicial: ConfigTarjeta }) {
           />
           cortes
         </label>
-        <span className="text-[12px] text-muted">Tocá una casilla para poner o quitar premio.</span>
+        <span className="text-[12px] text-muted">Toca una casilla para poner o quitar premio.</span>
       </div>
 
       {/* Las casillas, como en la tarjeta real. */}

@@ -200,7 +200,7 @@ export function BookingWizard({
   const [slot, setSlot] = useState<number | null>(null);
   const [nombre, setNombre] = useState("");
   const [email, setEmail] = useState("");
-  // Casilla "avisame cuando me toque corte y de promos" (0068). Marcada por
+  // Casilla "avísame cuando me toque corte y de promos" (0068). Marcada por
   // defecto y visible: el cliente la ve al lado del correo y la desmarca si no
   // quiere; cada correo lleva además el enlace de baja.
   const [aceptaAvisos, setAceptaAvisos] = useState(true);
@@ -861,7 +861,7 @@ export function BookingWizard({
     // Defensa: el botón ya exige datos válidos, pero confirmar() es la puerta real.
     // (Con sesión Google el server usa el correo de la sesión: no se exige acá.)
     if (!sesion && (!nombre.trim() || !EMAIL_RE.test(email.trim()))) {
-      setErrorMsg("Completá tu nombre y un correo válido para confirmar.");
+      setErrorMsg("Completa tu nombre y un correo válido para confirmar.");
       return;
     }
     // Resolver barbero: si el cliente no eligió, asignamos el primero libre en ese cupo.
@@ -1306,7 +1306,7 @@ export function BookingWizard({
                         setSlot(null);
                         // Reset del upsell: si venías de un combo con bebida incluida y
                         // cambias a otro servicio, no arrastres la bebida (se regalaba
-                        // gratis) y re-evaluá el upsell con el servicio nuevo.
+                        // gratis) y re-evalúa el upsell con el servicio nuevo.
                         setBebida(null);
                         setBebidaIncluida(false);
                         setUpsellSeen(false);

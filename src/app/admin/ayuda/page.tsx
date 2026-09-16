@@ -14,9 +14,9 @@ type Paso = { n: string; que: string; detalle: string };
 const MOSTRADOR: Paso[] = [
   {
     n: "1",
-    que: "Entrá con tu PIN",
+    que: "Entra con tu PIN",
     detalle:
-      "En el celular del local, tocá tu foto y escribí tus 6 números. Si te equivocás 5 veces se bloquea 5 minutos — pedile al dueño que lo desbloquee desde Equipo.",
+      "En el celular del local, toca tu foto y escribe tus 6 números. Si te equivocas 5 veces se bloquea 5 minutos — pídele al dueño que lo desbloquee desde Equipo.",
   },
   {
     n: "2",
@@ -28,7 +28,7 @@ const MOSTRADOR: Paso[] = [
     n: "3",
     que: "Llegó, a la silla",
     detalle:
-      "Cuando el cliente entra, tocá Llegó. Solo se habilita cerca de la hora: si la cita es en más de 2 horas el botón no deja, así nadie cierra por error la cita de la tarde.",
+      "Cuando el cliente entra, toca Llegó. Solo se habilita cerca de la hora: si la cita es en más de 2 horas el botón no deja, así nadie cierra por error la cita de la tarde.",
   },
   {
     n: "4",
@@ -61,7 +61,7 @@ const PANEL: Paso[] = [
     n: "Agenda",
     que: "El calendario",
     detalle:
-      "Una columna por barbero. Tocá un hueco para agendar, o una cita para verla, moverla o cancelarla. Con mouse se arrastra. Bloquear tapa horas: almuerzo, diligencia, lo que sea.",
+      "Una columna por barbero. Toca un hueco para agendar, o una cita para verla, moverla o cancelarla. Con mouse se arrastra. Bloquear tapa horas: almuerzo, diligencia, lo que sea.",
   },
   {
     n: "Caja",
@@ -79,7 +79,7 @@ const PANEL: Paso[] = [
     n: "Catálogo",
     que: "Servicios y productos",
     detalle:
-      "Tocá cualquier precio para cambiarlo, y puede ser distinto por sede. Subí la foto y la descripción que ve el cliente al reservar. En Productos: stock, mínimos y qué se le ofrece al final de la reserva.",
+      "Toca cualquier precio para cambiarlo, y puede ser distinto por sede. Sube la foto y la descripción que ve el cliente al reservar. En Productos: stock, mínimos y qué se le ofrece al final de la reserva.",
   },
   {
     n: "Equipo",
@@ -111,7 +111,7 @@ const AUTOMATICO = [
 
 const REGLAS: [string, string][] = [
   [
-    "Cerrá la caja todos los días",
+    "Cierra la caja todos los días",
     "Si queda abierta, lo de mañana se suma a lo de hoy y el cuadre deja de servir para saber cuánto entró de verdad.",
   ],
   [
@@ -119,8 +119,8 @@ const REGLAS: [string, string][] = [
     "Con menos tiempo tiene que escribir por WhatsApp, y ahí se la mueves tú desde la agenda.",
   ],
   [
-    "Cobrá siempre desde la cita",
-    "Si cobrás por fuera, la venta no queda atada al cliente: se pierde el historial y la comisión queda coja.",
+    "Cobra siempre desde la cita",
+    "Si cobras por fuera, la venta no queda atada al cliente: se pierde el historial y la comisión queda coja.",
   ],
 ];
 
@@ -182,7 +182,7 @@ export default function AyudaPage() {
       <section aria-label="Avisos automáticos" className="mt-9">
         <h2 className="font-display text-2xl font-bold uppercase text-ink">Lo que sale solo</h2>
         <p className="mt-1 text-[13px] text-muted">
-          Nadie manda esto a mano. Si algo de esto no llegó, es una falla — avisá.
+          Nadie manda esto a mano. Si algo de esto no llegó, es una falla — avisa.
         </p>
         <ul className={`${CAJA} mt-3`}>
           {AUTOMATICO.map((t) => (

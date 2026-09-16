@@ -344,7 +344,7 @@ export function AgendaDia({
             {v.label}
           </span>
         ))}
-        <span className="hidden lg:inline text-muted/70">· con el mouse: arrastrá una cita para moverla</span>
+        <span className="hidden lg:inline text-muted/70">· con el mouse: arrastra una cita para moverla</span>
       </div>
 
       {/* Resultado del arrastre (guardando / error del server) */}
@@ -545,7 +545,7 @@ export function AgendaDia({
                           }}
                           className="absolute inset-x-1 z-[5] overflow-hidden rounded-lg border border-line bg-[repeating-linear-gradient(45deg,transparent,transparent_6px,rgba(120,120,120,0.12)_6px,rgba(120,120,120,0.12)_12px)] px-2 py-1 text-left text-[12px] leading-tight text-muted"
                           style={{ top: (Math.max(desde, abre) - abre) * PX_MIN + 1, height: Math.max(26, (Math.min(hastaB, cierra) - Math.max(desde, abre)) * PX_MIN - 3) }}
-                          title={`Bloqueado${x.motivo ? ` · ${x.motivo}` : ""} — tocá para quitar`}
+                          title={`Bloqueado${x.motivo ? ` · ${x.motivo}` : ""} — toca para quitar`}
                         >
                           <span className="font-bold">Bloqueado</span>
                           {x.motivo && <span className="block truncate opacity-80">{x.motivo}</span>}
@@ -590,7 +590,7 @@ export function AgendaDia({
                               : undefined,
                             touchAction: "auto",
                           }}
-                          title={`${fmtTime(ini)} · ${c.cliente || "Sin nombre"} · ${c.servicio} (${est.label})${movible ? " — arrastrá para mover" : ""}`}
+                          title={`${fmtTime(ini)} · ${c.cliente || "Sin nombre"} · ${c.servicio} (${est.label})${movible ? " — arrastra para mover" : ""}`}
                         >
                           {/* Estilo Google: el NOMBRE manda; hora y servicio debajo
                               cuando el bloque tiene alto (si no, viven en el title). */}

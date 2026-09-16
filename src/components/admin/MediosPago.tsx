@@ -49,7 +49,7 @@ export function MediosPago({ medios }: { medios: MedioPago[] }) {
         <CashIcon className="h-4 w-4 text-accent" /> Medios de pago
       </h3>
       <p className="mt-1 text-xs text-muted">
-        Los botones del cobro salen de esta lista. Desactivá un medio para que no se pueda
+        Los botones del cobro salen de esta lista. Desactiva un medio para que no se pueda
         cobrar más con él; el histórico no se toca.
       </p>
 

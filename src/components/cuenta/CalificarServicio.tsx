@@ -34,7 +34,7 @@ export function CalificarServicio({ pendiente }: { pendiente: VisitaPendiente | 
           <>
             <h3 className="font-display text-xl uppercase">¡Gracias por calificarnos!</h3>
             <p className="mt-2 text-sm text-muted">
-              ¿Nos regalás 30 segundos más? Tu reseña en Google ayuda muchísimo a la barbería.
+              ¿Nos regalas 30 segundos más? Tu reseña en Google ayuda muchísimo a la barbería.
             </p>
             <a
               href={googleUrl}
@@ -109,7 +109,7 @@ export function CalificarServicio({ pendiente }: { pendiente: VisitaPendiente | 
         <textarea
           value={comentario}
           onChange={(e) => setComentario(e.target.value)}
-          placeholder="Contanos cómo te fue (opcional)"
+          placeholder="Cuéntanos cómo te fue (opcional)"
           rows={2}
           maxLength={500}
           className="w-full rounded-lg border border-line bg-bg px-3 py-2 text-sm text-ink placeholder:text-muted focus:border-accent focus:outline-none"

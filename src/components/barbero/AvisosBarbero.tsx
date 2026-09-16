@@ -164,14 +164,14 @@ export function AvisosBarbero() {
           <p>En iPhone, Safari solo avisa si la app está instalada. Son tres toques:</p>
           <ol className="mt-1.5 grid gap-1 pl-4 [counter-reset:p] [&>li]:list-decimal">
             <li>
-              Tocá <span className="font-semibold text-ink">Compartir</span>, el cuadrito con la flecha para
+              Toca <span className="font-semibold text-ink">Compartir</span>, el cuadrito con la flecha para
               arriba, abajo en el centro.
             </li>
             <li>
-              Bajá y tocá <span className="font-semibold text-ink">Agregar a pantalla de inicio</span>.
+              Baja y toca <span className="font-semibold text-ink">Agregar a pantalla de inicio</span>.
             </li>
             <li>
-              Abrí <span className="font-semibold text-ink">Barbas &amp; Bigotes</span> desde el ícono nuevo y
+              Abre <span className="font-semibold text-ink">Barbas &amp; Bigotes</span> desde el ícono nuevo y
               vuelve acá: el botón de activar te va a aparecer.
             </li>
           </ol>

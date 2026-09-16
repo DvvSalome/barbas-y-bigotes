@@ -110,7 +110,7 @@ export function AusenciasAdmin({
         <h3 className="mb-2 eyebrow">Ausencias próximas</h3>
         {ausencias.length === 0 ? (
           <p className="rounded-xl border border-line bg-panel px-4 py-4 text-sm text-muted">
-            No hay ausencias marcadas. Cuando un barbero no vaya, marcalo acá y deja de aparecer para reservar ese día.
+            No hay ausencias marcadas. Cuando un barbero no vaya, márcalo acá y deja de aparecer para reservar ese día.
           </p>
         ) : (
           <div className="space-y-2">

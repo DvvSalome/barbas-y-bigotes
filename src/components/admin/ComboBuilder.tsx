@@ -171,7 +171,7 @@ export function ComboBuilder({
           y precios" / el wizard): las píldoras de texto pelado se sentían de
           hoja de cálculo. Sin foto subida → placeholder neutro con tijera. */}
       {grupos.length === 0 && (
-        <p className="mt-3 text-sm text-muted">Nada coincide con “{q}”. Probá con otro nombre.</p>
+        <p className="mt-3 text-sm text-muted">Nada coincide con “{q}”. Prueba con otro nombre.</p>
       )}
       {grupos.map((g) => (
         <div key={g.cat} className="mt-4">
@@ -243,7 +243,7 @@ export function ComboBuilder({
         <div className="mt-4 border-t border-line pt-3">
           <div className="mb-1.5 text-[12px] font-bold uppercase tracking-[0.12em] text-muted">
             Tu combo · {cantidad} {cantidad === 1 ? "servicio" : "servicios"}
-            {conBebida ? " + bebida" : ""} · tocá una ficha para quitarla
+            {conBebida ? " + bebida" : ""} · toca una ficha para quitarla
           </div>
           <div className="flex flex-wrap gap-1.5">
             {seleccion.map((p) => (
@@ -319,7 +319,7 @@ export function ComboBuilder({
           </div>
           <div>
             <span className="mb-1 block eyebrow">
-              Precio (COP) — tocá el número para escribirlo
+              Precio (COP) — toca el número para escribirlo
             </span>
             <div className="inline-flex items-center rounded-full border border-line bg-elevated" role="group" aria-label="precio">
               <BotonMasMenos label="Bajar precio" disabled={precio <= PISO} onClick={() => { setPrecio(Math.max(PISO, precio - 1000)); setManual((m) => ({ ...m, precio: true })); }}>
@@ -379,12 +379,12 @@ export function ComboBuilder({
       {!valido && (
         <p className="mt-2 text-center text-[12px] text-muted">
           {cantidad === 0
-            ? "Tocá al menos 2 servicios (o 1 servicio + la bebida) para armar el combo."
+            ? "Toca al menos 2 servicios (o 1 servicio + la bebida) para armar el combo."
             : cantidad === 1 && !conBebida
-              ? "Falta 1: agregá otro servicio o la bebida."
+              ? "Falta 1: agrega otro servicio o la bebida."
               : nombre.trim() === ""
                 ? "Ponele nombre al combo."
-                : "Revisá que el precio y la duración sean mayores a cero."}
+                : "Revisa que el precio y la duración sean mayores a cero."}
         </p>
       )}
     </div>

@@ -281,7 +281,7 @@ export async function cancelarReservaCliente(
   if (new Date(r.inicio).getTime() <= limite)
     return {
       ok: false,
-      error: `Las citas solo se cancelan hasta ${CANCELACION_MIN_HORAS} horas antes. Escribinos por WhatsApp para cancelar sobre la hora.`,
+      error: `Las citas solo se cancelan hasta ${CANCELACION_MIN_HORAS} horas antes. Escríbenos por WhatsApp para cancelar sobre la hora.`,
     };
 
   const { data: upd, error } = await admin
@@ -405,7 +405,7 @@ export async function reagendarReservaCliente(
 
   const limite = Date.now() + CANCELACION_MIN_HORAS * 3600_000;
   if (new Date(r.inicio).getTime() <= limite)
-    return { ok: false, error: `Las citas solo se reagendan hasta ${CANCELACION_MIN_HORAS} horas antes. Escribinos por WhatsApp.` };
+    return { ok: false, error: `Las citas solo se reagendan hasta ${CANCELACION_MIN_HORAS} horas antes. Escríbenos por WhatsApp.` };
 
   const nuevoInicio = new Date(inicioISO);
   if (isNaN(nuevoInicio.getTime())) return { ok: false, error: "Horario inválido." };
@@ -576,7 +576,7 @@ export async function eliminarMiCuenta(): Promise<EliminarCuentaResultado> {
   const {
     data: { user },
   } = await sb.auth.getUser();
-  if (!user) return { ok: false, error: "Tenés que entrar con tu cuenta para eliminarla." };
+  if (!user) return { ok: false, error: "Tienes que entrar con tu cuenta para eliminarla." };
   const admin = supabaseAdmin();
   const { data: prof } = await admin.from("profiles").select("rol").eq("auth_id", user.id).maybeSingle();
   if (prof && (prof as { rol: string }).rol !== "cliente") {
@@ -590,7 +590,7 @@ export async function eliminarMiCuenta(): Promise<EliminarCuentaResultado> {
     console.error("eliminarMiCuenta: auth.deleteUser", errAuth.message);
     return {
       ok: false,
-      error: "Borramos tus datos, pero no pudimos cerrar el acceso con Google. Escribinos a reservas@barbasybigotes.com y lo terminamos a mano.",
+      error: "Borramos tus datos, pero no pudimos cerrar el acceso con Google. Escríbenos a reservas@barbasybigotes.com y lo terminamos a mano.",
     };
   }
   return { ok: true, citasCanceladas: Number(fila?.citas_canceladas ?? 0) };

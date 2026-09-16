@@ -168,7 +168,7 @@ export function PushManager() {
       ) : (
         <>
           <p className="mt-2 text-sm text-muted">
-            Activá las notificaciones para avisarte cuando sea tu turno o tu cita se confirme.
+            Activa las notificaciones para avisarte cuando sea tu turno o tu cita se confirme.
           </p>
           <button
             onClick={subscribeToPush}

@@ -51,7 +51,7 @@ export function mensajeCitaMovida(datos: {
     "",
     `Tuvimos que mover tu cita: quedó para el ${datos.cuando} con ${datos.barbero} en ${datos.sede}.`,
     "",
-    "Si esa hora no te sirve, respondé este mensaje y la acomodamos.",
+    "Si esa hora no te sirve, responde este mensaje y la acomodamos.",
   ].join("\n");
 }
 
@@ -65,9 +65,9 @@ export function mensajeCitaCancelada(datos: {
   return [
     `${hola} Te escribimos de Barbas & Bigotes ✂️`,
     "",
-    `Tuvimos que cancelar tu cita del ${datos.cuando} en ${datos.sede}. Perdoná el inconveniente.`,
+    `Tuvimos que cancelar tu cita del ${datos.cuando} en ${datos.sede}. Perdona el inconveniente.`,
     "",
-    "Cuando quieras la volvemos a agendar: barbasybigotes.com/reservar o respondé por acá.",
+    "Cuando quieras la volvemos a agendar: barbasybigotes.com/reservar o responde por acá.",
   ].join("\n");
 }
 
@@ -90,6 +90,6 @@ export function mensajeCitaConfirmada(datos: {
     "",
     `Te esperamos ${datos.cuando}${datos.barbero ? ` con ${datos.barbero}` : ""} en ${datos.sede}.`,
     "",
-    "Si te surge algo, respondé este mensaje y la movemos.",
+    "Si te surge algo, responde este mensaje y la movemos.",
   ].join("\n");
 }

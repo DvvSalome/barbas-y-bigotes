@@ -183,11 +183,11 @@ export function AgendarCitaForm({
 
   async function guardar() {
     if (!barberoId || !servicioId || !day || slot === null) {
-      setErr("Elegí barbero, servicio, día y hora.");
+      setErr("Elige barbero, servicio, día y hora.");
       return;
     }
     if (!nombre.trim() || !telefono.trim()) {
-      setErr("Poné el nombre y el teléfono del cliente.");
+      setErr("Pon el nombre y el teléfono del cliente.");
       return;
     }
     setSaving(true);
@@ -278,7 +278,7 @@ export function AgendarCitaForm({
       <div>
         <div className={sLabel}>Hora</div>
         {!day ? (
-          <p className="text-sm text-muted">Elegí un día.</p>
+          <p className="text-sm text-muted">Elige un día.</p>
         ) : cargando ? (
           <div className="grid grid-cols-4 gap-2">
             {Array.from({ length: 8 }).map((_, i) => (
@@ -353,7 +353,7 @@ export function AgendarCitaForm({
           </label>
           <p className="col-span-2 text-[12px] text-muted">
             {slot === null ? (
-              "Elegí un turno arriba o escribí la hora."
+              "Elige un turno arriba o escribe la hora."
             ) : (
               <>
                 Queda de <b className="text-ink tabular-nums">{fmtTime(slot)}</b> a{" "}
@@ -366,7 +366,7 @@ export function AgendarCitaForm({
           </p>
           {chocaOcupado && (
             <p className="col-span-2 text-[12px] font-semibold text-warn">
-              A esa hora el barbero está ocupado. Elegí otra.
+              A esa hora el barbero está ocupado. Elige otra.
             </p>
           )}
           {!chocaOcupado && yaPaso && (
@@ -386,7 +386,7 @@ export function AgendarCitaForm({
               setNombre(e.target.value);
               setClienteElegido(null);
             }}
-            placeholder="Escribí y salen los registrados"
+            placeholder="Escribe y salen los registrados"
             className={input}
           />
           {sugerencias.length > 0 && (

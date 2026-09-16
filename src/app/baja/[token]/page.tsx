@@ -50,7 +50,7 @@ export default async function BajaPage({ params }: { params: Promise<{ token: st
             <p className="mt-4 text-muted">
               {res.estado === "baja"
                 ? "Quedaste fuera de los avisos de corte y promociones. Los correos de tus citas (confirmación y recordatorio) siguen llegando normal."
-                : "Te avisamos cuando te toca corte y de alguna promoción de vez en cuando. Si preferís que no, tocá el botón y listo."}
+                : "Te avisamos cuando te toca corte y de alguna promoción de vez en cuando. Si prefieres que no, toca el botón y listo."}
             </p>
             <BajaControles token={token} estado={res.estado} />
           </>

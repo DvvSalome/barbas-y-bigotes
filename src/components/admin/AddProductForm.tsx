@@ -50,7 +50,7 @@ export function AddProductForm({
     const minNum = sanearCantidad(stockMin);
     if (!sanearNombre(nombre)) {
       setSaving(false);
-      setErr("Poné el nombre del producto.");
+      setErr("Pon el nombre del producto.");
       return;
     }
     if (precioNum === null) {

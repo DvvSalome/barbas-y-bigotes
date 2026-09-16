@@ -39,7 +39,7 @@ export async function GET(req: Request) {
   const hParam = url.searchParams.get("hasta");
   const rango = dParam || hParam ? rangoFechas(dParam ?? "", hParam ?? "") : undefined;
   if ((dParam || hParam) && !rango) {
-    return new Response("Revisá las fechas: hace falta desde y hasta, y la primera no puede ser posterior.", {
+    return new Response("Revisa las fechas: hace falta desde y hasta, y la primera no puede ser posterior.", {
       status: 400,
     });
   }

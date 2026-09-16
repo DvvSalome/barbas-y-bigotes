@@ -103,7 +103,7 @@ export function MoverCitaForm({
 
   async function guardar() {
     if (!barberoId || !day || slot === null) {
-      setErr("Elegí barbero, día y hora.");
+      setErr("Elige barbero, día y hora.");
       return;
     }
     setSaving(true);
@@ -166,7 +166,7 @@ export function MoverCitaForm({
       <div>
         <div className={sLabel}>Nueva hora</div>
         {!day ? (
-          <p className="text-sm text-muted">Elegí un día.</p>
+          <p className="text-sm text-muted">Elige un día.</p>
         ) : cargando ? (
           <div className="grid grid-cols-4 gap-2">
             {Array.from({ length: 8 }).map((_, i) => (

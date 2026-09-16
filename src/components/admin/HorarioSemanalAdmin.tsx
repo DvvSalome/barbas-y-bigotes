@@ -170,7 +170,7 @@ export function HorarioSemanalAdmin({ sedes, horario }: { sedes: Sede[]; horario
         })}
       </div>
       <p className="mt-2 text-[12px] text-muted">
-        Este es el horario de siempre. Para un cambio de un solo día (un festivo, un sábado distinto), usá
+        Este es el horario de siempre. Para un cambio de un solo día (un festivo, un sábado distinto), usa
         &quot;Días especiales&quot; abajo.
       </p>
     </div>

@@ -63,7 +63,7 @@ export function CambiarServicioCita({
         onChange={(e) => setElegido(e.target.value)}
         className="w-full rounded-xl border border-line bg-elevated px-3.5 py-2.5 text-sm text-ink focus:border-accent focus:outline-none"
       >
-        {!actual && <option value="">Elegí el servicio…</option>}
+        {!actual && <option value="">Elige el servicio…</option>}
         {disponibles.map((s) => (
           <option key={s.id} value={s.id}>
             {s.nombre} · {s.duracionMin} min

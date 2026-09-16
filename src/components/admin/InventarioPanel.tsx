@@ -92,7 +92,7 @@ export function InventarioPanel({
           {g.lista.length === 0 ? (
             <div className="rounded-2xl border border-line bg-panel px-4 py-8 text-center">
               <p className="text-[14px] font-semibold text-ink">Todavía no hay productos en {g.sede.nombre}</p>
-              <p className="mt-1 text-[12.5px] text-muted">Agregá el primero con “+ Nuevo producto”.</p>
+              <p className="mt-1 text-[12.5px] text-muted">Agrega el primero con “+ Nuevo producto”.</p>
             </div>
           ) : (
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">

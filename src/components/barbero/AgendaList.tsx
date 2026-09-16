@@ -1108,13 +1108,13 @@ export function CheckoutForm({
     if (mixto && !repartoMixto) {
       setErr(
         !medio2
-          ? "Elegí el segundo medio de pago."
+          ? "Elige el segundo medio de pago."
           : `El monto del segundo medio tiene que estar entre 1 y ${cop(vivo.total - 1)}.`,
       );
       return;
     }
     if (sinItems) {
-      setErr("Agregá al menos un servicio o producto.");
+      setErr("Agrega al menos un servicio o producto.");
       return;
     }
     if (!medio) {
@@ -1228,7 +1228,7 @@ export function CheckoutForm({
               className="h-[104px] w-[104px] shrink-0 rounded-lg bg-white p-1.5"
             />
             <div className="min-w-0">
-              <div className="text-[13px] font-semibold text-ink">Pedile la reseña en Google</div>
+              <div className="text-[13px] font-semibold text-ink">Pídele la reseña en Google</div>
               <p className="mt-1 text-xs leading-relaxed text-muted">
                 Que lo escanee con su celular. Se le abre Google directo en la ficha de{" "}
                 {sedes.find((s) => s.id === sede)?.nombre ?? "la sede"}.
@@ -1552,7 +1552,7 @@ export function CheckoutForm({
         <div>
           <div className={sLabel}>¿Cómo pagó?</div>
           {medios.length === 0 ? (
-            <p className="text-sm text-muted">Sin medios de pago configurados (avisale al admin).</p>
+            <p className="text-sm text-muted">Sin medios de pago configurados (avísale al admin).</p>
           ) : (
             <div className="grid grid-cols-3 gap-2">
               {medios.map((m) => {
@@ -1657,7 +1657,7 @@ export function CheckoutForm({
                       ))}
                     </>
                   ) : (
-                    <>Elegí el segundo medio y cuánto pagó con él; el resto va al primero.</>
+                    <>Elige el segundo medio y cuánto pagó con él; el resto va al primero.</>
                   )}
                 </p>
               </div>

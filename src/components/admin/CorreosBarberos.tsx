@@ -37,7 +37,7 @@ export function CorreosBarberos({ barberos, emails }: { barberos: Barbero[]; ema
       setDraft((d) => ({ ...d, [barberoId]: valor }));
       router.refresh();
     } else {
-      setMsg({ id: barberoId, text: res?.error ?? "No se pudo guardar. Revisá la conexión.", ok: false });
+      setMsg({ id: barberoId, text: res?.error ?? "No se pudo guardar. Revisa la conexión.", ok: false });
     }
   }
 
@@ -52,11 +52,11 @@ export function CorreosBarberos({ barberos, emails }: { barberos: Barbero[]; ema
       const sinGuardar = valor !== (emails[barberoId] ?? "");
       setMsg({
         id: barberoId,
-        text: `${res.aviso ?? `Prueba enviada a ${valor}.`}${sinGuardar ? " Cuando confirme que le llegó, tocá Guardar." : ""}`,
+        text: `${res.aviso ?? `Prueba enviada a ${valor}.`}${sinGuardar ? " Cuando confirme que le llegó, toca Guardar." : ""}`,
         ok: true,
       });
     } else {
-      setMsg({ id: barberoId, text: res?.error ?? "No se pudo mandar la prueba. Revisá la conexión.", ok: false });
+      setMsg({ id: barberoId, text: res?.error ?? "No se pudo mandar la prueba. Revisa la conexión.", ok: false });
     }
   }
 

@@ -13,7 +13,7 @@
 const CLAVE = "bb-recarga-deploy";
 const VENTANA_MS = 10 * 60_000;
 
-/** true = se disparó la recarga (no sigas pintando nada). false = mostrá tu error. */
+/** true = se disparó la recarga (no sigas pintando nada). false = muestra tu error. */
 export function recargarSiDeployViejo(): boolean {
   if (typeof window === "undefined" || navigator.onLine === false) return false;
   try {

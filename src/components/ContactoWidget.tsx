@@ -55,7 +55,7 @@ export function ContactoWidget({
         href={WA_URL}
         target="_blank"
         rel="noopener noreferrer"
-        aria-label="Escribinos por WhatsApp"
+        aria-label="Escríbenos por WhatsApp"
         className="relative grid h-[58px] w-[58px] place-items-center rounded-full border border-[rgba(242,237,228,0.14)] bg-[#050403] shadow-[0_8px_30px_rgba(0,0,0,0.55)] md:h-[60px] md:w-[60px] md:border-[rgba(242,237,228,0.2)]"
       >
         <span

@@ -36,7 +36,7 @@ export function CalendarGoogle({
     setMsg(null);
     const res = await fn().catch(() => null);
     setBusy(null);
-    setMsg(res?.ok ? { text: res.aviso ?? "Listo.", ok: true } : { text: res?.error ?? "No se pudo completar. Revisá la conexión.", ok: false });
+    setMsg(res?.ok ? { text: res.aviso ?? "Listo.", ok: true } : { text: res?.error ?? "No se pudo completar. Revisa la conexión.", ok: false });
     router.refresh();
   }
 
@@ -124,7 +124,7 @@ export function CalendarGoogle({
       >
         <p className="text-[13px] font-semibold text-ink">Ver todas las agendas desde mi Google Calendar</p>
         <p className="mt-1 text-[12px] text-muted">
-          Poné el Gmail del dueño (o del mostrador): recibe una agenda por barbero y ve todo junto en su calendario.
+          Pon el Gmail del dueño (o del mostrador): recibe una agenda por barbero y ve todo junto en su calendario.
         </p>
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <input

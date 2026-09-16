@@ -86,7 +86,7 @@ export default async function CuentaPage() {
         {ctx.estado === "staff" && (
           <div className="mx-auto max-w-md text-center">
             <h1 className="font-display text-4xl font-semibold uppercase">Cuenta de staff</h1>
-            <p className="mt-4 text-muted">Ingresaste con una cuenta del equipo. Usá tu panel:</p>
+            <p className="mt-4 text-muted">Ingresaste con una cuenta del equipo. Usa tu panel:</p>
             <div className="mt-7 flex justify-center gap-3">
               <Link
                 href="/admin"
@@ -246,7 +246,7 @@ async function Portal({ clienteId, nombre, avatarUrl }: { clienteId: string; nom
               Tarjeta de cortes
             </div>
             <div className="mt-1 text-sm text-muted">
-              Llevás{" "}
+              Llevas{" "}
               <b className="font-display text-base font-bold tabular-nums text-accent-soft">
                 {tarjeta.sellos}
               </b>{" "}
@@ -379,7 +379,7 @@ async function Portal({ clienteId, nombre, avatarUrl }: { clienteId: string; nom
 function EmptyProximas() {
   const pasos = [
     { n: 1, t: "Elige sede, barbero y hora.", s: "Ves la disponibilidad real, sin llamar." },
-    { n: 2, t: "Recibí recordatorios.", s: "Te avisamos por email y notificación." },
+    { n: 2, t: "Recibe recordatorios.", s: "Te avisamos por email y notificación." },
     { n: 3, t: "Suma puntos en cada visita.", s: "Se acumulan desde la primera vez." },
   ];
   return (

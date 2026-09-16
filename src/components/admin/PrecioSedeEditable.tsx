@@ -32,7 +32,7 @@ export function PrecioSedeEditable({
   async function guardar() {
     const n = sanearCop(val);
     if (n === null || n <= 0) {
-      setError("Poné un precio en pesos, sin decimales y mayor a $0.");
+      setError("Pon un precio en pesos, sin decimales y mayor a $0.");
       return;
     }
     if (n === precio) {

@@ -26,7 +26,7 @@ export function PrecioEditable({ productoId, precio }: { productoId: string; pre
     const n = sanearCop(val);
     if (n === null || n <= 0) {
       setVal(String(precio));
-      setError("Poné un precio en pesos, mayor a $0, sin decimales.");
+      setError("Pon un precio en pesos, mayor a $0, sin decimales.");
       return;
     }
     setError(null);

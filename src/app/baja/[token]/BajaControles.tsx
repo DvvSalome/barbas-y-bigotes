@@ -15,7 +15,7 @@ export function BajaControles({ token, estado }: { token: string; estado: "activ
     const res = await (estado === "activo" ? darDeBajaPorToken(token) : reactivarAvisosPorToken(token)).catch(() => null);
     setSaving(false);
     if (!res || res.estado === "invalido") {
-      setError("No se pudo guardar. Probá de nuevo en un momento.");
+      setError("No se pudo guardar. Prueba de nuevo en un momento.");
       return;
     }
     router.refresh();

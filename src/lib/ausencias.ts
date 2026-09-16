@@ -22,10 +22,10 @@ export async function choqueAusencia(
     .eq("fecha", bogotaYmd(inicio));
   const filas = (data ?? []) as { desde_min: number | null; hasta_min: number | null }[];
   if (filas.some((f) => f.desde_min == null))
-    return "Ese barbero no atiende ese día. Elegí otra fecha u otro barbero.";
+    return "Ese barbero no atiende ese día. Elige otra fecha u otro barbero.";
   const ini = minutoBogota(inicio);
   const finMin = ini + Math.round((fin.getTime() - inicio.getTime()) / 60000);
   if (filas.some((f) => (f.desde_min ?? 0) < finMin && (f.hasta_min ?? 1440) > ini))
-    return "El barbero tiene ese rato bloqueado. Elegí otra hora.";
+    return "El barbero tiene ese rato bloqueado. Elige otra hora.";
   return null;
 }

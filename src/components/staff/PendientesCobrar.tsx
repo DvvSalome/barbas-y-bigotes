@@ -103,7 +103,7 @@ export function PendientesCobrar({
         </span>
       </div>
       <p className="mt-1 text-xs text-muted">
-        Citas de hoy aún sin registrar en caja. Tocá una para cobrarla acá mismo; si hay que cambiar servicio, precio
+        Citas de hoy aún sin registrar en caja. Toca una para cobrarla acá mismo; si hay que cambiar servicio, precio
         o agregar productos, se cobra desde Turnos en la app del barbero.
       </p>
       <div className="mt-4 space-y-2">

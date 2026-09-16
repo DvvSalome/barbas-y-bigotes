@@ -47,7 +47,7 @@ export function LegalLayout({
             ¿Dudas sobre esto?
           </div>
           <p className="mt-2 text-[14px] leading-relaxed text-ink/80">
-            Escribinos a{" "}
+            Escríbenos a{" "}
             <a href="mailto:hola@barbasybigotes.com" className="text-accent-soft underline decoration-line underline-offset-4">
               hola@barbasybigotes.com
             </a>{" "}

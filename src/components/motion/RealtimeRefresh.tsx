@@ -37,7 +37,7 @@ export function RealtimeRefresh({
       }, 400);
     };
 
-    // El token expira (~1h) y la agenda vive abierta todo el día: refrescá el JWT del
+    // El token expira (~1h) y la agenda vive abierta todo el día: refresca el JWT del
     // socket en cada cambio de sesión para que Realtime no deje de emitir en silencio.
     const { data: authListener } = sb.auth.onAuthStateChange((_event, session) => {
       if (session) sb.realtime.setAuth(session.access_token);

@@ -102,7 +102,7 @@ export type CuponResult = {
 // previsualizar el descuento. La validación autoritativa se repite al cobrar.
 export async function validarCupon(codigo: string): Promise<CuponResult> {
   const code = (codigo ?? "").trim().toUpperCase();
-  if (!code) return { ok: false, error: "Ingresá un código" };
+  if (!code) return { ok: false, error: "Ingresa un código" };
   const sb = await supabaseServerAuth();
   const denied = await requireStaff(sb);
   if (denied) return { ok: false, error: denied };
@@ -190,7 +190,7 @@ export async function addProducto(input: {
   // los lee de la base (completarReserva). Reglas en admin-reglas.ts (probadas
   // en scripts/check-admin.ts).
   const nombre = sanearNombre(input.nombre);
-  if (!nombre) return { ok: false, error: "Poné el nombre del producto." };
+  if (!nombre) return { ok: false, error: "Pon el nombre del producto." };
   const precio = sanearCop(input.precio);
   if (precio === null) return { ok: false, error: "El precio tiene que ser un número entero de pesos, sin decimales." };
   const stock = sanearCantidad(input.stock);
@@ -354,7 +354,7 @@ export async function ingresarStock(input: {
   const denied = await requireAdmin(sb);
   if (denied) return { ok: false, error: denied };
   const n = sanearCantidad(input.cantidad);
-  if (n === null || n === 0) return { ok: false, error: "Poné cuántas unidades entraron (un número entero)." };
+  if (n === null || n === 0) return { ok: false, error: "Pon cuántas unidades entraron (un número entero)." };
 
   const { data, error } = await supabaseAdmin().rpc("ingresar_stock", {
     p_producto_id: input.productoId,
@@ -865,7 +865,7 @@ export async function guardarConfigTarjeta(cfg: unknown): Promise<ActionResult> 
     return {
       ok: false,
       error:
-        "Revisá la tarjeta: entre 3 y 20 cortes, al menos un premio, cada uno en una casilla distinta y dentro de la tarjeta, y los porcentajes entre 1 y 100.",
+        "Revisa la tarjeta: entre 3 y 20 cortes, al menos un premio, cada uno en una casilla distinta y dentro de la tarjeta, y los porcentajes entre 1 y 100.",
     };
   const { error } = await supabaseAdmin()
     .from("ajustes_tarjeta")
@@ -922,8 +922,8 @@ export async function crearCombo(input: {
   const conBebida = !!input.conBebida;
   if (!esComboValido(partes, conBebida))
     return { ok: false, error: "Elige al menos 2 partes (o 1 parte más la bebida)." };
-  if (!nombre) return { ok: false, error: "Poné el nombre del combo." };
-  if (!Number.isFinite(precio) || precio <= 0) return { ok: false, error: "Poné un precio válido." };
+  if (!nombre) return { ok: false, error: "Pon el nombre del combo." };
+  if (!Number.isFinite(precio) || precio <= 0) return { ok: false, error: "Pon un precio válido." };
   if (!Number.isFinite(duracionMin) || duracionMin <= 0 || duracionMin > DURACION_MAX_MIN)
     return { ok: false, error: `La duración tiene que estar entre 1 minuto y ${DURACION_MAX_MIN / 60} horas.` };
 
@@ -950,7 +950,7 @@ export async function crearCombo(input: {
     duracion_min: duracionMin,
     activo: true,
   };
-  // Intenta con cuenta_corte (0027); si la columna aún no existe, reintentá sin ella
+  // Intenta con cuenta_corte (0027); si la columna aún no existe, reintenta sin ella
   // (mismo espíritu tolerante que getCorteIds: no explotar si el orden se invierte).
   let { error: insErr } = await admin.from("servicios").insert({ ...row, cuenta_corte: cuentaCorte });
   if (insErr && /cuenta_corte/i.test(insErr.message ?? "")) {
@@ -1066,7 +1066,7 @@ export async function guardarEmailBarbero(barberoId: string, email: string): Pro
   }
   // Misma barrera que los clientes (src/lib/email.ts): una dirección inventada
   // rebota, y los rebotes ya costaron tres suspensiones del buzón.
-  if (!esEmailEnviable(limpio)) return { ok: false, error: "Ese correo no parece real. Revisá el dominio." };
+  if (!esEmailEnviable(limpio)) return { ok: false, error: "Ese correo no parece real. Revisa el dominio." };
   const { error } = await admin
     .from("barbero_contacto")
     .upsert({ barbero_id: barberoId, email: limpio, actualizado_en: new Date().toISOString() });
@@ -1089,7 +1089,7 @@ export async function probarCorreoBarbero(barberoId: string, email: string): Pro
   const denied = await requireAdmin(sb);
   if (denied) return { ok: false, error: denied };
   const limpio = (email ?? "").trim().toLowerCase().slice(0, 120);
-  if (!esEmailEnviable(limpio)) return { ok: false, error: "Ese correo no parece real. Revisá el dominio." };
+  if (!esEmailEnviable(limpio)) return { ok: false, error: "Ese correo no parece real. Revisa el dominio." };
   const admin = supabaseAdmin();
   // Una prueba por correo por minuto: el buzón ya pagó tres suspensiones por
   // volumen raro, y un dedo nervioso no debería poder mandar veinte.
@@ -1143,7 +1143,7 @@ export async function createReserva(input: {
   email?: string;
   inicioISO: string;
   nota?: string;
-  /** Casilla del wizard: "avisame cuando me toque corte y de promos" (0068).
+  /** Casilla del wizard: "avísame cuando me toque corte y de promos" (0068).
    *  Omitida = no se toca la ficha (p. ej. el asistente IA). */
   aceptaMarketing?: boolean;
 }): Promise<ActionResult> {
@@ -1397,7 +1397,7 @@ export async function registrarWalkin(input: {
   const ahoraWk = new Date();
   const ausWkErr = await choqueAusencia(sb, barberoId, ahoraWk, new Date(ahoraWk.getTime() + 30 * 60000));
   if (ausWkErr) {
-    return { ok: false, error: "Ese barbero está ausente o bloqueado ahora mismo. Elegí otro o quitá el bloqueo." };
+    return { ok: false, error: "Ese barbero está ausente o bloqueado ahora mismo. Elige otro o quita el bloqueo." };
   }
   // Mostrador compartido: una vez validada la sede/barbero acá, el INSERT va con
   // service_role. La RLS de reservas (0010) exige barbero_id = current_barbero_id(),
@@ -1416,7 +1416,7 @@ export async function registrarWalkin(input: {
     .eq("estado", "en_curso")
     .limit(1);
   if (enSilla && enSilla.length) {
-    return { ok: false, error: "Ese barbero tiene un cliente en la silla ahora. Cerrá esa atención antes de registrar otra." };
+    return { ok: false, error: "Ese barbero tiene un cliente en la silla ahora. Cierra esa atención antes de registrar otra." };
   }
   const clienteRef = await upsertClienteId(sb, input.clienteNombre, input.telefono, "", "walkin", input.fidelizar ?? true);
   const now = new Date();
@@ -1536,7 +1536,7 @@ export async function agendarCita(input: {
 
   // Dentro de la ventana efectiva del día (horarioEfectivo) y alineado a la grilla.
   const ventana = await ventanaDeDia(admin, sede, bogotaYmd(inicio));
-  if (!ventana.abierta) return { ok: false, error: "Ese día la sede no atiende. Elegí otra fecha." };
+  if (!ventana.abierta) return { ok: false, error: "Ese día la sede no atiende. Elige otra fecha." };
   if (!slotEnVentana(minutoDelDiaBogota(inicio), dur, ventana))
     return { ok: false, error: "Ese horario está fuera del horario de atención." };
 
@@ -1551,7 +1551,7 @@ export async function agendarCita(input: {
     .lt("inicio", fin.toISOString())
     .gt("fin", inicio.toISOString())
     .limit(1);
-  if (clash && clash.length) return { ok: false, error: "Ese horario ya fue tomado. Elegí otro." };
+  if (clash && clash.length) return { ok: false, error: "Ese horario ya fue tomado. Elige otro." };
 
   // Cliente por teléfono (dedup), NO por el usuario logueado.
   const clienteNombre = (input.clienteNombre ?? "").trim().slice(0, 120);
@@ -1574,7 +1574,7 @@ export async function agendarCita(input: {
     ...(esPasada ? { confirm_sent: true } : {}),
   });
   if (error) {
-    if (error.code === "23P01") return { ok: false, error: "Ese horario ya fue tomado. Elegí otro." };
+    if (error.code === "23P01") return { ok: false, error: "Ese horario ya fue tomado. Elige otro." };
     return { ok: false, error: errorPublico("agendarCita", error) };
   }
   // Mismo empujón que la reserva pública: la cita del mostrador también manda
@@ -1729,7 +1729,7 @@ export async function moverCita(input: {
     return { ok: false, error: "Esa cita ya no se puede mover (está en curso o terminada)." };
 
   const barberoId = input.barberoId ?? r.barbero_id;
-  if (!barberoId) return { ok: false, error: "Elegí a qué barbero pasa la cita." };
+  if (!barberoId) return { ok: false, error: "Elige a qué barbero pasa la cita." };
   if ((await sedeDeBarbero(barberoId)) !== r.sede_id)
     return { ok: false, error: "Ese barbero no es de la sede de la cita." };
 
@@ -1752,7 +1752,7 @@ export async function moverCita(input: {
   const fin = new Date(inicio.getTime() + dur * 60000);
 
   const ventana = await ventanaDeDia(admin, r.sede_id, bogotaYmd(inicio));
-  if (!ventana.abierta) return { ok: false, error: "Ese día la sede no atiende. Elegí otra fecha." };
+  if (!ventana.abierta) return { ok: false, error: "Ese día la sede no atiende. Elige otra fecha." };
   if (!slotEnVentana(minutoDelDiaBogota(inicio), dur, ventana))
     return { ok: false, error: "Ese horario está fuera del horario de atención." };
 
@@ -1767,7 +1767,7 @@ export async function moverCita(input: {
     .lt("inicio", fin.toISOString())
     .gt("fin", inicio.toISOString())
     .limit(1);
-  if (clash && clash.length) return { ok: false, error: "Ese horario ya fue tomado. Elegí otro." };
+  if (clash && clash.length) return { ok: false, error: "Ese horario ya fue tomado. Elige otro." };
 
   // Condicional al estado movible: si en la carrera alguien la cobró o canceló,
   // 0 filas y no se pisa nada.
@@ -1787,7 +1787,7 @@ export async function moverCita(input: {
     .in("estado", ["pendiente", "confirmada"])
     .select("id");
   if (error) {
-    if (error.code === "23P01") return { ok: false, error: "Ese horario ya fue tomado. Elegí otro." };
+    if (error.code === "23P01") return { ok: false, error: "Ese horario ya fue tomado. Elige otro." };
     return { ok: false, error: errorPublico("moverCita", error) };
   }
   if (!upd || upd.length === 0) return { ok: false, error: "Esa cita cambió de estado; refresca y vuelve a intentar." };
@@ -1835,7 +1835,7 @@ export async function actualizarReserva(
   if (patch.estado === "en_curso") {
     const faltanMs = new Date(rsvRow.inicio).getTime() - Date.now();
     if (faltanMs > MARGEN_LLEGADA_MS) {
-      return { ok: false, error: "Esa cita todavía no empieza. Marcá la llegada más cerca de la hora." };
+      return { ok: false, error: "Esa cita todavía no empieza. Marca la llegada más cerca de la hora." };
     }
   }
 
@@ -2133,7 +2133,7 @@ export async function completarReserva(input: {
   for (const e of input.precios ?? []) {
     if (!e || typeof e.refId !== "string" || !e.refId) continue;
     const n = sanearCop(e.precio);
-    if (n === null) return { ok: false, error: "Ese precio no sirve: poné pesos enteros, sin decimales." };
+    if (n === null) return { ok: false, error: "Ese precio no sirve: pon pesos enteros, sin decimales." };
     precioEditado.set(e.refId, n);
   }
 
@@ -2234,7 +2234,7 @@ export async function completarReserva(input: {
       if (!Number.isFinite(cantidad) || cantidad < 1) return { ok: false, error: "Cantidad de producto inválida." };
       const pr = ((prods ?? []) as Record<string, unknown>[]).find((x) => x.id === sel.id);
       // No descartar en silencio: cobraría menos de lo que el barbero vio en pantalla.
-      if (!pr) return { ok: false, error: "Un producto ya no está disponible en esta sede. Actualizá la página." };
+      if (!pr) return { ok: false, error: "Un producto ya no está disponible en esta sede. Actualiza la página." };
       items.push({
         tipo: "producto",
         ref_id: sel.id,
@@ -2249,7 +2249,7 @@ export async function completarReserva(input: {
 
   // Venta rápida: sin reserva no hay "servicio de la cita"; exigir al menos 1 ítem.
   if (!input.reservaId && items.length === 0) {
-    return { ok: false, error: "Agregá al menos un servicio o producto para la venta rápida." };
+    return { ok: false, error: "Agrega al menos un servicio o producto para la venta rápida." };
   }
 
   // Anti doble-cobro de la venta rápida: sin reserva NO hay claim ni el unique
@@ -2259,7 +2259,7 @@ export async function completarReserva(input: {
   // la carrera: la 2da inserción choca 23505 y se rechaza sin doble cobro.
   const idemToken = (input.idemToken ?? "").trim() || null;
   if (!input.reservaId && !idemToken) {
-    return { ok: false, error: "No se pudo asegurar la venta. Actualizá la página e intenta de nuevo." };
+    return { ok: false, error: "No se pudo asegurar la venta. Actualiza la página e intenta de nuevo." };
   }
 
   // Cupón (opcional): valida y descuenta (sobre servicios + productos, tope el bruto).
@@ -2495,7 +2495,7 @@ export async function completarReserva(input: {
   if (input.reservaId && clienteEfectivo) {
     await pushACliente(clienteEfectivo, {
       title: "¿Cómo estuvo tu corte? ✂️",
-      body: "Contanos con una calificación. Te toma 10 segundos.",
+      body: "Cuéntanos con una calificación. Te toma 10 segundos.",
       url: "/cuenta",
       tag: "califica",
     });
@@ -2689,7 +2689,7 @@ export async function registrarClienteManual(input: {
   if (denied) return { ok: false, error: denied };
   const nombre = (input.nombre ?? "").trim().slice(0, 120);
   const telefono = (input.telefono ?? "").trim().slice(0, 40);
-  if (!nombre || !telefono) return { ok: false, error: "Poné el nombre y el teléfono." };
+  if (!nombre || !telefono) return { ok: false, error: "Pon el nombre y el teléfono." };
   // Aviso amable si el teléfono ya tenía ficha (el RPC igual dedupa; esto es
   // solo para que el admin sepa que no creó una nueva).
   const { data: previo } = await sb.from("clientes").select("id,nombre").eq("telefono", telefono).maybeSingle();
@@ -2814,7 +2814,7 @@ export async function unirClientes(input: { origenId: string; destinoId: string 
   const sb = await supabaseServerAuth();
   const denied = await requireAdmin(sb);
   if (denied) return { ok: false, error: denied };
-  if (input.origenId === input.destinoId) return { ok: false, error: "Elegí dos fichas distintas." };
+  if (input.origenId === input.destinoId) return { ok: false, error: "Elige dos fichas distintas." };
 
   const admin = supabaseAdmin();
   const { data: fichas } = await admin
@@ -3159,7 +3159,7 @@ export async function cerrarCajaSede(input: {
   // Efectivo contado: entero COP ≥ 0.
   const efectivoContado = Math.floor(Number(input.efectivoContado));
   if (!Number.isFinite(efectivoContado) || efectivoContado < 0)
-    return { ok: false, error: "Ingresá el efectivo contado (un número igual o mayor a 0)." };
+    return { ok: false, error: "Ingresa el efectivo contado (un número igual o mayor a 0)." };
 
   // Caja abierta de la sede.
   const { data: sesion, error: selErr } = await admin
@@ -3328,7 +3328,7 @@ export async function servirEspera(id: string, barberoElegido?: string): Promise
   const barberoId = ent.barbero_id ?? barberoElegido ?? staff.barberoId;
   if (!barberoId) {
     await revertir();
-    return { ok: false, error: "Elegí qué barbero la atiende." };
+    return { ok: false, error: "Elige qué barbero la atiende." };
   }
   // El barbero elegido debe ser de la sede de la espera (mismo gate que el walk-in).
   if (barberoElegido && !(await staffPuedeOperarBarbero(staff, barberoId))) {
@@ -3340,7 +3340,7 @@ export async function servirEspera(id: string, barberoElegido?: string): Promise
   const { data: enSilla } = await sb.from("reservas").select("id").eq("barbero_id", barberoId).eq("estado", "en_curso").limit(1);
   if (enSilla && enSilla.length) {
     await revertir();
-    return { ok: false, error: "Ese barbero tiene un cliente en la silla ahora. Cerrá esa atención antes de servir la espera." };
+    return { ok: false, error: "Ese barbero tiene un cliente en la silla ahora. Cierra esa atención antes de servir la espera." };
   }
   const clienteRef =
     ent.cliente_ref ?? (await upsertClienteId(sb, ent.cliente_nombre ?? "", ent.telefono ?? "", "", "walkin"));
@@ -3435,7 +3435,7 @@ export async function proponerAdelanto(input: {
   // actual de la cita (es un ADELANTO). El cliente re-valida al aceptar.
   const nuevo = new Date(input.inicioISO);
   if (Number.isNaN(nuevo.getTime())) return { ok: false, error: "La hora propuesta no es válida." };
-  if (nuevo.getTime() <= Date.now()) return { ok: false, error: "Esa hora ya pasó. Proponé un horario a futuro." };
+  if (nuevo.getTime() <= Date.now()) return { ok: false, error: "Esa hora ya pasó. Propón un horario a futuro." };
   if (nuevo.getTime() >= new Date(rRow.inicio).getTime())
     return { ok: false, error: "El adelanto tiene que ser antes de la hora actual de la cita." };
   const minDiaAdel = minutoDelDiaBogota(nuevo);
@@ -3638,7 +3638,7 @@ export async function probarAvisoStaff(): Promise<ActionResult> {
   if (r.enviadas === 0) {
     return {
       ok: false,
-      error: "No se pudo entregar. Volvé a activarlos en este aparato: la suscripción venció o el permiso se revocó.",
+      error: "No se pudo entregar. Vuelve a activarlos en este aparato: la suscripción venció o el permiso se revocó.",
     };
   }
   return { ok: true };

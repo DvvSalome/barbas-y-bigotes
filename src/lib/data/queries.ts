@@ -1969,7 +1969,7 @@ export async function getCorteIds(sb: SupabaseClient): Promise<string[]> {
   const res = await sb.from("servicios").select("id,cuenta_corte").in("categoria", ["cortes", "combos"]);
   if (res.error) {
     // Compat pre-0027: si la columna cuenta_corte todavía no existe (deploy antes
-    // de aplicar la migración), reintentá sin ella — todo combo cuenta, como antes.
+    // de aplicar la migración), reintenta sin ella — todo combo cuenta, como antes.
     const fb = await sb.from("servicios").select("id").in("categoria", ["cortes", "combos"]);
     rows = ((fb.data ?? []) as { id: string }[]).map((s) => ({ id: s.id, cuenta_corte: null }));
   } else {

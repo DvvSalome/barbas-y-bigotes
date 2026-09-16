@@ -195,7 +195,7 @@ export function DiasEspecialesAdmin({
 
         <p className="text-[12px] leading-relaxed text-muted sm:col-span-4">
           Estas son EXCEPCIONES a un día puntual. El horario de siempre se cambia arriba. Si un
-          barbero no va ese día, marcalo como ausente en Equipo.
+          barbero no va ese día, márcalo como ausente en Equipo.
         </p>
 
         {err && (

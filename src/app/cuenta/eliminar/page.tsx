@@ -75,7 +75,7 @@ export default async function EliminarCuentaPage() {
         <section className="mt-10 text-sm text-muted">
           <h2 className="font-display text-sm font-bold uppercase tracking-[0.18em] text-ink">¿No puedes entrar?</h2>
           <p className="mt-3">
-            Si perdiste el acceso a tu cuenta de Google, pedinos la eliminación por escrito: mandá un correo a{" "}
+            Si perdiste el acceso a tu cuenta de Google, pídenos la eliminación por escrito: manda un correo a{" "}
             <a href="mailto:reservas@barbasybigotes.com" className="text-accent-soft transition hover:text-accent">
               reservas@barbasybigotes.com
             </a>{" "}

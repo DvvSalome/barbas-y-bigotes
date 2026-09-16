@@ -31,7 +31,7 @@ export function StockControl({
   async function enviar() {
     const n = sanearCantidad(val);
     if (n === null || (modo === "entrada" && n <= 0) || (modo === "correccion" && n < 0)) {
-      setError(modo === "entrada" ? "¿Cuántas entraron?" : "Poné el número contado.");
+      setError(modo === "entrada" ? "¿Cuántas entraron?" : "Pon el número contado.");
       return;
     }
     setGuardando(true);

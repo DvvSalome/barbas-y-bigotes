@@ -107,7 +107,7 @@ export function FotoSede({
             {fotoUrl
               ? "foto tuya — la ve el cliente al reservar"
               : fotoRespaldo
-                ? "foto de fábrica — subí una propia para reemplazarla"
+                ? "foto de fábrica — sube una propia para reemplazarla"
                 : "sin foto aún — el cliente ve un bloque neutro"}
           </span>
         </span>

@@ -25,7 +25,7 @@ export default async function InventarioPage({
         description={
           sedeActiva
             ? `Lo que se vende en ${nombreSede}: cuánto queda, cuánto cuesta y qué se está acabando.`
-            : "Lo que se vende en las dos sedes: cuánto queda, cuánto cuesta y qué se está acabando. Elegí una sede arriba para ver solo esa."
+            : "Lo que se vende en las dos sedes: cuánto queda, cuánto cuesta y qué se está acabando. Elige una sede arriba para ver solo esa."
         }
       />
       <InventarioPanel productos={productos} sedes={sedes} sedeActiva={sedeActiva} />

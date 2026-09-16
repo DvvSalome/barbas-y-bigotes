@@ -184,7 +184,7 @@ export function EsperaPanel({
                           .map((b) => ({ id: b.id, nombre: b.nombre, fotoUrl: b.fotoUrl }))}
                         value={barberoSel}
                         onChange={setBarberoSel}
-                        placeholder="Elegí el barbero"
+                        placeholder="Elige el barbero"
                       />
                     </div>
                     <button
@@ -242,7 +242,7 @@ function EsperaForm({
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!nombre.trim()) {
-      setErr("Poné el nombre del cliente");
+      setErr("Pon el nombre del cliente");
       return;
     }
     setSaving(true);

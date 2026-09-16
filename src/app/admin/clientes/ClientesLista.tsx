@@ -228,7 +228,7 @@ export function ClientesLista({
                           // resolverlo era un callejón sin salida.
                           <button
                             type="button"
-                            title={`Hay ${dup} fichas con este mismo correo — tocá para unirlas`}
+                            title={`Hay ${dup} fichas con este mismo correo — toca para unirlas`}
                             onClick={(e) => {
                               e.preventDefault();
                               e.stopPropagation();
@@ -295,7 +295,7 @@ export function ClientesLista({
                 },
                 { id: "gastan" as Filtro, n: String(stats.gastan), l: "con compras", sub: "de mayor a menor gasto" },
                 { id: "dormidos" as Filtro, n: String(stats.dormidos), l: `no vuelven hace ${DIAS_DORMIDO}+ días`, sub: "para recuperar", alerta: stats.dormidos > 0 },
-                { id: "repetidas" as Filtro, n: String(stats.repetidas), l: "correos con fichas repetidas", sub: stats.repetidas > 0 ? "tocá para verlas y unirlas" : "base limpia ✓", alerta: stats.repetidas > 0 },
+                { id: "repetidas" as Filtro, n: String(stats.repetidas), l: "correos con fichas repetidas", sub: stats.repetidas > 0 ? "toca para verlas y unirlas" : "base limpia ✓", alerta: stats.repetidas > 0 },
               ]
             ).map((k) => {
               const activo = filtro === k.id;
@@ -364,7 +364,7 @@ function UnirFichasSheet({ fichas, onClose }: { fichas: ClienteRow[]; onClose: (
       if (!res.ok) {
         setBusy(false);
         setConfirmando(false);
-        setErr(res.error ?? "No se pudo unir. Refrescá e intentá de nuevo.");
+        setErr(res.error ?? "No se pudo unir. Refresca e intenta de nuevo.");
         return;
       }
     }
@@ -386,7 +386,7 @@ function UnirFichasSheet({ fichas, onClose }: { fichas: ClienteRow[]; onClose: (
           </button>
         </div>
         <p className="text-xs text-muted">
-          Son la misma persona con {fichas.length} fichas. Elegí cuál se CONSERVA: las otras le pasan sus visitas,
+          Son la misma persona con {fichas.length} fichas. Elige cuál se CONSERVA: las otras le pasan sus visitas,
           wallet, puntos y notas, y desaparecen. No se puede deshacer.
         </p>
 

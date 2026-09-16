@@ -23,7 +23,7 @@ export function NuevoCliente() {
 
   async function guardar() {
     if (!nombre.trim() || !telefono.trim()) {
-      setError("Poné el nombre y el teléfono.");
+      setError("Pon el nombre y el teléfono.");
       return;
     }
     setSaving(true);

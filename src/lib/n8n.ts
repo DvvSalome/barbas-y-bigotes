@@ -5,7 +5,7 @@
 // cliente que acaba de reservar espera hasta 60 segundos su confirmación, mirando
 // la pantalla del "¡Listo!".
 //
-// Este ping le dice a n8n "mirá la cola AHORA". No manda datos ni dispara un
+// Este ping le dice a n8n "mira la cola AHORA". No manda datos ni dispara un
 // correo por su cuenta: solo adelanta la vuelta, así que no hay forma de que
 // alguien lo use para mandarle correo a nadie. Y el cron sigue estando ahí: si
 // esto falla —n8n caído, red, lo que sea— el correo sale igual en la vuelta

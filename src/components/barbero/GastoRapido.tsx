@@ -24,7 +24,7 @@ export function GastoRapido({ sede, medios = [] }: { sede: string; medios?: { sl
   async function guardar() {
     const n = sanearCop(monto);
     if (n === null || n <= 0) {
-      setError("Poné el monto en pesos, mayor a $0, sin decimales.");
+      setError("Pon el monto en pesos, mayor a $0, sin decimales.");
       return;
     }
     setSaving(true);

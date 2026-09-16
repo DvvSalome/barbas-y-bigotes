@@ -55,7 +55,7 @@ export function CuadreForms({
     // negativo, decimal y no-numérico; acá sólo falta exigir > 0.
     const monto = sanearCop(gMonto);
     if (monto === null || monto <= 0) {
-      setGError("Poné un monto válido en pesos (mayor a $0, sin decimales).");
+      setGError("Pon un monto válido en pesos (mayor a $0, sin decimales).");
       return;
     }
     setGError("");
@@ -80,7 +80,7 @@ export function CuadreForms({
     }
     const monto = sanearCop(aMonto);
     if (monto === null || monto <= 0) {
-      setAError("Poné un monto válido en pesos (mayor a $0, sin decimales).");
+      setAError("Pon un monto válido en pesos (mayor a $0, sin decimales).");
       return;
     }
     setAError("");

@@ -5,7 +5,7 @@ import { linkWhatsApp } from "@/lib/whatsapp";
 /**
  * El paso que faltaba después de mover o cancelar una cita: avisarle al cliente.
  * Aparece SOLO, apenas se guarda el cambio, con el mensaje ya escrito — porque
- * "acordate de avisarle" no es un recordatorio, es una tarea que se olvida.
+ * "acuérdate de avisarle" no es un recordatorio, es una tarea que se olvida.
  *
  * No manda nada por su cuenta (eso sería la API de WhatsApp Business, que se
  * paga): abre el chat con el texto cargado y el mostrador toca enviar.
@@ -29,7 +29,7 @@ export function AvisarWhatsApp({
       {url ? (
         <>
           <p className="mt-1 text-[12.5px] leading-snug text-muted">
-            Falta que el cliente se entere. El mensaje ya va escrito; solo tocá enviar.
+            Falta que el cliente se entere. El mensaje ya va escrito; solo toca enviar.
           </p>
           <a
             href={url}
@@ -48,7 +48,7 @@ export function AvisarWhatsApp({
         </>
       ) : (
         <p className="mt-1 text-[12.5px] leading-snug text-warn">
-          Este cliente no tiene un teléfono con el que se pueda escribir. Avisale como puedas —
+          Este cliente no tiene un teléfono con el que se pueda escribir. Avísale como puedas —
           quedó sin enterarse del cambio.
         </p>
       )}

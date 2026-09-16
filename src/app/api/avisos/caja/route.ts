@@ -35,7 +35,7 @@ export async function POST(request: Request) {
     }
     const r = await pushASede(c.sede_id, {
       title: "La caja sigue abierta 💰",
-      body: `Se abrió a las ${horaBogota(c.abierta_en)} y aún no se cierra. Contá el efectivo y cerrala en el mostrador antes de salir.`,
+      body: `Se abrió a las ${horaBogota(c.abierta_en)} y aún no se cierra. Cuenta el efectivo y ciérrala en el mostrador antes de salir.`,
       url: "/barbero?tab=cierre",
       // tag fijo: si el cron repite, el aviso se REEMPLAZA en vez de apilarse.
       tag: "caja-abierta",

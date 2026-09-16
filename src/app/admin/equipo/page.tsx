@@ -56,7 +56,7 @@ export default async function EquipoPage() {
 
           <h2 className="mb-3 mt-8 eyebrow">Correo de avisos</h2>
           <p className="mb-3 text-[12.5px] text-muted">
-            Cuando un cliente reserva, al barbero le llega un correo con la cita al instante. Poné acá el correo de
+            Cuando un cliente reserva, al barbero le llega un correo con la cita al instante. Pon acá el correo de
             cada uno; se guarda solo al salir del campo. Vacío = sin aviso (le queda solo la notificación push, si
             la tiene activa).
           </p>
@@ -82,7 +82,7 @@ export default async function EquipoPage() {
         <aside className="lg:sticky lg:top-28 lg:max-h-[calc(100dvh-8.5rem)] lg:overflow-y-auto">
           <h2 className="mb-3 eyebrow">Ausencias</h2>
           <p className="mb-4 text-[12.5px] text-muted">
-            Si un barbero no va un día, marcalo acá: deja de aparecer para reservar esa fecha. Los bloqueos por horas
+            Si un barbero no va un día, márcalo acá: deja de aparecer para reservar esa fecha. Los bloqueos por horas
             (almuerzo) se crean desde el calendario y también se listan abajo.
           </p>
           <AusenciasAdmin barberos={barberos} sedes={sedes} ausencias={ausencias} />

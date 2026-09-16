@@ -21,7 +21,7 @@ export function EliminarCuenta({ nombre }: { nombre?: string }) {
     const res = await eliminarMiCuenta().catch(() => null);
     if (!res || !res.ok) {
       setEstado("quieto");
-      setError(res && !res.ok ? res.error : "No se pudo completar. Revisá la conexión e intentá de nuevo.");
+      setError(res && !res.ok ? res.error : "No se pudo completar. Revisa la conexión e intenta de nuevo.");
       return;
     }
     setCanceladas(res.citasCanceladas);

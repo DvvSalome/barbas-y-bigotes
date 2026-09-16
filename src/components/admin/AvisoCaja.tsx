@@ -19,7 +19,7 @@ export async function AvisoCaja({ enlace = true }: { enlace?: boolean }) {
       <div className={clases}>
         <AlertIcon className="h-4 w-4 shrink-0" />
         {texto}
-        <span className="ml-auto font-medium text-warn/80">cerrala abajo</span>
+        <span className="ml-auto font-medium text-warn/80">ciérrala abajo</span>
       </div>
     );
   }

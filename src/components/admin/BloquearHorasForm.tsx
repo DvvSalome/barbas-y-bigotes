@@ -49,7 +49,7 @@ export function BloquearHorasForm({
 
   async function guardar() {
     if (!barberoId) {
-      setErr("Elegí el barbero.");
+      setErr("Elige el barbero.");
       return;
     }
     if (!todoElDia && desde >= hasta) {
@@ -131,7 +131,7 @@ export function BloquearHorasForm({
         <input
           value={motivo}
           onChange={(e) => setMotivo(e.target.value)}
-          placeholder="O escribí otro motivo"
+          placeholder="O escribe otro motivo"
           className="mt-2 w-full rounded-xl border border-line bg-elevated px-3.5 py-2.5 text-sm text-ink placeholder:text-muted focus:border-accent focus:outline-none"
         />
       </div>

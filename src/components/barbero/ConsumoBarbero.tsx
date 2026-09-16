@@ -47,7 +47,7 @@ export function ConsumoBarbero({
 
   async function guardar() {
     if (!productoId || !barberoId) {
-      setError("Elegí el producto y de quién es.");
+      setError("Elige el producto y de quién es.");
       return;
     }
     if (!Number.isInteger(precioUnit) || precioUnit < 0) {
