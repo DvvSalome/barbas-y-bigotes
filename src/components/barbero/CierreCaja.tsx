@@ -6,7 +6,25 @@ import { cerrarCajaSede } from "@/lib/actions";
 import { sanearCop } from "@/lib/admin-reglas";
 import { sfxExito, sfxAlerta } from "@/lib/sfx";
 import { cop, horaBogota, fechaCortaBogota, diasDesde } from "@/lib/format";
+import { Hoja, PieHoja, primarioDeHoja } from "@/components/ui/Hoja";
+import { Campo } from "@/components/ui/Campo";
+import { botonClases } from "@/components/ui/Boton";
 import type { CajaSedeEstado, CajaDesglose } from "@/lib/data/queries";
+
+/*
+  La caja de la sede, en tres piezas (paso 6 de la tanda 2).
+
+  Antes esto era UN bloque de 271 líneas que mostraba a la vez la caja, el
+  desglose de los tres barberos, los totales y —al tocar un botón— el formulario
+  de cierre desplegado ahí mismo. Todo en la pestaña Cierre, que además tenía
+  debajo los cobros pendientes, qué se llevó cada cliente, el consumo y los
+  gastos: una pantalla que no se acababa.
+
+  Ahora la pestaña es un HUB (CierreHub) y esto son sus piezas:
+    TarjetaCaja        lo único que se ve siempre: cuánto hay y el botón
+    HojaCerrarCaja     el formulario, en LA hoja, con el pie pegado
+    DesgloseBarberos   quién produjo qué, detrás de una fila del hub
+*/
 
 // Avatar del barbero en el desglose: foto de la ficha si existe; si no, iniciales
 // sobre un tono cálido derivado del nombre (mismos tonos del prototipo que la
@@ -20,57 +38,121 @@ const iniciales = (n: string) => {
   return parts.slice(0, 2).map((p) => p.charAt(0).toUpperCase()).join("");
 };
 
-// El cierre se hace de pie, en el aparato compartido del mostrador: nada tocable
-// por debajo de 44px (el botón de cerrar caja medía 32).
-const fld =
-  "w-full min-h-11 rounded-lg border border-line bg-bg px-3 py-2 text-ink placeholder:text-muted focus:border-accent focus:outline-none";
-const btn =
-  "inline-flex min-h-11 items-center justify-center rounded-full bg-[linear-gradient(180deg,var(--cta-1),var(--cta-2))] px-5 text-xs font-semibold uppercase tracking-wide text-on-accent shadow-[0_10px_24px_-10px_rgba(210,63,52,0.7)] transition hover:brightness-105 disabled:opacity-50 disabled:shadow-none";
+/** Lo que el cierre le devuelve al hub para pintar el resumen. */
+export type CierreHecho = { total: number; diferencia: number };
 
-export function CierreCaja({
+// ── La tarjeta de arriba ────────────────────────────────────────────────────
+
+export function TarjetaCaja({
   caja,
   desglose,
-  miBarberoId,
+  hecho,
+  onCerrarCaja,
 }: {
   caja: CajaSedeEstado;
   desglose: CajaDesglose;
-  miBarberoId: string | null;
+  hecho: CierreHecho | null;
+  onCerrarCaja: () => void;
 }) {
-  const router = useRouter();
-  const [abierto, setAbierto] = useState(false);
-  const [contado, setContado] = useState("");
-  const [nota, setNota] = useState("");
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [hecho, setHecho] = useState<{ total: number; diferencia: number } | null>(null);
-
-  // Cierre confirmado: pantalla de resumen.
+  // Ya se cerró en esta misma pantalla: el veredicto del día, sin más.
   if (hecho) {
     const cuadra = hecho.diferencia === 0;
     return (
-      <section className="rounded-2xl border border-line bg-panel p-5">
-        <h3 className="font-display text-xl text-ink">Caja cerrada ✓</h3>
-        <p className="mt-2 text-sm text-muted">
-          Total del día <span className="font-semibold text-ink">{cop(hecho.total)}</span> ·{" "}
-          {cuadra ? (
-            <span className="font-semibold text-ok">cuadra exacto</span>
-          ) : (
-            <span className="font-semibold text-warn">
-              diferencia {hecho.diferencia > 0 ? "+" : ""}
-              {cop(hecho.diferencia)}
-            </span>
-          )}
-        </p>
+      <section className="bb-relieve overflow-hidden rounded-2xl border border-line bg-panel">
+        <span aria-hidden className="bb-poste block h-1 w-full" />
+        <div className="px-4 py-4 sm:px-5">
+          <p className="eyebrow">Caja cerrada</p>
+          <div className="bb-monto mt-1.5 font-display text-[34px] font-extrabold leading-none tabular-nums text-ok">
+            {cop(hecho.total)}
+          </div>
+          <p className="mt-1.5 text-[13px] text-muted">
+            total del día ·{" "}
+            {cuadra ? (
+              <span className="font-semibold text-ok">cuadra exacto</span>
+            ) : (
+              <span className="font-semibold text-warn">
+                diferencia {hecho.diferencia > 0 ? "+" : ""}
+                {cop(hecho.diferencia)}
+              </span>
+            )}
+          </p>
+        </div>
       </section>
     );
   }
 
-  // Sin caja abierta: mensaje sutil (la caja se abre sola con la primera venta).
+  // La caja se abre sola con la primera venta: si no hay, no hay nada que cerrar.
   if (!caja) {
     return (
-      <p className="text-xs text-muted">La caja se abre sola con la primera venta del día.</p>
+      <section className="rounded-2xl border border-line bg-panel px-4 py-5 text-center sm:px-5">
+        <p className="text-[13px] text-muted">La caja se abre sola con la primera venta del día.</p>
+      </section>
     );
   }
+
+  // La caja se abre sola con la 1ra venta y nada la cierra de noche: puede llevar
+  // días abierta y el "efectivo esperado" acumula todo ese tiempo, no solo hoy.
+  const dias = diasDesde(caja.abiertaEn);
+  const aperturaHoy = dias === 0;
+
+  return (
+    <section className="bb-relieve overflow-hidden rounded-2xl border border-line bg-panel">
+      <span aria-hidden className="bb-poste block h-1 w-full" />
+      <div className="px-4 py-4 sm:px-5">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="eyebrow">Caja de la sede</p>
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-ok/10 px-2.5 py-1 text-[11.5px] font-bold uppercase tracking-[0.06em] text-ok">
+            <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-ok" />
+            {aperturaHoy
+              ? `Abierta ${horaBogota(caja.abiertaEn)}`
+              : `Abierta el ${fechaCortaBogota(caja.abiertaEn)}`}
+          </span>
+        </div>
+
+        <div className="bb-monto mt-2 font-display text-[36px] font-extrabold leading-none tabular-nums text-ink">
+          {cop(caja.esperadoEfectivo)}
+        </div>
+        <p className="mt-1.5 text-[13px] text-muted">
+          efectivo esperado
+          {desglose && (
+            <>
+              {" · "}digital <span className="bb-monto font-semibold text-ink">{cop(desglose.digital)}</span>
+            </>
+          )}
+        </p>
+
+        {!aperturaHoy && (
+          <p className="mt-3 rounded-xl border border-warn/40 bg-warn/10 px-3 py-2 text-[12.5px] font-semibold leading-relaxed text-warn">
+            Ojo: esta caja lleva {dias} {dias === 1 ? "día" : "días"} sin cerrar. El número de arriba suma TODO
+            desde el {fechaCortaBogota(caja.abiertaEn)}, no solo lo de hoy.
+          </p>
+        )}
+
+        <button onClick={onCerrarCaja} className={`mt-4 w-full ${botonClases("primario", "md")} min-h-12`}>
+          Cerrar caja de la sede
+        </button>
+      </div>
+    </section>
+  );
+}
+
+// ── La hoja del cierre ──────────────────────────────────────────────────────
+
+export function HojaCerrarCaja({
+  caja,
+  onCerrar,
+  onHecho,
+}: {
+  caja: NonNullable<CajaSedeEstado>;
+  onCerrar: () => void;
+  onHecho: (h: CierreHecho) => void;
+}) {
+  const router = useRouter();
+  const [contado, setContado] = useState("");
+  const [nota, setNota] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [armado, setArmado] = useState(false);
 
   const esperado = caja.esperadoEfectivo;
   // OJO: `Number("")` es 0, no NaN. Con el parseo anterior, confirmar el cierre
@@ -80,192 +162,192 @@ export function CierreCaja({
   const contadoNum = sanearCop(contado);
   const sinContar = contadoNum === null;
   const diferencia = sinContar ? 0 : contadoNum - esperado;
-  const nBarberos = desglose?.barberos.length ?? 0;
-  // La caja se abre sola con la 1ra venta y nada la cierra de noche: puede llevar
-  // días abierta y el "efectivo esperado" acumula todo ese tiempo, no solo hoy.
-  const dias = diasDesde(caja.abiertaEn);
-  const aperturaHoy = dias === 0;
 
-  async function confirmar(e: React.FormEvent) {
-    e.preventDefault();
+  async function confirmar() {
     if (contadoNum === null) {
       setError("Cuenta el efectivo antes de cerrar. Si la caja quedó en cero, escribe 0.");
       return;
     }
-    // Un cierre descuadrado queda asentado en la contabilidad y no se deshace:
-    // se pregunta una vez, con el número delante.
-    if (
-      diferencia !== 0 &&
-      !window.confirm(
-        `La caja no cuadra: ${diferencia > 0 ? "sobran" : "faltan"} ${cop(Math.abs(diferencia))}.
-
-` +
-          `Esperado ${cop(esperado)} · contaste ${cop(contadoNum)}.
-¿Cerrar así igual?`,
-      )
-    )
+    // Un cierre descuadrado queda asentado en la contabilidad y no se deshace.
+    // Antes esto era un window.confirm() con el número dentro; ahora el número
+    // ya está EN el botón y en el renglón de diferencia, así que el segundo
+    // toque confirma algo que se está viendo, no algo que dice una ventana del
+    // sistema encima de la pantalla.
+    if (diferencia !== 0 && !armado) {
+      setArmado(true);
+      setError(null);
       return;
+    }
+    setArmado(false);
     setError(null);
     setSaving(true);
     const res = await cerrarCajaSede({ efectivoContado: contadoNum, nota });
     setSaving(false);
-    if (res.ok) {
-      // El veredicto del día SUENA: cuadró = éxito, descuadró = alerta.
-      if ((res.diferencia ?? 0) === 0) sfxExito();
-      else sfxAlerta();
-      setHecho({ total: res.total ?? 0, diferencia: res.diferencia ?? 0 });
-      router.refresh();
-    } else {
+    if (!res.ok) {
       setError(res.error ?? "No se pudo cerrar la caja.");
+      return;
     }
+    // El veredicto del día SUENA: cuadró = éxito, descuadró = alerta.
+    if ((res.diferencia ?? 0) === 0) sfxExito();
+    else sfxAlerta();
+    onHecho({ total: res.total ?? 0, diferencia: res.diferencia ?? 0 });
+    router.refresh();
+  }
+
+  const etiquetaBoton = saving
+    ? "Cerrando…"
+    : armado
+      ? `¿Seguro? Cerrar con ${diferencia > 0 ? "+" : "−"}${cop(Math.abs(diferencia))}`
+      : diferencia !== 0 && !sinContar
+        ? `Cerrar con diferencia ${diferencia > 0 ? "+" : "−"}${cop(Math.abs(diferencia))}`
+        : "Cerrar la caja";
+
+  return (
+    <Hoja
+      titulo="Cerrar caja"
+      onCerrar={onCerrar}
+      ancho="max-w-md"
+      pie={
+        <PieHoja onCancelar={onCerrar}>
+          <button
+            type="button"
+            disabled={saving || sinContar}
+            onClick={confirmar}
+            onBlur={() => setArmado(false)}
+            className={
+              armado ? `${primarioDeHoja} !bg-none bg-warn text-[#0c0b0a] hover:brightness-105` : primarioDeHoja
+            }
+          >
+            {etiquetaBoton}
+          </button>
+        </PieHoja>
+      }
+    >
+      <div className="flex items-center justify-between gap-3 rounded-xl bg-elevated px-3.5 py-3">
+        <span className="text-[13.5px] text-muted">Esperado en efectivo</span>
+        <span className="bb-monto shrink-0 font-display text-[18px] font-bold tabular-nums text-ink">
+          {cop(esperado)}
+        </span>
+      </div>
+
+      <Campo
+        id="efectivo-contado"
+        etiqueta="¿Cuánto contaste en efectivo?"
+        obligatorio
+        type="number"
+        inputMode="numeric"
+        min={0}
+        value={contado}
+        onChange={(e) => {
+          setContado(e.target.value);
+          setArmado(false);
+        }}
+        autoFocus
+        className="mt-3"
+      />
+
+      {/* La diferencia EN VIVO, mientras escribe. Es el dato que decide si esto
+          se cierra o si hay que volver a contar. */}
+      <p className="mt-3 text-[14px] tabular-nums">
+        Diferencia:{" "}
+        {sinContar ? (
+          <span className="text-muted">cuenta el efectivo para verla</span>
+        ) : (
+          <>
+            <span className={`bb-monto font-semibold ${diferencia === 0 ? "text-ok" : "text-warn"}`}>
+              {diferencia > 0 ? "+" : ""}
+              {cop(diferencia)}
+            </span>
+            {diferencia !== 0 && <span className="text-muted"> · {diferencia > 0 ? "sobra" : "falta"}</span>}
+            {diferencia === 0 && <span className="text-muted"> · cuadra exacto</span>}
+          </>
+        )}
+      </p>
+
+      <Campo
+        id="nota-cierre"
+        etiqueta="Nota del cierre (opcional)"
+        value={nota}
+        onChange={(e) => setNota(e.target.value)}
+        className="mt-3"
+      />
+
+      {error && (
+        <p className="mt-3 rounded-xl border border-accent/40 bg-accent/10 px-3 py-2 text-[13px] text-accent-soft">
+          {error}
+        </p>
+      )}
+      <div aria-hidden className="h-2" />
+    </Hoja>
+  );
+}
+
+// ── El desglose, detrás de una fila del hub ─────────────────────────────────
+
+export function DesgloseBarberos({
+  desglose,
+  miBarberoId,
+}: {
+  desglose: CajaDesglose;
+  miBarberoId: string | null;
+}) {
+  if (!desglose || desglose.barberos.length === 0) {
+    return <p className="text-[13px] text-muted">Todavía no hay ventas registradas en esta caja.</p>;
   }
 
   return (
-    <section className="rounded-2xl border border-line bg-panel p-5">
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h3 className="font-display text-xl font-bold uppercase text-ink">Caja de la sede</h3>
-        <span className="rounded-full bg-ok/10 px-2.5 py-0.5 font-display text-[10px] font-bold uppercase tracking-wide text-ok">
-          {aperturaHoy
-            ? `Abierta desde ${horaBogota(caja.abiertaEn)}`
-            : `Abierta el ${fechaCortaBogota(caja.abiertaEn)}, ${horaBogota(caja.abiertaEn)}`}
-        </span>
-      </div>
-      <p className="mt-1 text-xs leading-relaxed text-muted">
-        La caja es de la sede: suma lo de {nBarberos === 1 ? "el barbero" : `los ${nBarberos} barberos`}{" "}
-        desde que se abrió (sola, con la primera venta).
-      </p>
-      {!aperturaHoy && (
-        <p className="mt-3 rounded-lg border border-warn/40 bg-warn/10 px-3 py-2 text-xs font-semibold leading-relaxed text-warn">
-          Ojo: esta caja lleva {dias} {dias === 1 ? "día" : "días"} sin cerrar (abierta el{" "}
-          {fechaCortaBogota(caja.abiertaEn)}). Los totales de abajo suman TODO desde esa fecha, no
-          solo lo de hoy.
-        </p>
-      )}
-
-      {/* Desglose por barbero (con foto/iniciales, badge "tú" y "Mi comisión" en el logueado). */}
-      {desglose && desglose.barberos.length > 0 && (
-        <>
-          <div className="mt-4 font-display text-[11px] font-bold uppercase tracking-[0.14em] text-muted">
-            Por barbero
-          </div>
-          <div className="mt-2 overflow-hidden rounded-2xl border border-line bg-elevated">
-            {desglose.barberos.map((b) => {
-              const esMi = b.barberoId === miBarberoId;
-              return (
-                <div key={b.barberoId} className="border-b border-line/60 last:border-b-0">
-                  <div className="flex items-center gap-2.5 px-3.5 py-2.5">
-                    {b.fotoUrl ? (
-                      <span
-                        className="h-[30px] w-[30px] shrink-0 rounded-full border border-line bg-elevated bg-cover bg-top"
-                        style={{ backgroundImage: `url(${b.fotoUrl})` }}
-                      />
-                    ) : (
-                      <span
-                        className="grid h-[30px] w-[30px] shrink-0 place-items-center rounded-full border border-line font-display text-[11px] font-bold text-[#0c0b0a]"
-                        style={{ background: aviTono(b.nombre) }}
-                      >
-                        {iniciales(b.nombre)}
-                      </span>
-                    )}
-                    <span className="min-w-0 flex-1 truncate text-sm font-bold text-ink">{b.nombre}</span>
-                    {esMi && (
-                      <span className="shrink-0 rounded-full bg-accent/15 px-2 py-0.5 text-[9.5px] font-bold uppercase tracking-wide text-accent-soft">
-                        tú
-                      </span>
-                    )}
-                    <span className="shrink-0 text-sm font-bold tabular-nums text-ink">{cop(b.ventas)}</span>
-                  </div>
-                  {/* Comisión resaltada SOLO en la fila del barbero logueado. Sin el
-                      "50%" fijo: el monto ya sale del % REAL del contrato de cada uno
-                      (puede ser otro, o arriendo), así que el rótulo no debe afirmarlo. */}
-                  {esMi && (
-                    <div className="flex items-center justify-between gap-2 border-t border-line/60 bg-ok/5 px-3.5 py-2">
-                      <span className="min-w-0 text-xs font-semibold text-ok">
-                        Mi comisión (sobre mis ventas)
-                      </span>
-                      <span className="shrink-0 text-sm font-bold tabular-nums text-ok">
-                        {cop(b.comision)}
-                      </span>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </>
-      )}
-
-      {/* Totales de la sede: efectivo esperado + digital. */}
-      {desglose && (
-        <div className="mt-3 overflow-hidden rounded-2xl border border-line bg-elevated">
-          <div className="flex items-center justify-between gap-2 px-3.5 py-2.5 text-sm">
-            <span className="min-w-0 text-muted">Efectivo esperado</span>
-            <span className="shrink-0 font-bold tabular-nums text-ink">{cop(desglose.efectivo)}</span>
-          </div>
-          <div className="flex items-center justify-between gap-2 border-t border-line/60 px-3.5 py-2.5 text-sm">
-            <span className="min-w-0 text-muted">No efectivo (Nequi, datáfono, transf.)</span>
-            <span className="shrink-0 font-bold tabular-nums text-ink">{cop(desglose.digital)}</span>
-          </div>
-        </div>
-      )}
-
-      {!abierto ? (
-        <button className={`${btn} mt-4`} onClick={() => setAbierto(true)}>
-          Cerrar caja de la sede
-        </button>
-      ) : (
-        <form onSubmit={confirmar} className="mt-4 space-y-3">
-          <label className="block text-sm text-muted">
-            ¿Cuánto contaste en efectivo?
-            <input
-              type="number"
-              inputMode="numeric"
-              min={0}
-              value={contado}
-              onChange={(e) => setContado(e.target.value)}
-              required
-              placeholder="Efectivo contado (COP)"
-              className={`${fld} mt-1`}
-              autoFocus
-            />
-          </label>
-          <input
-            value={nota}
-            onChange={(e) => setNota(e.target.value)}
-            placeholder="Nota del cierre (opcional)"
-            className={fld}
-          />
-          <p className="text-sm tabular-nums">
-            Diferencia:{" "}
-            {sinContar ? (
-              <span className="text-muted">cuenta el efectivo para verla</span>
-            ) : (
-              <>
-                <span className={diferencia === 0 ? "font-semibold text-ok" : "font-semibold text-warn"}>
-                  {diferencia > 0 ? "+" : ""}
-                  {cop(diferencia)}
-                </span>
-                {diferencia !== 0 && (
-                  <span className="text-muted"> ({diferencia > 0 ? "sobra" : "falta"})</span>
+    <>
+      <div className="overflow-hidden rounded-2xl border border-line bg-elevated">
+        {desglose.barberos.map((b) => {
+          const esMi = b.barberoId === miBarberoId;
+          return (
+            <div key={b.barberoId} className="border-b border-line/60 last:border-b-0">
+              <div className="flex items-center gap-2.5 px-3.5 py-3">
+                {b.fotoUrl ? (
+                  <span
+                    className="h-[34px] w-[34px] shrink-0 rounded-full border border-line bg-elevated bg-cover bg-top"
+                    style={{ backgroundImage: `url(${b.fotoUrl})` }}
+                  />
+                ) : (
+                  <span
+                    className="grid h-[34px] w-[34px] shrink-0 place-items-center rounded-full border border-line font-display text-[12px] font-bold text-[#0c0b0a]"
+                    style={{ background: aviTono(b.nombre) }}
+                  >
+                    {iniciales(b.nombre)}
+                  </span>
                 )}
-              </>
-            )}
-          </p>
-          {error && <p className="text-sm text-warn">{error}</p>}
-          <div className="flex items-center gap-3">
-            <button disabled={saving || sinContar} className={btn}>
-              {saving ? "Cerrando…" : "Confirmar cierre"}
-            </button>
-            <button
-              type="button"
-              onClick={() => setAbierto(false)}
-              className="inline-flex min-h-11 items-center px-2 text-xs font-semibold uppercase tracking-wide text-muted transition hover:text-ink"
-            >
-              Cancelar
-            </button>
-          </div>
-        </form>
-      )}
-    </section>
+                <span className="min-w-0 flex-1 truncate text-[14px] font-bold text-ink">{b.nombre}</span>
+                {esMi && (
+                  <span className="shrink-0 rounded-full bg-accent/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-accent-soft">
+                    tú
+                  </span>
+                )}
+                <span className="bb-monto shrink-0 text-[14px] font-bold tabular-nums text-ink">{cop(b.ventas)}</span>
+              </div>
+              {/* Comisión resaltada SOLO en la fila del barbero logueado. Sin el
+                  "50%" fijo: el monto ya sale del % REAL del contrato de cada uno
+                  (puede ser otro, o arriendo), así que el rótulo no debe afirmarlo. */}
+              {esMi && (
+                <div className="flex items-center justify-between gap-2 border-t border-line/60 bg-ok/5 px-3.5 py-2">
+                  <span className="min-w-0 text-[12.5px] font-semibold text-ok">Mi comisión (sobre mis ventas)</span>
+                  <span className="bb-monto shrink-0 text-[14px] font-bold tabular-nums text-ok">{cop(b.comision)}</span>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="mt-3 overflow-hidden rounded-2xl border border-line bg-elevated">
+        <div className="flex items-center justify-between gap-2 px-3.5 py-2.5 text-[13.5px]">
+          <span className="min-w-0 text-muted">Efectivo esperado</span>
+          <span className="bb-monto shrink-0 font-bold tabular-nums text-ink">{cop(desglose.efectivo)}</span>
+        </div>
+        <div className="flex items-center justify-between gap-2 border-t border-line/60 px-3.5 py-2.5 text-[13.5px]">
+          <span className="min-w-0 text-muted">No efectivo (Nequi, datáfono, transf.)</span>
+          <span className="bb-monto shrink-0 font-bold tabular-nums text-ink">{cop(desglose.digital)}</span>
+        </div>
+      </div>
+    </>
   );
 }

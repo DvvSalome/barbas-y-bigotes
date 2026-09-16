@@ -10,7 +10,16 @@ import { CATS_GASTO } from "@/components/admin/CuadreForms";
 // desde el mostrador, no cuando el admin se acuerde en el cuadre. Cae en la misma
 // tabla `gastos` que ve el cierre de caja (descuenta del efectivo esperado), así
 // que el cajón cuadra sin llamadas de "¿y estos $5.000?".
-export function GastoRapido({ sede, medios = [] }: { sede: string; medios?: { slug: string; nombre: string }[] }) {
+export function GastoRapido({
+  sede,
+  medios = [],
+  dentroDeHoja = false,
+}: {
+  sede: string;
+  medios?: { slug: string; nombre: string }[];
+  /** La Hoja del hub de Cierre ya pone titulo y cerrar: aca no se repiten. */
+  dentroDeHoja?: boolean;
+}) {
   const router = useRouter();
   const [abierto, setAbierto] = useState(false);
   const [cat, setCat] = useState("");
@@ -42,7 +51,7 @@ export function GastoRapido({ sede, medios = [] }: { sede: string; medios?: { sl
     router.refresh();
   }
 
-  if (!abierto) {
+  if (!dentroDeHoja && !abierto) {
     return (
       <button
         type="button"
@@ -58,20 +67,22 @@ export function GastoRapido({ sede, medios = [] }: { sede: string; medios?: { sl
   }
 
   return (
-    <div className="space-y-3 rounded-2xl border border-line bg-panel p-4">
-      <div className="flex items-center justify-between">
-        <h3 className="text-[13px] font-bold uppercase tracking-wide text-ink">Gasto del local</h3>
-        <button type="button" onClick={() => setAbierto(false)} className="text-xs text-muted hover:text-ink">
-          Cerrar
-        </button>
-      </div>
+    <div className={`space-y-3 ${dentroDeHoja ? "" : "rounded-2xl border border-line bg-panel p-4"}`}>
+      {!dentroDeHoja && (
+        <div className="flex items-center justify-between">
+          <h3 className="text-[13px] font-bold uppercase tracking-wide text-ink">Gasto del local</h3>
+          <button type="button" onClick={() => setAbierto(false)} className="text-xs text-muted hover:text-ink">
+            Cerrar
+          </button>
+        </div>
+      )}
       <div className="flex flex-wrap gap-1.5">
         {CATS_GASTO.map((c) => (
           <button
             key={c}
             type="button"
             onClick={() => setCat(cat === c ? "" : c)}
-            className={`min-h-[38px] rounded-full border px-3 text-xs font-semibold transition ${
+            className={`min-h-11 rounded-full border px-3.5 text-xs font-semibold transition ${
               cat === c ? "border-accent bg-accent/15 text-ink" : "border-line text-muted hover:text-ink"
             }`}
           >
@@ -106,7 +117,7 @@ export function GastoRapido({ sede, medios = [] }: { sede: string; medios?: { sl
               key={m.slug}
               type="button"
               onClick={() => setMedio(m.slug)}
-              className={`min-h-[38px] rounded-full border px-3 text-xs font-semibold transition ${
+              className={`min-h-11 rounded-full border px-3.5 text-xs font-semibold transition ${
                 medio === m.slug ? "border-accent bg-accent/15 text-ink" : "border-line text-muted hover:text-ink"
               }`}
             >

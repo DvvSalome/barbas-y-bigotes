@@ -37,11 +37,15 @@ export function CobradosHoy({
   agenda,
   ventas,
   barberos,
+  dentroDeHoja = false,
 }: {
   /** Agenda de hoy de la sede (de acá salen las cerradas sin venta). */
   agenda: AgendaItem[];
   ventas: VentaHoy[];
   barberos: Barbero[];
+  /** Dentro de la Hoja del hub: sin tarjeta y sin plegable (la Hoja ya es el
+   *  contenedor, y si uno la abrio es porque QUIERE ver la lista). */
+  dentroDeHoja?: boolean;
 }) {
   const quien = (id: string | null) => barberos.find((b) => b.id === id);
   const ventaDeReserva = new Map(
@@ -83,7 +87,9 @@ export function CobradosHoy({
   // blanco y parecía rota. Decir "todavía nada" también es información.
   if (filas.length === 0) {
     return (
-      <div className="rounded-[18px] border border-line bg-panel px-5 py-8 text-center">
+      <div
+        className={`px-5 py-8 text-center ${dentroDeHoja ? "" : "rounded-[18px] border border-line bg-panel"}`}
+      >
         <p className="font-display text-[17px] font-bold uppercase">Todavía no se cierra nada hoy</p>
         <p className="mx-auto mt-1 max-w-sm text-[13px] text-muted">
           Cuando cobres una atención o una venta, acá queda el detalle de qué se llevó cada cliente.
@@ -95,27 +101,8 @@ export function CobradosHoy({
   const cobradas = filas.filter((f) => f.venta);
   const total = cobradas.reduce((a, f) => a + (f.venta?.total ?? 0), 0);
 
-  return (
-    <details open className="group overflow-hidden rounded-[18px] border border-line bg-panel">
-      <summary className="flex cursor-pointer list-none items-center gap-3 px-4 py-3 transition hover:bg-ink/[0.02] [&::-webkit-details-marker]:hidden">
-        <span className="min-w-0 flex-1">
-          <span className="block font-display text-[15px] font-bold uppercase tracking-wide">
-            Qué se llevó cada cliente
-          </span>
-          <span className="block text-[11.5px] text-muted">
-            {cobradas.length} {cobradas.length === 1 ? "cobro" : "cobros"} · {cop(total)}
-            {filas.length > cobradas.length && ` · ${filas.length - cobradas.length} sin cobrar`}
-          </span>
-        </span>
-        <span
-          aria-hidden
-          className="shrink-0 text-[13px] text-muted transition-transform duration-200 group-open:rotate-180"
-        >
-          ▾
-        </span>
-      </summary>
-
-      <ul className="divide-y divide-line/60 border-t border-line">
+  const lista = (
+    <ul className={`divide-y divide-line/60 ${dentroDeHoja ? "" : "border-t border-line"}`}>
         {filas.map((f) => {
           const chip = SIN_VENTA[f.estado];
           return (
@@ -206,7 +193,44 @@ export function CobradosHoy({
             </li>
           );
         })}
-      </ul>
+    </ul>
+  );
+
+  // Dentro de la Hoja va la lista pelada, con el resumen arriba como una linea
+  // de texto: el titulo ya lo pone la Hoja y el plegable sobra.
+  if (dentroDeHoja) {
+    return (
+      <>
+        <p className="mb-3 text-[13px] text-muted">
+          {cobradas.length} {cobradas.length === 1 ? "cobro" : "cobros"} ·{" "}
+          <span className="bb-monto font-semibold text-ink">{cop(total)}</span>
+          {filas.length > cobradas.length && ` · ${filas.length - cobradas.length} sin cobrar`}
+        </p>
+        <div className="overflow-hidden rounded-2xl border border-line bg-elevated">{lista}</div>
+      </>
+    );
+  }
+
+  return (
+    <details open className="group overflow-hidden rounded-[18px] border border-line bg-panel">
+      <summary className="flex cursor-pointer list-none items-center gap-3 px-4 py-3 transition hover:bg-ink/[0.02] [&::-webkit-details-marker]:hidden">
+        <span className="min-w-0 flex-1">
+          <span className="block font-display text-[15px] font-bold uppercase tracking-wide">
+            Qué se llevó cada cliente
+          </span>
+          <span className="block text-[11.5px] text-muted">
+            {cobradas.length} {cobradas.length === 1 ? "cobro" : "cobros"} · {cop(total)}
+            {filas.length > cobradas.length && ` · ${filas.length - cobradas.length} sin cobrar`}
+          </span>
+        </span>
+        <span
+          aria-hidden
+          className="shrink-0 text-[13px] text-muted transition-transform duration-200 group-open:rotate-180"
+        >
+          ▾
+        </span>
+      </summary>
+      {lista}
     </details>
   );
 }

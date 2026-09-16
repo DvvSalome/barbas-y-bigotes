@@ -32,7 +32,7 @@ import { AgendaDia } from "@/components/admin/AgendaDia";
 import { CobradosHoy } from "@/components/barbero/CobradosHoy";
 import { AvisosBarbero } from "@/components/barbero/AvisosBarbero";
 import { EsperaPanel } from "@/components/barbero/EsperaPanel";
-import { CierreCaja } from "@/components/barbero/CierreCaja";
+import { CierreHub } from "@/components/barbero/CierreHub";
 import { ConsumoBarbero } from "@/components/barbero/ConsumoBarbero";
 import { GastoRapido } from "@/components/barbero/GastoRapido";
 import { PendientesCobrar } from "@/components/staff/PendientesCobrar";
@@ -131,6 +131,10 @@ export default async function BarberoPage({
   const miProxima = esBarbero ? proximaCitaDe(agendaSede, miId) : null;
   const veSemana = esBarbero ? (await getAjustesEquipo()).barberoVeSemana : false;
   const miSemana = veSemana ? await getMiSemana(miId) : null;
+
+  // Lo que falta cobrar EN ESTA SEDE: lo usa el hub de Cierre para el badge y
+  // para el subtítulo de la fila, y la hoja para la lista.
+  const misPendientes = sedeBarbero ? pendientesCobro.filter((p) => p.sede === sedeBarbero) : [];
 
   const mostrador = {
     sedeId: sedeBarbero,
@@ -252,39 +256,55 @@ export default async function BarberoPage({
           />
         }
         cierreSlot={
-          <div className="space-y-8">
-            {/* Cobro exprés: la cita que el barbero no alcanzó a registrar en el
-                momento se cobra acá mismo (medio + propina), sin ir a Turnos. */}
-            {sedeBarbero && (
-              <div className="mx-auto w-full max-w-2xl">
+          // Cierre como HUB (paso 6): la caja arriba con su número grande y su
+          // botón, y debajo filas agrupadas. Lo que antes estaba todo desplegado
+          // —cobros pendientes, qué se llevó cada cliente, el desglose por
+          // barbero, consumo y gastos— vive ahora detrás de la fila que lo
+          // nombra, en una Hoja.
+          <CierreHub
+            caja={caja}
+            desglose={cajaDesglose}
+            miBarberoId={staff.barberoId}
+            resumen={{
+              nPendientes: misPendientes.length,
+              montoPendientes: misPendientes.reduce((a, p) => a + p.monto, 0),
+              nCobros: ventasSede.length,
+              totalCobrado: cobradoTotal,
+            }}
+            pendientes={
+              sedeBarbero ? (
                 <PendientesCobrar
-                  pendientes={pendientesCobro.filter((p) => p.sede === sedeBarbero)}
+                  pendientes={misPendientes}
                   medios={medios.map((m) => ({ slug: m.slug, nombre: m.nombre }))}
+                  dentroDeHoja
                 />
-              </div>
-            )}
-            {/* Qué se llevó cada cliente (ítems reales de la venta). */}
-            <CobradosHoy agenda={agendaSede} ventas={ventasSede} barberos={mostrador.barberosSede} />
-            {sedeBarbero && (
-              <div className="mx-auto w-full max-w-2xl space-y-3">
-                <CierreCaja caja={caja} desglose={cajaDesglose} miBarberoId={staff.barberoId} />
-                {/* Lo que se toma el equipo: acá, junto al cierre, porque es el
-                    momento del día en que se hacen las cuentas. */}
+              ) : null
+            }
+            cobrados={
+              <CobradosHoy agenda={agendaSede} ventas={ventasSede} barberos={mostrador.barberosSede} dentroDeHoja />
+            }
+            consumo={
+              sedeBarbero ? (
                 <ConsumoBarbero
                   productos={productos
                     .filter((p) => p.sede === sedeBarbero)
                     .map((p) => ({ id: p.id, nombre: p.nombre, precio: p.precio, stock: p.stock }))}
                   barberos={mostrador.barberosSede.map((b) => ({ id: b.id, nombre: b.nombre }))}
                   miBarberoId={staff.barberoId}
+                  dentroDeHoja
                 />
-                {/* El gasto del local ("compré agua") se anota acá mismo, no
-                    cuando el admin se acuerde en el cuadre. */}
-                <GastoRapido sede={sedeBarbero} medios={medios.map((m) => ({ slug: m.slug, nombre: m.nombre }))} />
-              </div>
-            )}
-            {/* El aviso se ata a la sede o al barbero del perfil; el dueño no
-                tiene ninguno de los dos, así que para él no se dibuja. */}
-          </div>
+              ) : null
+            }
+            gasto={
+              sedeBarbero ? (
+                <GastoRapido
+                  sede={sedeBarbero}
+                  medios={medios.map((m) => ({ slug: m.slug, nombre: m.nombre }))}
+                  dentroDeHoja
+                />
+              ) : null
+            }
+          />
         }
       />
     </main>

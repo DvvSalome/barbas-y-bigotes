@@ -32,9 +32,12 @@ function horaCorta(iso: string) {
 export function PendientesCobrar({
   pendientes,
   medios,
+  dentroDeHoja = false,
 }: {
   pendientes: PendienteCobro[];
   medios: { slug: string; nombre: string }[];
+  /** La Hoja del hub de Cierre ya pone titulo y cuenta: aca no se repiten. */
+  dentroDeHoja?: boolean;
 }) {
   const router = useRouter();
   const [abierta, setAbierta] = useState<string | null>(null);
@@ -92,17 +95,19 @@ export function PendientesCobrar({
   }
 
   return (
-    <div className="rounded-2xl border border-line bg-panel p-5">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="flex items-center gap-2 font-display text-2xl">
-          <span className="h-2 w-2 rounded-full bg-warn" /> Pendientes por cobrar
-        </h2>
-        <span className="text-sm text-muted">
-          {visibles.length} {visibles.length === 1 ? "reserva" : "reservas"} ·{" "}
-          <b className="text-accent-soft">{cop(total)}</b> proyectado
-        </span>
-      </div>
-      <p className="mt-1 text-xs text-muted">
+    <div className={dentroDeHoja ? "" : "rounded-2xl border border-line bg-panel p-5"}>
+      {!dentroDeHoja && (
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="flex items-center gap-2 font-display text-2xl">
+            <span className="h-2 w-2 rounded-full bg-warn" /> Pendientes por cobrar
+          </h2>
+          <span className="text-sm text-muted">
+            {visibles.length} {visibles.length === 1 ? "reserva" : "reservas"} ·{" "}
+            <b className="text-accent-soft">{cop(total)}</b> proyectado
+          </span>
+        </div>
+      )}
+      <p className={`text-xs text-muted ${dentroDeHoja ? "" : "mt-1"}`}>
         Citas de hoy aún sin registrar en caja. Toca una para cobrarla acá mismo; si hay que cambiar servicio, precio
         o agregar productos, se cobra desde Turnos en la app del barbero.
       </p>

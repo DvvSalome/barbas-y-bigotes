@@ -33,6 +33,7 @@ export function Fila({
   subtitulo,
   badge,
   pill,
+  valor,
   destacada = false,
 }: {
   href?: string;
@@ -45,6 +46,8 @@ export function Fila({
   badge?: number;
   /** Etiqueta corta de texto ("Nuevo"). */
   pill?: string;
+  /** Monto o dato a la derecha (se difumina con el ojo del panel). */
+  valor?: string;
   destacada?: boolean;
 }) {
   const dentro = (
@@ -65,7 +68,11 @@ export function Fila({
           {badge > 99 ? "99+" : badge}
         </span>
       )}
-      <ChevronRightIcon className="h-4 w-4 shrink-0 text-muted" />
+      {valor && <span className="bb-monto shrink-0 text-[15px] font-bold tabular-nums text-ink">{valor}</span>}
+      {/* Sin chevron cuando la fila no lleva a ningun lado: el chevron PROMETE
+          que se entra, y una fila que solo muestra un numero no cumple esa
+          promesa. Pasa en "Mi comision" del cierre. */}
+      {(href || onClick) && <ChevronRightIcon className="h-4 w-4 shrink-0 text-muted" />}
     </>
   );
 
@@ -80,6 +87,7 @@ export function Fila({
       </Link>
     );
   }
+  if (!onClick) return <div className={clases.replace(" hover:bg-elevated/60", "")}>{dentro}</div>;
   return (
     <button type="button" onClick={onClick} className={clases}>
       {dentro}

@@ -21,10 +21,13 @@ export function ConsumoBarbero({
   productos,
   barberos,
   miBarberoId,
+  dentroDeHoja = false,
 }: {
   productos: Prod[];
   barberos: Barb[];
   miBarberoId: string | null;
+  /** La Hoja del hub de Cierre ya pone titulo y cerrar: aca no se repiten. */
+  dentroDeHoja?: boolean;
 }) {
   const router = useRouter();
   const [abierto, setAbierto] = useState(false);
@@ -74,7 +77,7 @@ export function ConsumoBarbero({
     router.refresh();
   }
 
-  if (!abierto) {
+  if (!dentroDeHoja && !abierto) {
     return (
       <button
         type="button"
@@ -90,19 +93,21 @@ export function ConsumoBarbero({
   }
 
   return (
-    <div className="rounded-2xl border border-line bg-panel p-4">
-      <div className="flex items-center justify-between gap-3">
-        <h3 className="font-display text-lg text-ink">Consumo del equipo</h3>
-        <button
-          type="button"
-          onClick={() => setAbierto(false)}
-          aria-label="Cerrar"
-          className="grid h-11 w-11 place-items-center rounded-full border border-line text-muted transition hover:text-ink"
-        >
-          ×
-        </button>
-      </div>
-      <p className="mt-1 text-[12px] text-muted">
+    <div className={dentroDeHoja ? "" : "rounded-2xl border border-line bg-panel p-4"}>
+      {!dentroDeHoja && (
+        <div className="flex items-center justify-between gap-3">
+          <h3 className="font-display text-lg text-ink">Consumo del equipo</h3>
+          <button
+            type="button"
+            onClick={() => setAbierto(false)}
+            aria-label="Cerrar"
+            className="grid h-11 w-11 place-items-center rounded-full border border-line text-muted transition hover:text-ink"
+          >
+            ×
+          </button>
+        </div>
+      )}
+      <p className={`text-[12px] text-muted ${dentroDeHoja ? "" : "mt-1"}`}>
         Baja del inventario y se descuenta en la liquidación de la semana.
       </p>
 
