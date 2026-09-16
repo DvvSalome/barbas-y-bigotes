@@ -38,7 +38,13 @@ import { GastoRapido } from "@/components/barbero/GastoRapido";
 import { PendientesCobrar } from "@/components/staff/PendientesCobrar";
 import { RealtimeRefresh } from "@/components/motion/RealtimeRefresh";
 
-export const metadata: Metadata = { title: "Mostrador" };
+export const metadata: Metadata = {
+  title: "Mostrador",
+  // Manifiesto PROPIO del staff: quien instala la app desde acá obtiene una que
+  // abre en el mostrador. El que la instala desde el sitio público sigue con el
+  // de siempre, que abre en la portada. Un sitio puede servir varios.
+  manifest: "/manifest-staff.json",
+};
 
 export default async function BarberoPage({
   searchParams,

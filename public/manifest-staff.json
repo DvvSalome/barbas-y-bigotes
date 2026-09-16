@@ -1,0 +1,32 @@
+{
+  "id": "/barbero",
+  "name": "Barbas & Bigotes · Mostrador",
+  "short_name": "Mostrador",
+  "description": "El mostrador del local: turnos, agenda, lista de espera y cierre de caja.",
+  "start_url": "/barbero",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0c0b0a",
+  "theme_color": "#0c0b0a",
+  "orientation": "any",
+  "lang": "es-CO",
+  "categories": ["business", "productivity"],
+  "icons": [
+    {
+      "src": "/brand/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/brand/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "/brand/icon-512x512-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

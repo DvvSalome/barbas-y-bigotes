@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { SectionHeader } from "@/components/admin/SectionHeader";
 import { GRUPOS_HUB, HOJAS } from "@/components/admin/nav-mapa";
 import { Fila, Grupo } from "@/components/ui/ListaAgrupada";
+import { TemaSelector } from "@/components/admin/TemaSelector";
 
 export const metadata: Metadata = { title: "Ajustes" };
 
@@ -30,6 +31,12 @@ export default function AjustesPage() {
           </>
         }
       />
+      {/* Arriba de todo: es lo que alguien viene a buscar cuando la pantalla
+          le molesta, y hasta ahora estaba escondido en el menú del avatar. */}
+      <div className="mt-5">
+        <TemaSelector />
+      </div>
+
       <div className="mt-5 grid gap-5">
         {GRUPOS_HUB.map((g) => {
           const filas = HOJAS.filter((h) => h.grupo === g);

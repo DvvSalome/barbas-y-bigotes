@@ -6,11 +6,14 @@
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
-  "background_color": "#111111",
-  "theme_color": "#D4AF37",
+  "background_color": "#0c0b0a",
+  "theme_color": "#0c0b0a",
   "orientation": "portrait-primary",
   "lang": "es-CO",
-  "categories": ["lifestyle", "shopping"],
+  "categories": [
+    "lifestyle",
+    "shopping"
+  ],
   "icons": [
     {
       "src": "/brand/icon-192x192.png",
@@ -50,6 +53,20 @@
       "type": "image/png",
       "form_factor": "wide",
       "label": "Barbas & Bigotes en escritorio"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Mostrador",
+      "short_name": "Mostrador",
+      "description": "Turnos, agenda y caja del local",
+      "url": "/barbero"
+    },
+    {
+      "name": "Reservar cita",
+      "short_name": "Reservar",
+      "description": "Pedir un turno",
+      "url": "/reservar"
     }
   ]
 }

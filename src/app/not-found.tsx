@@ -1,8 +1,18 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 
 // 404 con marca (server component): sin esto Next muestra su pantalla default en inglés.
+//
+// El título propio importa: sin él, la pestaña y el historial dicen "Barbas &
+// Bigotes Barbershop | Barbería en Barranquilla", o sea que una página rota se
+// ve igual que la portada en la lista de pestañas y en lo que comparte alguien.
+export const metadata: Metadata = {
+  title: "Esta página no existe",
+  robots: { index: false, follow: true },
+};
+
 export default function NotFound() {
   return (
     <>
