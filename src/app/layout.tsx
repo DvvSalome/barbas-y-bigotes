@@ -4,11 +4,12 @@ import "./globals.css";
 import { siteGraph, jsonLd } from "@/lib/schema-org";
 
 // El prototipo usa Barlow Condensed 500-800 como display; el 800 carga porque
-// los títulos grandes (hero, H1) son font-extrabold.
+// los títulos grandes (hero, H1) son font-extrabold. Solo la redonda: la
+// itálica no se usa en ningún componente y duplicaba los archivos woff2 que se
+// precargan en cada página (5 de más, ~80 KB).
 const barlow = Barlow_Condensed({
   subsets: ["latin"],
   weight: ["400", "500", "600", "700", "800"],
-  style: ["normal", "italic"],
   variable: "--font-barlow",
 });
 

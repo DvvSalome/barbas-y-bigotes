@@ -2,8 +2,28 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { useReducedMotion } from "motion/react";
+
+// ¿Estamos en escritorio (md+)? Con useSyncExternalStore y no con un efecto que
+// haga setState (regla del React Compiler). En el servidor y en la primera
+// pintura devuelve false: el <video> se monta después de hidratar y SOLO en
+// escritorio. Antes vivía en el DOM también en el celular, oculto con CSS, y
+// Chrome bajaba igual los 4,9 MB del mp4 (medido: la portada pesaba 6 MB en
+// un Pixel 7; sin el video, 1,2 MB).
+const MQ_ESCRITORIO = "(min-width: 768px)";
+function suscribirEscritorio(avisar: () => void) {
+  const mq = window.matchMedia(MQ_ESCRITORIO);
+  mq.addEventListener("change", avisar);
+  return () => mq.removeEventListener("change", avisar);
+}
+function useEsEscritorio() {
+  return useSyncExternalStore(
+    suscribirEscritorio,
+    () => window.matchMedia(MQ_ESCRITORIO).matches,
+    () => false,
+  );
+}
 
 /*
   Hero de la home (spec §1.2 móvil + §2.2 desktop). Es un único client
@@ -70,6 +90,7 @@ const Caret = () => (
 
 export function HomeHero() {
   const reduce = useReducedMotion();
+  const escritorio = useEsEscritorio();
   const text = useTypewriter(!reduce);
   const kbClass = reduce ? "" : "[animation:bbkb_18s_ease-in-out_infinite_alternate]";
 
@@ -128,23 +149,22 @@ export function HomeHero() {
       <div className="hidden md:block">
         <div className="mx-auto max-w-[1180px] px-6 pt-6">
           <div className="bb-foto-skeleton relative h-[600px] overflow-hidden rounded-[30px] border border-[rgba(242,237,228,0.07)] shadow-[0_45px_120px_-50px_rgba(0,0,0,0.9)]">
-            {/* Video ambiente del local (autoplay silenciado, en loop). El poster
-                es la foto fija: pinta al instante mientras baja el mp4, y con
-                reduce-motion (o si el navegador bloquea autoplay) queda esa foto.
-                Solo desktop: este bloque es hidden md:block, así el mp4 (~5MB) no
-                se descarga en móvil. */}
-            {reduce ? (
-              <div className={`absolute inset-[-4%] ${kbClass}`}>
-                <Image
-                  src="/sedes/parque-venezuela-interior.jpg"
-                  alt="Interior de la sede Parque Venezuela"
-                  fill
-                  priority
-                  sizes="100vw"
-                  className="object-cover [filter:brightness(1.25)_contrast(1.05)_saturate(1.1)]"
-                />
-              </div>
-            ) : (
+            {/* La foto fija va SIEMPRE debajo: pinta al instante (es el LCP) y
+                hace de póster. El video ambiente (autoplay silenciado, loop) se
+                monta encima solo en escritorio y sin reduce-motion. Ojo: esconder
+                el bloque con CSS no alcanza, un <video preload="auto"> en el DOM
+                se descarga igual aunque esté en display:none. */}
+            <div className={`absolute inset-[-4%] ${kbClass}`}>
+              <Image
+                src="/sedes/parque-venezuela-interior.jpg"
+                alt="Interior de la sede Parque Venezuela"
+                fill
+                priority
+                sizes="100vw"
+                className="object-cover [filter:brightness(1.25)_contrast(1.05)_saturate(1.1)]"
+              />
+            </div>
+            {escritorio && !reduce && (
               <video
                 className="absolute inset-0 h-full w-full object-cover [filter:brightness(1.25)_contrast(1.05)_saturate(1.1)]"
                 autoPlay
@@ -152,7 +172,6 @@ export function HomeHero() {
                 loop
                 playsInline
                 preload="auto"
-                poster="/sedes/parque-venezuela-interior.jpg"
                 aria-label="Video ambiente de la sede Parque Venezuela"
               >
                 <source src="/video/hero.mp4" type="video/mp4" />
@@ -181,7 +200,6 @@ export function HomeHero() {
                   alt="Barbas & Bigotes Barbershop"
                   width={840}
                   height={255}
-                  priority
                   className="mt-8 h-auto w-[380px] max-w-[78%] drop-shadow-[0_12px_60px_rgba(0,0,0,0.75)]"
                 />
                 <p className="mt-6 max-w-[44ch] text-[17px] leading-[1.55] text-ink/80">

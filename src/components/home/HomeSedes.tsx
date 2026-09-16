@@ -44,6 +44,7 @@ export function HomeSedes() {
                 alt={`Sede ${s.nombre}`}
                 fill
                 sizes="100vw"
+                quality={70}
                 className="object-cover"
               />
               <div className="absolute inset-0 bg-[linear-gradient(180deg,transparent_20%,rgba(12,11,10,0.85)_100%)]" />
@@ -80,6 +81,7 @@ export function HomeSedes() {
                 alt={`Sede ${s.nombre}`}
                 fill
                 sizes="(max-width:1200px) 50vw, 560px"
+                quality={70}
                 className="object-cover transition duration-700 ease-out group-hover:scale-105"
               />
               <div className="absolute inset-0 bg-[linear-gradient(180deg,transparent_30%,rgba(12,11,10,0.88)_100%)]" />
