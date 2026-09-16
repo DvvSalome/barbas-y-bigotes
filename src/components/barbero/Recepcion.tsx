@@ -80,6 +80,10 @@ export function Recepcion({
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
+  // "reservaId:estado" del boton que ya recibio el primer toque, y el rechazo del
+  // servidor de la ultima marcada. Los dos reemplazan a confirm() y alert().
+  const [armado, setArmado] = useState<string | null>(null);
+  const [errMarcar, setErrMarcar] = useState<{ id: string; msg: string } | null>(null);
   // Reloj que AVANZA (un tic por minuto). La pantalla del mostrador queda
   // abierta todo el día: con el instante congelado al montar, el botón "Llegó"
   // de la cita de la tarde seguía diciendo "faltan 2h" para siempre y solo
@@ -92,23 +96,25 @@ export function Recepcion({
   }, []);
 
   async function marcar(r: AgendaItem, estado: string) {
-    const quien = r.cliente || "este cliente";
-    if (
-      estado === "cancelada" &&
-      !window.confirm(
-        `¿Cancelar la cita de ${quien} a las ${hora(r.inicio)}? Se le avisa al cliente y el cupo queda libre.`,
-      )
-    )
+    // Cancelar y "No llegó" no tienen vuelta atrás desde el mostrador: la cita
+    // sale de la lista y no queda botón para revertirla, y están al lado del que
+    // se usa todo el día. Marcárselo por error a alguien sentado en la silla deja
+    // la venta sin registrar. Por eso piden DOS toques: el primero arma el botón
+    // y lo dice con palabras, el segundo ejecuta.
+    //
+    // Dos toques y no confirm(): el confirm congela la pestaña entera, sale con
+    // la letra del sistema operativo en medio de una pantalla que no se le parece
+    // en nada, y en la tablet del local aparece ARRIBA, lejos del dedo que acaba
+    // de tocar abajo. Es el mismo patrón con el que ya se cancela desde el
+    // calendario y se unen fichas repetidas.
+    const llave = `${r.id}:${estado}`;
+    if ((estado === "cancelada" || estado === "no_show") && armado !== llave) {
+      setArmado(llave);
+      setErrMarcar(null);
       return;
-    // "No llegó" también pregunta: desde el mostrador no hay vuelta atrás (la
-    // cita sale de la lista y no queda ningún botón para revertirla), y el botón
-    // está al lado del que se usa todo el día. Marcarlo por error a alguien que
-    // está sentado en la silla deja la venta sin registrar.
-    if (
-      estado === "no_show" &&
-      !window.confirm(`¿Marcar que ${quien} NO vino a la cita de las ${hora(r.inicio)}? No se puede deshacer.`)
-    )
-      return;
+    }
+    setArmado(null);
+    setErrMarcar(null);
     setBusy(r.id);
     const res = await actualizarReserva(
       r.id,
@@ -119,11 +125,13 @@ export function Recepcion({
     // que la movio, un doble marcado, o el guard de las 2h), antes se hacia refresh
     // igual y el barbero creia que habia funcionado. Ahora se avisa.
     if (!res.ok) {
-      window.alert(res.error ?? "No se pudo actualizar la cita.");
+      setErrMarcar({ id: r.id, msg: res.error ?? "No se pudo actualizar la cita." });
       return;
     }
     router.refresh();
   }
+
+  const armadoDe = (r: AgendaItem, estado: string) => armado === `${r.id}:${estado}`;
 
   // Precio del servicio de la cita en SU sede (misma resolución que la hoja de
   // cobro). null en el walk-in sin servicio o si esa sede no tiene precio.
@@ -295,13 +303,22 @@ export function Recepcion({
                             </button>
                             <button
                               onClick={() => marcar(r, "no_show")}
+                              onBlur={() => setArmado(null)}
                               disabled={busy === r.id}
-                              className="min-h-14 flex-1 rounded-xl border border-warn/50 px-3 text-[15px] font-bold text-warn transition hover:bg-warn/10 disabled:opacity-40"
+                              className={`min-h-14 flex-1 rounded-xl border px-3 text-[15px] font-bold text-warn transition hover:bg-warn/10 disabled:opacity-40 ${
+                                armadoDe(r, "no_show") ? "border-warn bg-warn/15" : "border-warn/50"
+                              }`}
                             >
-                              No llegó
+                              {armadoDe(r, "no_show") ? "¿Seguro? Toca de nuevo" : "No llegó"}
                             </button>
                           </div>
                         </div>
+                      )}
+
+                      {errMarcar?.id === r.id && (
+                        <p className="mt-2.5 rounded-xl border border-accent/40 bg-accent/10 px-3 py-2 text-[13px] text-accent-soft">
+                          {errMarcar.msg}
+                        </p>
                       )}
 
                       {/* Con la pregunta arriba, estos botones sobran: repetirían
@@ -342,18 +359,28 @@ export function Recepcion({
                         <div className="mt-1 flex w-full flex-wrap gap-2 border-t border-line/50 pt-2">
                           <button
                             onClick={() => marcar(r, "no_show")}
+                            onBlur={() => setArmado(null)}
                             disabled={busy === r.id}
-                            className="min-h-12 rounded-lg border border-line px-4 text-[13.5px] text-muted transition hover:text-ink disabled:opacity-50"
+                            className={`min-h-12 rounded-lg border px-4 text-[13.5px] transition disabled:opacity-50 ${
+                              armadoDe(r, "no_show")
+                                ? "border-warn bg-warn/10 font-semibold text-warn"
+                                : "border-line text-muted hover:text-ink"
+                            }`}
                           >
-                            No llegó
+                            {armadoDe(r, "no_show") ? "¿Seguro? No vino" : "No llegó"}
                           </button>
                           {!enCurso && (
                             <button
                               onClick={() => marcar(r, "cancelada")}
+                              onBlur={() => setArmado(null)}
                               disabled={busy === r.id}
-                              className="min-h-12 rounded-lg border border-line px-4 text-[13.5px] text-muted transition hover:border-accent/40 hover:text-accent-soft disabled:opacity-50"
+                              className={`min-h-12 rounded-lg border px-4 text-[13.5px] transition disabled:opacity-50 ${
+                                armadoDe(r, "cancelada")
+                                  ? "border-warn bg-warn/10 font-semibold text-warn"
+                                  : "border-line text-muted hover:border-accent/40 hover:text-accent-soft"
+                              }`}
                             >
-                              Cancelar
+                              {armadoDe(r, "cancelada") ? "¿Seguro? Se le avisa" : "Cancelar"}
                             </button>
                           )}
                         </div>

@@ -53,6 +53,10 @@ export function EsperaPanel({
   // y el operador no tiene uno propio). Guarda el barbero elegido en el selector.
   const [eligiendo, setEligiendo] = useState<string | null>(null);
   const [barberoSel, setBarberoSel] = useState("");
+  // El rechazo del servidor al servir una espera, pegado a LA entrada que falló.
+  // Antes era un alert(): congelaba la pestaña, salía con la letra del sistema y
+  // pedía un toque extra para nada; y sobre todo se olvidaba a cuál se refería.
+  const [errAtender, setErrAtender] = useState<{ id: string; msg: string } | null>(null);
 
   async function setEstado(id: string, estado: string) {
     setBusy(true);
@@ -63,10 +67,11 @@ export function EsperaPanel({
 
   async function atender(id: string, barberoOverride?: string) {
     setBusy(true);
+    setErrAtender(null);
     const res = await servirEspera(id, barberoOverride);
     setBusy(false);
     if (!res.ok) {
-      alert(res.error);
+      setErrAtender({ id, msg: res.error ?? "No se pudo atender esta espera." });
       return;
     }
     setEligiendo(null);
@@ -170,6 +175,12 @@ export function EsperaPanel({
                   </button>
                 </div>
               </div>
+
+              {errAtender?.id === e.id && (
+                <p className="mt-2.5 rounded-xl border border-accent/40 bg-accent/10 px-3 py-2 text-[13px] text-accent-soft">
+                  {errAtender.msg}
+                </p>
+              )}
 
               {/* La espera es "para el primero que se desocupe" y el mostrador de
                   sede no tiene un barbero propio: se pregunta cuál la atiende. */}

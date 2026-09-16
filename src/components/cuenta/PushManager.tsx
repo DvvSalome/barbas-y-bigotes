@@ -50,6 +50,7 @@ export function PushManager() {
   const [estado, setEstado] = useState<Estado>("cargando");
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
 
   useEffect(() => {
     let vivo = true;
@@ -96,6 +97,7 @@ export function PushManager() {
   }, []);
 
   async function subscribeToPush() {
+    setErr(null);
     try {
       setLoading(true);
       const registration = await obtenerSW();
@@ -141,11 +143,11 @@ export function PushManager() {
         setIsSubscribed(true);
       } else {
         console.error(res.error);
-        alert(res.error || "No se pudo suscribir.");
+        setErr(res.error || "No se pudo activar. Intenta de nuevo.");
       }
     } catch (error) {
       console.error("Error subscribing to push:", error);
-      alert("Hubo un error al activar las notificaciones. Intenta de nuevo.");
+      setErr("Hubo un error al activar las notificaciones. Intenta de nuevo.");
     } finally {
       setLoading(false);
     }
@@ -177,6 +179,10 @@ export function PushManager() {
           >
             {loading ? "Activando..." : "Activar notificaciones"}
           </button>
+          {/* El fallo se dice ACÁ, debajo del botón que se acaba de tocar. Antes
+              era un alert() del navegador: tapaba la página, no se podía copiar y
+              al cerrarlo no quedaba rastro de qué había pasado. */}
+          {err && <p className="mt-3 text-sm text-warn">{err}</p>}
         </>
       )}
     </div>

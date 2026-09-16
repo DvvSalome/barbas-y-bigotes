@@ -1,6 +1,7 @@
 "use client";
 
 import { botonClases } from "@/components/ui/Boton";
+import { Hoja, PieHoja, primarioDeHoja } from "@/components/ui/Hoja";
 import { chipFiltroClases } from "@/components/ui/Chip";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
@@ -631,87 +632,59 @@ export function AgendaDia({
         </div>
       )}
 
-      {/* Sheet de + Cita (reusa el MISMO form del mostrador) */}
+      {/* + Cita: el MISMO form del mostrador, ahora dentro de LA hoja del staff. */}
       {sheet && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-0 sm:items-center sm:p-6" onClick={() => setSheet(null)}>
-          <div
-            className="max-h-[92dvh] w-full overflow-y-auto rounded-t-3xl border border-line bg-panel p-5 sm:max-w-lg sm:rounded-3xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="mb-3 flex items-center justify-between">
-              <h3 className="font-display text-xl">Agendar cita</h3>
-              <button onClick={() => setSheet(null)} aria-label="Cerrar" className="grid h-11 w-11 place-items-center rounded-full border border-line text-muted transition hover:text-ink">
-                ×
-              </button>
-            </div>
-            <AgendarCitaForm
-              sede={sede}
-              barberos={barberos}
-              servicios={servicios}
-              horarioSemanal={horarioSemanal}
-              diasEspeciales={diasEspeciales}
-              barberoInicial={sheet.barberoId}
-              diaInicial={new Date(`${fecha}T12:00:00-05:00`)}
-              slotInicial={sheet.slot}
-              onDone={() => {
-                setSheet(null);
-                router.refresh();
-              }}
-              onCancel={() => setSheet(null)}
-            />
-          </div>
-        </div>
+        <Hoja titulo="Agendar cita" onCerrar={() => setSheet(null)} ancho="max-w-lg">
+          <AgendarCitaForm
+            sede={sede}
+            barberos={barberos}
+            servicios={servicios}
+            horarioSemanal={horarioSemanal}
+            diasEspeciales={diasEspeciales}
+            barberoInicial={sheet.barberoId}
+            diaInicial={new Date(`${fecha}T12:00:00-05:00`)}
+            slotInicial={sheet.slot}
+            onDone={() => {
+              setSheet(null);
+              router.refresh();
+            }}
+            onCancel={() => setSheet(null)}
+          />
+        </Hoja>
       )}
 
-      {/* Bloquear horas: sheet de creación */}
+      {/* Bloquear horas */}
       {bloqueoSheet && ventana.abierta && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-0 sm:items-center sm:p-6" onClick={() => setBloqueoSheet(null)}>
-          <div
-            className="max-h-[92dvh] w-full overflow-y-auto rounded-t-3xl border border-line bg-panel p-5 sm:max-w-lg sm:rounded-3xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="mb-3 flex items-center justify-between">
-              <h3 className="font-display text-xl">Bloquear horas · {esHoy ? "hoy" : labelFecha(fecha)}</h3>
-              <button onClick={() => setBloqueoSheet(null)} aria-label="Cerrar" className="grid h-11 w-11 place-items-center rounded-full border border-line text-muted transition hover:text-ink">
-                ×
-              </button>
-            </div>
-            <BloquearHorasForm
-              fecha={fecha}
-              barberos={barberos}
-              barberoInicial={bloqueoSheet.barberoId}
-              abreMin={abre}
-              cierraMin={cierra}
-              onDone={() => {
-                setBloqueoSheet(null);
-                router.refresh();
-              }}
-              onCancel={() => setBloqueoSheet(null)}
-            />
-          </div>
-        </div>
+        <Hoja
+          titulo={`Bloquear horas · ${esHoy ? "hoy" : labelFecha(fecha)}`}
+          onCerrar={() => setBloqueoSheet(null)}
+          ancho="max-w-lg"
+        >
+          <BloquearHorasForm
+            fecha={fecha}
+            barberos={barberos}
+            barberoInicial={bloqueoSheet.barberoId}
+            abreMin={abre}
+            cierraMin={cierra}
+            onDone={() => {
+              setBloqueoSheet(null);
+              router.refresh();
+            }}
+            onCancel={() => setBloqueoSheet(null)}
+          />
+        </Hoja>
       )}
 
-      {/* Bloqueo tocado: quitar */}
+      {/* Bloqueo tocado: quitarlo. Es la primera que estrena PIE PEGADO: son dos
+          renglones de texto y una decisión, y el botón no tiene por qué quedar
+          al final del scroll ni competir con "Dejarlo" a la misma altura. */}
       {bloqueoSel && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-0 sm:items-center sm:p-6" onClick={() => setBloqueoSel(null)}>
-          <div
-            className="w-full rounded-t-3xl border border-line bg-panel p-5 sm:max-w-md sm:rounded-3xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 className="font-display text-xl">Quitar el bloqueo</h3>
-            <p className="mt-2 text-sm text-muted">
-              {bloqueoSel.desdeMin == null
-                ? "Todo el día"
-                : `${fmtTime(bloqueoSel.desdeMin)} – ${fmtTime(bloqueoSel.hastaMin ?? 0)}`}
-              {bloqueoSel.motivo ? ` · ${bloqueoSel.motivo}` : ""} · {barberos.find((b) => b.id === bloqueoSel.barberoId)?.nombre ?? ""}
-            </p>
-            {errBloqueo && (
-              <div className="mt-3 rounded-xl border border-accent/40 bg-accent/10 px-3.5 py-2.5 text-sm text-accent-soft">
-                {errBloqueo}
-              </div>
-            )}
-            <div className="mt-4 flex gap-2">
+        <Hoja
+          titulo="Quitar el bloqueo"
+          onCerrar={() => setBloqueoSel(null)}
+          ancho="max-w-md"
+          pie={
+            <PieHoja onCancelar={() => setBloqueoSel(null)} textoCancelar="Dejarlo">
               <button
                 disabled={quitando}
                 onClick={async () => {
@@ -724,159 +697,157 @@ export function AgendaDia({
                     router.refresh();
                   } else setErrBloqueo(res.error ?? "No se pudo quitar.");
                 }}
-                className="flex-1 rounded-full bg-accent px-5 py-3 text-sm font-bold uppercase tracking-wide text-on-accent transition hover:bg-accent-soft disabled:opacity-50"
+                className={primarioDeHoja}
               >
                 {quitando ? "Quitando…" : "Quitar bloqueo"}
               </button>
-              <button onClick={() => setBloqueoSel(null)} className="rounded-full border border-line px-5 py-3 text-sm text-muted">
-                Dejarlo
-              </button>
+            </PieHoja>
+          }
+        >
+          <p className="text-sm text-muted">
+            {bloqueoSel.desdeMin == null
+              ? "Todo el día"
+              : `${fmtTime(bloqueoSel.desdeMin)} – ${fmtTime(bloqueoSel.hastaMin ?? 0)}`}
+            {bloqueoSel.motivo ? ` · ${bloqueoSel.motivo}` : ""} · {barberos.find((b) => b.id === bloqueoSel.barberoId)?.nombre ?? ""}
+          </p>
+          {errBloqueo && (
+            <div className="mt-3 rounded-xl border border-accent/40 bg-accent/10 px-3.5 py-2.5 text-sm text-accent-soft">
+              {errBloqueo}
             </div>
-          </div>
-        </div>
+          )}
+        </Hoja>
       )}
 
       {/* Detalle de la cita tocada: info + mover (solo si aún no pasó por la silla) */}
       {detalle && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-0 sm:items-center sm:p-6" onClick={() => setDetalle(null)}>
-          <div
-            className="max-h-[92dvh] w-full overflow-y-auto rounded-t-3xl border border-line bg-panel p-5 sm:max-w-lg sm:rounded-3xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="mb-3 flex items-center justify-between">
-              <h3 className="font-display text-xl">{moviendo ? "Mover cita" : "Detalle de la cita"}</h3>
-              <button onClick={() => setDetalle(null)} aria-label="Cerrar" className="grid h-11 w-11 place-items-center rounded-full border border-line text-muted transition hover:text-ink">
-                ×
-              </button>
-            </div>
-
-            {!moviendo ? (
-              <div className="space-y-3">
-                <div className="rounded-2xl border border-line bg-elevated p-4">
-                  <div className="flex items-baseline justify-between gap-2">
-                    <span className="font-display text-2xl tabular-nums">{fmtTime(minutoDeISO(detalle.inicio))}</span>
-                    <span className={`rounded-full border px-2.5 py-1 text-[12px] font-bold uppercase tracking-wide ${estiloDe(detalle.estado).card}`}>
-                      {estiloDe(detalle.estado).label}
-                    </span>
-                  </div>
-                  <div className="mt-2 text-[15px] font-semibold text-ink">{detalle.cliente || "Sin nombre"}</div>
-                  <div className="text-sm text-muted">
-                    {detalle.servicio} · {detalle.duracionMin} min · {detalle.barbero}
-                  </div>
-                  {detalle.nota && <p className="mt-2 rounded-lg bg-bg px-3 py-2 text-xs text-muted">{detalle.nota}</p>}
+        <Hoja
+          titulo={moviendo ? "Mover cita" : "Detalle de la cita"}
+          onCerrar={() => setDetalle(null)}
+          ancho="max-w-lg"
+        >
+          {!moviendo ? (
+            <div className="space-y-3">
+              <div className="rounded-2xl border border-line bg-elevated p-4">
+                <div className="flex items-baseline justify-between gap-2">
+                  <span className="font-display text-2xl tabular-nums">{fmtTime(minutoDeISO(detalle.inicio))}</span>
+                  <span className={`rounded-full border px-2.5 py-1 text-[12px] font-bold uppercase tracking-wide ${estiloDe(detalle.estado).card}`}>
+                    {estiloDe(detalle.estado).label}
+                  </span>
                 </div>
-
-                {detalle.telefono && (
-                  <a
-                    href={`https://wa.me/57${detalle.telefono.replace(/\D/g, "")}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="flex min-h-11 items-center justify-center rounded-full border border-line text-sm font-semibold text-ink transition hover:border-accent/40"
-                  >
-                    Escribirle por WhatsApp
-                  </a>
-                )}
-
-                {["pendiente", "confirmada"].includes(detalle.estado) ? (
-                  <>
-                    <button
-                      onClick={() => setMoviendo(true)}
-                      className="w-full rounded-full bg-accent px-5 py-3 text-sm font-bold uppercase tracking-wide text-on-accent transition hover:bg-accent-soft"
-                    >
-                      Mover de hora o de barbero
-                    </button>
-                    {/* "Me equivoqué al agendar": el servicio se corrige acá, no solo al cobrar. */}
-                    <CambiarServicioCita
-                      reservaId={detalle.id}
-                      servicioActual={detalle.servicio}
-                      servicios={servicios}
-                      sede={sede}
-                      onDone={(aviso) => {
-                        if (aviso) setErrDrag(aviso);
-                        setDetalle(null);
-                        router.refresh();
-                      }}
-                    />
-                    {/* Cancelar vivía SOLO en el mostrador: desde el calendario había
-                        que cambiar de pantalla. Dos toques (mismo patrón que quitar
-                        foto o unir fichas) porque no tiene deshacer, y al soltarlo
-                        sale el aviso de WhatsApp — el correo ya sale solo (0059). */}
-                    <button
-                      onClick={async () => {
-                        if (!confirmaCancel) {
-                          setConfirmaCancel(true);
-                          return;
-                        }
-                        setCancelando(true);
-                        const res = await actualizarReserva(detalle.id, { estado: "cancelada" });
-                        setCancelando(false);
-                        setConfirmaCancel(false);
-                        if (!res.ok) {
-                          setErrDrag(res.error ?? "No se pudo cancelar.");
-                          return;
-                        }
-                        setAvisar({
-                          titulo: "Cita cancelada ✓",
-                          telefono: detalle.telefono ?? null,
-                          mensaje: mensajeCitaCancelada({
-                            cliente: detalle.cliente,
-                            cuando: `${esHoy ? "hoy" : labelFecha(fecha)} a las ${fmtTime(minutoDeISO(detalle.inicio))}`,
-                            sede: SEDE_INFO[sede]?.nombre ?? "la barbería",
-                          }),
-                        });
-                        setDetalle(null);
-                        router.refresh();
-                      }}
-                      onBlur={() => setConfirmaCancel(false)}
-                      disabled={cancelando}
-                      className={`w-full rounded-full border px-5 py-3 text-sm font-bold uppercase tracking-wide transition disabled:opacity-50 ${
-                        confirmaCancel ? "border-warn bg-warn/10 text-warn" : "border-line text-muted hover:text-ink"
-                      }`}
-                    >
-                      {cancelando ? "Cancelando…" : confirmaCancel ? "¿Seguro? Toca de nuevo" : "Cancelar cita"}
-                    </button>
-                  </>
-                ) : (
-                  <p className="text-center text-xs text-muted">
-                    Esta cita ya {detalle.estado === "en_curso" ? "está en la silla" : "terminó"}; no se mueve.
-                  </p>
-                )}
+                <div className="mt-2 text-[15px] font-semibold text-ink">{detalle.cliente || "Sin nombre"}</div>
+                <div className="text-sm text-muted">
+                  {detalle.servicio} · {detalle.duracionMin} min · {detalle.barbero}
+                </div>
+                {detalle.nota && <p className="mt-2 rounded-lg bg-bg px-3 py-2 text-xs text-muted">{detalle.nota}</p>}
               </div>
-            ) : (
-              <MoverCitaForm
-                cita={detalle}
-                barberos={barberos}
-                horarioSemanal={horarioSemanal}
-                diasEspeciales={diasEspeciales}
-                onDone={(destino) => {
-                  prepararAviso(detalle, destino.ymd, destino.slot, destino.barberoId);
-                  setDetalle(null);
-                  setMoviendo(false);
-                  // El calendario SALTA a donde quedó la cita: si se movió a otro
-                  // día, quedarse mirando el día viejo la hacía "desaparecer".
-                  if (destino.ymd !== fecha) router.push(href(destino.ymd, "dia"));
-                  else router.refresh();
-                }}
-                onCancel={() => setMoviendo(false)}
-              />
-            )}
-          </div>
-        </div>
+
+              {detalle.telefono && (
+                <a
+                  href={`https://wa.me/57${detalle.telefono.replace(/\D/g, "")}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex min-h-11 items-center justify-center rounded-full border border-line text-sm font-semibold text-ink transition hover:border-accent/40"
+                >
+                  Escribirle por WhatsApp
+                </a>
+              )}
+
+              {["pendiente", "confirmada"].includes(detalle.estado) ? (
+                <>
+                  <button
+                    onClick={() => setMoviendo(true)}
+                    className="w-full rounded-full bg-accent px-5 py-3 text-sm font-bold uppercase tracking-wide text-on-accent transition hover:bg-accent-soft"
+                  >
+                    Mover de hora o de barbero
+                  </button>
+                  {/* "Me equivoqué al agendar": el servicio se corrige acá, no solo al cobrar. */}
+                  <CambiarServicioCita
+                    reservaId={detalle.id}
+                    servicioActual={detalle.servicio}
+                    servicios={servicios}
+                    sede={sede}
+                    onDone={(aviso) => {
+                      if (aviso) setErrDrag(aviso);
+                      setDetalle(null);
+                      router.refresh();
+                    }}
+                  />
+                  {/* Cancelar vivía SOLO en el mostrador: desde el calendario había
+                      que cambiar de pantalla. Dos toques (mismo patrón que quitar
+                      foto o unir fichas) porque no tiene deshacer, y al soltarlo
+                      sale el aviso de WhatsApp — el correo ya sale solo (0059). */}
+                  <button
+                    onClick={async () => {
+                      if (!confirmaCancel) {
+                        setConfirmaCancel(true);
+                        return;
+                      }
+                      setCancelando(true);
+                      const res = await actualizarReserva(detalle.id, { estado: "cancelada" });
+                      setCancelando(false);
+                      setConfirmaCancel(false);
+                      if (!res.ok) {
+                        setErrDrag(res.error ?? "No se pudo cancelar.");
+                        return;
+                      }
+                      setAvisar({
+                        titulo: "Cita cancelada ✓",
+                        telefono: detalle.telefono ?? null,
+                        mensaje: mensajeCitaCancelada({
+                          cliente: detalle.cliente,
+                          cuando: `${esHoy ? "hoy" : labelFecha(fecha)} a las ${fmtTime(minutoDeISO(detalle.inicio))}`,
+                          sede: SEDE_INFO[sede]?.nombre ?? "la barbería",
+                        }),
+                      });
+                      setDetalle(null);
+                      router.refresh();
+                    }}
+                    onBlur={() => setConfirmaCancel(false)}
+                    disabled={cancelando}
+                    className={`w-full rounded-full border px-5 py-3 text-sm font-bold uppercase tracking-wide transition disabled:opacity-50 ${
+                      confirmaCancel ? "border-warn bg-warn/10 text-warn" : "border-line text-muted hover:text-ink"
+                    }`}
+                  >
+                    {cancelando ? "Cancelando…" : confirmaCancel ? "¿Seguro? Toca de nuevo" : "Cancelar cita"}
+                  </button>
+                </>
+              ) : (
+                <p className="text-center text-xs text-muted">
+                  Esta cita ya {detalle.estado === "en_curso" ? "está en la silla" : "terminó"}; no se mueve.
+                </p>
+              )}
+            </div>
+          ) : (
+            <MoverCitaForm
+              cita={detalle}
+              barberos={barberos}
+              horarioSemanal={horarioSemanal}
+              diasEspeciales={diasEspeciales}
+              onDone={(destino) => {
+                prepararAviso(detalle, destino.ymd, destino.slot, destino.barberoId);
+                setDetalle(null);
+                setMoviendo(false);
+                // El calendario SALTA a donde quedó la cita: si se movió a otro
+                // día, quedarse mirando el día viejo la hacía "desaparecer".
+                if (destino.ymd !== fecha) router.push(href(destino.ymd, "dia"));
+                else router.refresh();
+              }}
+              onCancel={() => setMoviendo(false)}
+            />
+          )}
+        </Hoja>
       )}
 
       {/* Avisarle al cliente que le movimos la cita. Sale solo al guardar: si
-          esperáramos a que alguien se acuerde, no sale nunca. */}
+          esperáramos a que alguien se acuerde, no sale nunca. La hoja la arma
+          AvisarWhatsApp por dentro. */}
       {avisar && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-4 sm:items-center">
-          <div className="w-full max-w-sm">
-            <AvisarWhatsApp
-              titulo={avisar.titulo}
-              telefono={avisar.telefono}
-              mensaje={avisar.mensaje}
-              onListo={() => setAvisar(null)}
-            />
-          </div>
-        </div>
+        <AvisarWhatsApp
+          titulo={avisar.titulo}
+          telefono={avisar.telefono}
+          mensaje={avisar.mensaje}
+          onListo={() => setAvisar(null)}
+        />
       )}
     </div>
   );
