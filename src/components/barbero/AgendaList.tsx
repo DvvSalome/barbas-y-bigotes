@@ -27,6 +27,7 @@ import { AgendarCitaForm } from "@/components/barbero/AgendarCitaForm";
 import { ElegirBarbero, ElegirServicio } from "@/components/staff/Elegir";
 import type { Sede, SedeId, Barbero, Servicio, Producto } from "@/lib/data/types";
 import type { AgendaItem, MedioPago, PrecioServicioStaff, HorarioSemanal, DiaEspecial } from "@/lib/data/queries";
+import { Hoja as HojaInferior } from "@/components/ui/Hoja";
 
 const fld = "w-full rounded-lg border border-line bg-bg px-3 py-2 text-ink focus:border-accent focus:outline-none";
 
@@ -605,39 +606,11 @@ export function AgendaList({
 }
 
 /**
- * Hoja que sube desde el borde inferior (formularios del mostrador). El fondo
- * queda visible y atenuado: el barbero no pierde el contexto de la agenda.
+ * La hoja del mostrador vive ahora en ui/Hoja.tsx: era esta misma, sin pie
+ * pegado, y estaba copiada a mano otras cinco veces dentro de AgendaDia.tsx.
+ * Se conserva el nombre viejo para no tocar los sitios que ya la importan.
  */
-export function HojaInferior({
-  titulo,
-  onCerrar,
-  children,
-}: {
-  titulo: string;
-  onCerrar: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="fixed inset-0 z-40 flex flex-col justify-end">
-      <button aria-label="Cerrar" onClick={onCerrar} className="absolute inset-0 bg-black/60" />
-      <div className="relative max-h-[92dvh] overflow-y-auto rounded-t-[22px] border-t border-line bg-bg px-4 pb-10 pt-3 sm:px-6">
-        <div className="mx-auto w-full max-w-2xl">
-          <div aria-hidden className="mx-auto mb-3 h-1 w-10 rounded-full bg-line" />
-          <div className="mb-3 flex items-center justify-between gap-3">
-            <h2 className="font-display text-[22px] font-bold uppercase leading-none">{titulo}</h2>
-            <button
-              onClick={onCerrar}
-              className="min-h-11 shrink-0 rounded-full border border-line px-4 text-[13.5px] font-semibold text-muted transition hover:text-ink"
-            >
-              Cerrar
-            </button>
-          </div>
-          {children}
-        </div>
-      </div>
-    </div>
-  );
-}
+export { HojaInferior };
 
 function WalkinForm({
   sedes,

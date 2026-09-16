@@ -114,6 +114,9 @@
   /* Estados staff (solo resuelven bajo [data-staff]). */
   --color-ok: var(--ok);
   --color-warn: var(--warn);
+  /* Tostado de marca. Existía como variable desde siempre pero sin utility, así
+     que no se podía escribir bg-bar/15: era el único tinte del kit sin clase. */
+  --color-bar: var(--bar);
 
   --font-display: var(--font-barlow);
   --font-sans: var(--font-inter);
@@ -541,6 +544,17 @@ body {
 .bb-relieve {
   background-image: linear-gradient(180deg, rgba(242, 237, 228, 0.045), rgba(242, 237, 228, 0) 60%);
   box-shadow: inset 0 1px 0 rgba(242, 237, 228, 0.07);
+}
+
+/* Tapar la plata delante del cliente. La tablet del mostrador y el celular del
+   dueño se miran en el local con gente al lado; el ojo de la cabecera pone
+   data-montos="oculto" arriba y TODO lo marcado con .bb-monto se difumina.
+   Se difumina, no se reemplaza por asteriscos: el bloque conserva su alto y la
+   pantalla no salta al mostrar y ocultar. Lo que no es plata (cantidad de
+   atenciones, porcentajes) no lleva la clase y sigue a la vista. */
+[data-montos="oculto"] .bb-monto {
+  filter: blur(7px);
+  user-select: none;
 }
 
 /* Cabecera con foto de la sede tras un velo, como el encabezado del correo. */
