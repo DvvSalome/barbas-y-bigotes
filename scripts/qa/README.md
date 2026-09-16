@@ -149,6 +149,26 @@ tres en cero desde la tanda 1. Y ojo: `cromo` se calcula acá como la distancia 
 primer hijo de `<main>`; la fórmula vieja no se conserva, así que se compara
 **antes-tanda2 contra después-tanda2**, nunca contra el archivo de la tanda 1.
 
+**`e2e-produccion.py`** — el barrido de punta a punta contra **producción**, de solo
+lectura: 24 pantallas entre lo público, el panel, el mostrador y el barbero.
+
+```bash
+ROL=admin node scripts/qa/sesion-staff.mjs   # y lo mismo con sede y barbero
+SAL=/ruta/donde/dejar/capturas python scripts/qa/e2e-produccion.py
+```
+
+Por pantalla mira: código HTTP contra el ESPERADO (una 404 que devuelve 404 está
+bien), errores de consola, respuestas 4xx/5xx, imágenes rotas, desborde horizontal,
+textos con `undefined`/`NaN`/`Invalid Date`, y controles tapados.
+
+**NO reserva ni cobra nada.** En `/reservar` aborta las peticiones de server action
+antes de llegar al paso que reserva solo con la cuenta atrás; el resto es abrir y
+mirar. Igual, nunca dejarlo llegar al final del wizard a mano.
+
+Los **tapados** se miden al FINAL del scroll, igual que en `vista-staff.py`: lo que
+pasa por debajo de la barra inferior y se destapa scrolleando no es un defecto.
+Medirlo al abrir marcaba 5 pantallas como rotas cuando estaban bien.
+
 ## Ojo con los datos
 
 Un recorrido que llega al final **crea una reserva de verdad** (las variables de
