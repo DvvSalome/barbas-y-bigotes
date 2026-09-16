@@ -71,11 +71,17 @@ export async function proxy(request: NextRequest) {
   // Hoy, Cupones y Horarios tapaba solo esas tres. Acá corre en el borde,
   // antes de que exista el Server Component, así que la página ni se ejecuta.
   if (user && pathname.startsWith("/admin")) {
-    const { data: perfil } = await supabase
+    const { data: perfil, error } = await supabase
       .from("profiles")
       .select("rol")
       .eq("auth_id", user.id)
       .maybeSingle();
+    // Si la consulta FALLA (Supabase caído: pasó del 12 al 14 de septiembre)
+    // tampoco se puede afirmar que sea admin, así que se corta igual. Pero a
+    // /login, que significa "no pude verificarte", y no a /cuenta, que le
+    // diría al dueño que es un cliente. maybeSingle() no marca error cuando
+    // simplemente no hay fila, así que esto solo salta ante una falla real.
+    if (error) return irA("/login");
     const rol = (perfil as { rol?: string } | null)?.rol;
     // Sin fila en profiles es un CLIENTE (entró con Google), no un barbero.
     if (rol !== "admin") return irA(rol ? "/barbero" : "/cuenta");
