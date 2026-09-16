@@ -97,6 +97,58 @@ Ojo con **qué ve cada rol**: el admin no tiene sede, así que en el mostrador v
 dos y **no** le aparecen el cierre de caja ni el registro de consumos —esos cuelgan
 de una sede—. Para probar esa parte hay que entrar con `ROL=sede`.
 
+**`vista-staff.py`** — el arnés de **diseño** del staff: mide las 16 pantallas del
+panel más las 5 del mostrador, en 375 y 1280 px, con los tres roles, y deja un
+`metricas.json` comparable antes/después de cada tanda.
+
+```bash
+npm run build && npm start                      # el sitio en localhost:3000
+ROL=admin node scripts/qa/sesion-staff.mjs      # y lo mismo con sede y barbero
+python scripts/qa/vista-staff.py                # -> docs/auditoria-visual/antes-tanda2/
+SALIDA=docs/auditoria-visual/despues-tanda2 python scripts/qa/vista-staff.py
+SOLO=horarios CAPTURAS=0 python scripts/qa/vista-staff.py   # una pantalla, sin PNG
+```
+
+Existe porque el script que cerró la tanda 1 con números **no quedó versionado**, y
+`docs/auditoria-visual/despues/metricas.json` cubre solo admin: la corrida móvil de
+`/admin` murió con `ERR_NETWORK_CHANGED` y el mostrador no aparece ni una vez. Sin
+esto, "no retrocede la tanda 1" no se podía probar.
+
+Por pantalla mide alto, cromo, interactivos, controles < 40 px **con su lista**,
+texto < 12 px, familias/tamaños/pesos/colores, contraste AA real (sabe leer
+`oklab`/`oklch`, no solo `rgb`), emoji en la interfaz, firmas de botón, radios,
+imágenes deformadas o sin `alt`, desborde horizontal, y dos medidas propias de la
+tanda 2: **`solapados`** (controles que algo TAPA, medido con `elementFromPoint` como
+`areas-tactiles.py`, porque una barra fija no cambia el rect de lo que cubre) y
+**`yPrimerDato`**.
+
+Va contra un build **local**, no contra producción: producción fue justamente lo que
+rompió la corrida anterior. No escribe nada en la base.
+
+`solapados` cuenta solo lo que queda tapado **para siempre**: se mide al final del
+scroll y solo si el que tapa cuelga de algo `fixed`/`sticky` anclado en la mitad de
+abajo. La primera versión contaba también lo que pasa por debajo de la cabecera
+pegajosa al scrollear —y eso no es un defecto, se destapa scrolleando—: de los
+"tapados" que reportó, 25 eran el buscador Ctrl-K del topbar. Con ese ruido adentro el
+número no servía para comparar antes y después.
+
+El **punto ciego del arnés viejo**, encontrado al validar este contra aquel: de 2.779
+colores de texto, el viejo **no pudo leer 587** (el 21 %) y los contaba como "sin medir".
+Su "AA 0" era en realidad "AA 0 entre el 79 % que supo interpretar". Este lee los 3.124,
+incluidos `oklab` y `oklch`, que es donde estaban escondidos los fallos que quedaban.
+Los controles < 40 px, en cambio, dan **idénticos en las 31 pantallas comunes**: por ahí
+se validó que el instrumento nuevo mide lo mismo que el viejo.
+
+WCAG 1.4.3 exime el texto de un control **inactivo**, así que el contraste no se le exige
+a nada que esté `disabled`, `aria-disabled` o sea un enlace/botón con `pointer-events:
+none`; esos se cuentan aparte en `contrasteInactivos` para que la exención quede a la
+vista y no sea un descuento silencioso.
+
+**Tres números no pueden subir nunca:** `nContrasteMal`, `textoChico` y `emojiUI`, los
+tres en cero desde la tanda 1. Y ojo: `cromo` se calcula acá como la distancia al
+primer hijo de `<main>`; la fórmula vieja no se conserva, así que se compara
+**antes-tanda2 contra después-tanda2**, nunca contra el archivo de la tanda 1.
+
 ## Ojo con los datos
 
 Un recorrido que llega al final **crea una reserva de verdad** (las variables de
