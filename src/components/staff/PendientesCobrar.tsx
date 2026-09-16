@@ -131,7 +131,11 @@ export function PendientesCobrar({
                 <span className="flex shrink-0 items-center gap-3">
                   <span className="text-xs text-muted">{horaCorta(p.inicio)}</span>
                   <span className="text-accent-soft">{cop(p.monto)}</span>
-                  <span className="text-xs font-bold uppercase tracking-wide text-accent">
+                  {/* accent-soft y no accent: el rojo puro a 12 px da 4,21:1 y
+                      AA pide 4,5. Es la misma variante que ya usa el monto de
+                      al lado. Se veía solo con cobros pendientes, por eso la
+                      medición base —hecha con la lista vacía— no lo marcaba. */}
+                  <span className="text-xs font-bold uppercase tracking-wide text-accent-soft">
                     {abiertaEsta ? "Cerrar" : "Cobrar"}
                   </span>
                 </span>

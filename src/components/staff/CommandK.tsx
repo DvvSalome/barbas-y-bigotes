@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { buscarGlobal, type BusquedaGlobal } from "@/lib/actions";
-import { adminNav } from "@/components/admin/AdminNav";
+import { adminNav } from "@/components/admin/nav-mapa";
 import { PlusIcon, CashIcon, BoxIcon, ScissorsIcon, ArrowRightIcon, UsersIcon } from "@/components/icons";
 import { bogotaYmd } from "@/lib/slots";
 

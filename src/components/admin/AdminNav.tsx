@@ -3,191 +3,64 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
+import { GearIcon } from "@/components/icons";
+import { DESTINOS, GRUPOS_HUB, HERMANAS, HOJAS, destinoDe, esRuta } from "@/components/admin/nav-mapa";
 
-// Navegación del panel en 7 TEMAS, no en 10 tablas. Antes cada pantalla era su
-// propia pestaña y en el celular no cabían: nada decía que "Equipo" y
-// "Comisiones" hablan de lo mismo, ni por qué "Precios" e "Inventario" se veían
-// iguales (son servicios vs productos físicos, cosas distintas).
-// Las RUTAS no cambian —enlaces y marcadores viejos siguen sirviendo—: cambia
-// cómo se agrupan. Un tema con varias pantallas muestra una segunda fila con sus
-// hermanas (AdminSubTabs).
-type Hoja = { href: string; label: string };
-type Grupo = Hoja & { hijos?: readonly Hoja[] };
+// Los COMPONENTES de la navegación. El mapa (qué ruta es qué destino) vive en
+// nav-mapa.ts porque este archivo es de cliente y un server component no puede
+// leer datos de acá — ver el comentario de allá.
 
-const GRUPOS: readonly Grupo[] = [
-  { href: "/admin", label: "Hoy" },
-  { href: "/admin/agenda", label: "Agenda" },
-  { href: "/admin/metricas", label: "Métricas" },
-  { href: "/admin/cuadre", label: "Caja" },
-  { href: "/admin/clientes", label: "Clientes" },
-  {
-    href: "/admin/precios",
-    label: "Catálogo",
-    hijos: [
-      { href: "/admin/precios", label: "Servicios y precios" },
-      { href: "/admin/inventario", label: "Productos y stock" },
-    ],
-  },
-  {
-    href: "/admin/equipo",
-    label: "Equipo",
-    hijos: [
-      { href: "/admin/equipo", label: "Barberos y PINes" },
-      { href: "/admin/liquidacion", label: "Liquidación semanal" },
-      { href: "/admin/comisiones", label: "Comisiones y contratos" },
-      { href: "/admin/horarios", label: "Horarios" },
-    ],
-  },
-  {
-    href: "/admin/cupones",
-    label: "Marketing",
-    hijos: [
-      { href: "/admin/cupones", label: "Cupones" },
-      { href: "/admin/tarjeta", label: "Tarjeta de cortes" },
-      { href: "/admin/avisos", label: "Avisos al cliente" },
-    ],
-  },
-] as const;
-
-const SECUNDARIAS: readonly Hoja[] = [
-  { href: "/barbero", label: "App del barbero" },
-  // La guía de uso: última de la fila porque se consulta, no se opera.
-  { href: "/admin/ayuda", label: "Cómo se usa" },
-] as const;
-
-// adminNav PLANO: lo consume la paleta Ctrl-K ("Ir a"). Se aplanan los hijos con
-// su nombre largo para que buscar "inventario" o "comisiones" siga encontrando.
-export const adminNav: readonly Hoja[] = [
-  ...GRUPOS.flatMap((g) =>
-    g.hijos ? g.hijos.map((h) => ({ href: h.href, label: h.label })) : [{ href: g.href, label: g.label }],
-  ),
-  ...SECUNDARIAS,
-];
-
-// Únicas secciones que leen el ?sede= del selector del topbar: Hoy, Agenda,
-// Métricas y Clientes filtran sus datos, y Precios lo usa para la sede del combo.
-// Clientes se sumó cuando el dueño pidió saber quién es de cada local: la ficha
-// de un cliente no tiene sede propia, se deduce de dónde lo atendieron.
-const SECCIONES_CON_SEDE = [
-  "/admin",
-  "/admin/agenda",
-  "/admin/metricas",
-  "/admin/precios",
-  "/admin/clientes",
-  "/admin/liquidacion",
-  // Productos obedece al selector de arriba (6-sep): antes traía sus propias
-  // pestañas de sede debajo de un selector que acá no filtraba.
-  "/admin/inventario",
-] as const;
-
-const esRuta = (path: string, href: string) => (href === "/admin" ? path === href : path.startsWith(href));
-
-export function seccionFiltraPorSede(path: string) {
-  // La FICHA de un cliente ya es una persona: ahí el selector no tiene nada que
-  // filtrar y se deja en gris (marcado y sin efecto es un control muerto).
-  if (path.startsWith("/admin/clientes/")) return false;
-  return SECCIONES_CON_SEDE.some((href) => esRuta(path, href));
-}
-
-// La agenda es SIEMPRE de una sede (una columna por barbero de esa sede): sin
-// ?sede= cae en la primera, así que ofrecer "Ambas" marcaba una opción que la
-// pantalla no puede cumplir (decía "Ambas" mostrando Parque Venezuela).
-export const seccionExigeSede = (path: string) => esRuta(path, "/admin/agenda");
-
-/** El grupo al que pertenece la ruta actual (marca la pestaña y da los hijos). */
-function grupoDe(path: string): Grupo | undefined {
-  return GRUPOS.find((g) => (g.hijos ? g.hijos.some((h) => esRuta(path, h.href)) : esRuta(path, g.href)));
-}
-
-// Tabs con scroll horizontal en mobile; activa con borde inferior accent.
-// Conservan el ?sede= elegido al cambiar de sección.
+/**
+ * Pestañas de ESCRITORIO con los mismos 5 destinos. En el celular no se dibujan:
+ * ahí manda la barra inferior, que sí entra entera.
+ */
 export function AdminTabs() {
   const path = usePathname();
   const search = useSearchParams();
   const sede = search.get("sede");
-  const barra = useRef<HTMLElement | null>(null);
-  const activa = useRef<HTMLAnchorElement | null>(null);
-  const [sobra, setSobra] = useState({ izq: false, der: false });
-  const activo = grupoDe(path);
-
-  const medirSobra = useCallback(() => {
-    const cont = barra.current;
-    if (!cont) return;
-    const max = cont.scrollWidth - cont.clientWidth;
-    // 4px de tolerancia: el scroll fraccionado de Android nunca cae justo en el borde.
-    setSobra({ izq: cont.scrollLeft > 4, der: cont.scrollLeft < max - 4 });
-  }, []);
-
-  // Al entrar a una sección su pestaña podía quedar fuera de pantalla. Se centra
-  // moviendo SOLO el scroll de la barra: scrollIntoView arrastraría la página.
-  useEffect(() => {
-    const cont = barra.current;
-    const tab = activa.current;
-    if (!cont || !tab) return;
-    const c = cont.getBoundingClientRect();
-    const t = tab.getBoundingClientRect();
-    const destino = cont.scrollLeft + (t.left - c.left) - (c.width - t.width) / 2;
-    cont.scrollLeft = Math.max(0, Math.min(destino, cont.scrollWidth - cont.clientWidth));
-    medirSobra();
-  }, [path, medirSobra]);
-
-  useEffect(() => {
-    medirSobra();
-    window.addEventListener("resize", medirSobra);
-    return () => window.removeEventListener("resize", medirSobra);
-  }, [medirSobra]);
-
-  // Degradado en los bordes con máscara (no pinta encima: desvanece la propia
-  // barra, así sirve en tema claro y oscuro y no le roba ancho a las pestañas).
-  const desvanecido = `linear-gradient(to right, ${
-    sobra.izq ? "transparent 0px, #000 20px" : "#000 0px"
-  }, ${sobra.der ? "#000 calc(100% - 28px), transparent 100%" : "#000 100%"})`;
+  const activo = destinoDe(path);
 
   return (
-    <nav
-      ref={barra}
-      aria-label="Secciones"
-      onScroll={medirSobra}
-      style={{ maskImage: desvanecido, WebkitMaskImage: desvanecido }}
-      className="mx-auto flex w-full max-w-[1400px] gap-0.5 overflow-x-auto px-4 sm:px-5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-    >
-      {[...GRUPOS, ...SECUNDARIAS].map((n) => {
-        const act = activo?.href === n.href;
+    <nav aria-label="Secciones" className="mx-auto hidden w-full max-w-[1400px] items-end gap-1 px-4 sm:px-5 lg:flex">
+      {/* Ajustes NO va como enlace acá: en escritorio es el desplegable de tres
+          columnas del final, para no gastar un viaje de ida y vuelta a una
+          pantalla que solo contiene una lista de enlaces. */}
+      {DESTINOS.filter((d) => d.clave !== "ajustes").map((d) => {
+        const act = activo === d.clave;
+        const Icono = d.icono;
         return (
           <Link
-            key={n.href}
-            ref={act ? activa : undefined}
-            href={sede ? `${n.href}?sede=${sede}` : n.href}
+            key={d.clave}
+            href={sede ? `${d.href}?sede=${sede}` : d.href}
             aria-current={act ? "page" : undefined}
-            className={`-mb-px inline-flex min-h-11 items-center whitespace-nowrap border-b-2 px-3 text-[13px] font-semibold transition ${
+            className={`-mb-px inline-flex min-h-11 items-center gap-2 whitespace-nowrap border-b-2 px-3 text-[13px] font-semibold transition ${
               act ? "border-accent text-ink" : "border-transparent text-muted hover:text-ink/80"
             }`}
           >
-            {n.label}
+            <Icono className="h-4 w-4" />
+            {d.etiqueta}
           </Link>
         );
       })}
+      <MenuAjustes />
     </nav>
   );
 }
 
 /**
- * Segunda fila: las pantallas del tema actual. Solo aparece cuando el tema tiene
- * más de una, así que Hoy/Métricas/Caja/Clientes no ganan una barra vacía.
+ * Segunda fila con las pantallas hermanas. Hoy solo la usa Catálogo (servicios
+ * y productos); Equipo y Marketing pasaron a ser grupos del hub de Ajustes.
  */
 export function AdminSubTabs() {
   const path = usePathname();
   const search = useSearchParams();
   const sede = search.get("sede");
-  const grupo = grupoDe(path);
-  if (!grupo?.hijos) return null;
+  const grupo = HERMANAS.find((g) => g.hijos.some((h) => esRuta(path, h.href)));
+  if (!grupo) return null;
 
-  // Segmentado DENTRO del contenido (lo monta el layout arriba de la página):
-  // 44 px tocables, el activo invierte (tinta sobre fondo). Antes era una banda
-  // más de la cabecera con pills rojas de 12,5 px.
   return (
     <nav
-      aria-label={`Secciones de ${grupo.label}`}
+      aria-label="Pantallas de esta sección"
       className="mb-4 flex gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
     >
       {grupo.hijos.map((h) => {
@@ -206,5 +79,75 @@ export function AdminSubTabs() {
         );
       })}
     </nav>
+  );
+}
+
+/**
+ * "Ajustes" en escritorio: un desplegable de tres columnas con las mismas filas
+ * del hub. En el celular no existe — ahí Ajustes es una pantalla de verdad.
+ */
+export function MenuAjustes() {
+  const path = usePathname();
+  const [abierto, setAbierto] = useState(false);
+  const caja = useRef<HTMLDivElement>(null);
+  const activo = destinoDe(path) === "ajustes";
+
+  const cerrar = useCallback(() => setAbierto(false), []);
+  useEffect(() => {
+    if (!abierto) return;
+    const fuera = (e: PointerEvent) => {
+      if (caja.current && !caja.current.contains(e.target as Node)) cerrar();
+    };
+    const esc = (e: KeyboardEvent) => e.key === "Escape" && cerrar();
+    document.addEventListener("pointerdown", fuera);
+    document.addEventListener("keydown", esc);
+    return () => {
+      document.removeEventListener("pointerdown", fuera);
+      document.removeEventListener("keydown", esc);
+    };
+  }, [abierto, cerrar]);
+
+  return (
+    <div ref={caja} className="relative hidden lg:block">
+      <button
+        type="button"
+        aria-haspopup="menu"
+        aria-expanded={abierto}
+        onClick={() => setAbierto((v) => !v)}
+        className={`-mb-px inline-flex min-h-11 items-center gap-2 whitespace-nowrap border-b-2 px-3 text-[13px] font-semibold transition ${
+          activo ? "border-accent text-ink" : "border-transparent text-muted hover:text-ink/80"
+        }`}
+      >
+        <GearIcon className="h-4 w-4" />
+        Ajustes
+      </button>
+      {abierto && (
+        <div
+          role="menu"
+          className="absolute right-0 top-[calc(100%+6px)] z-50 grid w-[680px] grid-cols-3 gap-x-5 gap-y-3 rounded-2xl border border-line bg-panel p-4 shadow-[0_24px_60px_-20px_rgba(0,0,0,.8)]"
+        >
+          {GRUPOS_HUB.map((g) => {
+            const filas = HOJAS.filter((h) => h.grupo === g);
+            if (!filas.length) return null;
+            return (
+              <div key={g}>
+                <p className="eyebrow mb-1">{g}</p>
+                {filas.map((h) => (
+                  <Link
+                    key={h.href}
+                    href={h.href}
+                    role="menuitem"
+                    onClick={cerrar}
+                    className="flex min-h-11 items-center rounded-lg px-2 text-[13px] text-ink transition hover:bg-elevated"
+                  >
+                    {h.label}
+                  </Link>
+                ))}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
   );
 }

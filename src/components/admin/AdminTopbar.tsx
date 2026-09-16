@@ -4,7 +4,8 @@ import { Suspense } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
-import { AdminTabs, seccionFiltraPorSede, seccionExigeSede } from "@/components/admin/AdminNav";
+import { AdminTabs } from "@/components/admin/AdminNav";
+import { seccionFiltraPorSede, seccionExigeSede } from "@/components/admin/nav-mapa";
 import { PerfilMenu } from "@/components/staff/PerfilMenu";
 import { SearchIcon, PinIcon } from "@/components/icons";
 import type { Sede } from "@/lib/data/types";
@@ -142,6 +143,10 @@ export function AdminTopbar({ email, sedes }: { email: string; sedes: Sede[] }) 
         </div>
       </div>
 
+      {/* Segunda fila SOLO en escritorio (AdminTabs ya se esconde sola en el
+          celular): ahí las secciones viven en la barra de abajo, donde entran
+          las cinco sin scroll. Con esto la cabecera del celular pasa de dos
+          filas a una y el cromo cae a la mitad. */}
       <Suspense fallback={null}>
         <AdminTabs />
       </Suspense>

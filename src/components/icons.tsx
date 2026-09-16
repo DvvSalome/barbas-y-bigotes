@@ -319,8 +319,11 @@ export function HomeIcon({ className }: IconProps) {
 export function GearIcon({ className }: IconProps) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <circle cx="12" cy="12" r="3.2" />
-      <path d="M12 2.5v2.2M12 19.3v2.2M21.5 12h-2.2M4.7 12H2.5M18.7 5.3l-1.6 1.6M6.9 17.1l-1.6 1.6M18.7 18.7l-1.6-1.6M6.9 6.9 5.3 5.3" />
+      {/* El aro exterior es lo que lo hace engranaje: con los dientes sueltos
+          alrededor de un círculo chico, a 22 px se lee como un sol. */}
+      <circle cx="12" cy="12" r="3" />
+      <circle cx="12" cy="12" r="7" />
+      <path d="M12 2.6V5M12 19v2.4M21.4 12H19M5 12H2.6M18.6 5.4 16.9 7.1M7.1 16.9l-1.7 1.7M18.6 18.6l-1.7-1.7M7.1 7.1 5.4 5.4" />
     </svg>
   );
 }
