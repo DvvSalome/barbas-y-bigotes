@@ -125,8 +125,10 @@ export default async function BarberoPage({
 
 
   return (
-    // pb-28: aire para la barra fija de pestañas del mostrador.
-    <main className="mx-auto max-w-6xl px-4 pb-28 pt-6 sm:px-6">
+    // La barra de abajo ahora son DOS pisos (acciones 52 + pastilla 58 + aires):
+    // sin este despeje, la última fila de cualquier lista queda debajo y no se
+    // puede tocar. Se suma el área segura del aparato.
+    <main className="mx-auto max-w-6xl px-4 pt-6 pb-[calc(env(safe-area-inset-bottom)+152px)] sm:px-6">
       <RealtimeRefresh
         subscriptions={[
           // Sin filtro por barbero cuando hay mostrador: la pantalla compartida

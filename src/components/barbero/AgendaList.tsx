@@ -28,6 +28,8 @@ import { ElegirBarbero, ElegirServicio } from "@/components/staff/Elegir";
 import type { Sede, SedeId, Barbero, Servicio, Producto } from "@/lib/data/types";
 import type { AgendaItem, MedioPago, PrecioServicioStaff, HorarioSemanal, DiaEspecial } from "@/lib/data/queries";
 import { Hoja as HojaInferior } from "@/components/ui/Hoja";
+import { NavInferior } from "@/components/staff/NavInferior";
+import { CashIcon, PlusIcon, CalendarIcon, ClockIcon, UsersIcon, WalletIcon } from "@/components/icons";
 
 const fld = "w-full rounded-lg border border-line bg-bg px-3 py-2 text-ink focus:border-accent focus:outline-none";
 
@@ -544,63 +546,62 @@ export function AgendaList({
         </HojaInferior>
       )}
 
-      {/* BARRA FIJA inferior: navegación + la acción más frecuente del día.
-          Abajo porque ahí cae el pulgar de pie frente a una pantalla táctil;
-          los 56px de alto son el mínimo cómodo con el cliente enfrente. */}
-      <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-bg/95 backdrop-blur-md">
-        <div className="mx-auto flex max-w-6xl items-stretch gap-1.5 px-3 pt-2 [padding-bottom:max(env(safe-area-inset-bottom),10px)]">
-          {(
-            [
-              { id: "turnos", label: "Turnos", badge: 0 },
-              // La pestaña Agenda (calendario × barbero) solo existe con sede definida.
-              ...(calendarioSlot ? [{ id: "calendario", label: "Agenda", badge: 0 }] : []),
-              { id: "espera", label: "Espera", badge: esperaCount },
-              { id: "cierre", label: "Cierre", badge: 0 },
-            ] as { id: TabMostrador; label: string; badge: number }[]
-          ).map((t) => (
+      {/* BARRA DE ABAJO, opción B del lienzo de propuestas (16-sep). Antes eran
+          SIETE controles en una fila con el mismo peso: cuatro dicen "dónde
+          estoy" y tres dicen "qué hago", y se veían idénticos; a 768 px cada uno
+          quedaba en ~103 px y las etiquetas de dos palabras se partían.
+          Ahora van en dos pisos. Arriba las ACCIONES, que el dueño pidió a la
+          vista (5-sep) y siguen a la vista. Abajo la pastilla de DESTINOS, la
+          misma pieza del panel pero en línea, porque en una tablet el ancho
+          sobra. Mismos destinos, mismas acciones, mismas rutas: cambia la forma,
+          no el comportamiento. */}
+      <div className="fixed inset-x-0 bottom-0 z-30">
+        <div className="mx-auto max-w-6xl px-3 pb-[max(env(safe-area-inset-bottom),10px)]">
+          {/* Piso 1: lo que se hace. */}
+          <div className="flex items-stretch gap-2.5 pb-2.5">
             <button
-              key={t.id}
-              onClick={() => setTab(t.id)}
-              aria-current={tab === t.id ? "page" : undefined}
-              className={`min-h-14 flex-1 rounded-xl text-[14px] font-bold transition ${
-                tab === t.id ? "bg-elevated text-ink" : "text-muted hover:text-ink"
-              }`}
+              onClick={() => setVentaOpen(true)}
+              className="inline-flex min-h-[52px] flex-1 items-center justify-center gap-2 rounded-2xl border border-accent/45 bg-bg/85 text-[14px] font-bold text-accent-soft backdrop-blur-md transition hover:bg-accent/10"
             >
-              {t.label}
-              {t.badge > 0 && (
-                <span className="ml-1.5 inline-flex min-w-5 items-center justify-center rounded-full bg-warn/20 px-1.5 text-[11.5px] font-extrabold tabular-nums text-warn">
-                  {t.badge}
-                </span>
-              )}
+              <CashIcon className="h-[18px] w-[18px]" />
+              Cobrar
             </button>
-          ))}
-          {/* Cobrar SIN cita (servicio y/o productos): vivía escondido detrás del
-              walk-in como "¿Solo lleva productos?". El dueño lo pidió a la vista
-              para el mostrador y para el barbero (5-sep). */}
-          <button
-            onClick={() => setVentaOpen(true)}
-            className="min-h-14 flex-1 rounded-xl border border-accent/45 text-[14.5px] font-bold text-accent-soft transition hover:bg-accent/10"
-          >
-            Cobrar
-          </button>
-          <button
-            onClick={() => { setWalkinBarbero(""); setEsperaMsg(null); setWalkinOpen(true); }}
-            className="min-h-14 flex-1 rounded-xl bg-[linear-gradient(180deg,var(--cta-1),var(--cta-2))] text-[14.5px] font-bold text-on-accent shadow-[0_10px_24px_-10px_rgba(210,63,52,0.7)] transition hover:brightness-105"
-          >
-            + Cliente
-          </button>
-          {/* Agendar cita futura (WhatsApp): solo con sede definida (el dueño mirando
-              las dos no tiene una sede fija donde agendar). */}
-          {mostrador.sedeId && (
             <button
-              onClick={() => setAgendarOpen(true)}
-              className="min-h-14 flex-1 rounded-xl border border-accent/45 text-[14.5px] font-bold text-accent-soft transition hover:bg-accent/10"
+              onClick={() => { setWalkinBarbero(""); setEsperaMsg(null); setWalkinOpen(true); }}
+              className="inline-flex min-h-[52px] flex-[1.35] items-center justify-center gap-2 rounded-2xl bg-[linear-gradient(180deg,var(--cta-1),var(--cta-2))] text-[14px] font-bold text-on-accent shadow-[0_10px_24px_-10px_rgba(210,63,52,0.7)] transition hover:brightness-105"
             >
-              + Cita
+              <PlusIcon className="h-[18px] w-[18px]" />
+              Cliente
             </button>
-          )}
+            {/* Agendar cita futura: solo con sede definida (el dueño mirando las
+                dos no tiene una sede fija donde agendar). */}
+            {mostrador.sedeId && (
+              <button
+                onClick={() => setAgendarOpen(true)}
+                className="inline-flex min-h-[52px] flex-1 items-center justify-center gap-2 rounded-2xl border border-accent/45 bg-bg/85 text-[14px] font-bold text-accent-soft backdrop-blur-md transition hover:bg-accent/10"
+              >
+                <CalendarIcon className="h-[18px] w-[18px]" />
+                Cita
+              </button>
+            )}
+          </div>
+
+          {/* Piso 2: dónde se está. */}
+          <NavInferior
+            fila
+            className="!static !inset-auto"
+            activo={tab}
+            destinos={[
+              { clave: "turnos", etiqueta: "Turnos", icono: <UsersIcon />, onClick: () => setTab("turnos") },
+              ...(calendarioSlot
+                ? [{ clave: "calendario", etiqueta: "Agenda", icono: <CalendarIcon />, onClick: () => setTab("calendario") }]
+                : []),
+              { clave: "espera", etiqueta: "Espera", icono: <ClockIcon />, badge: esperaCount, onClick: () => setTab("espera") },
+              { clave: "cierre", etiqueta: "Cierre", icono: <WalletIcon />, onClick: () => setTab("cierre") },
+            ]}
+          />
         </div>
-      </nav>
+      </div>
     </div>
   );
 }
