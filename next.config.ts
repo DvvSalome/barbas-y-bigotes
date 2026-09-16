@@ -97,8 +97,31 @@ const withPWA = withPWAInit({
   fallbacks: {
     document: "/~offline",
   },
+  // El service worker deja de meterse con lo CROSS-ORIGIN. La regla que trae
+  // next-pwa por defecto engancha TODO lo de otro dominio y lo vuelve a pedir con
+  // fetch() desde dentro del worker — y un fetch() ahí se rige por `connect-src`,
+  // no por `img-src`. Resultado: la foto de perfil de Google (único recurso
+  // cross-origin de la app) salía rota, porque su dominio estaba en img-src y no
+  // en connect-src. Se puede tapar listando el dominio en connect-src —y se hizo—
+  // pero eso deja la trampa armada para el próximo dominio que alguien agregue a
+  // img-src, y encima la CSP con la que el worker hace fetch queda GRABADA cuando
+  // se instala: un navegador que ya tenía el worker viejo sigue roto aunque la
+  // cabecera del servidor ya esté corregida. Sin regla que enganche, la imagen la
+  // pide el navegador y manda img-src, como con cualquier <img> normal.
+  // Se pierde tener la foto en caché una hora para uso sin conexión: nada.
+  extendDefaultRuntimeCaching: true,
   workboxOptions: {
     disableDevLogs: true,
+    runtimeCaching: [
+      {
+        // Nunca engancha a propósito. Está solo para DESPLAZAR la regla
+        // "cross-origin" de fábrica: al mezclar, next-pwa descarta la suya
+        // cuando el cacheName coincide con uno propio.
+        urlPattern: () => false,
+        handler: "NetworkOnly",
+        options: { cacheName: "cross-origin" },
+      },
+    ],
   },
 });
 
