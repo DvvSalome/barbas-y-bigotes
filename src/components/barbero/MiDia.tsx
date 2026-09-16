@@ -79,7 +79,7 @@ export function MiDia({
           <div className="mt-3 border-t border-line pt-3">
             <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
               <p className="text-[12.5px] text-muted">
-                Esta semana llevás <span className="bb-monto font-semibold text-ink">{cop(semana.facturado)}</span> en{" "}
+                Esta semana llevas <span className="bb-monto font-semibold text-ink">{cop(semana.facturado)}</span> en{" "}
                 {semana.cobros} {semana.cobros === 1 ? "cobro" : "cobros"}.
               </p>
               <p className="text-[13px]">

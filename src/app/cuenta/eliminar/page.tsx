@@ -25,7 +25,7 @@ export default async function EliminarCuentaPage() {
         <p className="font-display text-[11px] font-bold uppercase tracking-[0.34em] text-accent-soft">Mi cuenta</p>
         <h1 className="mt-3 font-display text-5xl font-extrabold uppercase leading-[0.95] text-balance">Eliminar mi cuenta</h1>
         <p className="mt-4 max-w-[52ch] text-muted">
-          Si ya no querés tener cuenta en Barbas &amp; Bigotes, la podés eliminar acá. Tarda un segundo, no hay que
+          Si ya no quieres tener cuenta en Barbas &amp; Bigotes, la puedes eliminar acá. Tarda un segundo, no hay que
           pedirle nada a nadie y aplica tanto a la app como al sitio: es la misma cuenta.
         </p>
 
@@ -55,7 +55,7 @@ export default async function EliminarCuentaPage() {
         <section className="mt-10">
           {ctx.estado === "anon" && (
             <div className="rounded-2xl border border-line bg-panel p-6 text-center">
-              <p className="text-sm text-muted">Entrá con la cuenta de Google que usás en la app y confirmá la eliminación.</p>
+              <p className="text-sm text-muted">Entra con la cuenta de Google que usas en la app y confirma la eliminación.</p>
               <div className="mt-5 flex justify-center">
                 <ClienteLoginButton next="/cuenta/eliminar" />
               </div>
@@ -73,13 +73,13 @@ export default async function EliminarCuentaPage() {
         </section>
 
         <section className="mt-10 text-sm text-muted">
-          <h2 className="font-display text-sm font-bold uppercase tracking-[0.18em] text-ink">¿No podés entrar?</h2>
+          <h2 className="font-display text-sm font-bold uppercase tracking-[0.18em] text-ink">¿No puedes entrar?</h2>
           <p className="mt-3">
             Si perdiste el acceso a tu cuenta de Google, pedinos la eliminación por escrito: mandá un correo a{" "}
             <a href="mailto:reservas@barbasybigotes.com" className="text-accent-soft transition hover:text-accent">
               reservas@barbasybigotes.com
             </a>{" "}
-            desde el correo de tu cuenta, o escribinos por{" "}
+            desde el correo de tu cuenta, o escríbenos por{" "}
             <a href="https://wa.me/573006734799" className="text-accent-soft transition hover:text-accent">
               WhatsApp
             </a>{" "}

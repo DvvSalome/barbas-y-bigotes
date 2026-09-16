@@ -898,7 +898,7 @@ export function BookingWizard({
     if (!res) {
       // La action REVENTÓ (no devolvió {ok:false}): casi siempre es una pestaña
       // con el bundle viejo tras un deploy. Recargar trae los ids vigentes.
-      if (!recargarSiDeployViejo()) setErrorMsg("No se pudo reservar. Revisá la conexión y volvé a intentar.");
+      if (!recargarSiDeployViejo()) setErrorMsg("No se pudo reservar. Revisa la conexión y vuelve a intentar.");
       return;
     }
     if (res.ok) {

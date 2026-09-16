@@ -29,7 +29,7 @@ export default async function BajaPage({ params }: { params: Promise<{ token: st
           <>
             <h1 className="font-display text-4xl font-extrabold uppercase leading-[0.95]">Ese enlace no sirve</h1>
             <p className="mt-4 text-muted">
-              No encontramos tu ficha con ese enlace. Si querés dejar de recibir avisos, escribinos por WhatsApp y lo
+              No encontramos tu ficha con ese enlace. Si quieres dejar de recibir avisos, escríbenos por WhatsApp y lo
               hacemos a mano.
             </p>
             <Link

@@ -34,7 +34,7 @@ const MOSTRADOR: Paso[] = [
     n: "4",
     que: "Cobrar",
     detalle:
-      "Al terminar, Cobrar: elegí el medio de pago y sumá productos si se llevó algo. La propina va aparte, y podés marcar que te la dieron en efectivo aunque el corte fuera por Nequi.",
+      "Al terminar, Cobrar: elige el medio de pago y suma productos si se llevó algo. La propina va aparte, y puedes marcar que te la dieron en efectivo aunque el corte fuera por Nequi.",
   },
   {
     n: "5",
@@ -46,7 +46,7 @@ const MOSTRADOR: Paso[] = [
     n: "6",
     que: "Cerrar la caja",
     detalle:
-      "Al final del día, pestaña Cierre: contás el efectivo, lo escribís y el sistema te dice si cuadra. Si no la cerrás, mañana sigue sumando ahí y el corte del día se mezcla.",
+      "Al final del día, pestaña Cierre: cuentas el efectivo, lo escribes y el sistema te dice si cuadra. Si no la cierras, mañana sigue sumando ahí y el corte del día se mezcla.",
   },
 ];
 
@@ -104,7 +104,7 @@ const PANEL: Paso[] = [
 const AUTOMATICO = [
   "Cuando alguien reserva, le llega la confirmación por correo.",
   "El día antes y un rato antes de la cita, el recordatorio.",
-  "Si movés o cancelás una cita desde el calendario, le llega el correo — y el panel te ofrece avisarle por WhatsApp con el mensaje ya escrito.",
+  "Si mueves o cancelas una cita desde el calendario, le llega el correo — y el panel te ofrece avisarle por WhatsApp con el mensaje ya escrito.",
   "Cuando se libera un cupo, le avisa al primero de la lista de espera.",
   "Un par de horas después del corte, la invitación a dejar reseña en Google.",
 ];
@@ -116,7 +116,7 @@ const REGLAS: [string, string][] = [
   ],
   [
     `El cliente cambia su cita hasta ${CANCELACION_MIN_HORAS} horas antes`,
-    "Con menos tiempo tiene que escribir por WhatsApp, y ahí se la movés vos desde la agenda.",
+    "Con menos tiempo tiene que escribir por WhatsApp, y ahí se la mueves tú desde la agenda.",
   ],
   [
     "Cobrá siempre desde la cita",

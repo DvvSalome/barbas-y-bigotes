@@ -1105,7 +1105,7 @@ export async function probarCorreoBarbero(barberoId: string, email: string): Pro
       return { ok: false, error: "Falta aplicar la migración 0070 en Supabase." };
     return { ok: false, error: errorPublico("probarCorreoBarbero", errLee) };
   }
-  if (reciente?.length) return { ok: false, error: "Ya se mandó una prueba a ese correo hace menos de un minuto. Esperá un poco." };
+  if (reciente?.length) return { ok: false, error: "Ya se mandó una prueba a ese correo hace menos de un minuto. Espera un poco." };
   const { error } = await admin.from("barbero_correo_prueba").insert({ barbero_id: barberoId, email: limpio });
   if (error) return { ok: false, error: errorPublico("probarCorreoBarbero", error) };
   // Que n8n mire la cola ya. Si el ping falla, el cron de 5 min la toma igual.
@@ -1153,7 +1153,7 @@ export async function createReserva(input: {
   if (!(await permiteReservaPublica(sb))) {
     return {
       ok: false,
-      error: "Estamos recibiendo muchas reservas seguidas. Esperá un minuto y volvé a intentar, o escribinos por WhatsApp y te la agendamos nosotros.",
+      error: "Estamos recibiendo muchas reservas seguidas. Espera un minuto y vuelve a intentar, o escríbenos por WhatsApp y te la agendamos nosotros.",
     };
   }
   const inicio = new Date(input.inicioISO);
@@ -1790,7 +1790,7 @@ export async function moverCita(input: {
     if (error.code === "23P01") return { ok: false, error: "Ese horario ya fue tomado. Elegí otro." };
     return { ok: false, error: errorPublico("moverCita", error) };
   }
-  if (!upd || upd.length === 0) return { ok: false, error: "Esa cita cambió de estado; refrescá y volvé a intentar." };
+  if (!upd || upd.length === 0) return { ok: false, error: "Esa cita cambió de estado; refresca y vuelve a intentar." };
   revalidatePath("/barbero");
   revalidatePath("/admin/agenda");
   return { ok: true };

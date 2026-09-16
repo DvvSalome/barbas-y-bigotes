@@ -1148,7 +1148,7 @@ export function CheckoutForm({
       // La action REVENTÓ (no devolvió {ok:false}): la tablet del mostrador queda
       // abierta todo el día y tras un deploy sus actions ya no existen. Recargar
       // trae los ids vigentes; el idemToken evita cobrar dos veces si acaso.
-      if (!recargarSiDeployViejo()) setErr("No se pudo cobrar. Revisá la conexión y volvé a intentar.");
+      if (!recargarSiDeployViejo()) setErr("No se pudo cobrar. Revisa la conexión y vuelve a intentar.");
       return;
     }
     if (res.ok) {

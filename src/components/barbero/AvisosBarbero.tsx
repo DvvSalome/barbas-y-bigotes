@@ -172,7 +172,7 @@ export function AvisosBarbero() {
             </li>
             <li>
               Abrí <span className="font-semibold text-ink">Barbas &amp; Bigotes</span> desde el ícono nuevo y
-              volvé acá: el botón de activar te va a aparecer.
+              vuelve acá: el botón de activar te va a aparecer.
             </li>
           </ol>
         </div>

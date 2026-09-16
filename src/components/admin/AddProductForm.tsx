@@ -141,7 +141,7 @@ export function AddProductForm({
       <label className="sm:col-span-3">
         <span className={lbl}>¿Cuántas hay ahora?</span>
         <input required type="number" min={0} step={1} value={stock} onChange={(e) => setStock(e.target.value)} placeholder="12" className={`${input} w-full`} />
-        <span className={ayuda}>Las unidades que tenés hoy en la sede.</span>
+        <span className={ayuda}>Las unidades que tienes hoy en la sede.</span>
       </label>
       <label className="sm:col-span-3">
         <span className={lbl}>Avisarme cuando queden</span>

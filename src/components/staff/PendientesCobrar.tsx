@@ -79,7 +79,7 @@ export function PendientesCobrar({
     setSaving(false);
     if (!res) {
       // La action REVENTÓ (pestaña con el bundle viejo tras un deploy): recargar.
-      if (!recargarSiDeployViejo()) setError("No se pudo cobrar. Revisá la conexión y volvé a intentar.");
+      if (!recargarSiDeployViejo()) setError("No se pudo cobrar. Revisa la conexión y vuelve a intentar.");
       return;
     }
     if (!res.ok) {

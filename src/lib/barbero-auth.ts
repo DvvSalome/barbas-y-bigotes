@@ -26,7 +26,7 @@ export async function loginBarberoPin(
     p_pin: pin,
   });
   if (vErr) return { ok: false, error: "No se pudo verificar el PIN." };
-  if (estado === "locked") return { ok: false, error: "Demasiados intentos. Esperá unos minutos." };
+  if (estado === "locked") return { ok: false, error: "Demasiados intentos. Espera unos minutos." };
   if (estado !== "ok") return { ok: false, error: "PIN incorrecto." };
 
   // Resolver el email de auth del barbero y minar su sesión.

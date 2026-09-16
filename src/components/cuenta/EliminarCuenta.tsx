@@ -37,7 +37,7 @@ export function EliminarCuenta({ nombre }: { nombre?: string }) {
         </p>
         <p className="mt-3 text-sm text-muted">
           {canceladas > 0 && `Cancelamos ${canceladas === 1 ? "la cita que tenías pendiente" : `las ${canceladas} citas que tenías pendientes`}. `}
-          Tus datos personales ya no están en nuestro sistema. Si algún día volvés, te recibimos como cliente nuevo.
+          Tus datos personales ya no están en nuestro sistema. Si algún día vuelves, te recibimos como cliente nuevo.
         </p>
         <Link
           href="/"
