@@ -18,6 +18,9 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       { protocol: "https", hostname: "wvmdsxznujklgfezqtfy.supabase.co" },
     ],
+    // Next 16 solo permite las calidades listadas (antes, cualquiera). El 70
+    // es para fotos que van con degradado oscuro encima (tarjetas de Sedes).
+    qualities: [70, 75],
   },
   // Permite probar el dev server desde el celular u otro dispositivo en la
   // misma red Wi-Fi (sin esto, Next bloquea el HMR por origen cruzado).
