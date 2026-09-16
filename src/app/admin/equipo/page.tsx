@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { getBarberos, getSedes, getAusenciasAdmin, getEmailsBarberos, getCalendarEstado } from "@/lib/data/queries";
+import { getBarberos, getSedes, getAusenciasAdmin, getEmailsBarberos, getCalendarEstado, getAjustesEquipo } from "@/lib/data/queries";
 import { bogotaYmd } from "@/lib/slots";
 import { getBarberosPinEstado, getSedesPinEstado } from "@/lib/barbero-auth";
 import { SectionHeader } from "@/components/admin/SectionHeader";
@@ -9,11 +9,12 @@ import { SedePinAdmin } from "@/components/admin/SedePinAdmin";
 import { AusenciasAdmin } from "@/components/admin/AusenciasAdmin";
 import { CorreosBarberos } from "@/components/admin/CorreosBarberos";
 import { CalendarGoogle } from "@/components/admin/CalendarGoogle";
+import { VerSemanaToggle } from "@/components/admin/VerSemanaToggle";
 
 export const metadata: Metadata = { title: "Equipo · Admin" };
 
 export default async function EquipoPage() {
-  const [barberos, sedes, estado, estadoSedes, ausencias, emails, calendar] = await Promise.all([
+  const [barberos, sedes, estado, estadoSedes, ausencias, emails, calendar, ajustesEquipo] = await Promise.all([
     getBarberos(),
     getSedes(),
     getBarberosPinEstado(),
@@ -21,6 +22,7 @@ export default async function EquipoPage() {
     getAusenciasAdmin(),
     getEmailsBarberos(),
     getCalendarEstado(),
+    getAjustesEquipo(),
   ]);
   return (
     <div className="max-w-6xl">
@@ -38,6 +40,11 @@ export default async function EquipoPage() {
         <section className="min-w-0">
           <h2 className="mb-3 eyebrow">PIN del mostrador</h2>
           <SedePinAdmin sedes={sedes} estado={estadoSedes} />
+
+          {/* Qué ve cada barbero de su propia plata (0074). Vive acá y no en
+              Comisiones porque es un permiso del equipo, no un número. */}
+          <h2 className="mb-3 mt-8 eyebrow">Qué ve el equipo</h2>
+          <VerSemanaToggle inicial={ajustesEquipo.barberoVeSemana} />
 
           <h2 className="mb-3 mt-8 eyebrow">PIN de cada barbero</h2>
           <EquipoPinAdmin

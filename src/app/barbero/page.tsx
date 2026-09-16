@@ -20,8 +20,12 @@ import {
   getHorarioSemanal,
   getDiasEspeciales,
   getReservasPendientesCobro,
+  getAjustesEquipo,
+  getMiSemana,
 } from "@/lib/data/queries";
-import { bogotaYmd, dowDeFecha } from "@/lib/slots";
+import { bogotaYmd, dowDeFecha, proximaCitaDe } from "@/lib/slots";
+import { horaBogota } from "@/lib/format";
+import { MiDia } from "@/components/barbero/MiDia";
 import type { SedeId } from "@/lib/data/types";
 import { AgendaList } from "@/components/barbero/AgendaList";
 import { AgendaDia } from "@/components/admin/AgendaDia";
@@ -111,6 +115,17 @@ export default async function BarberoPage({
     cobradoTotal += v.total;
     if (v.barberoId) porBarbero[v.barberoId] = (porBarbero[v.barberoId] ?? 0) + v.total;
   }
+  // "Tu día" (0074): el bloque propio del barbero. Solo se arma cuando el que
+  // entró ES un barbero; el mostrador de la sede y el dueño ven el local.
+  // Lo de HOY sale de las MISMAS ventas y la MISMA agenda que ya se pidieron
+  // arriba: cero viajes extra. Lo de la SEMANA es opcional y lo prende el dueño.
+  const esBarbero = staff.rol === "barbero" && !!staff.barberoId;
+  const miId = staff.barberoId ?? "";
+  const misVentas = esBarbero ? ventasSede.filter((v) => v.barberoId === miId) : [];
+  const miProxima = esBarbero ? proximaCitaDe(agendaSede, miId) : null;
+  const veSemana = esBarbero ? (await getAjustesEquipo()).barberoVeSemana : false;
+  const miSemana = veSemana ? await getMiSemana(miId) : null;
+
   const mostrador = {
     sedeId: sedeBarbero,
     sedeNombre: sedeBarbero
@@ -154,6 +169,27 @@ export default async function BarberoPage({
         medios={medios}
         elegirBarbero={staff.rol !== "barbero"}
         mostrador={mostrador}
+        miDiaSlot={
+          esBarbero ? (
+            <MiDia
+              nombre={(barberos.find((b) => b.id === miId)?.nombre ?? "").split(" ")[0]}
+              cobradoHoy={misVentas.reduce((a, v) => a + v.total, 0)}
+              atenciones={misVentas.length}
+              proxima={
+                miProxima
+                  ? {
+                      // horaBogota: el MISMO formateador que el resto del
+                      // staff, para que no diga 3:40 pm en un lado y 15:40 en otro.
+                      hora: horaBogota(miProxima.inicio),
+                      cliente: miProxima.cliente || "Sin nombre",
+                      servicio: miProxima.servicio || "Servicio",
+                    }
+                  : null
+              }
+              semana={miSemana}
+            />
+          ) : null
+        }
         horarioSemanal={sedeBarbero ? horarioSemanal.filter((h) => h.sede === sedeBarbero) : []}
         diasEspeciales={sedeBarbero ? diasEspeciales.filter((d) => d.sede === sedeBarbero) : []}
         esperaCount={espera.length}

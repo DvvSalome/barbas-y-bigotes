@@ -3581,6 +3581,29 @@ export async function actualizarAjustesAvisos(input: {
   return { ok: true };
 }
 
+// ---------- Qué ve el barbero de su propia plata (0074) ----------
+/**
+ * Prende o apaga que los barberos vean, en su celular, lo que llevan acumulado
+ * de la SEMANA. Lo de HOY lo ven siempre y no se configura.
+ *
+ * Arranca apagado a propósito: es lo que van a cobrar el sábado, y hay locales
+ * donde tenerlo a la vista a mitad de jornada abre discusiones. La decisión es
+ * del dueño, no del código.
+ */
+export async function actualizarAjusteVerSemana(activo: boolean): Promise<ActionResult> {
+  const sb = await supabaseServerAuth();
+  const denied = await requireAdmin(sb);
+  if (denied) return { ok: false, error: denied };
+  const { error } = await sb
+    .from("ajustes_equipo")
+    .update({ barbero_ve_semana: !!activo, actualizado_en: new Date().toISOString() })
+    .eq("id", 1);
+  if (error) return { ok: false, error: errorPublico("actualizarAjusteVerSemana", error) };
+  revalidatePath("/admin/equipo");
+  revalidatePath("/barbero");
+  return { ok: true };
+}
+
 // ---------- Avisos al barbero en su celular (web push del staff, 0047) ----------
 /**
  * Guarda la suscripción push del STAFF logueado. El dueño de la suscripción sale

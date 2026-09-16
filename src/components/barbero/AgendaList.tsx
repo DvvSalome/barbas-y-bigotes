@@ -100,6 +100,7 @@ export function AgendaList({
   mostrador,
   horarioSemanal = [],
   diasEspeciales = [],
+  miDiaSlot,
   esperaSlot,
   cierreSlot,
   calendarioSlot,
@@ -129,6 +130,8 @@ export function AgendaList({
     porBarbero: Record<string, number>;
   };
   /** Lista de espera (server component): vive en su pestaña. */
+  /** "Tu día": solo cuando entra un barbero con su PIN (0074). */
+  miDiaSlot?: React.ReactNode;
   esperaSlot?: React.ReactNode;
   /** Cierre del día: qué se llevó cada cliente + caja (server components). */
   cierreSlot?: React.ReactNode;
@@ -300,6 +303,7 @@ export function AgendaList({
       {/* Pestaña TURNOS: lo vivo. Las otras se ocultan con CSS (no se desmontan)
           para que cambiar de pestaña sea instantáneo y no pierda estado. */}
       <div className={tab === "turnos" ? "" : "hidden"}>
+      {miDiaSlot}
       <Recepcion
         agenda={mostrador.agendaSede}
         barberos={mostrador.barberosSede}

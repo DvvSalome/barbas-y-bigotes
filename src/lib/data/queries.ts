@@ -1,7 +1,7 @@
 import { type SupabaseClient } from "@supabase/supabase-js";
 import { supabaseServer, supabaseServerAuth, supabaseAdmin } from "@/lib/supabase/server";
 import { calendarConfigurado } from "@/lib/google-calendar";
-import { bogotaDayRange, bogotaDayRangeDeFecha, bogotaYmd, horarioEfectivo, rangoPeriodo, type Periodo } from "@/lib/slots";
+import { bogotaDayRange, bogotaDayRangeDeFecha, bogotaYmd, horarioEfectivo, rangoPeriodo, semanaDeFecha, type Periodo } from "@/lib/slots";
 import {
   totalesPorMedio,
   totalDeMedio,
@@ -2646,6 +2646,69 @@ export async function getLiquidacion(
   for (const fila of porBarbero.values()) fila.neto = netoLiquidacion(fila);
   // Primero el que más produjo: es el orden en que el dueño quiere leerlo.
   return [...porBarbero.values()].sort((a, b) => b.facturado - a.facturado);
+}
+
+// ---------- Lo que el barbero ve de su propia plata (0074) ----------
+
+/**
+ * ¿El dueño dejó que los barberos vean lo que llevan acumulado de la SEMANA?
+ * Lo de HOY lo ven siempre y no se configura.
+ *
+ * Tolera que la tabla NO exista: el deploy puede llegar antes de que el dueño
+ * corra la migración en el SQL Editor, y eso no puede tumbar el mostrador. Sin
+ * tabla, apagado.
+ */
+export async function getAjustesEquipo(): Promise<{ barberoVeSemana: boolean }> {
+  const sb = await supabaseServerAuth();
+  const { data, error } = await sb.from("ajustes_equipo").select("barbero_ve_semana").eq("id", 1).maybeSingle();
+  if (error) {
+    console.error("getAjustesEquipo:", error.message);
+    return { barberoVeSemana: false };
+  }
+  return { barberoVeSemana: !!(data as { barbero_ve_semana?: boolean } | null)?.barbero_ve_semana };
+}
+
+export type MiSemana = {
+  desdeYmd: string;
+  hastaYmd: string;
+  /** Lo que produjo en la semana (lo que cobró, no lo que se lleva). */
+  facturado: number;
+  comision: number;
+  propinas: number;
+  adelantos: number;
+  consumos: number;
+  /** Lo que le queda por cobrar el fin de semana. */
+  neto: number;
+  cobros: number;
+};
+
+/**
+ * La semana EN CURSO de UN barbero, y de nadie más.
+ *
+ * Se apoya en getLiquidacion, que es la MISMA cuenta con la que el dueño paga:
+ * si acá se calculara aparte, un día darían distinto y el barbero tendría razón
+ * en desconfiar del número. Se le devuelve solo SU fila; el resto del equipo ni
+ * sale de esta función.
+ */
+export async function getMiSemana(barberoId: string): Promise<MiSemana | null> {
+  const hoy = bogotaYmd();
+  const { desdeYmd, hastaYmd } = semanaDeFecha(hoy);
+  const desde = bogotaDayRangeDeFecha(desdeYmd).desde;
+  const hasta = bogotaDayRangeDeFecha(hastaYmd).hasta;
+  const filas = await getLiquidacion(desde, hasta, null);
+  const mia = filas.find((f) => f.barberoId === barberoId);
+  if (!mia) return null;
+  return {
+    desdeYmd,
+    hastaYmd,
+    facturado: mia.facturado,
+    comision: mia.comision,
+    propinas: mia.propinas,
+    adelantos: mia.adelantos,
+    consumos: mia.consumos,
+    neto: mia.neto,
+    cobros: mia.cobros,
+  };
 }
 
 // Google Calendar (0073): qué agenda tiene cada barbero y cómo va la cola. Solo

@@ -411,3 +411,31 @@ export function rangoPeriodo(p: Periodo, ahora: Date = new Date()): {
   const largo = hasta.getTime() - desde.getTime();
   return { desde, hasta, prevDesde: new Date(desde.getTime() - largo), prevHasta: desde };
 }
+
+/** Estados en los que una cita ya no espera a nadie. */
+const CITA_TERMINADA = ["completada", "no_show", "cancelada"];
+
+/**
+ * La próxima cita de UN barbero que todavía no pasó, o null.
+ *
+ * Vive acá y no en la página a propósito: leer el reloj es impuro y el
+ * compilador de React lo prohíbe dentro del render de un componente. Metido en
+ * una función de librería, el reloj se lee una vez y la página solo recibe el
+ * resultado.
+ */
+export function proximaCitaDe<T extends { barberoId: string | null; estado: string; inicio: string }>(
+  agenda: readonly T[],
+  barberoId: string,
+): T | null {
+  const ahora = Date.now();
+  return (
+    agenda
+      .filter(
+        (r) =>
+          r.barberoId === barberoId &&
+          !CITA_TERMINADA.includes(r.estado) &&
+          new Date(r.inicio).getTime() >= ahora,
+      )
+      .sort((a, b) => a.inicio.localeCompare(b.inicio))[0] ?? null
+  );
+}
