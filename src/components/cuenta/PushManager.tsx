@@ -153,29 +153,31 @@ export function PushManager() {
     }
   }
 
-  if (estado === "cargando" || estado === "sin-soporte" || isSubscribed) return null;
+  // "sin-sw" = no hay service worker (desarrollo, o el navegador lo bloqueó).
+  // Antes se dibujaba igual y le decía al CLIENTE "Disponible en la versión
+  // instalada/producción", que es una frase de programador sobre algo que el
+  // cliente no puede hacer. Si no se puede activar, no se anuncia.
+  if (estado === "cargando" || estado === "sin-soporte" || estado === "sin-sw" || isSubscribed) return null;
 
   return (
-    <div className="mb-8 rounded-2xl border border-accent/40 bg-accent/5 p-5 text-center">
-      <h3 className="font-display text-xl uppercase">Notificaciones</h3>
+    // Borde de línea y no rojo: en esta app el rojo es acción o alerta, y esto
+    // no es ninguna de las dos. Es una oferta, y además ya no va arriba de todo.
+    <div className="rounded-2xl border border-line bg-panel p-4 text-center">
+      <h3 className="font-display text-base font-bold uppercase tracking-wide">Avisos al celular</h3>
       {estado === "ios-instalar" ? (
         <p className="mt-2 text-sm text-muted">
           Para recibir avisos en tu iPhone: toca Compartir → Agregar a pantalla de inicio y
           abre la app desde ahí.
         </p>
-      ) : estado === "sin-sw" ? (
-        <p className="mt-2 text-sm text-muted">
-          Disponible en la versión instalada/producción.
-        </p>
       ) : (
         <>
-          <p className="mt-2 text-sm text-muted">
-            Activa las notificaciones para avisarte cuando sea tu turno o tu cita se confirme.
+          <p className="mt-2 text-[13px] leading-snug text-muted">
+            Te avisamos cuando sea tu turno o cuando se confirme tu cita.
           </p>
           <button
             onClick={subscribeToPush}
             disabled={loading}
-            className="mt-4 rounded-full bg-accent px-6 py-2 text-sm font-semibold uppercase tracking-wide text-on-accent transition hover:bg-accent-soft disabled:opacity-50"
+            className="mt-3.5 inline-flex min-h-11 items-center rounded-full bg-[linear-gradient(180deg,var(--cta-1),var(--cta-2))] px-6 text-sm font-semibold uppercase tracking-wide text-on-accent transition hover:brightness-105 disabled:opacity-50"
           >
             {loading ? "Activando..." : "Activar notificaciones"}
           </button>

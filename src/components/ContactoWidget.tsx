@@ -17,11 +17,17 @@ const WA_URL =
 export function ContactoWidget({
   /** En la home móvil el widget vive arriba del CTA sticky "Reservar ahora". */
   sobreCtaMovil = false,
+  /** El globo abierto de entrada. En la home SÍ: ahí hay que dar el primer
+   *  empujón a un desconocido. En /cuenta NO: el cliente ya entró, no hay a
+   *  quién captar, y medido a 390 px el globo se paraba encima del título
+   *  "Próximas citas" y le tapaba media línea. El botón sigue ahí. */
+  globoAbierto = true,
 }: {
   sobreCtaMovil?: boolean;
+  globoAbierto?: boolean;
 }) {
-  // Visible por defecto; al cerrarlo no reaparece (igual que el proto).
-  const [tooltip, setTooltip] = useState(true);
+  // Al cerrarlo no reaparece (igual que el proto).
+  const [tooltip, setTooltip] = useState(globoAbierto);
 
   return (
     <div

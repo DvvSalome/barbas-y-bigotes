@@ -64,7 +64,7 @@ export function CitaAcciones({
           href={`https://wa.me/${WA_NUM}?text=${msg}`}
           target="_blank"
           rel="noopener noreferrer"
-          className="rounded-full border border-accent/40 bg-accent/5 px-3 py-1.5 font-semibold text-accent-soft transition hover:bg-accent/15"
+          className="inline-flex min-h-11 items-center rounded-full border border-accent/40 bg-accent/5 px-4 font-semibold text-accent-soft transition hover:bg-accent/15"
         >
           Avisar por WhatsApp
         </a>
@@ -89,40 +89,42 @@ export function CitaAcciones({
       <div className="flex flex-wrap items-center gap-2">
         {!confirmCancel ? (
           <>
+            {/* 44 px: son los dos botones que el cliente de verdad usa desde el
+                celúlar, y medían 27. */}
             <button
               onClick={() => setRescheduleOpen((v) => !v)}
-              className={`rounded-full border px-3 py-1.5 text-xs transition ${
+              className={`inline-flex min-h-11 flex-1 items-center justify-center rounded-full border px-4 text-[13px] font-semibold transition sm:flex-none ${
                 rescheduleOpen
                   ? "border-accent/60 bg-accent/10 text-ink"
-                  : "border-line text-muted hover:text-ink"
+                  : "border-line text-ink hover:border-accent/40"
               }`}
             >
-              Reagendar
+              Cambiar hora
             </button>
             <button
               onClick={() => {
                 setConfirmCancel(true);
                 setRescheduleOpen(false);
               }}
-              className="rounded-full border border-line px-3 py-1.5 text-xs text-muted transition hover:text-ink"
+              className="inline-flex min-h-11 flex-1 items-center justify-center rounded-full border border-line px-4 text-[13px] text-muted transition hover:text-ink sm:flex-none"
             >
               Cancelar
             </button>
           </>
         ) : (
-          <div className="flex items-center gap-2 text-xs">
-            <span className="text-muted">¿Cancelar esta cita?</span>
+          <div className="flex flex-wrap items-center gap-2 text-[13px]">
+            <span className="w-full text-muted sm:w-auto">¿Cancelar esta cita?</span>
             <button
               onClick={doCancel}
               disabled={busy}
-              className="rounded-full bg-accent px-3 py-1.5 font-semibold text-on-accent transition hover:bg-accent-soft disabled:opacity-50"
+              className="inline-flex min-h-11 items-center rounded-full bg-[linear-gradient(180deg,var(--cta-1),var(--cta-2))] px-4 font-semibold text-on-accent transition hover:brightness-105 disabled:opacity-50"
             >
               {busy ? "…" : "Sí, cancelar"}
             </button>
             <button
               onClick={() => setConfirmCancel(false)}
               disabled={busy}
-              className="rounded-full border border-line px-3 py-1.5 text-muted transition hover:text-ink"
+              className="inline-flex min-h-11 items-center rounded-full border border-line px-4 text-muted transition hover:text-ink"
             >
               No
             </button>

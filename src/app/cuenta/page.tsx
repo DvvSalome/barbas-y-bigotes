@@ -10,6 +10,7 @@ import { CitaAcciones } from "@/components/cuenta/CitaAcciones";
 import { CalificarServicio } from "@/components/cuenta/CalificarServicio";
 import { ensureCliente } from "@/lib/cliente-actions";
 import { TarjetaFidelidad } from "@/components/cuenta/TarjetaFidelidad";
+import { SEDE_INFO } from "@/lib/data/sede-info";
 import { getCuenta, getReservaSinCalificar, getHorarioSemanal, getDiasEspeciales } from "@/lib/data/queries";
 
 export const metadata: Metadata = { title: "Mi cuenta" };
@@ -28,6 +29,9 @@ const ESTADO: Record<string, string> = {
 // Poste de barbero: motivo de marca reutilizado del sitio (rojo + hueso).
 const POLE = "repeating-linear-gradient(150deg, var(--accent) 0 6px, var(--ink) 6px 12px)";
 
+const WA_URL =
+  "https://wa.me/573006734799?text=Hola%20Barbas%20%26%20Bigotes%2C%20quisiera%20saber%20m%C3%A1s%20informaci%C3%B3n%20sobre%20sus%20servicios%20y%20reservas.";
+
 function fechaLarga(iso: string) {
   // Server component: sin timeZone explícito la hora saldría en UTC (Vercel).
   return new Date(iso).toLocaleString("es-CO", {
@@ -40,13 +44,63 @@ function fechaLarga(iso: string) {
   });
 }
 
+/** YYYY-MM-DD en Bogotá. en-CA da justo ese formato. */
+const ymdBogota = (d: Date) =>
+  new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Bogota",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(d);
+
+/**
+ * La fecha de la próxima cita, para leerla de un vistazo y de lejos: "hoy · 4:30 pm".
+ * Va en mayúsculas dentro de un titular, así que "p. m." con puntos y espacios
+ * queda horrible — se normaliza a "pm". Y si es hoy o mañana lo dice con esas
+ * palabras: es lo que el cliente quiere saber, no qué día de la semana cae.
+ */
+function fechaHero(iso: string): string {
+  const d = new Date(iso);
+  const hoy = new Date();
+  const manana = new Date(hoy.getTime() + 86400000);
+  const y = ymdBogota(d);
+  let dia: string;
+  if (y === ymdBogota(hoy)) dia = "hoy";
+  else if (y === ymdBogota(manana)) dia = "mañana";
+  else
+    dia = d.toLocaleDateString("es-CO", {
+      timeZone: "America/Bogota",
+      weekday: "short",
+      day: "numeric",
+      month: "short",
+    });
+  const hora = d
+    .toLocaleTimeString("es-CO", { timeZone: "America/Bogota", hour: "numeric", minute: "2-digit" })
+    .replace(/\s*a\.?\s*m\.?/i, " am")
+    .replace(/\s*p\.?\s*m\.?/i, " pm")
+    .trim();
+  return `${dia} · ${hora}`;
+}
+
+/** La nota de la reserva puede traer una propuesta de adelanto pendiente. */
+function adelantoPendiente(nota: string | null) {
+  if (!nota) return null;
+  try {
+    const obj = JSON.parse(nota);
+    if (obj.propuesta_adelanto?.estado === "pendiente") {
+      return obj.propuesta_adelanto as { inicio: string; fin: string };
+    }
+  } catch {}
+  return null;
+}
+
 export default async function CuentaPage() {
   const ctx = await ensureCliente();
 
   return (
     <>
       <SiteHeader />
-      <main className="mx-auto max-w-2xl px-6 py-16">
+      <main className="mx-auto w-full px-6 py-16">
         {ctx.estado === "anon" && (
           <div className="mx-auto max-w-md text-center">
             {/* Barra sólida: la rayada (POLE_MINI) a 6px de alto se pixelaba en
@@ -108,13 +162,33 @@ export default async function CuentaPage() {
           <Portal clienteId={ctx.clienteId ?? ""} nombre={ctx.nombre} avatarUrl={ctx.avatarUrl} />
         )}
       </main>
-      <SiteFooter />
-      {/* Widget de contacto: en el proto vive en home y Mi cuenta (§2.11). */}
-      <ContactoWidget />
+      <SiteFooter compacto={ctx.estado === "cliente"} />
+      {/* Widget de contacto: en el proto vive en home y Mi cuenta (§2.11). Acá
+          el globo arranca CERRADO: el cliente ya entró, y desplegado se paraba
+          encima del título "Próximas citas". */}
+      <ContactoWidget globoAbierto={false} />
     </>
   );
 }
 
+/*
+  El portal del cliente, reordenado (16-sep, opción A de la propuesta).
+
+  Antes todo iba en una columna de 672 px centrada en 1.440 —384 px de negro
+  muerto a cada lado— y en este orden: saludo, un aviso de notificaciones con
+  borde ROJO (que en esta app significa acción o alerta), la tarjeta de cortes,
+  la tarjeta ilustrada, y recién entonces sus citas, a 900 px de scroll. El
+  cliente entra a saber cuándo es su corte y era lo último que encontraba.
+
+  Ahora manda la CITA: fecha grande y los dos botones que de verdad usa. Después
+  su tarjeta, con el número en tamaño de titular y la tarjeta ilustrada —la del
+  dueño, réplica de la física, sin tocar— debajo del dato. En escritorio son dos
+  columnas: lo suyo a la izquierda, lo de la casa a la derecha.
+
+  El orden del DOM es el del CELULAR, que es la prioridad; en `lg` cada bloque se
+  coloca con col-start/row-start explícitos, así ninguno de los dos anchos depende
+  de cómo caiga el otro.
+*/
 async function Portal({ clienteId, nombre, avatarUrl }: { clienteId: string; nombre?: string; avatarUrl?: string | null }) {
   const [{ proximas, pasadas, tarjeta, cola }, sinCalificar, horarioSemanal, diasEspeciales] = await Promise.all([
     getCuenta(clienteId),
@@ -128,11 +202,13 @@ async function Portal({ clienteId, nombre, avatarUrl }: { clienteId: string; nom
   // .find() tomaba solo el primero y el resto se perdía sin mostrarse en ningún lado.
   const turnos = cola.filter((c) => c.estado === "notificado");
   const enEspera = cola.filter((c) => c.estado !== "notificado");
+  const [siguiente, ...otrasCitas] = proximas;
+  const tamTarjeta = tarjeta.cfg.tamano;
 
   return (
-    <div>
+    <div className="mx-auto w-full max-w-2xl lg:max-w-5xl">
       {/* Encabezado */}
-      <div className="mb-9 flex items-center justify-between gap-4">
+      <div className="mb-7 flex items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           {avatarUrl ? (
             // eslint-disable-next-line @next/next/no-img-element -- foto remota de Google; next/image exigiría configurar el dominio.
@@ -158,8 +234,6 @@ async function Portal({ clienteId, nombre, avatarUrl }: { clienteId: string; nom
             no acá: era el segundo botón suelto que se quería unificar. */}
       </div>
 
-      <PushManager />
-
       {/* calificación post-servicio: SIEMPRE montado (pendiente puede ser null)
           para que la pantalla de gracias sobreviva al revalidatePath de la action */}
       <CalificarServicio
@@ -175,9 +249,10 @@ async function Portal({ clienteId, nombre, avatarUrl }: { clienteId: string; nom
         }
       />
 
-      {/* Turnos llamados: hero (uno por cada entrada notificada) */}
+      {/* Turnos llamados: hero a todo el ancho (uno por cada entrada notificada).
+          Es lo único que gana a la próxima cita: está pasando AHORA. */}
       {turnos.map((turno) => (
-        <section key={turno.id} className="mb-8 overflow-hidden rounded-2xl border border-accent/40 bg-accent/[0.07] p-6 text-center">
+        <section key={turno.id} className="mb-6 overflow-hidden rounded-2xl border border-accent/40 bg-accent/[0.07] p-6 text-center">
           {/* Foto del barbero con anillo rojo pulsante (proto §4). Fallback: inicial. */}
           <div className="relative mx-auto h-24 w-24">
             <span
@@ -211,168 +286,238 @@ async function Portal({ clienteId, nombre, avatarUrl }: { clienteId: string; nom
         </section>
       ))}
 
-      {/* En espera (sin estimado ficticio) */}
-      {enEspera.length > 0 && (
-        <section className="mb-8 rounded-2xl border border-line bg-panel p-5">
-          <div className="font-display text-[11px] font-bold uppercase tracking-[0.18em] text-muted">
-            En la fila
-          </div>
-          <div className="mt-3 space-y-3">
-            {enEspera.map((c) => (
-              <div key={c.id} className="flex items-center justify-between gap-3">
-                <div>
-                  <div className="font-semibold">{ESTADO[c.estado] ?? c.estado}</div>
-                  <div className="text-sm text-muted">
-                    {c.servicio} · {c.barbero}
-                  </div>
-                </div>
-                <span className="rounded-full border border-line bg-accent/[0.06] px-3 py-1 font-display text-[10px] font-bold uppercase tracking-wide text-accent-soft">
-                  Te avisamos
-                </span>
+      <div className="flex flex-col gap-6 lg:grid lg:grid-cols-[minmax(0,1.3fr)_minmax(0,0.9fr)] lg:items-start lg:gap-6">
+        {/* ── Lo primero: su cita ─────────────────────────────────────── */}
+        <section className="lg:col-start-1 lg:row-start-1">
+          {siguiente ? (
+            <>
+              <div className="relative overflow-hidden rounded-2xl border border-ok/30 bg-ok/[0.045] p-5">
+                <p className="font-display text-[11px] font-bold uppercase tracking-[0.2em] text-ok">
+                  Tu próxima cita
+                </p>
+                <p className="mt-1.5 font-display text-[clamp(28px,8vw,36px)] font-extrabold uppercase leading-none">
+                  {fechaHero(siguiente.inicio)}
+                </p>
+                <p className="mt-2 text-sm text-muted">
+                  {siguiente.servicio} · {siguiente.barbero}
+                  <br />
+                  {SEDE_INFO[siguiente.sede]?.nombre ?? "Barbas & Bigotes"}
+                </p>
+                <CitaAcciones
+                  reservaId={siguiente.id}
+                  barberoId={siguiente.barberoId}
+                  duracionMin={siguiente.duracionMin}
+                  inicio={siguiente.inicio}
+                  horarioSemanal={horarioSemanal.filter((h) => h.sede === siguiente.sede)}
+                  diasEspeciales={diasEspeciales.filter((d) => d.sede === siguiente.sede)}
+                />
               </div>
-            ))}
+              {adelantoPendiente(siguiente.nota) && (
+                <div className="mt-2">
+                  <AdelantoBanner
+                    reservaId={siguiente.id}
+                    inicioPropuesto={adelantoPendiente(siguiente.nota)!.inicio}
+                    finPropuesto={adelantoPendiente(siguiente.nota)!.fin}
+                  />
+                </div>
+              )}
+            </>
+          ) : (
+            <EmptyProximas />
+          )}
+        </section>
+
+        {/* ── Su tarjeta: el número primero, la ilustrada debajo ───────── */}
+        <section className="rounded-2xl border border-line bg-panel p-5 lg:col-start-2 lg:row-start-1">
+          <div className="flex items-start justify-between gap-4">
+            <div className="min-w-0">
+              <p className="font-display text-[11px] font-bold uppercase tracking-[0.18em] text-muted">
+                Tu tarjeta
+              </p>
+              <p className="mt-1 flex items-baseline gap-2">
+                <span className="font-display text-[46px] font-extrabold leading-[0.85] tabular-nums">
+                  {tarjeta.sellos}
+                </span>
+                <span className="text-sm text-muted">de {tamTarjeta} cortes</span>
+              </p>
+              {tarjeta.proximo && (
+                <p className="mt-1.5 text-[13px] text-accent-soft">
+                  Te falta{tarjeta.proximo.faltan === 1 ? "" : "n"}{" "}
+                  <b>{tarjeta.proximo.faltan}</b> para tu{" "}
+                  <b>
+                    {tarjeta.proximo.tipo === "regalo"
+                      ? "regalo"
+                      : `${tarjeta.proximo.tipo} de descuento`}
+                  </b>
+                  .
+                </p>
+              )}
+            </div>
+            <Link
+              href="/reservar"
+              className="inline-flex min-h-11 shrink-0 items-center rounded-full bg-[linear-gradient(180deg,var(--cta-1),var(--cta-2))] px-5 font-display text-[13px] font-bold uppercase tracking-wide text-on-accent shadow-[0_12px_26px_-10px_rgba(210,63,52,0.7)] transition hover:brightness-105"
+            >
+              Reservar
+            </Link>
+          </div>
+
+          {/* La tarjeta ilustrada es la RÉPLICA de la física (layout 2A del
+              proyecto de Claude Design del dueño) y no se toca: baja un puesto,
+              debajo del dato, porque es el premio y no el resumen. */}
+          <div className="mt-4">
+            <TarjetaFidelidad sellos={tarjeta.sellos} nombre={nombre} cfg={tarjeta.cfg} />
           </div>
         </section>
-      )}
 
-      {/* Tarjeta de fidelidad: réplica de la física (layout 2A del proyecto de
-          Claude Design). Es la MISMA que el cliente lleva en la billetera, así
-          reconoce la suya sin que haya que explicarle nada. Los sellos salen de
-          las ventas reales; el 5º corte se lleva un regalo y el 10º va al 50%. */}
-      <section className="mb-8">
-        <div className="mb-3 flex items-end justify-between gap-4">
-          <div>
-            <div className="font-display text-[11px] font-bold uppercase tracking-[0.18em] text-muted">
-              Tarjeta de cortes
-            </div>
-            <div className="mt-1 text-sm text-muted">
-              Llevas{" "}
-              <b className="font-display text-base font-bold tabular-nums text-accent-soft">
-                {tarjeta.sellos}
-              </b>{" "}
-              de 10 cortes
-            </div>
-          </div>
-          <Link
-            href="/reservar"
-            className="shrink-0 rounded-full bg-[linear-gradient(180deg,var(--cta-1),var(--cta-2))] px-5 py-2.5 font-display text-[13px] font-bold uppercase tracking-wide text-on-accent shadow-[0_12px_26px_-10px_rgba(210,63,52,0.7)] transition hover:brightness-105"
-          >
-            Reservar
-          </Link>
-        </div>
+        {/* ── El resto de lo suyo ─────────────────────────────────────── */}
+        <div className="flex flex-col gap-6 lg:col-start-1 lg:row-start-2">
+          {/* En espera (sin estimado ficticio) */}
+          {enEspera.length > 0 && (
+            <section className="rounded-2xl border border-line bg-panel p-5">
+              <div className="font-display text-[11px] font-bold uppercase tracking-[0.18em] text-muted">
+                En la fila
+              </div>
+              <div className="mt-3 space-y-3">
+                {enEspera.map((c) => (
+                  <div key={c.id} className="flex items-center justify-between gap-3">
+                    <div>
+                      <div className="font-semibold">{ESTADO[c.estado] ?? c.estado}</div>
+                      <div className="text-sm text-muted">
+                        {c.servicio} · {c.barbero}
+                      </div>
+                    </div>
+                    <span className="rounded-full border border-line bg-accent/[0.06] px-3 py-1 font-display text-[10px] font-bold uppercase tracking-wide text-accent-soft">
+                      Te avisamos
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
 
-        <TarjetaFidelidad sellos={tarjeta.sellos} nombre={nombre} cfg={tarjeta.cfg} />
+          {/* Las demás citas, si tiene más de una agendada. */}
+          {otrasCitas.length > 0 && (
+            <section>
+              <h2 className="mb-3 font-display text-xl font-bold uppercase">Después de esa</h2>
+              <div className="space-y-3">
+                {otrasCitas.map((r) => {
+                  const prop = adelantoPendiente(r.nota);
+                  return (
+                    <div key={r.id} className="space-y-2">
+                      <div className="relative overflow-hidden rounded-2xl border border-line bg-panel p-4 pl-5">
+                        <span
+                          aria-hidden
+                          className="absolute inset-y-0 left-0 w-1 bg-[linear-gradient(180deg,var(--cta-1),var(--cta-2))]"
+                        />
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                          <div>
+                            <div className="font-display text-lg font-bold uppercase">{r.servicio}</div>
+                            <div className="mt-1 text-sm text-muted">
+                              {fechaLarga(r.inicio)} · {r.barbero}
+                            </div>
+                          </div>
+                          <span className="rounded-full bg-accent/15 px-3 py-1 font-display text-[10px] font-bold uppercase tracking-wide text-accent-soft">
+                            {ESTADO[r.estado] ?? r.estado}
+                          </span>
+                        </div>
+                        <CitaAcciones
+                          reservaId={r.id}
+                          barberoId={r.barberoId}
+                          duracionMin={r.duracionMin}
+                          inicio={r.inicio}
+                          horarioSemanal={horarioSemanal.filter((h) => h.sede === r.sede)}
+                          diasEspeciales={diasEspeciales.filter((d) => d.sede === r.sede)}
+                        />
+                      </div>
+                      {prop && (
+                        <AdelantoBanner
+                          reservaId={r.id}
+                          inicioPropuesto={prop.inicio}
+                          finPropuesto={prop.fin}
+                        />
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+          )}
 
-        {tarjeta.proximo && (
-          <p className="mt-4 text-sm text-muted">
-            Faltan{" "}
-            <b className="text-accent-soft">
-              {tarjeta.proximo.faltan} corte{tarjeta.proximo.faltan === 1 ? "" : "s"}
-            </b>{" "}
-            para tu{" "}
-            <b className="text-ink">
-              {tarjeta.proximo.tipo === "regalo" ? "regalo" : `${tarjeta.proximo.tipo} de descuento`}
-            </b>
-            .
-          </p>
-        )}
-      </section>
-
-      {/* Próximas citas */}
-      <section className="mb-8">
-        <h2 className="mb-3 font-display text-2xl font-bold uppercase">Próximas citas</h2>
-        {proximas.length === 0 ? (
-          <EmptyProximas />
-        ) : (
-          <div className="space-y-3">
-            {proximas.map((r) => {
-              let prop: { inicio: string; fin: string; estado?: string } | null = null;
-              if (r.nota) {
-                try {
-                  const obj = JSON.parse(r.nota);
-                  if (obj.propuesta_adelanto?.estado === "pendiente") {
-                    prop = obj.propuesta_adelanto;
-                  }
-                } catch {}
-              }
-              return (
-                <div key={r.id} className="space-y-2">
-                  <div className="relative overflow-hidden rounded-2xl border border-line bg-panel p-4 pl-5">
-                    <span
-                      aria-hidden
-                      className="absolute inset-y-0 left-0 w-1 bg-[linear-gradient(180deg,var(--cta-1),var(--cta-2))]"
-                    />
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div>
-                        <div className="font-display text-lg font-bold uppercase">{r.servicio}</div>
-                        <div className="mt-1 text-sm text-muted">
-                          {fechaLarga(r.inicio)} · {r.barbero}
+          {/* Historial */}
+          {pasadas.length > 0 && (
+            <section>
+              <h2 className="mb-3 font-display text-xl font-bold uppercase">Historial</h2>
+              <div className="rounded-2xl border border-line bg-panel px-4">
+                {pasadas.slice(0, 10).map((r) => {
+                  // El chulito SOLO cuando de verdad se completó. Antes lo llevaban
+                  // todas las filas, así que "No llegó" salía con un ✓ al lado y el
+                  // ícono contradecía la palabra.
+                  const completada = r.estado === "completada";
+                  return (
+                    <div
+                      key={r.id}
+                      className="flex items-center justify-between gap-3 border-b border-line/60 py-3 text-sm last:border-b-0"
+                    >
+                      <div className="flex items-center gap-3">
+                        <span
+                          aria-hidden
+                          className={`grid h-7 w-7 shrink-0 place-items-center rounded-full ${
+                            completada ? "bg-ok/12 text-ok" : "bg-elevated text-muted"
+                          }`}
+                        >
+                          {completada ? (
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                              <path d="M20 6 9 17l-5-5" />
+                            </svg>
+                          ) : (
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                              <path d="M6 6l12 12M18 6 6 18" />
+                            </svg>
+                          )}
+                        </span>
+                        <div>
+                          <div className="text-ink">{r.servicio}</div>
+                          <div className="text-xs text-muted">{fechaLarga(r.inicio)}</div>
                         </div>
                       </div>
-                      <span className="rounded-full bg-accent/15 px-3 py-1 font-display text-[10px] font-bold uppercase tracking-wide text-accent-soft">
+                      <span className={completada ? "text-muted" : "text-warn"}>
                         {ESTADO[r.estado] ?? r.estado}
                       </span>
                     </div>
-                    <CitaAcciones
-                      reservaId={r.id}
-                      barberoId={r.barberoId}
-                      duracionMin={r.duracionMin}
-                      inicio={r.inicio}
-                      horarioSemanal={horarioSemanal.filter((h) => h.sede === r.sede)}
-                      diasEspeciales={diasEspeciales.filter((d) => d.sede === r.sede)}
-                    />
-                  </div>
-                  {prop && (
-                    <AdelantoBanner
-                      reservaId={r.id}
-                      inicioPropuesto={prop.inicio}
-                      finPropuesto={prop.fin}
-                    />
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </section>
-
-      {/* Historial */}
-      {pasadas.length > 0 && (
-        <section>
-          <h2 className="mb-3 font-display text-2xl font-bold uppercase">Historial</h2>
-          <div className="rounded-2xl border border-line bg-panel px-4">
-            {pasadas.slice(0, 10).map((r) => (
-              <div
-                key={r.id}
-                className="flex items-center justify-between gap-3 border-b border-line/60 py-3 text-sm last:border-b-0"
-              >
-                <div className="flex items-center gap-3">
-                  <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-elevated">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="text-muted">
-                      <path d="M20 6 9 17l-5-5" />
-                    </svg>
-                  </span>
-                  <div>
-                    <div className="text-ink">{r.servicio}</div>
-                    <div className="text-xs text-muted">{fechaLarga(r.inicio)}</div>
-                  </div>
-                </div>
-                <span className="text-muted">{ESTADO[r.estado] ?? r.estado}</span>
+                  );
+                })}
               </div>
-            ))}
+            </section>
+          )}
+        </div>
+
+        {/* ── Accesos. Lo que antes era una caja roja arriba de todo. ──── */}
+        <div className="flex flex-col gap-3 lg:col-start-2 lg:row-start-2">
+          <PushManager />
+          <div className="overflow-hidden rounded-2xl border border-line bg-panel">
+            <a
+              href={WA_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex min-h-[52px] items-center gap-3 border-b border-line/60 px-4 text-[14px] transition hover:bg-elevated/60"
+            >
+              <span className="flex-1">Escríbenos por WhatsApp</span>
+              <span aria-hidden className="text-muted">›</span>
+            </a>
+            {/* Eliminación de cuenta: Play exige que sea alcanzable desde la app.
+                Discreta —es rara y sin vuelta atrás— pero tocable: medía 15 px. */}
+            <Link
+              href="/cuenta/eliminar"
+              className="flex min-h-[52px] items-center gap-3 px-4 text-[14px] text-muted transition hover:bg-elevated/60 hover:text-ink"
+            >
+              <span className="flex-1">Eliminar mi cuenta</span>
+              <span aria-hidden>›</span>
+            </Link>
           </div>
-        </section>
-      )}
-
-      {/* Eliminación de cuenta: Play exige que sea alcanzable desde la app; discreto,
-          es una acción rara y sin vuelta atrás. */}
-      <p className="mt-12 text-center text-xs text-muted">
-        <Link href="/cuenta/eliminar" className="transition hover:text-ink">
-          Eliminar mi cuenta
-        </Link>
-      </p>
-    </div>
-  );
+        </div>
+      </div>
+    </div>
+  );
 }
 
 // Estado vacío con intención: onboarding en vez de una lista en blanco.
@@ -397,7 +542,7 @@ function EmptyProximas() {
       </p>
       <Link
         href="/reservar"
-        className="mt-5 inline-block rounded-full bg-[linear-gradient(180deg,var(--cta-1),var(--cta-2))] px-7 py-3 font-display text-sm font-bold uppercase tracking-wide text-on-accent shadow-[0_12px_26px_-10px_rgba(210,63,52,0.7)] transition hover:brightness-105"
+        className="mt-5 inline-flex min-h-12 items-center rounded-full bg-[linear-gradient(180deg,var(--cta-1),var(--cta-2))] px-7 font-display text-sm font-bold uppercase tracking-wide text-on-accent shadow-[0_12px_26px_-10px_rgba(210,63,52,0.7)] transition hover:brightness-105"
       >
         Reservar una cita
       </Link>

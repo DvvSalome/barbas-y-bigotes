@@ -7,6 +7,13 @@ import { HorariosAtencion } from "@/components/HorariosAtencion";
   logo + tagline + redes redondas + divisor "Sedes" + cards de sede +
   pill de horario + nota de cancelación + copyright. En desktop suma el
   CTA final "¿Listo para tu mejor versión?" y la fila de links.
+
+  `compacto` es para el cliente que YA entró (/cuenta). Medido el 16-sep: el pie
+  completo son 1.115 px de los 2.774 de esa pantalla — el 40 %— y arriba de todo
+  lleva una campaña para que reserve, a alguien que ya es cliente y que además
+  tiene el botón de reservar dos pantallas más arriba. En compacto: sin campaña,
+  y sedes y horarios detrás de un plegable. Nada se pierde, solo deja de estar
+  desplegado. Las legales siguen SIEMPRE visibles: Google revisa que lo estén.
 */
 
 const SEDES_FOOTER = [
@@ -27,47 +34,105 @@ const SEDES_FOOTER = [
 const WA_URL =
   "https://wa.me/573006734799?text=Hola%20Barbas%20%26%20Bigotes%2C%20quisiera%20saber%20m%C3%A1s%20informaci%C3%B3n%20sobre%20sus%20servicios%20y%20reservas.";
 
-export function SiteFooter({ conCtaMovil = false }: { conCtaMovil?: boolean }) {
-  return (
-    <footer className="mt-3.5 border-t border-[rgba(242,237,228,0.08)] bg-[linear-gradient(180deg,#0a0908,#050403)] md:border-[rgba(242,237,228,0.1)]">
-      {/* CTA final (solo desktop, §5) */}
-      <div className="hidden text-center md:block">
-        <div className="mx-auto max-w-[900px] px-10 pt-[52px]">
-          <h2 className="font-display text-[42px] font-extrabold uppercase leading-tight">
-            ¿Listo para tu <span className="text-accent-soft">mejor versión</span>?
-          </h2>
-          <p className="mt-2 text-sm text-muted">
-            Reserva en menos de un minuto · confirmación directa a tu correo.
-          </p>
-          <Link
-            href="/reservar"
-            className="mt-6 inline-block rounded-full bg-[linear-gradient(180deg,var(--accent-soft),var(--accent))] px-10 py-4 font-display text-lg font-bold uppercase text-on-accent shadow-[0_16px_40px_-12px_rgba(210,63,52,0.7)] transition hover:brightness-105"
-          >
-            Reservar cita
-          </Link>
-          <div className="mt-[52px] border-t border-[rgba(242,237,228,0.08)]" />
-        </div>
+export function SiteFooter({
+  conCtaMovil = false,
+  compacto = false,
+}: {
+  conCtaMovil?: boolean;
+  /** Pie del cliente ya logueado: sin campaña y con sedes/horarios plegados. */
+  compacto?: boolean;
+}) {
+  // El MISMO bloque para los dos pies; lo único que cambia es si va desplegado
+  // o dentro de un <details>. Así no hay dos versiones que se desincronicen.
+  const sedesYHorarios = (
+    <>
+      {/* Divisor "Sedes" (desktop: "Nuestras sedes") */}
+      <div className="mt-8 flex items-center gap-3">
+        <span aria-hidden className="h-px flex-1 bg-gradient-to-r from-transparent to-[rgba(242,237,228,0.16)]" />
+        <span className="font-display text-[13px] font-extrabold uppercase tracking-[0.24em] text-accent">
+          <span className="md:hidden">Sedes</span>
+          <span className="hidden md:inline">Nuestras sedes</span>
+        </span>
+        <span aria-hidden className="h-px flex-1 bg-gradient-to-l from-transparent to-[rgba(242,237,228,0.16)]" />
       </div>
 
+      <div className="mt-5 grid gap-3 md:grid-cols-2 md:gap-3.5">
+        {SEDES_FOOTER.map((s) => (
+          <div
+            key={s.nombre}
+            className="rounded-[14px] border border-[rgba(242,237,228,0.08)] bg-[rgba(21,19,17,0.5)] px-4 py-3.5"
+          >
+            <div className="font-display text-base font-bold uppercase">{s.nombre}</div>
+            <div className="mt-0.5 text-xs text-muted">{s.direccion}</div>
+            {/* Tocar para llamar es una acción principal en una barbería, y el
+                enlace medía 19px de alto. El ::before agranda el área táctil a
+                ~45px SIN cambiar nada de lo que se ve (el proto queda igual). */}
+            <a
+              href={s.telHref}
+              className="relative mt-1 inline-block text-[12.5px] font-bold text-accent-soft before:absolute before:-inset-y-3 before:inset-x-0 before:content-['']"
+            >
+              {s.tel}
+            </a>
+          </div>
+        ))}
+      </div>
+
+      {/* Horarios reales por sede (semana + días especiales), del mismo
+          horarioEfectivo que arma los turnos: nunca contradice lo que se ve al
+          reservar. Reemplaza al pill fijo "Lun–Sáb 9am–8pm" que quedaba viejo cada
+          vez que el dueño cambiaba un horario. */}
+      <HorariosAtencion />
+
+      <p className="mt-4 text-[11.5px] text-muted">
+        Cancelaciones online hasta 2 horas antes de tu cita.
+      </p>
+    </>
+  );
+
+  return (
+    <footer className="mt-3.5 border-t border-[rgba(242,237,228,0.08)] bg-[linear-gradient(180deg,#0a0908,#050403)] md:border-[rgba(242,237,228,0.1)]">
+      {/* CTA final (solo desktop, §5). Nunca para quien ya entró. */}
+      {!compacto && (
+        <div className="hidden text-center md:block">
+          <div className="mx-auto max-w-[900px] px-10 pt-[52px]">
+            <h2 className="font-display text-[42px] font-extrabold uppercase leading-tight">
+              ¿Listo para tu <span className="text-accent-soft">mejor versión</span>?
+            </h2>
+            <p className="mt-2 text-sm text-muted">
+              Reserva en menos de un minuto · confirmación directa a tu correo.
+            </p>
+            <Link
+              href="/reservar"
+              className="mt-6 inline-block rounded-full bg-[linear-gradient(180deg,var(--accent-soft),var(--accent))] px-10 py-4 font-display text-lg font-bold uppercase text-on-accent shadow-[0_16px_40px_-12px_rgba(210,63,52,0.7)] transition hover:brightness-105"
+            >
+              Reservar cita
+            </Link>
+            <div className="mt-[52px] border-t border-[rgba(242,237,228,0.08)]" />
+          </div>
+        </div>
+      )}
+
       <div
-        className={`mx-auto max-w-[900px] px-[22px] pt-9 text-center md:px-10 md:pb-[52px] ${
-          conCtaMovil ? "pb-[104px]" : "pb-12"
-        }`}
+        className={`mx-auto max-w-[900px] px-[22px] text-center md:px-10 ${
+          compacto ? "pt-7 pb-10 md:pb-12" : "pt-9 md:pb-[52px]"
+        } ${conCtaMovil ? "pb-[104px]" : compacto ? "" : "pb-12"}`}
       >
         <Image
           src="/brand/logo-lockup.png"
           alt="Barbas & Bigotes Barbershop"
           width={1024}
           height={348}
-          className="mx-auto h-[52px] w-auto opacity-95 md:h-[54px]"
+          className={`mx-auto w-auto opacity-95 ${compacto ? "h-9" : "h-[52px] md:h-[54px]"}`}
         />
-        <p className="mx-auto mt-4 max-w-[30ch] text-[12.5px] leading-[1.7] text-muted">
-          El ritual clásico de la barbería en Barranquilla. Tradición, estilo y excelencia en cada
-          detalle.
-        </p>
+        {!compacto && (
+          <p className="mx-auto mt-4 max-w-[30ch] text-[12.5px] leading-[1.7] text-muted">
+            El ritual clásico de la barbería en Barranquilla. Tradición, estilo y excelencia en cada
+            detalle.
+          </p>
+        )}
 
         {/* Redes: círculos de 46px */}
-        <div className="mt-6 flex items-center justify-center gap-2.5">
+        <div className={`flex items-center justify-center gap-2.5 ${compacto ? "mt-5" : "mt-6"}`}>
           <a
             href="https://instagram.com/barbasybigotes.baq"
             target="_blank"
@@ -103,60 +168,46 @@ export function SiteFooter({ conCtaMovil = false }: { conCtaMovil?: boolean }) {
           </a>
         </div>
 
-        {/* Divisor "Sedes" (desktop: "Nuestras sedes") */}
-        <div className="mt-8 flex items-center gap-3">
-          <span aria-hidden className="h-px flex-1 bg-gradient-to-r from-transparent to-[rgba(242,237,228,0.16)]" />
-          <span className="font-display text-[13px] font-extrabold uppercase tracking-[0.24em] text-accent">
-            <span className="md:hidden">Sedes</span>
-            <span className="hidden md:inline">Nuestras sedes</span>
-          </span>
-          <span aria-hidden className="h-px flex-1 bg-gradient-to-l from-transparent to-[rgba(242,237,228,0.16)]" />
-        </div>
-
-        <div className="mt-5 grid gap-3 md:grid-cols-2 md:gap-3.5">
-          {SEDES_FOOTER.map((s) => (
-            <div
-              key={s.nombre}
-              className="rounded-[14px] border border-[rgba(242,237,228,0.08)] bg-[rgba(21,19,17,0.5)] px-4 py-3.5"
-            >
-              <div className="font-display text-base font-bold uppercase">{s.nombre}</div>
-              <div className="mt-0.5 text-xs text-muted">{s.direccion}</div>
-              {/* Tocar para llamar es una acción principal en una barbería, y el
-                  enlace medía 19px de alto. El ::before agranda el área táctil a
-                  ~45px SIN cambiar nada de lo que se ve (el proto queda igual). */}
-              <a
-                href={s.telHref}
-                className="relative mt-1 inline-block text-[12.5px] font-bold text-accent-soft before:absolute before:-inset-y-3 before:inset-x-0 before:content-['']"
-              >
-                {s.tel}
-              </a>
-            </div>
-          ))}
-        </div>
+        {compacto ? (
+          <details className="group mt-6 text-left">
+            <summary className="mx-auto flex min-h-11 w-fit cursor-pointer list-none items-center gap-2 rounded-full border border-[rgba(242,237,228,0.12)] px-5 font-display text-[13px] font-bold uppercase tracking-[0.14em] text-muted transition hover:text-ink [&::-webkit-details-marker]:hidden">
+              Sedes y horarios
+              <span aria-hidden className="text-[11px] transition-transform group-open:rotate-180">
+                ▾
+              </span>
+            </summary>
+            <div className="text-center">{sedesYHorarios}</div>
+          </details>
+        ) : (
+          sedesYHorarios
+        )}
 
         {/* Fila de links (solo desktop, §5) */}
-        <nav className="mt-6 hidden items-center justify-center gap-3 text-[13px] text-muted md:flex">
-          <Link href="/barberos" className="transition hover:text-accent-soft">
-            Barberos
-          </Link>
-          <span aria-hidden className="h-[3px] w-[3px] rounded-full bg-muted/60" />
-          <Link href="/nosotros" className="transition hover:text-accent-soft">
-            Nosotros
-          </Link>
-          <span aria-hidden className="h-[3px] w-[3px] rounded-full bg-muted/60" />
-          <Link href="/cuenta" className="transition hover:text-accent-soft">
-            Mi cuenta
-          </Link>
-          <span aria-hidden className="h-[3px] w-[3px] rounded-full bg-muted/60" />
-          <Link href="/reservar" className="font-bold text-accent-soft transition hover:text-accent">
-            Reservar cita →
-          </Link>
-        </nav>
+        {!compacto && (
+          <nav className="mt-6 hidden items-center justify-center gap-3 text-[13px] text-muted md:flex">
+            <Link href="/barberos" className="transition hover:text-accent-soft">
+              Barberos
+            </Link>
+            <span aria-hidden className="h-[3px] w-[3px] rounded-full bg-muted/60" />
+            <Link href="/nosotros" className="transition hover:text-accent-soft">
+              Nosotros
+            </Link>
+            <span aria-hidden className="h-[3px] w-[3px] rounded-full bg-muted/60" />
+            <Link href="/cuenta" className="transition hover:text-accent-soft">
+              Mi cuenta
+            </Link>
+            <span aria-hidden className="h-[3px] w-[3px] rounded-full bg-muted/60" />
+            <Link href="/reservar" className="font-bold text-accent-soft transition hover:text-accent">
+              Reservar cita →
+            </Link>
+          </nav>
+        )}
 
         {/* Legales: exigidas por Google (consentimiento OAuth) y por la Ley 1581.
-            Visibles en mobile también: Google revisa que sean alcanzables. */}
+            Visibles SIEMPRE, también en el pie compacto: Google revisa que sean
+            alcanzables y un <details> cerrado no cuenta como alcanzable. */}
         {/* Mismo criterio del teléfono: el área táctil crece con ::before, el
-            tamaño visible no cambia. Google exige que estas dos sean alcanzables. */}
+            tamaño visible no cambia. */}
         <nav className="mt-4 flex items-center justify-center gap-3 text-[12px] text-muted">
           <Link
             href="/privacidad"
@@ -172,16 +223,6 @@ export function SiteFooter({ conCtaMovil = false }: { conCtaMovil?: boolean }) {
             Términos
           </Link>
         </nav>
-
-        {/* Horarios reales por sede (semana + días especiales), del mismo
-            horarioEfectivo que arma los turnos: nunca contradice lo que se ve al
-            reservar. Reemplaza al pill fijo "Lun–Sáb 9am–8pm" que quedaba viejo cada
-            vez que el dueño cambiaba un horario. */}
-        <HorariosAtencion />
-
-        <p className="mt-4 text-[11.5px] text-muted">
-          Cancelaciones online hasta 2 horas antes de tu cita.
-        </p>
 
         <div className="mt-7 border-t border-[rgba(242,237,228,0.07)] pt-5 text-[11px] leading-relaxed text-[rgba(156,149,138,0.55)]">
           <span className="md:hidden">© {new Date().getFullYear()} Barbas &amp; Bigotes Barbershop</span>
