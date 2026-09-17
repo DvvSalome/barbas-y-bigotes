@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import type { ReactNode } from "react";
 import Link from "next/link";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
@@ -172,7 +173,48 @@ export default async function CuentaPage() {
 }
 
 /*
-  El portal del cliente, reordenado (16-sep, opción A de la propuesta).
+  UNA sola forma para todos los bloques del portal: tarjeta con el rótulo ADENTRO.
+
+  Antes había dos patrones mezclados —"Tu tarjeta" y "Avisos al celular" eran
+  rótulo dentro de una tarjeta, pero "Historial" y "Después de esa" eran un <h2>
+  desnudo afuera, sin caja—, y eso es exactamente lo que se ve como "no está
+  modularizado": dos cosas del mismo rango dibujadas distinto.
+*/
+function Bloque({
+  titulo,
+  children,
+  tono = "normal",
+  pegado = false,
+  className = "",
+}: {
+  titulo: string;
+  children: ReactNode;
+  /** "cita" = la próxima cita, en verde; es el único bloque destacado. */
+  tono?: "normal" | "cita";
+  /** El contenido va de borde a borde (listas con separadores). */
+  pegado?: boolean;
+  className?: string;
+}) {
+  return (
+    <section
+      className={`overflow-hidden rounded-2xl border ${
+        tono === "cita" ? "border-ok/30 bg-ok/[0.045]" : "border-line bg-panel"
+      } ${className}`}
+    >
+      <p
+        className={`px-5 pt-4 font-display text-[11px] font-bold uppercase tracking-[0.18em] ${
+          tono === "cita" ? "text-ok" : "text-muted"
+        }`}
+      >
+        {titulo}
+      </p>
+      <div className={pegado ? "mt-2.5" : "px-5 pb-5 pt-1.5"}>{children}</div>
+    </section>
+  );
+}
+
+/*
+  El portal del cliente (16-sep, opción A de la propuesta + los reparos del dueño).
 
   Antes todo iba en una columna de 672 px centrada en 1.440 —384 px de negro
   muerto a cada lado— y en este orden: saludo, un aviso de notificaciones con
@@ -180,14 +222,18 @@ export default async function CuentaPage() {
   la tarjeta ilustrada, y recién entonces sus citas, a 900 px de scroll. El
   cliente entra a saber cuándo es su corte y era lo último que encontraba.
 
-  Ahora manda la CITA: fecha grande y los dos botones que de verdad usa. Después
-  su tarjeta, con el número en tamaño de titular y la tarjeta ilustrada —la del
-  dueño, réplica de la física, sin tocar— debajo del dato. En escritorio son dos
-  columnas: lo suyo a la izquierda, lo de la casa a la derecha.
+  Ahora manda la CITA, y en escritorio son dos columnas: lo suyo a la izquierda,
+  lo de la casa a la derecha.
 
-  El orden del DOM es el del CELULAR, que es la prioridad; en `lg` cada bloque se
-  coloca con col-start/row-start explícitos, así ninguno de los dos anchos depende
-  de cómo caiga el otro.
+  CÓMO SE RESUELVE EL ORDEN, que es lo que costó: el celular y el escritorio
+  quieren ÓRDENES DISTINTOS (en el celular la tarjeta va segunda; en escritorio
+  va arriba a la derecha). Un grid de celdas lo resolvía, pero alinea filas: con
+  un cliente sin cita y con tres visitas, la columna corta quedaba con 187 px de
+  aire EN EL MEDIO. Así que las dos columnas son INDEPENDIENTES (cada una su
+  flex), y en el celular los dos envoltorios son `display:contents` —desaparecen—
+  y sus hijos se reordenan con `order`. Abajo puede quedar una columna más corta
+  que la otra: eso es un borde irregular, no un hueco, y es como se ve cualquier
+  panel con barra lateral.
 */
 async function Portal({ clienteId, nombre, avatarUrl }: { clienteId: string; nombre?: string; avatarUrl?: string | null }) {
   const [{ proximas, pasadas, tarjeta, cola }, sinCalificar, horarioSemanal, diasEspeciales] = await Promise.all([
@@ -286,16 +332,14 @@ async function Portal({ clienteId, nombre, avatarUrl }: { clienteId: string; nom
         </section>
       ))}
 
-      <div className="flex flex-col gap-6 lg:grid lg:grid-cols-[minmax(0,1.3fr)_minmax(0,0.9fr)] lg:items-start lg:gap-6">
-        {/* ── Lo primero: su cita ─────────────────────────────────────── */}
-        <section className="lg:col-start-1 lg:row-start-1">
-          {siguiente ? (
-            <>
-              <div className="relative overflow-hidden rounded-2xl border border-ok/30 bg-ok/[0.045] p-5">
-                <p className="font-display text-[11px] font-bold uppercase tracking-[0.2em] text-ok">
-                  Tu próxima cita
-                </p>
-                <p className="mt-1.5 font-display text-[clamp(28px,8vw,36px)] font-extrabold uppercase leading-none lg:text-[44px]">
+      <div className="flex flex-col gap-5 lg:grid lg:grid-cols-[minmax(0,1.3fr)_minmax(0,0.9fr)] lg:items-start lg:gap-6">
+        {/* ── Columna de lo SUYO ──────────────────────────────────────── */}
+        <div className="contents lg:flex lg:flex-col lg:gap-5">
+          {/* 1 · su cita */}
+          <div className="order-1">
+            {siguiente ? (
+              <Bloque titulo="Tu próxima cita" tono="cita">
+                <p className="font-display text-[clamp(28px,8vw,36px)] font-extrabold uppercase leading-none lg:text-[42px]">
                   {fechaHero(siguiente.inicio)}
                 </p>
                 <p className="mt-2 text-sm text-muted">
@@ -311,108 +355,56 @@ async function Portal({ clienteId, nombre, avatarUrl }: { clienteId: string; nom
                   horarioSemanal={horarioSemanal.filter((h) => h.sede === siguiente.sede)}
                   diasEspeciales={diasEspeciales.filter((d) => d.sede === siguiente.sede)}
                 />
-              </div>
-              {adelantoPendiente(siguiente.nota) && (
-                <div className="mt-2">
-                  <AdelantoBanner
-                    reservaId={siguiente.id}
-                    inicioPropuesto={adelantoPendiente(siguiente.nota)!.inicio}
-                    finPropuesto={adelantoPendiente(siguiente.nota)!.fin}
-                  />
-                </div>
-              )}
-            </>
-          ) : (
-            <EmptyProximas />
-          )}
-        </section>
-
-        {/* ── Su tarjeta: el número primero, la ilustrada debajo ───────── */}
-        <section className="rounded-2xl border border-line bg-panel p-5 lg:col-start-2 lg:row-span-2 lg:row-start-1">
-          <div className="flex items-start justify-between gap-4">
-            <div className="min-w-0">
-              <p className="font-display text-[11px] font-bold uppercase tracking-[0.18em] text-muted">
-                Tu tarjeta
-              </p>
-              <p className="mt-1 flex items-baseline gap-2">
-                <span className="font-display text-[46px] font-extrabold leading-[0.85] tabular-nums">
-                  {tarjeta.sellos}
-                </span>
-                <span className="text-sm text-muted">de {tamTarjeta} cortes</span>
-              </p>
-              {tarjeta.proximo && (
-                <p className="mt-1.5 text-[13px] text-accent-soft">
-                  Te falta{tarjeta.proximo.faltan === 1 ? "" : "n"}{" "}
-                  <b>{tarjeta.proximo.faltan}</b> para tu{" "}
-                  <b>
-                    {tarjeta.proximo.tipo === "regalo"
-                      ? "regalo"
-                      : `${tarjeta.proximo.tipo} de descuento`}
-                  </b>
-                  .
-                </p>
-              )}
-            </div>
-            {/* Desde md la CABECERA ya tiene su "Reservar" en rojo y es sticky:
-                este sale, porque el dueno lo vio dos veces en la misma pantalla
-                y tenia razon. Debajo de md la cabecera no lo muestra, asi que
-                aca sigue siendo el unico camino a reservar. */}
-            <Link
-              href="/reservar"
-              className="inline-flex min-h-11 shrink-0 items-center rounded-full bg-[linear-gradient(180deg,var(--cta-1),var(--cta-2))] px-5 font-display text-[13px] font-bold uppercase tracking-wide text-on-accent shadow-[0_12px_26px_-10px_rgba(210,63,52,0.7)] transition hover:brightness-105 md:hidden"
-            >
-              Reservar
-            </Link>
-          </div>
-
-          {/* La tarjeta ilustrada es la RÉPLICA de la física (layout 2A del
-              proyecto de Claude Design del dueño) y no se toca: baja un puesto,
-              debajo del dato, porque es el premio y no el resumen. */}
-          <div className="mt-4">
-            <TarjetaFidelidad sellos={tarjeta.sellos} nombre={nombre} cfg={tarjeta.cfg} />
-          </div>
-        </section>
-
-        {/* ── El resto de lo suyo ─────────────────────────────────────── */}
-        <div className="flex flex-col gap-6 lg:col-start-1 lg:row-start-3">
-          {/* En espera (sin estimado ficticio) */}
-          {enEspera.length > 0 && (
-            <section className="rounded-2xl border border-line bg-panel p-5">
-              <div className="font-display text-[11px] font-bold uppercase tracking-[0.18em] text-muted">
-                En la fila
-              </div>
-              <div className="mt-3 space-y-3">
-                {enEspera.map((c) => (
-                  <div key={c.id} className="flex items-center justify-between gap-3">
-                    <div>
-                      <div className="font-semibold">{ESTADO[c.estado] ?? c.estado}</div>
-                      <div className="text-sm text-muted">
-                        {c.servicio} · {c.barbero}
-                      </div>
-                    </div>
-                    <span className="rounded-full border border-line bg-accent/[0.06] px-3 py-1 font-display text-[10px] font-bold uppercase tracking-wide text-accent-soft">
-                      Te avisamos
-                    </span>
+                {adelantoPendiente(siguiente.nota) && (
+                  <div className="mt-3">
+                    <AdelantoBanner
+                      reservaId={siguiente.id}
+                      inicioPropuesto={adelantoPendiente(siguiente.nota)!.inicio}
+                      finPropuesto={adelantoPendiente(siguiente.nota)!.fin}
+                    />
                   </div>
-                ))}
-              </div>
-            </section>
-          )}
+                )}
+              </Bloque>
+            ) : (
+              <EmptyProximas />
+            )}
+          </div>
 
-          {/* Las demás citas, si tiene más de una agendada. */}
-          {otrasCitas.length > 0 && (
-            <section>
-              <h2 className="mb-3 font-display text-xl font-bold uppercase">Después de esa</h2>
-              <div className="space-y-3">
-                {otrasCitas.map((r) => {
-                  const prop = adelantoPendiente(r.nota);
-                  return (
-                    <div key={r.id} className="space-y-2">
-                      <div className="relative overflow-hidden rounded-2xl border border-line bg-panel p-4 pl-5">
-                        <span
-                          aria-hidden
-                          className="absolute inset-y-0 left-0 w-1 bg-[linear-gradient(180deg,var(--cta-1),var(--cta-2))]"
-                        />
+          {/* 3 · avisos al celular. empty:hidden porque PushManager devuelve null
+                 en casi todos los estados y un div vacío deja un hueco. */}
+          <div className="order-3 empty:hidden">
+            <PushManager />
+          </div>
+
+          {/* 4 · la fila, las demás citas y el historial */}
+          <div className="order-4 flex flex-col gap-5 empty:hidden">
+            {enEspera.length > 0 && (
+              <Bloque titulo="En la fila" pegado>
+                <div className="divide-y divide-line/60">
+                  {enEspera.map((c) => (
+                    <div key={c.id} className="flex items-center justify-between gap-3 px-5 py-3">
+                      <div>
+                        <div className="font-semibold">{ESTADO[c.estado] ?? c.estado}</div>
+                        <div className="text-sm text-muted">
+                          {c.servicio} · {c.barbero}
+                        </div>
+                      </div>
+                      <span className="shrink-0 rounded-full border border-line bg-accent/[0.06] px-3 py-1 font-display text-[10px] font-bold uppercase tracking-wide text-accent-soft">
+                        Te avisamos
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </Bloque>
+            )}
+
+            {otrasCitas.length > 0 && (
+              <Bloque titulo="Después de esa" pegado>
+                <div className="divide-y divide-line/60">
+                  {otrasCitas.map((r) => {
+                    const prop = adelantoPendiente(r.nota);
+                    return (
+                      <div key={r.id} className="px-5 py-4">
                         <div className="flex flex-wrap items-start justify-between gap-3">
                           <div>
                             <div className="font-display text-lg font-bold uppercase">{r.servicio}</div>
@@ -420,7 +412,7 @@ async function Portal({ clienteId, nombre, avatarUrl }: { clienteId: string; nom
                               {fechaLarga(r.inicio)} · {r.barbero}
                             </div>
                           </div>
-                          <span className="rounded-full bg-accent/15 px-3 py-1 font-display text-[10px] font-bold uppercase tracking-wide text-accent-soft">
+                          <span className="shrink-0 rounded-full bg-accent/15 px-3 py-1 font-display text-[10px] font-bold uppercase tracking-wide text-accent-soft">
                             {ESTADO[r.estado] ?? r.estado}
                           </span>
                         </div>
@@ -432,101 +424,142 @@ async function Portal({ clienteId, nombre, avatarUrl }: { clienteId: string; nom
                           horarioSemanal={horarioSemanal.filter((h) => h.sede === r.sede)}
                           diasEspeciales={diasEspeciales.filter((d) => d.sede === r.sede)}
                         />
+                        {prop && (
+                          <div className="mt-3">
+                            <AdelantoBanner reservaId={r.id} inicioPropuesto={prop.inicio} finPropuesto={prop.fin} />
+                          </div>
+                        )}
                       </div>
-                      {prop && (
-                        <AdelantoBanner
-                          reservaId={r.id}
-                          inicioPropuesto={prop.inicio}
-                          finPropuesto={prop.fin}
-                        />
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </section>
-          )}
+                    );
+                  })}
+                </div>
+              </Bloque>
+            )}
 
-          {/* Historial */}
-          {pasadas.length > 0 && (
-            <section>
-              <h2 className="mb-3 font-display text-xl font-bold uppercase">Historial</h2>
-              <div className="rounded-2xl border border-line bg-panel px-4">
-                {pasadas.slice(0, 10).map((r) => {
-                  // El chulito SOLO cuando de verdad se completó. Antes lo llevaban
-                  // todas las filas, así que "No llegó" salía con un ✓ al lado y el
-                  // ícono contradecía la palabra.
-                  const completada = r.estado === "completada";
-                  return (
-                    <div
-                      key={r.id}
-                      className="flex items-center justify-between gap-3 border-b border-line/60 py-3 text-sm last:border-b-0"
-                    >
-                      <div className="flex items-center gap-3">
-                        <span
-                          aria-hidden
-                          className={`grid h-7 w-7 shrink-0 place-items-center rounded-full ${
-                            completada ? "bg-ok/12 text-ok" : "bg-elevated text-muted"
-                          }`}
-                        >
-                          {completada ? (
-                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
-                              <path d="M20 6 9 17l-5-5" />
-                            </svg>
-                          ) : (
-                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
-                              <path d="M6 6l12 12M18 6 6 18" />
-                            </svg>
-                          )}
-                        </span>
-                        <div>
-                          <div className="text-ink">{r.servicio}</div>
-                          <div className="text-xs text-muted">{fechaLarga(r.inicio)}</div>
+            {pasadas.length > 0 && (
+              <Bloque titulo="Historial" pegado>
+                <div className="divide-y divide-line/60">
+                  {pasadas.slice(0, 10).map((r) => {
+                    // El chulito SOLO cuando de verdad se completó. Antes lo llevaban
+                    // todas las filas, así que "No llegó" salía con un ✓ al lado y el
+                    // ícono contradecía la palabra.
+                    const completada = r.estado === "completada";
+                    return (
+                      <div key={r.id} className="flex items-center justify-between gap-3 px-5 py-3 text-sm">
+                        <div className="flex min-w-0 items-center gap-3">
+                          <span
+                            aria-hidden
+                            className={`grid h-7 w-7 shrink-0 place-items-center rounded-full ${
+                              completada ? "bg-ok/12 text-ok" : "bg-elevated text-muted"
+                            }`}
+                          >
+                            {completada ? (
+                              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                                <path d="M20 6 9 17l-5-5" />
+                              </svg>
+                            ) : (
+                              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                                <path d="M6 6l12 12M18 6 6 18" />
+                              </svg>
+                            )}
+                          </span>
+                          <div className="min-w-0">
+                            <div className="truncate text-ink">{r.servicio}</div>
+                            <div className="text-xs text-muted">{fechaLarga(r.inicio)}</div>
+                          </div>
                         </div>
+                        <span className={`shrink-0 ${completada ? "text-muted" : "text-warn"}`}>
+                          {ESTADO[r.estado] ?? r.estado}
+                        </span>
                       </div>
-                      <span className={completada ? "text-muted" : "text-warn"}>
-                        {ESTADO[r.estado] ?? r.estado}
-                      </span>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+                </div>
+              </Bloque>
+            )}
+          </div>
+        </div>
+
+        {/* ── Columna de la CASA ──────────────────────────────────────── */}
+        <div className="contents lg:flex lg:flex-col lg:gap-5">
+          {/* 2 · su tarjeta: el número primero, la ilustrada debajo */}
+          <div className="order-2">
+            <Bloque titulo="Tu tarjeta">
+              <div className="flex items-start justify-between gap-4">
+                <div className="min-w-0">
+                  <p className="flex items-baseline gap-2">
+                    <span className="font-display text-[46px] font-extrabold leading-[0.85] tabular-nums">
+                      {tarjeta.sellos}
+                    </span>
+                    <span className="text-sm text-muted">de {tamTarjeta} cortes</span>
+                  </p>
+                  {tarjeta.proximo && (
+                    <p className="mt-1.5 text-[13px] text-accent-soft">
+                      Te falta{tarjeta.proximo.faltan === 1 ? "" : "n"}{" "}
+                      <b>{tarjeta.proximo.faltan}</b> para tu{" "}
+                      <b>
+                        {tarjeta.proximo.tipo === "regalo"
+                          ? "regalo"
+                          : `${tarjeta.proximo.tipo} de descuento`}
+                      </b>
+                      .
+                    </p>
+                  )}
+                </div>
+                {/* Desde md la CABECERA ya tiene su "Reservar" en rojo y es sticky:
+                    este sale, porque el dueño lo vio dos veces en la misma pantalla
+                    y tenía razón. Debajo de md la cabecera no lo muestra, así que
+                    acá sigue siendo el único camino a reservar. */}
+                <Link
+                  href="/reservar"
+                  className="inline-flex min-h-11 shrink-0 items-center rounded-full bg-[linear-gradient(180deg,var(--cta-1),var(--cta-2))] px-5 font-display text-[13px] font-bold uppercase tracking-wide text-on-accent shadow-[0_12px_26px_-10px_rgba(210,63,52,0.7)] transition hover:brightness-105 md:hidden"
+                >
+                  Reservar
+                </Link>
               </div>
-            </section>
-          )}
-        </div>
 
-        {/* Los avisos al celular: en la columna izquierda y en su PROPIA fila.
-            La tarjeta mide 369 px y la cita 213: si no se pone algo debajo de la
-            cita, el grid deja 156 px de hueco al lado de la tarjeta. Con los
-            avisos ahí son 383 contra 369 y las dos columnas se acaban juntas. */}
-        <div className="lg:col-start-1 lg:row-start-2">
-          <PushManager />
-        </div>
+              {/* La tarjeta ilustrada es la RÉPLICA de la física (layout 2A del
+                  proyecto de Claude Design del dueño) y no se toca: baja un puesto,
+                  debajo del dato, porque es el premio y no el resumen. */}
+              <div className="mt-4">
+                <TarjetaFidelidad sellos={tarjeta.sellos} nombre={nombre} cfg={tarjeta.cfg} />
+              </div>
+            </Bloque>
+          </div>
 
-        {/* ── Accesos. Lo que antes era una caja roja arriba de todo. ──── */}
-        <div className="flex flex-col gap-3 lg:col-start-2 lg:row-start-3">
-          <div className="overflow-hidden rounded-2xl border border-line bg-panel">
-            <a
-              href={WA_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex min-h-[52px] items-center gap-3 border-b border-line/60 px-4 text-[14px] transition hover:bg-elevated/60"
-            >
-              <span className="flex-1">Escríbenos por WhatsApp</span>
-              <span aria-hidden className="text-muted">›</span>
-            </a>
-            {/* Eliminación de cuenta: Play exige que sea alcanzable desde la app.
-                Discreta —es rara y sin vuelta atrás— pero tocable: medía 15 px. */}
-            <Link
-              href="/cuenta/eliminar"
-              className="flex min-h-[52px] items-center gap-3 px-4 text-[14px] text-muted transition hover:bg-elevated/60 hover:text-ink"
-            >
-              <span className="flex-1">Eliminar mi cuenta</span>
-              <span aria-hidden>›</span>
-            </Link>
+          {/* 5 · ayuda. "Eliminar mi cuenta" YA NO está acá: era una fila igual a
+                 "Escríbenos por WhatsApp", del mismo tamaño y a un dedo de
+                 distancia, y una es un chat y la otra borra la cuenta. */}
+          <div className="order-5">
+            <Bloque titulo="Ayuda" pegado>
+              <a
+                href={WA_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex min-h-[52px] items-center gap-3 px-5 text-[14px] transition hover:bg-elevated/60"
+              >
+                <span className="flex-1">Escríbenos por WhatsApp</span>
+                <span aria-hidden className="text-muted">›</span>
+              </a>
+            </Bloque>
           </div>
         </div>
       </div>
+
+      {/* Eliminar la cuenta: Google Play exige que sea alcanzable desde la app, y
+          lo es. Pero va acá abajo y sola, lejos de todo lo demás: es la única
+          acción de esta pantalla que no tiene vuelta atrás. El enlace NO borra
+          nada — lleva a una página que explica qué se borra y qué se conserva, y
+          ahí hay que marcar una casilla y tocar un botón. Un toque por error no
+          hace nada. El área táctil sí es de 44 px: antes medía 15. */}
+      <p className="mt-10 text-center">
+        <Link
+          href="/cuenta/eliminar"
+          className="inline-flex min-h-11 items-center px-4 text-xs text-muted transition hover:text-ink"
+        >
+          Eliminar mi cuenta
+        </Link>
+      </p>
     </div>
   );
 }
@@ -539,37 +572,38 @@ function EmptyProximas() {
     { n: 3, t: "Suma puntos en cada visita.", s: "Se acumulan desde la primera vez." },
   ];
   return (
-    <div className="rounded-2xl border border-line bg-panel p-6 text-center">
-      <span className="mx-auto grid h-16 w-16 place-items-center rounded-full border border-line bg-bg">
-        <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="text-accent-soft">
-          <circle cx="6" cy="6" r="3" />
-          <circle cx="6" cy="18" r="3" />
-          <path d="M8.1 8.1 20 20M8.1 15.9 20 4M12 12l3 3" />
-        </svg>
-      </span>
-      <h3 className="mt-4 font-display text-xl font-bold uppercase">Todavía no tienes citas</h3>
-      <p className="mx-auto mt-2 max-w-[26ch] text-sm text-muted">
-        Reserva tu próximo corte y empieza a sumar puntos desde la primera visita.
-      </p>
-      <Link
-        href="/reservar"
-        className="mt-5 inline-flex min-h-12 items-center rounded-full bg-[linear-gradient(180deg,var(--cta-1),var(--cta-2))] px-7 font-display text-sm font-bold uppercase tracking-wide text-on-accent shadow-[0_12px_26px_-10px_rgba(210,63,52,0.7)] transition hover:brightness-105"
-      >
-        Reservar una cita
-      </Link>
-      <div className="mt-6 space-y-3 text-left">
+    <Bloque titulo="Tu próxima cita">
+      <div className="text-center">
+        <span className="mx-auto mt-2 grid h-14 w-14 place-items-center rounded-full border border-line bg-bg">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="text-accent-soft">
+            <circle cx="6" cy="6" r="3" />
+            <circle cx="6" cy="18" r="3" />
+            <path d="M8.1 8.1 20 20M8.1 15.9 20 4M12 12l3 3" />
+          </svg>
+        </span>
+        <h3 className="mt-3.5 font-display text-xl font-bold uppercase">Todavía no tienes citas</h3>
+        <p className="mx-auto mt-2 max-w-[30ch] text-sm text-muted">
+          Reserva tu próximo corte y empieza a sumar puntos desde la primera visita.
+        </p>
+        <Link
+          href="/reservar"
+          className="mt-4 inline-flex min-h-12 items-center rounded-full bg-[linear-gradient(180deg,var(--cta-1),var(--cta-2))] px-7 font-display text-sm font-bold uppercase tracking-wide text-on-accent shadow-[0_12px_26px_-10px_rgba(210,63,52,0.7)] transition hover:brightness-105"
+        >
+          Reservar una cita
+        </Link>
+      </div>
+      <div className="mt-5 space-y-2.5 border-t border-line/60 pt-4 text-left">
         {pasos.map((p) => (
           <div key={p.n} className="flex items-start gap-3">
             <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full border border-line bg-elevated font-display text-[13px] font-bold text-accent-soft">
               {p.n}
             </span>
             <p className="text-[13.5px] leading-snug">
-              <span className="font-semibold">{p.t}</span>{" "}
-              <span className="text-muted">{p.s}</span>
+              <span className="font-semibold">{p.t}</span> <span className="text-muted">{p.s}</span>
             </p>
           </div>
         ))}
       </div>
-    </div>
+    </Bloque>
   );
 }
