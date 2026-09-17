@@ -295,7 +295,7 @@ async function Portal({ clienteId, nombre, avatarUrl }: { clienteId: string; nom
                 <p className="font-display text-[11px] font-bold uppercase tracking-[0.2em] text-ok">
                   Tu próxima cita
                 </p>
-                <p className="mt-1.5 font-display text-[clamp(28px,8vw,36px)] font-extrabold uppercase leading-none">
+                <p className="mt-1.5 font-display text-[clamp(28px,8vw,36px)] font-extrabold uppercase leading-none lg:text-[44px]">
                   {fechaHero(siguiente.inicio)}
                 </p>
                 <p className="mt-2 text-sm text-muted">
@@ -328,7 +328,7 @@ async function Portal({ clienteId, nombre, avatarUrl }: { clienteId: string; nom
         </section>
 
         {/* ── Su tarjeta: el número primero, la ilustrada debajo ───────── */}
-        <section className="rounded-2xl border border-line bg-panel p-5 lg:col-start-2 lg:row-start-1">
+        <section className="rounded-2xl border border-line bg-panel p-5 lg:col-start-2 lg:row-span-2 lg:row-start-1">
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
               <p className="font-display text-[11px] font-bold uppercase tracking-[0.18em] text-muted">
@@ -353,9 +353,13 @@ async function Portal({ clienteId, nombre, avatarUrl }: { clienteId: string; nom
                 </p>
               )}
             </div>
+            {/* Desde md la CABECERA ya tiene su "Reservar" en rojo y es sticky:
+                este sale, porque el dueno lo vio dos veces en la misma pantalla
+                y tenia razon. Debajo de md la cabecera no lo muestra, asi que
+                aca sigue siendo el unico camino a reservar. */}
             <Link
               href="/reservar"
-              className="inline-flex min-h-11 shrink-0 items-center rounded-full bg-[linear-gradient(180deg,var(--cta-1),var(--cta-2))] px-5 font-display text-[13px] font-bold uppercase tracking-wide text-on-accent shadow-[0_12px_26px_-10px_rgba(210,63,52,0.7)] transition hover:brightness-105"
+              className="inline-flex min-h-11 shrink-0 items-center rounded-full bg-[linear-gradient(180deg,var(--cta-1),var(--cta-2))] px-5 font-display text-[13px] font-bold uppercase tracking-wide text-on-accent shadow-[0_12px_26px_-10px_rgba(210,63,52,0.7)] transition hover:brightness-105 md:hidden"
             >
               Reservar
             </Link>
@@ -370,7 +374,7 @@ async function Portal({ clienteId, nombre, avatarUrl }: { clienteId: string; nom
         </section>
 
         {/* ── El resto de lo suyo ─────────────────────────────────────── */}
-        <div className="flex flex-col gap-6 lg:col-start-1 lg:row-start-2">
+        <div className="flex flex-col gap-6 lg:col-start-1 lg:row-start-3">
           {/* En espera (sin estimado ficticio) */}
           {enEspera.length > 0 && (
             <section className="rounded-2xl border border-line bg-panel p-5">
@@ -491,9 +495,16 @@ async function Portal({ clienteId, nombre, avatarUrl }: { clienteId: string; nom
           )}
         </div>
 
-        {/* ── Accesos. Lo que antes era una caja roja arriba de todo. ──── */}
-        <div className="flex flex-col gap-3 lg:col-start-2 lg:row-start-2">
+        {/* Los avisos al celular: en la columna izquierda y en su PROPIA fila.
+            La tarjeta mide 369 px y la cita 213: si no se pone algo debajo de la
+            cita, el grid deja 156 px de hueco al lado de la tarjeta. Con los
+            avisos ahí son 383 contra 369 y las dos columnas se acaban juntas. */}
+        <div className="lg:col-start-1 lg:row-start-2">
           <PushManager />
+        </div>
+
+        {/* ── Accesos. Lo que antes era una caja roja arriba de todo. ──── */}
+        <div className="flex flex-col gap-3 lg:col-start-2 lg:row-start-3">
           <div className="overflow-hidden rounded-2xl border border-line bg-panel">
             <a
               href={WA_URL}

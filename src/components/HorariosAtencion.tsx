@@ -13,7 +13,7 @@ function fechaCorta(ymd: string): string {
   return `${DOW[dowDeFecha(ymd)]} ${d} ${MON[m - 1]}`;
 }
 
-export async function HorariosAtencion() {
+export async function HorariosAtencion({ sinTitulo = false }: { sinTitulo?: boolean } = {}) {
   const [sedes, semanal, especiales] = await Promise.all([
     getSedes(),
     getHorarioSemanal(),
@@ -21,14 +21,18 @@ export async function HorariosAtencion() {
   ]);
 
   return (
-    <div className="mt-8 text-left">
-      <div className="mb-4 flex items-center gap-3">
-        <span aria-hidden className="h-px flex-1 bg-gradient-to-r from-transparent to-[rgba(242,237,228,0.16)]" />
-        <span className="font-display text-[13px] font-extrabold uppercase tracking-[0.24em] text-accent">
-          Horarios de atención
-        </span>
-        <span aria-hidden className="h-px flex-1 bg-gradient-to-l from-transparent to-[rgba(242,237,228,0.16)]" />
-      </div>
+    <div className={`text-left ${sinTitulo ? "mt-4" : "mt-8"}`}>
+      {/* Sin título cuando ya lo pone quien lo envuelve (el pie compacto lo abre
+          desde un <details> que se llama igual, y repetirlo sobraba). */}
+      {!sinTitulo && (
+        <div className="mb-4 flex items-center gap-3">
+          <span aria-hidden className="h-px flex-1 bg-gradient-to-r from-transparent to-[rgba(242,237,228,0.16)]" />
+          <span className="font-display text-[13px] font-extrabold uppercase tracking-[0.24em] text-accent">
+            Horarios de atención
+          </span>
+          <span aria-hidden className="h-px flex-1 bg-gradient-to-l from-transparent to-[rgba(242,237,228,0.16)]" />
+        </div>
+      )}
 
       <div className="grid gap-3 md:grid-cols-2 md:gap-3.5">
         {sedes.map((s) => {

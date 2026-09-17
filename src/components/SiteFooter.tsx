@@ -39,7 +39,7 @@ export function SiteFooter({
   compacto = false,
 }: {
   conCtaMovil?: boolean;
-  /** Pie del cliente ya logueado: sin campaña y con sedes/horarios plegados. */
+  /** Pie del cliente ya logueado: una barra corta en vez del pie completo. */
   compacto?: boolean;
 }) {
   // El MISMO bloque para los dos pies; lo único que cambia es si va desplegado
@@ -89,11 +89,111 @@ export function SiteFooter({
     </>
   );
 
+  // El pie del cliente que YA entro. Es una barra, no una pila: la marca a la
+  // izquierda, las dos sedes al medio -que es lo unico que alguien busca de
+  // verdad en un pie de barberia- y las redes a la derecha. Los horarios, que
+  // son seis renglones, van plegados.
+  if (compacto) {
+    return (
+      <footer className="mt-3.5 border-t border-[rgba(242,237,228,0.08)] bg-[linear-gradient(180deg,#0a0908,#050403)]">
+        <div className="mx-auto max-w-5xl px-6 py-8">
+          <div className="grid gap-6 sm:grid-cols-[auto_minmax(0,1fr)] sm:items-center lg:grid-cols-[auto_minmax(0,1fr)_auto]">
+            <Image
+              src="/brand/logo-lockup.png"
+              alt="Barbas & Bigotes Barbershop"
+              width={1024}
+              height={348}
+              className="h-9 w-auto opacity-95"
+            />
+
+            <div className="grid gap-x-8 gap-y-4 sm:grid-cols-2">
+              {SEDES_FOOTER.map((s) => (
+                <div key={s.nombre} className="min-w-0">
+                  <div className="font-display text-[13px] font-bold uppercase tracking-[0.1em] text-ink">
+                    {s.nombre}
+                  </div>
+                  <div className="mt-0.5 text-[12px] text-muted">{s.direccion}</div>
+                  {/* Igual que en el pie largo: el area tactil crece con ::before
+                      sin cambiar el tamano visible. Llamar es accion principal. */}
+                  <a
+                    href={s.telHref}
+                    className="relative mt-0.5 inline-block text-[12.5px] font-bold text-accent-soft before:absolute before:-inset-y-3 before:inset-x-0 before:content-['']"
+                  >
+                    {s.tel}
+                  </a>
+                </div>
+              ))}
+            </div>
+
+            <div className="flex items-center gap-2.5 sm:col-span-2 lg:col-span-1 lg:justify-end">
+              <a
+                href="https://instagram.com/barbasybigotes.baq"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Instagram de Barbas & Bigotes"
+                className="grid h-11 w-11 place-items-center rounded-full border border-[rgba(242,237,228,0.14)] text-ink transition hover:border-accent-soft hover:text-accent-soft"
+              >
+                <svg className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24" aria-hidden>
+                  <rect x="2" y="2" width="20" height="20" rx="5" ry="5" />
+                  <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
+                  <line x1="17.5" y1="6.5" x2="17.51" y2="6.5" />
+                </svg>
+              </a>
+              <a
+                href={WA_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="WhatsApp de Barbas & Bigotes"
+                className="grid h-11 w-11 place-items-center rounded-full bg-[#25D366] text-white transition hover:brightness-105"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 16 16" aria-hidden>
+                  <path d="M13.601 2.326A7.85 7.85 0 0 0 7.994 0C3.627 0 .068 3.558.064 7.926c0 1.399.366 2.76 1.057 3.965L0 16l4.204-1.102a7.9 7.9 0 0 0 3.79.965h.004c4.368 0 7.926-3.558 7.93-7.93A7.9 7.9 0 0 0 13.6 2.326zM7.994 14.521a6.6 6.6 0 0 1-3.356-.92l-.24-.144-2.494.654.666-2.433-.156-.251a6.56 6.56 0 0 1-1.007-3.505c0-3.626 2.957-6.584 6.591-6.584a6.56 6.56 0 0 1 4.66 1.931 6.56 6.56 0 0 1 1.928 4.66c-.004 3.639-2.961 6.592-6.592 6.592m3.615-4.934c-.197-.099-1.17-.578-1.353-.646-.182-.065-.315-.099-.445.099-.133.197-.513.646-.627.775-.114.133-.232.148-.43.05-.197-.1-.836-.308-1.592-.985-.59-.525-.985-1.175-1.103-1.372-.114-.198-.011-.304.088-.403.087-.088.197-.232.296-.346.1-.114.133-.198.198-.33.065-.134.034-.248-.015-.347-.05-.099-.445-1.076-.612-1.47-.16-.389-.323-.335-.445-.34-.114-.007-.247-.007-.38-.007a.73.73 0 0 0-.529.247c-.182.198-.691.677-.691 1.654s.71 1.916.81 2.049c.098.133 1.394 2.132 3.383 2.992.47.205.84.326 1.129.418.475.152.904.129 1.246.08.38-.058 1.171-.48 1.338-.943.164-.464.164-.86.114-.943-.049-.084-.182-.133-.38-.232" />
+                </svg>
+              </a>
+            </div>
+          </div>
+
+          <details className="group mt-7 border-t border-[rgba(242,237,228,0.08)] pt-4">
+            <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 font-display text-[12.5px] font-bold uppercase tracking-[0.18em] text-muted transition hover:text-ink [&::-webkit-details-marker]:hidden">
+              Horarios de atención
+              <span aria-hidden className="text-[11px] transition-transform group-open:rotate-180">▾</span>
+            </summary>
+            <HorariosAtencion sinTitulo />
+          </details>
+
+          <div className="mt-2 flex flex-col-reverse items-center gap-3 border-t border-[rgba(242,237,228,0.07)] pt-4 text-[11.5px] text-[rgba(156,149,138,0.7)] sm:flex-row sm:justify-between">
+            <p>
+              © {new Date().getFullYear()} Barbas &amp; Bigotes Barbershop · Barranquilla, CO
+            </p>
+            {/* Las legales van SIEMPRE visibles, tambien aca: Google revisa que
+                sean alcanzables y un <details> cerrado no cuenta. */}
+            <nav className="flex items-center gap-3">
+              <Link
+                href="/privacidad"
+                className="relative transition hover:text-accent-soft before:absolute before:-inset-y-3.5 before:inset-x-0 before:content-['']"
+              >
+                Privacidad
+              </Link>
+              <span aria-hidden className="h-[3px] w-[3px] rounded-full bg-muted/60" />
+              <Link
+                href="/terminos"
+                className="relative transition hover:text-accent-soft before:absolute before:-inset-y-3.5 before:inset-x-0 before:content-['']"
+              >
+                Términos
+              </Link>
+              <span aria-hidden className="h-[3px] w-[3px] rounded-full bg-muted/60" />
+              <span>Cancelas online hasta 2 h antes</span>
+            </nav>
+          </div>
+        </div>
+      </footer>
+    );
+  }
+
   return (
     <footer className="mt-3.5 border-t border-[rgba(242,237,228,0.08)] bg-[linear-gradient(180deg,#0a0908,#050403)] md:border-[rgba(242,237,228,0.1)]">
-      {/* CTA final (solo desktop, §5). Nunca para quien ya entró. */}
-      {!compacto && (
-        <div className="hidden text-center md:block">
+      {/* CTA final (solo desktop, §5). */}
+      <div className="hidden text-center md:block">
           <div className="mx-auto max-w-[900px] px-10 pt-[52px]">
             <h2 className="font-display text-[42px] font-extrabold uppercase leading-tight">
               ¿Listo para tu <span className="text-accent-soft">mejor versión</span>?
@@ -107,32 +207,29 @@ export function SiteFooter({
             >
               Reservar cita
             </Link>
-            <div className="mt-[52px] border-t border-[rgba(242,237,228,0.08)]" />
-          </div>
+          <div className="mt-[52px] border-t border-[rgba(242,237,228,0.08)]" />
         </div>
-      )}
+      </div>
 
       <div
-        className={`mx-auto max-w-[900px] px-[22px] text-center md:px-10 ${
-          compacto ? "pt-7 pb-10 md:pb-12" : "pt-9 md:pb-[52px]"
-        } ${conCtaMovil ? "pb-[104px]" : compacto ? "" : "pb-12"}`}
+        className={`mx-auto max-w-[900px] px-[22px] pt-9 text-center md:px-10 md:pb-[52px] ${
+          conCtaMovil ? "pb-[104px]" : "pb-12"
+        }`}
       >
         <Image
           src="/brand/logo-lockup.png"
           alt="Barbas & Bigotes Barbershop"
           width={1024}
           height={348}
-          className={`mx-auto w-auto opacity-95 ${compacto ? "h-9" : "h-[52px] md:h-[54px]"}`}
+          className="mx-auto h-[52px] w-auto opacity-95 md:h-[54px]"
         />
-        {!compacto && (
-          <p className="mx-auto mt-4 max-w-[30ch] text-[12.5px] leading-[1.7] text-muted">
-            El ritual clásico de la barbería en Barranquilla. Tradición, estilo y excelencia en cada
-            detalle.
-          </p>
-        )}
+        <p className="mx-auto mt-4 max-w-[30ch] text-[12.5px] leading-[1.7] text-muted">
+          El ritual clásico de la barbería en Barranquilla. Tradición, estilo y excelencia en cada
+          detalle.
+        </p>
 
         {/* Redes: círculos de 46px */}
-        <div className={`flex items-center justify-center gap-2.5 ${compacto ? "mt-5" : "mt-6"}`}>
+        <div className="mt-6 flex items-center justify-center gap-2.5">
           <a
             href="https://instagram.com/barbasybigotes.baq"
             target="_blank"
@@ -168,23 +265,10 @@ export function SiteFooter({
           </a>
         </div>
 
-        {compacto ? (
-          <details className="group mt-6 text-left">
-            <summary className="mx-auto flex min-h-11 w-fit cursor-pointer list-none items-center gap-2 rounded-full border border-[rgba(242,237,228,0.12)] px-5 font-display text-[13px] font-bold uppercase tracking-[0.14em] text-muted transition hover:text-ink [&::-webkit-details-marker]:hidden">
-              Sedes y horarios
-              <span aria-hidden className="text-[11px] transition-transform group-open:rotate-180">
-                ▾
-              </span>
-            </summary>
-            <div className="text-center">{sedesYHorarios}</div>
-          </details>
-        ) : (
-          sedesYHorarios
-        )}
+        {sedesYHorarios}
 
         {/* Fila de links (solo desktop, §5) */}
-        {!compacto && (
-          <nav className="mt-6 hidden items-center justify-center gap-3 text-[13px] text-muted md:flex">
+        <nav className="mt-6 hidden items-center justify-center gap-3 text-[13px] text-muted md:flex">
             <Link href="/barberos" className="transition hover:text-accent-soft">
               Barberos
             </Link>
@@ -197,11 +281,10 @@ export function SiteFooter({
               Mi cuenta
             </Link>
             <span aria-hidden className="h-[3px] w-[3px] rounded-full bg-muted/60" />
-            <Link href="/reservar" className="font-bold text-accent-soft transition hover:text-accent">
-              Reservar cita →
-            </Link>
-          </nav>
-        )}
+          <Link href="/reservar" className="font-bold text-accent-soft transition hover:text-accent">
+            Reservar cita →
+          </Link>
+        </nav>
 
         {/* Legales: exigidas por Google (consentimiento OAuth) y por la Ley 1581.
             Visibles SIEMPRE, también en el pie compacto: Google revisa que sean
