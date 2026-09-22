@@ -116,7 +116,7 @@ export function FotoSede({
             type="button"
             onClick={() => inputRef.current?.click()}
             disabled={subiendo}
-            className="min-h-9 rounded-full border border-line px-3 text-[12px] font-semibold text-muted transition hover:text-ink disabled:opacity-50"
+            className="inline-flex min-h-11 items-center rounded-full border border-line px-4 text-[12.5px] font-semibold text-muted transition hover:text-ink disabled:opacity-50"
           >
             {subiendo ? "Subiendo…" : fotoUrl ? "Cambiar foto" : "Subir foto"}
           </button>

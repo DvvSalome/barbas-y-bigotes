@@ -1,0 +1,8906 @@
+[
+ {
+  "area": "admin",
+  "pantalla": "Hoy",
+  "ruta": "/admin",
+  "rol": "admin",
+  "vp": "movil",
+  "http": 200,
+  "url": "http://localhost:3000/admin",
+  "sw": 375,
+  "vw": 375,
+  "alto": 2549,
+  "cromo": 73,
+  "yPrimerDato": null,
+  "desbordeH": false,
+  "interactivos": 15,
+  "nChicos": 0,
+  "chicos": [],
+  "textoTotal": 99,
+  "textoChico": 0,
+  "nSizes": 9,
+  "sizes": [
+   [
+    "12",
+    56
+   ],
+   [
+    "13",
+    12
+   ],
+   [
+    "15",
+    8
+   ],
+   [
+    "14",
+    7
+   ],
+   [
+    "24",
+    7
+   ],
+   [
+    "12.5",
+    5
+   ],
+   [
+    "13.5",
+    2
+   ],
+   [
+    "26",
+    1
+   ],
+   [
+    "42",
+    1
+   ]
+  ],
+  "nWeights": 4,
+  "weights": [
+   [
+    "400",
+    36
+   ],
+   [
+    "600",
+    23
+   ],
+   [
+    "700",
+    20
+   ],
+   [
+    "800",
+    20
+   ]
+  ],
+  "fams": [
+   [
+    "Inter",
+    81
+   ],
+   [
+    "Barlow Condensed",
+    18
+   ]
+  ],
+  "nTextColors": 5,
+  "tcolors": [
+   [
+    "rgb(156, 149, 138)",
+    57
+   ],
+   [
+    "rgb(242, 237, 228)",
+    31
+   ],
+   [
+    "rgb(251, 191, 36)",
+    5
+   ],
+   [
+    "oklab(0.947513 0.00178179 0.0130511 / 0.85)",
+    5
+   ],
+   [
+    "rgb(52, 211, 153)",
+    1
+   ]
+  ],
+  "nEyebrowSizes": 1,
+  "eyebrows": [
+   [
+    "12",
+    11
+   ]
+  ],
+  "emojiUI": 0,
+  "nBgs": 9,
+  "bgs": [
+   [
+    "rgb(21, 19, 17)",
+    19
+   ],
+   [
+    "rgb(33, 29, 25)",
+    9
+   ],
+   [
+    "rgb(251, 191, 36)",
+    4
+   ],
+   [
+    "oklab(0.836863 0.0160027 0.163654 / 0.04)",
+    2
+   ],
+   [
+    "rgb(12, 11, 10)",
+    1
+   ],
+   [
+    "oklab(0.150388 0.00104634 0.00251868 / 0.9)",
+    1
+   ],
+   [
+    "oklab(0.836863 0.0160027 0.163654 / 0.1)",
+    1
+   ],
+   [
+    "oklab(0.947513 0.00178179 0.0130511 / 0.0611765)",
+    1
+   ],
+   [
+    "oklab(0.150388 0.00104634 0.00251868 / 0.85)",
+    1
+   ]
+  ],
+  "nBorders": 3,
+  "nRadii": 5,
+  "radii": [
+   [
+    "3.35544e+07px",
+    34
+   ],
+   [
+    "16px",
+    16
+   ],
+   [
+    "10px",
+    2
+   ],
+   [
+    "12px",
+    1
+   ],
+   [
+    "8px",
+    1
+   ]
+  ],
+  "nPads": 2,
+  "nBotones": 5,
+  "nFirmasBoton": 4,
+  "firmas": [
+   [
+    "rgb(21, 19, 17) | rgba(242, 237, 228, 0.1) 1px | 3.35544e+07px | 0px | 16px",
+    2
+   ],
+   [
+    "rgb(33, 29, 25) | rgba(242, 237, 228, 0.1) 1px | 3.35544e+07px | 0px | 13px",
+    1
+   ],
+   [
+    "oklab(0.836863 0.0160027 0.163654 / 0.1) | oklab(0.836863 0.0160027 0.163654 / 0.35) 1px | 12px | 8px 14px | 13px",
+    1
+   ],
+   [
+    "rgb(33, 29, 25) | rgb(242, 237, 228) 0px | 3.35544e+07px | 0px | 16px",
+    1
+   ]
+  ],
+  "contrasteMedidos": 99,
+  "contrasteSinMedir": 0,
+  "contrasteInactivos": 0,
+  "nContrasteMal": 0,
+  "contrasteMal": [],
+  "imgDeformadas": 0,
+  "imgSinAlt": 0,
+  "h1": 1,
+  "solapados": 0,
+  "solapadosDetalle": []
+ },
+ {
+  "area": "admin",
+  "pantalla": "Agenda dia",
+  "ruta": "/admin/agenda",
+  "rol": "admin",
+  "vp": "movil",
+  "http": 200,
+  "url": "http://localhost:3000/admin/agenda",
+  "sw": 375,
+  "vw": 375,
+  "alto": 988,
+  "cromo": 73,
+  "yPrimerDato": null,
+  "desbordeH": false,
+  "interactivos": 19,
+  "nChicos": 0,
+  "chicos": [],
+  "textoTotal": 40,
+  "textoChico": 0,
+  "nSizes": 6,
+  "sizes": [
+   [
+    "12",
+    25
+   ],
+   [
+    "13",
+    6
+   ],
+   [
+    "12.5",
+    5
+   ],
+   [
+    "16",
+    2
+   ],
+   [
+    "20",
+    1
+   ],
+   [
+    "28",
+    1
+   ]
+  ],
+  "nWeights": 4,
+  "weights": [
+   [
+    "400",
+    22
+   ],
+   [
+    "600",
+    10
+   ],
+   [
+    "700",
+    7
+   ],
+   [
+    "800",
+    1
+   ]
+  ],
+  "fams": [
+   [
+    "Inter",
+    38
+   ],
+   [
+    "Barlow Condensed",
+    2
+   ]
+  ],
+  "nTextColors": 4,
+  "tcolors": [
+   [
+    "rgb(156, 149, 138)",
+    26
+   ],
+   [
+    "rgb(242, 237, 228)",
+    12
+   ],
+   [
+    "rgb(12, 11, 10)",
+    1
+   ],
+   [
+    "rgb(251, 247, 240)",
+    1
+   ]
+  ],
+  "nEyebrowSizes": 1,
+  "eyebrows": [
+   [
+    "12",
+    1
+   ]
+  ],
+  "emojiUI": 0,
+  "nBgs": 6,
+  "bgs": [
+   [
+    "rgb(21, 19, 17)",
+    6
+   ],
+   [
+    "rgb(33, 29, 25)",
+    2
+   ],
+   [
+    "rgb(12, 11, 10)",
+    1
+   ],
+   [
+    "oklab(0.150388 0.00104634 0.00251868 / 0.9)",
+    1
+   ],
+   [
+    "rgb(242, 237, 228)",
+    1
+   ],
+   [
+    "oklab(0.150388 0.00104634 0.00251868 / 0.85)",
+    1
+   ]
+  ],
+  "nBorders": 6,
+  "nRadii": 3,
+  "radii": [
+   [
+    "3.35544e+07px",
+    22
+   ],
+   [
+    "4px",
+    6
+   ],
+   [
+    "16px",
+    1
+   ]
+  ],
+  "nPads": 3,
+  "nBotones": 11,
+  "nFirmasBoton": 8,
+  "firmas": [
+   [
+    "rgba(0, 0, 0, 0) | oklab(0.947513 0.00178179 0.0130511 / 0.0611765) 0px 0px 0px 1px | 0px | 10px 4px | 16px",
+    3
+   ],
+   [
+    "rgb(21, 19, 17) | rgba(242, 237, 228, 0.1) 1px | 3.35544e+07px | 0px | 16px",
+    2
+   ],
+   [
+    "rgb(33, 29, 25) | rgba(242, 237, 228, 0.1) 1px | 3.35544e+07px | 0px | 13px",
+    1
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(242, 237, 228) 0px | 3.35544e+07px | 0px | 13px",
+    1
+   ],
+   [
+    "rgb(242, 237, 228) | rgb(242, 237, 228) 1px | 3.35544e+07px | 0px 16px | 13px",
+    1
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgba(242, 237, 228, 0.1) 1px | 3.35544e+07px | 0px 16px | 12.5px",
+    1
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(251, 247, 240) 0px | 3.35544e+07px | 0px 16px | 12.5px",
+    1
+   ],
+   [
+    "rgb(33, 29, 25) | rgb(242, 237, 228) 0px | 3.35544e+07px | 0px | 16px",
+    1
+   ]
+  ],
+  "contrasteMedidos": 40,
+  "contrasteSinMedir": 0,
+  "contrasteInactivos": 0,
+  "nContrasteMal": 0,
+  "contrasteMal": [],
+  "imgDeformadas": 0,
+  "imgSinAlt": 0,
+  "h1": 1,
+  "solapados": 0,
+  "solapadosDetalle": []
+ },
+ {
+  "area": "admin",
+  "pantalla": "Agenda semana",
+  "ruta": "/admin/agenda?vista=semana",
+  "rol": "admin",
+  "vp": "movil",
+  "http": 200,
+  "url": "http://localhost:3000/admin/agenda?vista=semana",
+  "sw": 375,
+  "vw": 375,
+  "alto": 812,
+  "cromo": 73,
+  "yPrimerDato": null,
+  "desbordeH": false,
+  "interactivos": 25,
+  "nChicos": 2,
+  "chicos": [
+   {
+    "t": "4:30 pm BARBAS",
+    "w": 87,
+    "h": 25
+   },
+   {
+    "t": "5:15 pm BARBAS",
+    "w": 87,
+    "h": 25
+   }
+  ],
+  "textoTotal": 48,
+  "textoChico": 0,
+  "nSizes": 7,
+  "sizes": [
+   [
+    "12",
+    29
+   ],
+   [
+    "18",
+    7
+   ],
+   [
+    "13",
+    6
+   ],
+   [
+    "16",
+    2
+   ],
+   [
+    "12.5",
+    2
+   ],
+   [
+    "20",
+    1
+   ],
+   [
+    "28",
+    1
+   ]
+  ],
+  "nWeights": 4,
+  "weights": [
+   [
+    "400",
+    24
+   ],
+   [
+    "700",
+    13
+   ],
+   [
+    "600",
+    10
+   ],
+   [
+    "800",
+    1
+   ]
+  ],
+  "fams": [
+   [
+    "Inter",
+    39
+   ],
+   [
+    "Barlow Condensed",
+    9
+   ]
+  ],
+  "nTextColors": 6,
+  "tcolors": [
+   [
+    "rgb(156, 149, 138)",
+    26
+   ],
+   [
+    "rgb(242, 237, 228)",
+    14
+   ],
+   [
+    "rgb(251, 191, 36)",
+    4
+   ],
+   [
+    "rgb(12, 11, 10)",
+    2
+   ],
+   [
+    "rgb(251, 247, 240)",
+    1
+   ],
+   [
+    "rgb(232, 103, 92)",
+    1
+   ]
+  ],
+  "nEyebrowSizes": 1,
+  "eyebrows": [
+   [
+    "12",
+    1
+   ]
+  ],
+  "emojiUI": 0,
+  "nBgs": 8,
+  "bgs": [
+   [
+    "rgb(21, 19, 17)",
+    4
+   ],
+   [
+    "rgb(33, 29, 25)",
+    2
+   ],
+   [
+    "rgb(242, 237, 228)",
+    2
+   ],
+   [
+    "oklab(0.836863 0.0160027 0.163654 / 0.1)",
+    2
+   ],
+   [
+    "rgb(12, 11, 10)",
+    1
+   ],
+   [
+    "oklab(0.150388 0.00104634 0.00251868 / 0.9)",
+    1
+   ],
+   [
+    "oklab(0.581255 0.163163 0.0885327 / 0.1)",
+    1
+   ],
+   [
+    "oklab(0.150388 0.00104634 0.00251868 / 0.85)",
+    1
+   ]
+  ],
+  "nBorders": 4,
+  "nRadii": 4,
+  "radii": [
+   [
+    "3.35544e+07px",
+    20
+   ],
+   [
+    "4px",
+    6
+   ],
+   [
+    "6px",
+    2
+   ],
+   [
+    "16px",
+    1
+   ]
+  ],
+  "nPads": 4,
+  "nBotones": 11,
+  "nFirmasBoton": 9,
+  "firmas": [
+   [
+    "rgb(21, 19, 17) | rgba(242, 237, 228, 0.1) 1px | 3.35544e+07px | 0px | 16px",
+    2
+   ],
+   [
+    "oklab(0.836863 0.0160027 0.163654 / 0.1) | oklab(0.836863 0.0160027 0.163654 / 0.25) oklab(0.836863 0.0160027 0.163654 / 0.25) oklab(0.836863 0.0160027 0.163654 / 0.25) rgb(251, 191, 36) 1px 1px 1px 3px | 6px | 4px 6px | 12px",
+    2
+   ],
+   [
+    "rgb(33, 29, 25) | rgba(242, 237, 228, 0.1) 1px | 3.35544e+07px | 0px | 13px",
+    1
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(156, 149, 138) 0px | 3.35544e+07px | 0px | 13px",
+    1
+   ],
+   [
+    "rgb(242, 237, 228) | rgb(242, 237, 228) 1px | 3.35544e+07px | 0px 16px | 13px",
+    1
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgba(242, 237, 228, 0.1) 1px | 3.35544e+07px | 0px 16px | 12.5px",
+    1
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(251, 247, 240) 0px | 3.35544e+07px | 0px 16px | 12.5px",
+    1
+   ],
+   [
+    "oklab(0.581255 0.163163 0.0885327 / 0.1) | oklab(0.947513 0.00178179 0.0130511 / 0.0611765) 0px 0px 1px | 0px | 8px | 16px",
+    1
+   ],
+   [
+    "rgb(33, 29, 25) | rgb(242, 237, 228) 0px | 3.35544e+07px | 0px | 16px",
+    1
+   ]
+  ],
+  "contrasteMedidos": 48,
+  "contrasteSinMedir": 0,
+  "contrasteInactivos": 0,
+  "nContrasteMal": 0,
+  "contrasteMal": [],
+  "imgDeformadas": 0,
+  "imgSinAlt": 0,
+  "h1": 1,
+  "solapados": 0,
+  "solapadosDetalle": []
+ },
+ {
+  "area": "admin",
+  "pantalla": "Caja (cuadre)",
+  "ruta": "/admin/cuadre",
+  "rol": "admin",
+  "vp": "movil",
+  "http": 200,
+  "url": "http://localhost:3000/admin/cuadre",
+  "sw": 375,
+  "vw": 375,
+  "alto": 4056,
+  "cromo": 73,
+  "yPrimerDato": null,
+  "desbordeH": false,
+  "interactivos": 44,
+  "nChicos": 0,
+  "chicos": [],
+  "textoTotal": 122,
+  "textoChico": 0,
+  "nSizes": 12,
+  "sizes": [
+   [
+    "12",
+    49
+   ],
+   [
+    "13",
+    21
+   ],
+   [
+    "12.5",
+    13
+   ],
+   [
+    "13.5",
+    9
+   ],
+   [
+    "15",
+    7
+   ],
+   [
+    "20",
+    7
+   ],
+   [
+    "14",
+    5
+   ],
+   [
+    "17",
+    3
+   ],
+   [
+    "26",
+    3
+   ],
+   [
+    "24",
+    2
+   ],
+   [
+    "30",
+    2
+   ],
+   [
+    "28",
+    1
+   ]
+  ],
+  "nWeights": 5,
+  "weights": [
+   [
+    "400",
+    54
+   ],
+   [
+    "600",
+    36
+   ],
+   [
+    "700",
+    30
+   ],
+   [
+    "500",
+    1
+   ],
+   [
+    "800",
+    1
+   ]
+  ],
+  "fams": [
+   [
+    "Inter",
+    96
+   ],
+   [
+    "Barlow Condensed",
+    26
+   ]
+  ],
+  "nTextColors": 8,
+  "tcolors": [
+   [
+    "rgb(156, 149, 138)",
+    63
+   ],
+   [
+    "rgb(242, 237, 228)",
+    27
+   ],
+   [
+    "rgb(52, 211, 153)",
+    9
+   ],
+   [
+    "rgb(232, 103, 92)",
+    8
+   ],
+   [
+    "rgb(251, 191, 36)",
+    6
+   ],
+   [
+    "rgb(251, 247, 240)",
+    6
+   ],
+   [
+    "rgb(12, 11, 10)",
+    2
+   ],
+   [
+    "oklab(0.836863 0.0160027 0.163654 / 0.8)",
+    1
+   ]
+  ],
+  "nEyebrowSizes": 1,
+  "eyebrows": [
+   [
+    "12",
+    4
+   ]
+  ],
+  "emojiUI": 0,
+  "nBgs": 14,
+  "bgs": [
+   [
+    "rgb(21, 19, 17)",
+    15
+   ],
+   [
+    "rgb(12, 11, 10)",
+    14
+   ],
+   [
+    "oklab(0.772937 -0.14692 0.0443151 / 0.1)",
+    5
+   ],
+   [
+    "oklab(0.772937 -0.14692 0.0443151 / 0.15)",
+    3
+   ],
+   [
+    "oklab(0.836863 0.0160027 0.163654 / 0.15)",
+    3
+   ],
+   [
+    "rgb(33, 29, 25)",
+    2
+   ],
+   [
+    "oklab(0.581255 0.163163 0.0885327 / 0.1)",
+    2
+   ],
+   [
+    "rgb(52, 211, 153)",
+    2
+   ],
+   [
+    "oklab(0.836863 0.0160027 0.163654 / 0.08)",
+    2
+   ],
+   [
+    "rgb(242, 237, 228)",
+    2
+   ]
+  ],
+  "nBorders": 8,
+  "nRadii": 4,
+  "radii": [
+   [
+    "3.35544e+07px",
+    49
+   ],
+   [
+    "16px",
+    14
+   ],
+   [
+    "8px",
+    10
+   ],
+   [
+    "12px",
+    6
+   ]
+  ],
+  "nPads": 3,
+  "nBotones": 32,
+  "nFirmasBoton": 8,
+  "firmas": [
+   [
+    "rgba(0, 0, 0, 0) | rgba(242, 237, 228, 0.1) 1px | 3.35544e+07px | 0px 16px | 13px",
+    14
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(251, 247, 240) 0px | 3.35544e+07px | 0px 16px | 12.5px",
+    6
+   ],
+   [
+    "oklab(0.772937 -0.14692 0.0443151 / 0.1) | oklab(0.772937 -0.14692 0.0443151 / 0.4) 1px | 3.35544e+07px | 0px 16px | 12px",
+    5
+   ],
+   [
+    "rgb(21, 19, 17) | rgba(242, 237, 228, 0.1) 1px | 3.35544e+07px | 0px | 16px",
+    2
+   ],
+   [
+    "rgb(242, 237, 228) | rgb(242, 237, 228) 1px | 3.35544e+07px | 0px 16px | 13px",
+    2
+   ],
+   [
+    "rgb(33, 29, 25) | rgba(242, 237, 228, 0.1) 1px | 3.35544e+07px | 0px | 13px",
+    1
+   ],
+   [
+    "rgb(12, 11, 10) | rgba(242, 237, 228, 0.1) 1px | 8px | 8px 12px | 16px",
+    1
+   ],
+   [
+    "rgb(33, 29, 25) | rgb(242, 237, 228) 0px | 3.35544e+07px | 0px | 16px",
+    1
+   ]
+  ],
+  "contrasteMedidos": 122,
+  "contrasteSinMedir": 0,
+  "contrasteInactivos": 0,
+  "nContrasteMal": 0,
+  "contrasteMal": [],
+  "imgDeformadas": 0,
+  "imgSinAlt": 0,
+  "h1": 1,
+  "solapados": 0,
+  "solapadosDetalle": []
+ },
+ {
+  "area": "admin",
+  "pantalla": "Clientes",
+  "ruta": "/admin/clientes",
+  "rol": "admin",
+  "vp": "movil",
+  "http": 200,
+  "url": "http://localhost:3000/admin/clientes",
+  "sw": 375,
+  "vw": 375,
+  "alto": 2319,
+  "cromo": 73,
+  "yPrimerDato": 294,
+  "desbordeH": false,
+  "interactivos": 39,
+  "nChicos": 0,
+  "chicos": [],
+  "textoTotal": 137,
+  "textoChico": 0,
+  "nSizes": 6,
+  "sizes": [
+   [
+    "12",
+    74
+   ],
+   [
+    "15",
+    29
+   ],
+   [
+    "17",
+    22
+   ],
+   [
+    "13",
+    10
+   ],
+   [
+    "28",
+    1
+   ],
+   [
+    "12.5",
+    1
+   ]
+  ],
+  "nWeights": 4,
+  "weights": [
+   [
+    "400",
+    68
+   ],
+   [
+    "700",
+    55
+   ],
+   [
+    "600",
+    13
+   ],
+   [
+    "800",
+    1
+   ]
+  ],
+  "fams": [
+   [
+    "Inter",
+    85
+   ],
+   [
+    "Barlow Condensed",
+    52
+   ]
+  ],
+  "nTextColors": 4,
+  "tcolors": [
+   [
+    "rgb(156, 149, 138)",
+    79
+   ],
+   [
+    "rgb(242, 237, 228)",
+    34
+   ],
+   [
+    "rgb(12, 11, 10)",
+    23
+   ],
+   [
+    "rgb(251, 247, 240)",
+    1
+   ]
+  ],
+  "nEyebrowSizes": 1,
+  "eyebrows": [
+   [
+    "12",
+    1
+   ]
+  ],
+  "emojiUI": 0,
+  "nBgs": 11,
+  "bgs": [
+   [
+    "rgb(217, 160, 102)",
+    8
+   ],
+   [
+    "rgb(143, 122, 96)",
+    5
+   ],
+   [
+    "rgb(21, 19, 17)",
+    4
+   ],
+   [
+    "rgb(232, 103, 92)",
+    4
+   ],
+   [
+    "rgb(163, 144, 124)",
+    4
+   ],
+   [
+    "rgb(12, 11, 10)",
+    2
+   ],
+   [
+    "rgb(33, 29, 25)",
+    2
+   ],
+   [
+    "oklab(0.150388 0.00104634 0.00251868 / 0.9)",
+    1
+   ],
+   [
+    "rgb(242, 237, 228)",
+    1
+   ],
+   [
+    "rgb(201, 177, 138)",
+    1
+   ]
+  ],
+  "nBorders": 3,
+  "nRadii": 3,
+  "radii": [
+   [
+    "3.35544e+07px",
+    63
+   ],
+   [
+    "12px",
+    2
+   ],
+   [
+    "16px",
+    1
+   ]
+  ],
+  "nPads": 2,
+  "nBotones": 10,
+  "nFirmasBoton": 7,
+  "firmas": [
+   [
+    "rgba(0, 0, 0, 0) | rgba(242, 237, 228, 0.1) 1px | 3.35544e+07px | 0px 16px | 13px",
+    3
+   ],
+   [
+    "rgb(21, 19, 17) | rgba(242, 237, 228, 0.1) 1px | 3.35544e+07px | 0px | 16px",
+    2
+   ],
+   [
+    "rgb(33, 29, 25) | rgba(242, 237, 228, 0.1) 1px | 3.35544e+07px | 0px | 13px",
+    1
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(242, 237, 228) 0px | 3.35544e+07px | 0px | 13px",
+    1
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(251, 247, 240) 0px | 3.35544e+07px | 0px 16px | 12.5px",
+    1
+   ],
+   [
+    "rgb(242, 237, 228) | rgb(242, 237, 228) 1px | 3.35544e+07px | 0px 16px | 13px",
+    1
+   ],
+   [
+    "rgb(33, 29, 25) | rgb(242, 237, 228) 0px | 3.35544e+07px | 0px | 16px",
+    1
+   ]
+  ],
+  "contrasteMedidos": 137,
+  "contrasteSinMedir": 0,
+  "contrasteInactivos": 0,
+  "nContrasteMal": 0,
+  "contrasteMal": [],
+  "imgDeformadas": 0,
+  "imgSinAlt": 0,
+  "h1": 1,
+  "solapados": 0,
+  "solapadosDetalle": []
+ },
+ {
+  "area": "admin",
+  "pantalla": "Servicios y precios",
+  "ruta": "/admin/precios",
+  "rol": "admin",
+  "vp": "movil",
+  "http": 200,
+  "url": "http://localhost:3000/admin/precios",
+  "sw": 375,
+  "vw": 375,
+  "alto": 2819,
+  "cromo": 73,
+  "yPrimerDato": null,
+  "desbordeH": false,
+  "interactivos": 70,
+  "nChicos": 0,
+  "chicos": [],
+  "textoTotal": 109,
+  "textoChico": 0,
+  "nSizes": 7,
+  "sizes": [
+   [
+    "12",
+    67
+   ],
+   [
+    "16",
+    21
+   ],
+   [
+    "13",
+    8
+   ],
+   [
+    "14",
+    8
+   ],
+   [
+    "24",
+    3
+   ],
+   [
+    "18",
+    1
+   ],
+   [
+    "28",
+    1
+   ]
+  ],
+  "nWeights": 4,
+  "weights": [
+   [
+    "600",
+    68
+   ],
+   [
+    "400",
+    28
+   ],
+   [
+    "700",
+    12
+   ],
+   [
+    "800",
+    1
+   ]
+  ],
+  "fams": [
+   [
+    "Inter",
+    97
+   ],
+   [
+    "Barlow Condensed",
+    12
+   ]
+  ],
+  "nTextColors": 6,
+  "tcolors": [
+   [
+    "rgb(156, 149, 138)",
+    54
+   ],
+   [
+    "rgb(242, 237, 228)",
+    36
+   ],
+   [
+    "oklab(0.947519 0.00173855 0.0130325 / 0.85)",
+    7
+   ],
+   [
+    "oklab(0.947513 0.00178179 0.0130511 / 0.85)",
+    7
+   ],
+   [
+    "rgb(12, 11, 10)",
+    3
+   ],
+   [
+    "rgb(251, 191, 36)",
+    2
+   ]
+  ],
+  "nEyebrowSizes": 1,
+  "eyebrows": [
+   [
+    "12",
+    1
+   ]
+  ],
+  "emojiUI": 0,
+  "nBgs": 17,
+  "bgs": [
+   [
+    "rgb(33, 29, 25)",
+    19
+   ],
+   [
+    "rgb(21, 19, 17)",
+    13
+   ],
+   [
+    "rgb(210, 63, 52)",
+    7
+   ],
+   [
+    "oklab(0.772937 -0.14692 0.0443151 / 0.25)",
+    4
+   ],
+   [
+    "rgb(52, 211, 153)",
+    4
+   ],
+   [
+    "rgb(156, 149, 138)",
+    3
+   ],
+   [
+    "rgb(12, 11, 10)",
+    2
+   ],
+   [
+    "rgb(242, 237, 228)",
+    2
+   ],
+   [
+    "rgb(51, 47, 28)",
+    2
+   ],
+   [
+    "rgb(30, 53, 39)",
+    2
+   ]
+  ],
+  "nBorders": 8,
+  "nRadii": 5,
+  "radii": [
+   [
+    "3.35544e+07px",
+    52
+   ],
+   [
+    "8px",
+    28
+   ],
+   [
+    "16px",
+    11
+   ],
+   [
+    "12px",
+    8
+   ],
+   [
+    "10px",
+    7
+   ]
+  ],
+  "nPads": 4,
+  "nBotones": 63,
+  "nFirmasBoton": 11,
+  "firmas": [
+   [
+    "rgba(0, 0, 0, 0) | rgba(242, 237, 228, 0.1) 1px | 3.35544e+07px | 0px 14px | 12px",
+    14
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(156, 149, 138) 0px | 0px | 0px | 12px",
+    14
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(242, 237, 228) 0px | 8px | 0px 8px | 16px",
+    14
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(242, 237, 228) 0px | 12px | 0px | 16px",
+    7
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(242, 237, 228) 0px | 0px | 0px | 16px",
+    7
+   ],
+   [
+    "rgb(21, 19, 17) | rgba(242, 237, 228, 0.1) 1px | 3.35544e+07px | 0px | 16px",
+    2
+   ],
+   [
+    "rgb(33, 29, 25) | rgba(242, 237, 228, 0.1) 1px | 3.35544e+07px | 0px | 13px",
+    1
+   ],
+   [
+    "rgb(242, 237, 228) | rgb(242, 237, 228) 1px | 3.35544e+07px | 0px 16px | 13px",
+    1
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(242, 237, 228) 0px | 3.35544e+07px | 0px | 13px",
+    1
+   ],
+   [
+    "rgb(242, 237, 228) | rgb(242, 237, 228) 1px | 3.35544e+07px | 0px 14px | 12px",
+    1
+   ]
+  ],
+  "contrasteMedidos": 109,
+  "contrasteSinMedir": 0,
+  "contrasteInactivos": 0,
+  "nContrasteMal": 0,
+  "contrasteMal": [],
+  "imgDeformadas": 0,
+  "imgSinAlt": 0,
+  "h1": 1,
+  "solapados": 0,
+  "solapadosDetalle": []
+ },
+ {
+  "area": "admin",
+  "pantalla": "Productos y stock",
+  "ruta": "/admin/inventario",
+  "rol": "admin",
+  "vp": "movil",
+  "http": 200,
+  "url": "http://localhost:3000/admin/inventario",
+  "sw": 375,
+  "vw": 375,
+  "alto": 4626,
+  "cromo": 73,
+  "yPrimerDato": null,
+  "desbordeH": false,
+  "interactivos": 103,
+  "nChicos": 0,
+  "chicos": [],
+  "textoTotal": 188,
+  "textoChico": 0,
+  "nSizes": 7,
+  "sizes": [
+   [
+    "13",
+    60
+   ],
+   [
+    "12",
+    51
+   ],
+   [
+    "12.5",
+    32
+   ],
+   [
+    "15",
+    15
+   ],
+   [
+    "18",
+    15
+   ],
+   [
+    "16",
+    14
+   ],
+   [
+    "28",
+    1
+   ]
+  ],
+  "nWeights": 4,
+  "weights": [
+   [
+    "400",
+    79
+   ],
+   [
+    "600",
+    56
+   ],
+   [
+    "700",
+    37
+   ],
+   [
+    "800",
+    16
+   ]
+  ],
+  "fams": [
+   [
+    "Inter",
+    158
+   ],
+   [
+    "Barlow Condensed",
+    30
+   ]
+  ],
+  "nTextColors": 7,
+  "tcolors": [
+   [
+    "rgb(156, 149, 138)",
+    69
+   ],
+   [
+    "rgb(242, 237, 228)",
+    63
+   ],
+   [
+    "rgb(232, 103, 92)",
+    30
+   ],
+   [
+    "oklab(0.947519 0.00173855 0.0130325 / 0.85)",
+    14
+   ],
+   [
+    "rgb(251, 191, 36)",
+    10
+   ],
+   [
+    "rgb(12, 11, 10)",
+    1
+   ],
+   [
+    "rgb(251, 247, 240)",
+    1
+   ]
+  ],
+  "nEyebrowSizes": 2,
+  "eyebrows": [
+   [
+    "13",
+    2
+   ],
+   [
+    "12",
+    1
+   ]
+  ],
+  "emojiUI": 0,
+  "nBgs": 19,
+  "bgs": [
+   [
+    "rgb(33, 29, 25)",
+    21
+   ],
+   [
+    "rgb(21, 19, 17)",
+    18
+   ],
+   [
+    "rgb(210, 63, 52)",
+    15
+   ],
+   [
+    "oklab(0.581255 0.163163 0.0885327 / 0.07)",
+    13
+   ],
+   [
+    "oklab(0.772937 -0.14692 0.0443151 / 0.25)",
+    9
+   ],
+   [
+    "rgb(52, 211, 153)",
+    9
+   ],
+   [
+    "rgb(156, 149, 138)",
+    6
+   ],
+   [
+    "rgb(51, 47, 28)",
+    5
+   ],
+   [
+    "rgb(38, 40, 45)",
+    4
+   ],
+   [
+    "oklab(0.836863 0.0160027 0.163654 / 0.08)",
+    2
+   ]
+  ],
+  "nBorders": 9,
+  "nRadii": 4,
+  "radii": [
+   [
+    "3.35544e+07px",
+    106
+   ],
+   [
+    "12px",
+    17
+   ],
+   [
+    "16px",
+    15
+   ],
+   [
+    "10px",
+    15
+   ]
+  ],
+  "nPads": 3,
+  "nBotones": 97,
+  "nFirmasBoton": 13,
+  "firmas": [
+   [
+    "rgba(0, 0, 0, 0) | rgb(242, 237, 228) 0px | 12px | 0px | 16px",
+    15
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(242, 237, 228) 0px | 0px | 0px | 18px",
+    15
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(156, 149, 138) 0px | 0px | 0px | 12.5px",
+    15
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgba(242, 237, 228, 0.1) 1px | 3.35544e+07px | 0px 16px | 13px",
+    15
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(242, 237, 228) 0px | 0px | 0px | 16px",
+    15
+   ],
+   [
+    "oklab(0.581255 0.163163 0.0885327 / 0.07) | oklab(0.581255 0.163163 0.0885327 / 0.4) 1px | 3.35544e+07px | 0px 16px | 13px",
+    13
+   ],
+   [
+    "rgb(21, 19, 17) | rgba(242, 237, 228, 0.1) 1px | 3.35544e+07px | 0px | 16px",
+    2
+   ],
+   [
+    "oklab(0.836863 0.0160027 0.163654 / 0.1) | oklab(0.836863 0.0160027 0.163654 / 0.5) 1px | 3.35544e+07px | 0px 16px | 13px",
+    2
+   ],
+   [
+    "rgb(33, 29, 25) | rgba(242, 237, 228, 0.1) 1px | 3.35544e+07px | 0px | 13px",
+    1
+   ],
+   [
+    "rgb(242, 237, 228) | rgb(242, 237, 228) 1px | 3.35544e+07px | 0px 16px | 13px",
+    1
+   ]
+  ],
+  "contrasteMedidos": 188,
+  "contrasteSinMedir": 0,
+  "contrasteInactivos": 0,
+  "nContrasteMal": 0,
+  "contrasteMal": [],
+  "imgDeformadas": 0,
+  "imgSinAlt": 0,
+  "h1": 1,
+  "solapados": 0,
+  "solapadosDetalle": []
+ },
+ {
+  "area": "admin",
+  "pantalla": "Equipo",
+  "ruta": "/admin/equipo",
+  "rol": "admin",
+  "vp": "movil",
+  "http": 200,
+  "url": "http://localhost:3000/admin/equipo",
+  "sw": 375,
+  "vw": 375,
+  "alto": 5348,
+  "cromo": 73,
+  "yPrimerDato": null,
+  "desbordeH": false,
+  "interactivos": 54,
+  "nChicos": 0,
+  "chicos": [],
+  "textoTotal": 111,
+  "textoChico": 0,
+  "nSizes": 9,
+  "sizes": [
+   [
+    "12",
+    50
+   ],
+   [
+    "13",
+    26
+   ],
+   [
+    "12.5",
+    22
+   ],
+   [
+    "17",
+    8
+   ],
+   [
+    "14",
+    1
+   ],
+   [
+    "15",
+    1
+   ],
+   [
+    "18",
+    1
+   ],
+   [
+    "28",
+    1
+   ],
+   [
+    "13.5",
+    1
+   ]
+  ],
+  "nWeights": 4,
+  "weights": [
+   [
+    "700",
+    49
+   ],
+   [
+    "600",
+    32
+   ],
+   [
+    "400",
+    29
+   ],
+   [
+    "800",
+    1
+   ]
+  ],
+  "fams": [
+   [
+    "Inter",
+    101
+   ],
+   [
+    "Barlow Condensed",
+    10
+   ]
+  ],
+  "nTextColors": 5,
+  "tcolors": [
+   [
+    "rgb(242, 237, 228)",
+    52
+   ],
+   [
+    "rgb(156, 149, 138)",
+    41
+   ],
+   [
+    "rgb(251, 247, 240)",
+    9
+   ],
+   [
+    "rgb(52, 211, 153)",
+    8
+   ],
+   [
+    "oklab(0.947513 0.00178179 0.0130511 / 0.85)",
+    1
+   ]
+  ],
+  "nEyebrowSizes": 1,
+  "eyebrows": [
+   [
+    "12",
+    10
+   ]
+  ],
+  "emojiUI": 0,
+  "nBgs": 7,
+  "bgs": [
+   [
+    "rgb(21, 19, 17)",
+    28
+   ],
+   [
+    "rgb(33, 29, 25)",
+    10
+   ],
+   [
+    "oklab(0.772937 -0.14692 0.0443151 / 0.15)",
+    8
+   ],
+   [
+    "rgb(12, 11, 10)",
+    4
+   ],
+   [
+    "oklab(0.150388 0.00104634 0.00251868 / 0.9)",
+    1
+   ],
+   [
+    "rgb(156, 149, 138)",
+    1
+   ],
+   [
+    "oklab(0.150388 0.00104634 0.00251868 / 0.85)",
+    1
+   ]
+  ],
+  "nBorders": 3,
+  "nRadii": 4,
+  "radii": [
+   [
+    "3.35544e+07px",
+    61
+   ],
+   [
+    "16px",
+    25
+   ],
+   [
+    "12px",
+    10
+   ],
+   [
+    "8px",
+    3
+   ]
+  ],
+  "nPads": 4,
+  "nBotones": 39,
+  "nFirmasBoton": 10,
+  "firmas": [
+   [
+    "rgba(0, 0, 0, 0) | rgba(242, 237, 228, 0.1) 1px | 3.35544e+07px | 0px 14px | 12px",
+    14
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(251, 247, 240) 0px | 3.35544e+07px | 0px 16px | 12.5px",
+    9
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgba(242, 237, 228, 0.1) 1px | 3.35544e+07px | 0px 16px | 12.5px",
+    8
+   ],
+   [
+    "rgb(21, 19, 17) | rgba(242, 237, 228, 0.1) 1px | 3.35544e+07px | 0px | 16px",
+    2
+   ],
+   [
+    "rgb(33, 29, 25) | rgba(242, 237, 228, 0.1) 1px | 3.35544e+07px | 0px | 13px",
+    1
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(242, 237, 228) 0px | 3.35544e+07px | 0px | 13px",
+    1
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(242, 237, 228) 0px | 0px | 0px | 16px",
+    1
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(156, 149, 138) 0px | 3.35544e+07px | 0px | 12px",
+    1
+   ],
+   [
+    "rgb(12, 11, 10) | rgba(242, 237, 228, 0.1) 1px | 8px | 8px 12px | 16px",
+    1
+   ],
+   [
+    "rgb(33, 29, 25) | rgb(242, 237, 228) 0px | 3.35544e+07px | 0px | 16px",
+    1
+   ]
+  ],
+  "contrasteMedidos": 104,
+  "contrasteSinMedir": 0,
+  "contrasteInactivos": 7,
+  "nContrasteMal": 0,
+  "contrasteMal": [],
+  "imgDeformadas": 0,
+  "imgSinAlt": 0,
+  "h1": 1,
+  "solapados": 0,
+  "solapadosDetalle": []
+ },
+ {
+  "area": "admin",
+  "pantalla": "Liquidacion",
+  "ruta": "/admin/liquidacion",
+  "rol": "admin",
+  "vp": "movil",
+  "http": 200,
+  "url": "http://localhost:3000/admin/liquidacion",
+  "sw": 375,
+  "vw": 375,
+  "alto": 2756,
+  "cromo": 73,
+  "yPrimerDato": null,
+  "desbordeH": false,
+  "interactivos": 19,
+  "nChicos": 0,
+  "chicos": [],
+  "textoTotal": 135,
+  "textoChico": 0,
+  "nSizes": 6,
+  "sizes": [
+   [
+    "12",
+    81
+   ],
+   [
+    "19",
+    30
+   ],
+   [
+    "13",
+    16
+   ],
+   [
+    "26",
+    6
+   ],
+   [
+    "15",
+    1
+   ],
+   [
+    "28",
+    1
+   ]
+  ],
+  "nWeights": 5,
+  "weights": [
+   [
+    "700",
+    79
+   ],
+   [
+    "400",
+    36
+   ],
+   [
+    "600",
+    12
+   ],
+   [
+    "800",
+    7
+   ],
+   [
+    "900",
+    1
+   ]
+  ],
+  "fams": [
+   [
+    "Inter",
+    96
+   ],
+   [
+    "Barlow Condensed",
+    39
+   ]
+  ],
+  "nTextColors": 4,
+  "tcolors": [
+   [
+    "rgb(156, 149, 138)",
+    80
+   ],
+   [
+    "rgb(242, 237, 228)",
+    47
+   ],
+   [
+    "rgb(232, 103, 92)",
+    7
+   ],
+   [
+    "oklab(0.672627 0.00335035 0.0176046 / 0.4)",
+    1
+   ]
+  ],
+  "nEyebrowSizes": 1,
+  "eyebrows": [
+   [
+    "12",
+    7
+   ]
+  ],
+  "emojiUI": 0,
+  "nBgs": 8,
+  "bgs": [
+   [
+    "rgb(21, 19, 17)",
+    34
+   ],
+   [
+    "oklab(0.947513 0.00178179 0.0130511 / 0.0407843)",
+    6
+   ],
+   [
+    "oklab(0.233851 0.00376438 0.00898756 / 0.4)",
+    6
+   ],
+   [
+    "rgb(33, 29, 25)",
+    2
+   ],
+   [
+    "rgb(12, 11, 10)",
+    1
+   ],
+   [
+    "oklab(0.150388 0.00104634 0.00251868 / 0.9)",
+    1
+   ],
+   [
+    "oklab(0.581255 0.163163 0.0885327 / 0.07)",
+    1
+   ],
+   [
+    "oklab(0.150388 0.00104634 0.00251868 / 0.85)",
+    1
+   ]
+  ],
+  "nBorders": 5,
+  "nRadii": 3,
+  "radii": [
+   [
+    "3.35544e+07px",
+    19
+   ],
+   [
+    "16px",
+    7
+   ],
+   [
+    "12px",
+    4
+   ]
+  ],
+  "nPads": 2,
+  "nBotones": 11,
+  "nFirmasBoton": 5,
+  "firmas": [
+   [
+    "rgba(0, 0, 0, 0) | rgba(242, 237, 228, 0.1) 1px | 3.35544e+07px | 0px 14px | 12px",
+    6
+   ],
+   [
+    "rgb(21, 19, 17) | rgba(242, 237, 228, 0.1) 1px | 3.35544e+07px | 0px | 16px",
+    2
+   ],
+   [
+    "rgb(33, 29, 25) | rgba(242, 237, 228, 0.1) 1px | 3.35544e+07px | 0px | 13px",
+    1
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(242, 237, 228) 0px | 3.35544e+07px | 0px | 13px",
+    1
+   ],
+   [
+    "rgb(33, 29, 25) | rgb(242, 237, 228) 0px | 3.35544e+07px | 0px | 16px",
+    1
+   ]
+  ],
+  "contrasteMedidos": 134,
+  "contrasteSinMedir": 0,
+  "contrasteInactivos": 1,
+  "nContrasteMal": 0,
+  "contrasteMal": [],
+  "imgDeformadas": 0,
+  "imgSinAlt": 0,
+  "h1": 1,
+  "solapados": 0,
+  "solapadosDetalle": []
+ },
+ {
+  "area": "admin",
+  "pantalla": "Metricas",
+  "ruta": "/admin/metricas",
+  "rol": "admin",
+  "vp": "movil",
+  "http": 200,
+  "url": "http://localhost:3000/admin/metricas",
+  "sw": 375,
+  "vw": 375,
+  "alto": 2515,
+  "cromo": 73,
+  "yPrimerDato": null,
+  "desbordeH": false,
+  "interactivos": 19,
+  "nChicos": 0,
+  "chicos": [],
+  "textoTotal": 87,
+  "textoChico": 0,
+  "nSizes": 8,
+  "sizes": [
+   [
+    "12",
+    37
+   ],
+   [
+    "13",
+    24
+   ],
+   [
+    "13.5",
+    12
+   ],
+   [
+    "18",
+    5
+   ],
+   [
+    "30",
+    4
+   ],
+   [
+    "24",
+    3
+   ],
+   [
+    "15",
+    1
+   ],
+   [
+    "28",
+    1
+   ]
+  ],
+  "nWeights": 4,
+  "weights": [
+   [
+    "400",
+    42
+   ],
+   [
+    "600",
+    37
+   ],
+   [
+    "700",
+    7
+   ],
+   [
+    "800",
+    1
+   ]
+  ],
+  "fams": [
+   [
+    "Inter",
+    73
+   ],
+   [
+    "Barlow Condensed",
+    14
+   ]
+  ],
+  "nTextColors": 4,
+  "tcolors": [
+   [
+    "rgb(242, 237, 228)",
+    42
+   ],
+   [
+    "rgb(156, 149, 138)",
+    41
+   ],
+   [
+    "rgb(232, 103, 92)",
+    2
+   ],
+   [
+    "rgb(52, 211, 153)",
+    2
+   ]
+  ],
+  "nEyebrowSizes": 1,
+  "eyebrows": [
+   [
+    "12",
+    5
+   ]
+  ],
+  "emojiUI": 0,
+  "nBgs": 9,
+  "bgs": [
+   [
+    "oklab(0.581255 0.163163 0.0885327 / 0.7)",
+    34
+   ],
+   [
+    "rgb(33, 29, 25)",
+    17
+   ],
+   [
+    "rgb(21, 19, 17)",
+    13
+   ],
+   [
+    "oklab(0.947513 0.00178179 0.0130511 / 0.04)",
+    4
+   ],
+   [
+    "rgb(12, 11, 10)",
+    3
+   ],
+   [
+    "oklab(0.150388 0.00104634 0.00251868 / 0.9)",
+    1
+   ],
+   [
+    "oklab(0.581255 0.163163 0.0885327 / 0.15)",
+    1
+   ],
+   [
+    "oklab(0.581255 0.163163 0.0885327 / 0.07)",
+    1
+   ],
+   [
+    "oklab(0.150388 0.00104634 0.00251868 / 0.85)",
+    1
+   ]
+  ],
+  "nBorders": 4,
+  "nRadii": 4,
+  "radii": [
+   [
+    "3.35544e+07px",
+    50
+   ],
+   [
+    "4px 4px 0px 0px",
+    22
+   ],
+   [
+    "12px",
+    12
+   ],
+   [
+    "16px",
+    10
+   ]
+  ],
+  "nPads": 2,
+  "nBotones": 7,
+  "nFirmasBoton": 6,
+  "firmas": [
+   [
+    "rgb(21, 19, 17) | rgba(242, 237, 228, 0.1) 1px | 3.35544e+07px | 0px | 16px",
+    2
+   ],
+   [
+    "rgb(33, 29, 25) | rgba(242, 237, 228, 0.1) 1px | 3.35544e+07px | 0px | 13px",
+    1
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(242, 237, 228) 0px | 3.35544e+07px | 0px | 13px",
+    1
+   ],
+   [
+    "oklab(0.581255 0.163163 0.0885327 / 0.15) | rgb(210, 63, 52) 1px | 12px | 0px 16px | 13px",
+    1
+   ],
+   [
+    "oklab(0.581255 0.163163 0.0885327 / 0.07) | oklab(0.581255 0.163163 0.0885327 / 0.45) 1px | 12px | 0px 16px | 13px",
+    1
+   ],
+   [
+    "rgb(33, 29, 25) | rgb(242, 237, 228) 0px | 3.35544e+07px | 0px | 16px",
+    1
+   ]
+  ],
+  "contrasteMedidos": 87,
+  "contrasteSinMedir": 0,
+  "contrasteInactivos": 0,
+  "nContrasteMal": 0,
+  "contrasteMal": [],
+  "imgDeformadas": 0,
+  "imgSinAlt": 0,
+  "h1": 1,
+  "solapados": 0,
+  "solapadosDetalle": []
+ },
+ {
+  "area": "admin",
+  "pantalla": "Avisos",
+  "ruta": "/admin/avisos",
+  "rol": "admin",
+  "vp": "movil",
+  "http": 200,
+  "url": "http://localhost:3000/admin/avisos",
+  "sw": 375,
+  "vw": 375,
+  "alto": 2093,
+  "cromo": 73,
+  "yPrimerDato": null,
+  "desbordeH": false,
+  "interactivos": 24,
+  "nChicos": 0,
+  "chicos": [],
+  "textoTotal": 48,
+  "textoChico": 0,
+  "nSizes": 7,
+  "sizes": [
+   [
+    "12",
+    18
+   ],
+   [
+    "13",
+    13
+   ],
+   [
+    "13.5",
+    6
+   ],
+   [
+    "12.5",
+    5
+   ],
+   [
+    "18",
+    3
+   ],
+   [
+    "24",
+    2
+   ],
+   [
+    "28",
+    1
+   ]
+  ],
+  "nWeights": 4,
+  "weights": [
+   [
+    "600",
+    24
+   ],
+   [
+    "400",
+    17
+   ],
+   [
+    "700",
+    4
+   ],
+   [
+    "800",
+    3
+   ]
+  ],
+  "fams": [
+   [
+    "Inter",
+    42
+   ],
+   [
+    "Barlow Condensed",
+    6
+   ]
+  ],
+  "nTextColors": 3,
+  "tcolors": [
+   [
+    "rgb(156, 149, 138)",
+    29
+   ],
+   [
+    "rgb(242, 237, 228)",
+    17
+   ],
+   [
+    "rgb(251, 247, 240)",
+    2
+   ]
+  ],
+  "nEyebrowSizes": 1,
+  "eyebrows": [
+   [
+    "12",
+    3
+   ]
+  ],
+  "emojiUI": 0,
+  "nBgs": 9,
+  "bgs": [
+   [
+    "rgb(52, 211, 153)",
+    7
+   ],
+   [
+    "rgb(21, 19, 17)",
+    5
+   ],
+   [
+    "rgb(33, 29, 25)",
+    5
+   ],
+   [
+    "oklab(0.581255 0.163163 0.0885327 / 0.15)",
+    2
+   ],
+   [
+    "rgb(12, 11, 10)",
+    1
+   ],
+   [
+    "oklab(0.150388 0.00104634 0.00251868 / 0.9)",
+    1
+   ],
+   [
+    "oklab(0.772937 -0.14692 0.0443151 / 0.25)",
+    1
+   ],
+   [
+    "rgb(156, 149, 138)",
+    1
+   ],
+   [
+    "oklab(0.150388 0.00104634 0.00251868 / 0.85)",
+    1
+   ]
+  ],
+  "nBorders": 4,
+  "nRadii": 3,
+  "radii": [
+   [
+    "3.35544e+07px",
+    24
+   ],
+   [
+    "12px",
+    12
+   ],
+   [
+    "16px",
+    3
+   ]
+  ],
+  "nPads": 2,
+  "nBotones": 19,
+  "nFirmasBoton": 8,
+  "firmas": [
+   [
+    "rgba(0, 0, 0, 0) | rgba(242, 237, 228, 0.1) 1px | 12px | 0px 16px | 13px",
+    8
+   ],
+   [
+    "rgb(21, 19, 17) | rgba(242, 237, 228, 0.1) 1px | 3.35544e+07px | 0px | 16px",
+    2
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(242, 237, 228) 0px | 0px | 0px | 16px",
+    2
+   ],
+   [
+    "oklab(0.581255 0.163163 0.0885327 / 0.15) | rgb(210, 63, 52) 1px | 12px | 0px 16px | 13px",
+    2
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(251, 247, 240) 0px | 3.35544e+07px | 0px 16px | 12.5px",
+    2
+   ],
+   [
+    "rgb(33, 29, 25) | rgba(242, 237, 228, 0.1) 1px | 3.35544e+07px | 0px | 13px",
+    1
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(242, 237, 228) 0px | 3.35544e+07px | 0px | 13px",
+    1
+   ],
+   [
+    "rgb(33, 29, 25) | rgb(242, 237, 228) 0px | 3.35544e+07px | 0px | 16px",
+    1
+   ]
+  ],
+  "contrasteMedidos": 46,
+  "contrasteSinMedir": 0,
+  "contrasteInactivos": 2,
+  "nContrasteMal": 0,
+  "contrasteMal": [],
+  "imgDeformadas": 0,
+  "imgSinAlt": 0,
+  "h1": 1,
+  "solapados": 0,
+  "solapadosDetalle": []
+ },
+ {
+  "area": "admin",
+  "pantalla": "Horarios",
+  "ruta": "/admin/horarios",
+  "rol": "admin",
+  "vp": "movil",
+  "http": 200,
+  "url": "http://localhost:3000/admin/horarios",
+  "sw": 375,
+  "vw": 375,
+  "alto": 2667,
+  "cromo": 73,
+  "yPrimerDato": null,
+  "desbordeH": false,
+  "interactivos": 53,
+  "nChicos": 0,
+  "chicos": [],
+  "textoTotal": 70,
+  "textoChico": 0,
+  "nSizes": 7,
+  "sizes": [
+   [
+    "13",
+    36
+   ],
+   [
+    "12",
+    14
+   ],
+   [
+    "15",
+    7
+   ],
+   [
+    "12.5",
+    7
+   ],
+   [
+    "14",
+    3
+   ],
+   [
+    "28",
+    2
+   ],
+   [
+    "18",
+    1
+   ]
+  ],
+  "nWeights": 4,
+  "weights": [
+   [
+    "600",
+    34
+   ],
+   [
+    "400",
+    23
+   ],
+   [
+    "700",
+    11
+   ],
+   [
+    "800",
+    2
+   ]
+  ],
+  "fams": [
+   [
+    "Inter",
+    60
+   ],
+   [
+    "Barlow Condensed",
+    10
+   ]
+  ],
+  "nTextColors": 5,
+  "tcolors": [
+   [
+    "rgb(156, 149, 138)",
+    42
+   ],
+   [
+    "rgb(242, 237, 228)",
+    17
+   ],
+   [
+    "rgb(52, 211, 153)",
+    8
+   ],
+   [
+    "rgb(232, 103, 92)",
+    2
+   ],
+   [
+    "rgb(251, 247, 240)",
+    1
+   ]
+  ],
+  "nEyebrowSizes": 1,
+  "eyebrows": [
+   [
+    "12",
+    5
+   ]
+  ],
+  "emojiUI": 0,
+  "nBgs": 9,
+  "bgs": [
+   [
+    "rgb(12, 11, 10)",
+    19
+   ],
+   [
+    "oklab(0.772937 -0.14692 0.0443151 / 0.15)",
+    8
+   ],
+   [
+    "rgb(21, 19, 17)",
+    7
+   ],
+   [
+    "rgb(33, 29, 25)",
+    3
+   ],
+   [
+    "rgb(210, 63, 52)",
+    2
+   ],
+   [
+    "oklab(0.581255 0.163163 0.0885327 / 0.15)",
+    2
+   ],
+   [
+    "oklab(0.150388 0.00104634 0.00251868 / 0.9)",
+    1
+   ],
+   [
+    "rgb(156, 149, 138)",
+    1
+   ],
+   [
+    "oklab(0.150388 0.00104634 0.00251868 / 0.85)",
+    1
+   ]
+  ],
+  "nBorders": 3,
+  "nRadii": 5,
+  "radii": [
+   [
+    "3.35544e+07px",
+    21
+   ],
+   [
+    "8px",
+    15
+   ],
+   [
+    "12px",
+    15
+   ],
+   [
+    "16px",
+    4
+   ],
+   [
+    "6px",
+    2
+   ]
+  ],
+  "nPads": 4,
+  "nBotones": 32,
+  "nFirmasBoton": 13,
+  "firmas": [
+   [
+    "oklab(0.772937 -0.14692 0.0443151 / 0.15) | rgb(52, 211, 153) 0px | 0px | 0px 16px | 13px",
+    7
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(156, 149, 138) 0px | 0px | 0px 16px | 13px",
+    7
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(242, 237, 228) 0px | 0px | 0px | 16px",
+    3
+   ],
+   [
+    "rgb(21, 19, 17) | rgba(242, 237, 228, 0.1) 1px | 3.35544e+07px | 0px | 16px",
+    2
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(242, 237, 228) 0px | 3.35544e+07px | 0px | 13px",
+    2
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgba(242, 237, 228, 0.1) 1px | 3.35544e+07px | 0px 16px | 12.5px",
+    2
+   ],
+   [
+    "oklab(0.581255 0.163163 0.0885327 / 0.15) | rgb(232, 103, 92) 0px | 8px | 0px 14px | 12.5px",
+    2
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(156, 149, 138) 0px | 8px | 0px 14px | 12.5px",
+    2
+   ],
+   [
+    "rgb(33, 29, 25) | rgba(242, 237, 228, 0.1) 1px | 3.35544e+07px | 0px | 13px",
+    1
+   ],
+   [
+    "oklab(0.772937 -0.14692 0.0443151 / 0.15) | rgb(52, 211, 153) 0px | 6px | 0px 12px | 13px",
+    1
+   ]
+  ],
+  "contrasteMedidos": 70,
+  "contrasteSinMedir": 0,
+  "contrasteInactivos": 0,
+  "nContrasteMal": 0,
+  "contrasteMal": [],
+  "imgDeformadas": 0,
+  "imgSinAlt": 0,
+  "h1": 2,
+  "solapados": 0,
+  "solapadosDetalle": []
+ },
+ {
+  "area": "admin",
+  "pantalla": "Cupones",
+  "ruta": "/admin/cupones",
+  "rol": "admin",
+  "vp": "movil",
+  "http": 200,
+  "url": "http://localhost:3000/admin/cupones",
+  "sw": 375,
+  "vw": 375,
+  "alto": 841,
+  "cromo": 73,
+  "yPrimerDato": null,
+  "desbordeH": false,
+  "interactivos": 18,
+  "nChicos": 0,
+  "chicos": [],
+  "textoTotal": 16,
+  "textoChico": 0,
+  "nSizes": 6,
+  "sizes": [
+   [
+    "12",
+    6
+   ],
+   [
+    "13",
+    5
+   ],
+   [
+    "20",
+    2
+   ],
+   [
+    "14",
+    1
+   ],
+   [
+    "28",
+    1
+   ],
+   [
+    "12.5",
+    1
+   ]
+  ],
+  "nWeights": 4,
+  "weights": [
+   [
+    "600",
+    8
+   ],
+   [
+    "400",
+    4
+   ],
+   [
+    "700",
+    3
+   ],
+   [
+    "800",
+    1
+   ]
+  ],
+  "fams": [
+   [
+    "Inter",
+    13
+   ],
+   [
+    "Barlow Condensed",
+    3
+   ]
+  ],
+  "nTextColors": 4,
+  "tcolors": [
+   [
+    "rgb(156, 149, 138)",
+    8
+   ],
+   [
+    "rgb(242, 237, 228)",
+    6
+   ],
+   [
+    "rgb(12, 11, 10)",
+    1
+   ],
+   [
+    "rgb(251, 247, 240)",
+    1
+   ]
+  ],
+  "nEyebrowSizes": 1,
+  "eyebrows": [
+   [
+    "12",
+    1
+   ]
+  ],
+  "emojiUI": 0,
+  "nBgs": 6,
+  "bgs": [
+   [
+    "rgb(12, 11, 10)",
+    6
+   ],
+   [
+    "rgb(21, 19, 17)",
+    4
+   ],
+   [
+    "rgb(33, 29, 25)",
+    2
+   ],
+   [
+    "oklab(0.150388 0.00104634 0.00251868 / 0.9)",
+    1
+   ],
+   [
+    "rgb(242, 237, 228)",
+    1
+   ],
+   [
+    "oklab(0.150388 0.00104634 0.00251868 / 0.85)",
+    1
+   ]
+  ],
+  "nBorders": 3,
+  "nRadii": 4,
+  "radii": [
+   [
+    "3.35544e+07px",
+    15
+   ],
+   [
+    "8px",
+    5
+   ],
+   [
+    "16px",
+    1
+   ],
+   [
+    "12px",
+    1
+   ]
+  ],
+  "nPads": 2,
+  "nBotones": 8,
+  "nFirmasBoton": 7,
+  "firmas": [
+   [
+    "rgb(21, 19, 17) | rgba(242, 237, 228, 0.1) 1px | 3.35544e+07px | 0px | 16px",
+    2
+   ],
+   [
+    "rgb(33, 29, 25) | rgba(242, 237, 228, 0.1) 1px | 3.35544e+07px | 0px | 13px",
+    1
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(242, 237, 228) 0px | 3.35544e+07px | 0px | 13px",
+    1
+   ],
+   [
+    "rgb(242, 237, 228) | rgb(242, 237, 228) 1px | 3.35544e+07px | 0px 16px | 13px",
+    1
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgba(242, 237, 228, 0.1) 1px | 3.35544e+07px | 0px 16px | 13px",
+    1
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(251, 247, 240) 0px | 3.35544e+07px | 0px 16px | 12.5px",
+    1
+   ],
+   [
+    "rgb(33, 29, 25) | rgb(242, 237, 228) 0px | 3.35544e+07px | 0px | 16px",
+    1
+   ]
+  ],
+  "contrasteMedidos": 16,
+  "contrasteSinMedir": 0,
+  "contrasteInactivos": 0,
+  "nContrasteMal": 0,
+  "contrasteMal": [],
+  "imgDeformadas": 0,
+  "imgSinAlt": 0,
+  "h1": 1,
+  "solapados": 0,
+  "solapadosDetalle": []
+ },
+ {
+  "area": "admin",
+  "pantalla": "Comisiones",
+  "ruta": "/admin/comisiones",
+  "rol": "admin",
+  "vp": "movil",
+  "http": 200,
+  "url": "http://localhost:3000/admin/comisiones",
+  "sw": 375,
+  "vw": 375,
+  "alto": 1151,
+  "cromo": 73,
+  "yPrimerDato": null,
+  "desbordeH": false,
+  "interactivos": 16,
+  "nChicos": 0,
+  "chicos": [],
+  "textoTotal": 41,
+  "textoChico": 0,
+  "nSizes": 5,
+  "sizes": [
+   [
+    "12",
+    18
+   ],
+   [
+    "13",
+    10
+   ],
+   [
+    "16",
+    6
+   ],
+   [
+    "13.5",
+    6
+   ],
+   [
+    "28",
+    1
+   ]
+  ],
+  "nWeights": 4,
+  "weights": [
+   [
+    "600",
+    20
+   ],
+   [
+    "400",
+    12
+   ],
+   [
+    "700",
+    8
+   ],
+   [
+    "800",
+    1
+   ]
+  ],
+  "fams": [
+   [
+    "Inter",
+    40
+   ],
+   [
+    "Barlow Condensed",
+    1
+   ]
+  ],
+  "nTextColors": 3,
+  "tcolors": [
+   [
+    "rgb(242, 237, 228)",
+    20
+   ],
+   [
+    "rgb(156, 149, 138)",
+    15
+   ],
+   [
+    "rgb(232, 103, 92)",
+    6
+   ]
+  ],
+  "nEyebrowSizes": 1,
+  "eyebrows": [
+   [
+    "12",
+    1
+   ]
+  ],
+  "emojiUI": 0,
+  "nBgs": 5,
+  "bgs": [
+   [
+    "rgb(21, 19, 17)",
+    4
+   ],
+   [
+    "rgb(33, 29, 25)",
+    2
+   ],
+   [
+    "rgb(12, 11, 10)",
+    1
+   ],
+   [
+    "oklab(0.150388 0.00104634 0.00251868 / 0.9)",
+    1
+   ],
+   [
+    "oklab(0.150388 0.00104634 0.00251868 / 0.85)",
+    1
+   ]
+  ],
+  "nBorders": 3,
+  "nRadii": 3,
+  "radii": [
+   [
+    "3.35544e+07px",
+    24
+   ],
+   [
+    "8px",
+    6
+   ],
+   [
+    "16px",
+    2
+   ]
+  ],
+  "nPads": 2,
+  "nBotones": 11,
+  "nFirmasBoton": 5,
+  "firmas": [
+   [
+    "rgba(0, 0, 0, 0) | rgb(242, 237, 228) 0px | 8px | 8px 10px | 16px",
+    6
+   ],
+   [
+    "rgb(21, 19, 17) | rgba(242, 237, 228, 0.1) 1px | 3.35544e+07px | 0px | 16px",
+    2
+   ],
+   [
+    "rgb(33, 29, 25) | rgba(242, 237, 228, 0.1) 1px | 3.35544e+07px | 0px | 13px",
+    1
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(242, 237, 228) 0px | 3.35544e+07px | 0px | 13px",
+    1
+   ],
+   [
+    "rgb(33, 29, 25) | rgb(242, 237, 228) 0px | 3.35544e+07px | 0px | 16px",
+    1
+   ]
+  ],
+  "contrasteMedidos": 41,
+  "contrasteSinMedir": 0,
+  "contrasteInactivos": 0,
+  "nContrasteMal": 0,
+  "contrasteMal": [],
+  "imgDeformadas": 0,
+  "imgSinAlt": 0,
+  "h1": 1,
+  "solapados": 0,
+  "solapadosDetalle": []
+ },
+ {
+  "area": "admin",
+  "pantalla": "Tarjeta de fidelidad",
+  "ruta": "/admin/tarjeta",
+  "rol": "admin",
+  "vp": "movil",
+  "http": 200,
+  "url": "http://localhost:3000/admin/tarjeta",
+  "sw": 375,
+  "vw": 375,
+  "alto": 1635,
+  "cromo": 73,
+  "yPrimerDato": null,
+  "desbordeH": false,
+  "interactivos": 24,
+  "nChicos": 0,
+  "chicos": [],
+  "textoTotal": 48,
+  "textoChico": 0,
+  "nSizes": 6,
+  "sizes": [
+   [
+    "12",
+    22
+   ],
+   [
+    "13",
+    11
+   ],
+   [
+    "15",
+    10
+   ],
+   [
+    "12.5",
+    3
+   ],
+   [
+    "18",
+    1
+   ],
+   [
+    "28",
+    1
+   ]
+  ],
+  "nWeights": 4,
+  "weights": [
+   [
+    "700",
+    31
+   ],
+   [
+    "400",
+    9
+   ],
+   [
+    "600",
+    7
+   ],
+   [
+    "800",
+    1
+   ]
+  ],
+  "fams": [
+   [
+    "Inter",
+    36
+   ],
+   [
+    "Barlow Condensed",
+    12
+   ]
+  ],
+  "nTextColors": 4,
+  "tcolors": [
+   [
+    "rgb(156, 149, 138)",
+    31
+   ],
+   [
+    "rgb(242, 237, 228)",
+    15
+   ],
+   [
+    "rgb(251, 247, 240)",
+    1
+   ],
+   [
+    "rgb(52, 211, 153)",
+    1
+   ]
+  ],
+  "nEyebrowSizes": 1,
+  "eyebrows": [
+   [
+    "12",
+    1
+   ]
+  ],
+  "emojiUI": 0,
+  "nBgs": 6,
+  "bgs": [
+   [
+    "rgb(21, 19, 17)",
+    4
+   ],
+   [
+    "rgb(12, 11, 10)",
+    3
+   ],
+   [
+    "rgb(33, 29, 25)",
+    2
+   ],
+   [
+    "oklab(0.581255 0.163163 0.0885327 / 0.15)",
+    2
+   ],
+   [
+    "oklab(0.150388 0.00104634 0.00251868 / 0.9)",
+    1
+   ],
+   [
+    "oklab(0.150388 0.00104634 0.00251868 / 0.85)",
+    1
+   ]
+  ],
+  "nBorders": 3,
+  "nRadii": 3,
+  "radii": [
+   [
+    "3.35544e+07px",
+    13
+   ],
+   [
+    "12px",
+    13
+   ],
+   [
+    "16px",
+    2
+   ]
+  ],
+  "nPads": 2,
+  "nBotones": 16,
+  "nFirmasBoton": 7,
+  "firmas": [
+   [
+    "rgba(0, 0, 0, 0) | rgba(242, 237, 228, 0.1) 1px | 12px | 0px | 16px",
+    8
+   ],
+   [
+    "rgb(21, 19, 17) | rgba(242, 237, 228, 0.1) 1px | 3.35544e+07px | 0px | 16px",
+    2
+   ],
+   [
+    "oklab(0.581255 0.163163 0.0885327 / 0.15) | rgb(210, 63, 52) 1px | 12px | 0px | 16px",
+    2
+   ],
+   [
+    "rgb(33, 29, 25) | rgba(242, 237, 228, 0.1) 1px | 3.35544e+07px | 0px | 13px",
+    1
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(242, 237, 228) 0px | 3.35544e+07px | 0px | 13px",
+    1
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(251, 247, 240) 0px | 3.35544e+07px | 0px 16px | 12.5px",
+    1
+   ],
+   [
+    "rgb(33, 29, 25) | rgb(242, 237, 228) 0px | 3.35544e+07px | 0px | 16px",
+    1
+   ]
+  ],
+  "contrasteMedidos": 47,
+  "contrasteSinMedir": 0,
+  "contrasteInactivos": 1,
+  "nContrasteMal": 0,
+  "contrasteMal": [],
+  "imgDeformadas": 0,
+  "imgSinAlt": 0,
+  "h1": 1,
+  "solapados": 0,
+  "solapadosDetalle": []
+ },
+ {
+  "area": "admin",
+  "pantalla": "Ayuda",
+  "ruta": "/admin/ayuda",
+  "rol": "admin",
+  "vp": "movil",
+  "http": 200,
+  "url": "http://localhost:3000/admin/ayuda",
+  "sw": 375,
+  "vw": 375,
+  "alto": 3653,
+  "cromo": 73,
+  "yPrimerDato": null,
+  "desbordeH": false,
+  "interactivos": 11,
+  "nChicos": 0,
+  "chicos": [],
+  "textoTotal": 71,
+  "textoChico": 0,
+  "nSizes": 7,
+  "sizes": [
+   [
+    "13",
+    32
+   ],
+   [
+    "12",
+    14
+   ],
+   [
+    "14.5",
+    14
+   ],
+   [
+    "24",
+    4
+   ],
+   [
+    "13.5",
+    3
+   ],
+   [
+    "12.5",
+    3
+   ],
+   [
+    "28",
+    1
+   ]
+  ],
+  "nWeights": 4,
+  "weights": [
+   [
+    "700",
+    37
+   ],
+   [
+    "400",
+    26
+   ],
+   [
+    "600",
+    7
+   ],
+   [
+    "800",
+    1
+   ]
+  ],
+  "fams": [
+   [
+    "Inter",
+    52
+   ],
+   [
+    "Barlow Condensed",
+    19
+   ]
+  ],
+  "nTextColors": 5,
+  "tcolors": [
+   [
+    "rgb(156, 149, 138)",
+    31
+   ],
+   [
+    "rgb(242, 237, 228)",
+    22
+   ],
+   [
+    "rgb(232, 103, 92)",
+    14
+   ],
+   [
+    "rgb(251, 191, 36)",
+    3
+   ],
+   [
+    "oklab(0.947513 0.00178179 0.0130511 / 0.85)",
+    1
+   ]
+  ],
+  "nEyebrowSizes": 1,
+  "eyebrows": [
+   [
+    "12",
+    1
+   ]
+  ],
+  "emojiUI": 0,
+  "nBgs": 7,
+  "bgs": [
+   [
+    "rgb(21, 19, 17)",
+    12
+   ],
+   [
+    "rgb(52, 211, 153)",
+    5
+   ],
+   [
+    "oklab(0.836863 0.0160027 0.163654 / 0.06)",
+    3
+   ],
+   [
+    "rgb(33, 29, 25)",
+    2
+   ],
+   [
+    "rgb(12, 11, 10)",
+    1
+   ],
+   [
+    "oklab(0.150388 0.00104634 0.00251868 / 0.9)",
+    1
+   ],
+   [
+    "oklab(0.150388 0.00104634 0.00251868 / 0.85)",
+    1
+   ]
+  ],
+  "nBorders": 4,
+  "nRadii": 2,
+  "radii": [
+   [
+    "3.35544e+07px",
+    33
+   ],
+   [
+    "16px",
+    13
+   ]
+  ],
+  "nPads": 1,
+  "nBotones": 5,
+  "nFirmasBoton": 4,
+  "firmas": [
+   [
+    "rgb(21, 19, 17) | rgba(242, 237, 228, 0.1) 1px | 3.35544e+07px | 0px | 16px",
+    2
+   ],
+   [
+    "rgb(33, 29, 25) | rgba(242, 237, 228, 0.1) 1px | 3.35544e+07px | 0px | 13px",
+    1
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(242, 237, 228) 0px | 3.35544e+07px | 0px | 13px",
+    1
+   ],
+   [
+    "rgb(33, 29, 25) | rgb(242, 237, 228) 0px | 3.35544e+07px | 0px | 16px",
+    1
+   ]
+  ],
+  "contrasteMedidos": 71,
+  "contrasteSinMedir": 0,
+  "contrasteInactivos": 0,
+  "nContrasteMal": 0,
+  "contrasteMal": [],
+  "imgDeformadas": 0,
+  "imgSinAlt": 0,
+  "h1": 1,
+  "solapados": 0,
+  "solapadosDetalle": []
+ },
+ {
+  "area": "mostrador",
+  "pantalla": "Turnos",
+  "ruta": "/barbero?tab=turnos",
+  "rol": "sede",
+  "vp": "movil",
+  "http": 200,
+  "url": "http://localhost:3000/barbero?tab=turnos",
+  "sw": 375,
+  "vw": 375,
+  "alto": 818,
+  "cromo": 113,
+  "yPrimerDato": null,
+  "desbordeH": false,
+  "interactivos": 13,
+  "nChicos": 0,
+  "chicos": [],
+  "textoTotal": 26,
+  "textoChico": 0,
+  "nSizes": 8,
+  "sizes": [
+   [
+    "14",
+    8
+   ],
+   [
+    "12",
+    4
+   ],
+   [
+    "12.5",
+    4
+   ],
+   [
+    "16",
+    3
+   ],
+   [
+    "20",
+    3
+   ],
+   [
+    "30",
+    2
+   ],
+   [
+    "13",
+    1
+   ],
+   [
+    "13.5",
+    1
+   ]
+  ],
+  "nWeights": 3,
+  "weights": [
+   [
+    "700",
+    14
+   ],
+   [
+    "400",
+    6
+   ],
+   [
+    "600",
+    6
+   ]
+  ],
+  "fams": [
+   [
+    "Inter",
+    20
+   ],
+   [
+    "Barlow Condensed",
+    6
+   ]
+  ],
+  "nTextColors": 5,
+  "tcolors": [
+   [
+    "rgb(242, 237, 228)",
+    8
+   ],
+   [
+    "rgb(156, 149, 138)",
+    7
+   ],
+   [
+    "rgb(232, 103, 92)",
+    6
+   ],
+   [
+    "rgb(52, 211, 153)",
+    4
+   ],
+   [
+    "rgb(251, 247, 240)",
+    1
+   ]
+  ],
+  "nEyebrowSizes": 1,
+  "eyebrows": [
+   [
+    "12",
+    3
+   ]
+  ],
+  "emojiUI": 0,
+  "nBgs": 6,
+  "bgs": [
+   [
+    "rgb(21, 19, 17)",
+    5
+   ],
+   [
+    "oklab(0.581255 0.163163 0.0885327 / 0.12)",
+    3
+   ],
+   [
+    "oklab(0.150388 0.00104634 0.00251868 / 0.85)",
+    3
+   ],
+   [
+    "rgb(33, 29, 25)",
+    2
+   ],
+   [
+    "rgb(12, 11, 10)",
+    1
+   ],
+   [
+    "oklab(0.150388 0.00104634 0.00251868 / 0.7)",
+    1
+   ]
+  ],
+  "nBorders": 2,
+  "nRadii": 3,
+  "radii": [
+   [
+    "3.35544e+07px",
+    13
+   ],
+   [
+    "16px",
+    6
+   ],
+   [
+    "18px",
+    1
+   ]
+  ],
+  "nPads": 2,
+  "nBotones": 12,
+  "nFirmasBoton": 7,
+  "firmas": [
+   [
+    "rgb(21, 19, 17) | rgba(242, 237, 228, 0.1) 1px | 16px | 10px 14px | 16px",
+    3
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(156, 149, 138) 0px | 3.35544e+07px | 0px | 16px",
+    3
+   ],
+   [
+    "oklab(0.150388 0.00104634 0.00251868 / 0.85) | oklab(0.581255 0.163163 0.0885327 / 0.45) 1px | 16px | 0px | 14px",
+    2
+   ],
+   [
+    "rgb(21, 19, 17) | rgba(242, 237, 228, 0.1) 1px | 3.35544e+07px | 0px | 16px",
+    1
+   ],
+   [
+    "rgb(33, 29, 25) | rgba(242, 237, 228, 0.1) 1px | 3.35544e+07px | 0px | 13px",
+    1
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(251, 247, 240) 0px | 16px | 0px | 14px",
+    1
+   ],
+   [
+    "rgb(33, 29, 25) | rgb(242, 237, 228) 0px | 3.35544e+07px | 0px | 16px",
+    1
+   ]
+  ],
+  "contrasteMedidos": 26,
+  "contrasteSinMedir": 0,
+  "contrasteInactivos": 0,
+  "nContrasteMal": 0,
+  "contrasteMal": [],
+  "imgDeformadas": 0,
+  "imgSinAlt": 0,
+  "h1": 1,
+  "solapados": 0,
+  "solapadosDetalle": []
+ },
+ {
+  "area": "mostrador",
+  "pantalla": "Agenda",
+  "ruta": "/barbero?tab=calendario",
+  "rol": "sede",
+  "vp": "movil",
+  "http": 200,
+  "url": "http://localhost:3000/barbero?tab=calendario",
+  "sw": 375,
+  "vw": 375,
+  "alto": 990,
+  "cromo": 117,
+  "yPrimerDato": null,
+  "desbordeH": false,
+  "interactivos": 19,
+  "nChicos": 0,
+  "chicos": [],
+  "textoTotal": 38,
+  "textoChico": 0,
+  "nSizes": 6,
+  "sizes": [
+   [
+    "12",
+    19
+   ],
+   [
+    "14",
+    8
+   ],
+   [
+    "12.5",
+    5
+   ],
+   [
+    "13",
+    3
+   ],
+   [
+    "16",
+    2
+   ],
+   [
+    "20",
+    1
+   ]
+  ],
+  "nWeights": 3,
+  "weights": [
+   [
+    "400",
+    22
+   ],
+   [
+    "700",
+    9
+   ],
+   [
+    "600",
+    7
+   ]
+  ],
+  "fams": [
+   [
+    "Inter",
+    37
+   ],
+   [
+    "Barlow Condensed",
+    1
+   ]
+  ],
+  "nTextColors": 5,
+  "tcolors": [
+   [
+    "rgb(156, 149, 138)",
+    23
+   ],
+   [
+    "rgb(242, 237, 228)",
+    10
+   ],
+   [
+    "rgb(251, 247, 240)",
+    2
+   ],
+   [
+    "rgb(232, 103, 92)",
+    2
+   ],
+   [
+    "rgb(12, 11, 10)",
+    1
+   ]
+  ],
+  "nEyebrowSizes": 0,
+  "eyebrows": [],
+  "emojiUI": 0,
+  "nBgs": 6,
+  "bgs": [
+   [
+    "rgb(21, 19, 17)",
+    4
+   ],
+   [
+    "oklab(0.150388 0.00104634 0.00251868 / 0.85)",
+    3
+   ],
+   [
+    "rgb(33, 29, 25)",
+    2
+   ],
+   [
+    "rgb(12, 11, 10)",
+    1
+   ],
+   [
+    "oklab(0.150388 0.00104634 0.00251868 / 0.7)",
+    1
+   ],
+   [
+    "rgb(242, 237, 228)",
+    1
+   ]
+  ],
+  "nBorders": 6,
+  "nRadii": 3,
+  "radii": [
+   [
+    "3.35544e+07px",
+    16
+   ],
+   [
+    "4px",
+    6
+   ],
+   [
+    "16px",
+    4
+   ]
+  ],
+  "nPads": 3,
+  "nBotones": 15,
+  "nFirmasBoton": 10,
+  "firmas": [
+   [
+    "rgba(0, 0, 0, 0) | oklab(0.947513 0.00178179 0.0130511 / 0.0611765) 0px 0px 0px 1px | 0px | 10px 4px | 16px",
+    3
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(156, 149, 138) 0px | 3.35544e+07px | 0px | 16px",
+    3
+   ],
+   [
+    "oklab(0.150388 0.00104634 0.00251868 / 0.85) | oklab(0.581255 0.163163 0.0885327 / 0.45) 1px | 16px | 0px | 14px",
+    2
+   ],
+   [
+    "rgb(21, 19, 17) | rgba(242, 237, 228, 0.1) 1px | 3.35544e+07px | 0px | 16px",
+    1
+   ],
+   [
+    "rgb(33, 29, 25) | rgba(242, 237, 228, 0.1) 1px | 3.35544e+07px | 0px | 13px",
+    1
+   ],
+   [
+    "rgb(242, 237, 228) | rgb(242, 237, 228) 1px | 3.35544e+07px | 0px 16px | 13px",
+    1
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgba(242, 237, 228, 0.1) 1px | 3.35544e+07px | 0px 16px | 12.5px",
+    1
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(251, 247, 240) 0px | 3.35544e+07px | 0px 16px | 12.5px",
+    1
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(251, 247, 240) 0px | 16px | 0px | 14px",
+    1
+   ],
+   [
+    "rgb(33, 29, 25) | rgb(242, 237, 228) 0px | 3.35544e+07px | 0px | 16px",
+    1
+   ]
+  ],
+  "contrasteMedidos": 38,
+  "contrasteSinMedir": 0,
+  "contrasteInactivos": 0,
+  "nContrasteMal": 0,
+  "contrasteMal": [],
+  "imgDeformadas": 0,
+  "imgSinAlt": 0,
+  "h1": 1,
+  "solapados": 0,
+  "solapadosDetalle": []
+ },
+ {
+  "area": "mostrador",
+  "pantalla": "Espera",
+  "ruta": "/barbero?tab=espera",
+  "rol": "sede",
+  "vp": "movil",
+  "http": 200,
+  "url": "http://localhost:3000/barbero?tab=espera",
+  "sw": 375,
+  "vw": 375,
+  "alto": 812,
+  "cromo": 97,
+  "yPrimerDato": null,
+  "desbordeH": false,
+  "interactivos": 11,
+  "nChicos": 0,
+  "chicos": [],
+  "textoTotal": 13,
+  "textoChico": 0,
+  "nSizes": 3,
+  "sizes": [
+   [
+    "14",
+    10
+   ],
+   [
+    "13",
+    2
+   ],
+   [
+    "24",
+    1
+   ]
+  ],
+  "nWeights": 3,
+  "weights": [
+   [
+    "600",
+    6
+   ],
+   [
+    "700",
+    4
+   ],
+   [
+    "400",
+    3
+   ]
+  ],
+  "fams": [
+   [
+    "Inter",
+    12
+   ],
+   [
+    "Barlow Condensed",
+    1
+   ]
+  ],
+  "nTextColors": 4,
+  "tcolors": [
+   [
+    "rgb(242, 237, 228)",
+    5
+   ],
+   [
+    "rgb(156, 149, 138)",
+    5
+   ],
+   [
+    "rgb(232, 103, 92)",
+    2
+   ],
+   [
+    "rgb(251, 247, 240)",
+    1
+   ]
+  ],
+  "nEyebrowSizes": 0,
+  "eyebrows": [],
+  "emojiUI": 0,
+  "nBgs": 5,
+  "bgs": [
+   [
+    "oklab(0.150388 0.00104634 0.00251868 / 0.85)",
+    3
+   ],
+   [
+    "rgb(33, 29, 25)",
+    2
+   ],
+   [
+    "rgb(12, 11, 10)",
+    1
+   ],
+   [
+    "oklab(0.150388 0.00104634 0.00251868 / 0.7)",
+    1
+   ],
+   [
+    "rgb(21, 19, 17)",
+    1
+   ]
+  ],
+  "nBorders": 2,
+  "nRadii": 2,
+  "radii": [
+   [
+    "3.35544e+07px",
+    8
+   ],
+   [
+    "16px",
+    3
+   ]
+  ],
+  "nPads": 2,
+  "nBotones": 10,
+  "nFirmasBoton": 7,
+  "firmas": [
+   [
+    "rgba(0, 0, 0, 0) | rgb(156, 149, 138) 0px | 3.35544e+07px | 0px | 16px",
+    3
+   ],
+   [
+    "oklab(0.150388 0.00104634 0.00251868 / 0.85) | oklab(0.581255 0.163163 0.0885327 / 0.45) 1px | 16px | 0px | 14px",
+    2
+   ],
+   [
+    "rgb(21, 19, 17) | rgba(242, 237, 228, 0.1) 1px | 3.35544e+07px | 0px | 16px",
+    1
+   ],
+   [
+    "rgb(33, 29, 25) | rgba(242, 237, 228, 0.1) 1px | 3.35544e+07px | 0px | 13px",
+    1
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgba(242, 237, 228, 0.1) 1px | 3.35544e+07px | 0px 16px | 13px",
+    1
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(251, 247, 240) 0px | 16px | 0px | 14px",
+    1
+   ],
+   [
+    "rgb(33, 29, 25) | rgb(242, 237, 228) 0px | 3.35544e+07px | 0px | 16px",
+    1
+   ]
+  ],
+  "contrasteMedidos": 13,
+  "contrasteSinMedir": 0,
+  "contrasteInactivos": 0,
+  "nContrasteMal": 0,
+  "contrasteMal": [],
+  "imgDeformadas": 0,
+  "imgSinAlt": 0,
+  "h1": 1,
+  "solapados": 0,
+  "solapadosDetalle": []
+ },
+ {
+  "area": "mostrador",
+  "pantalla": "Cierre",
+  "ruta": "/barbero?tab=cierre",
+  "rol": "sede",
+  "vp": "movil",
+  "http": 200,
+  "url": "http://localhost:3000/barbero?tab=cierre",
+  "sw": 375,
+  "vw": 375,
+  "alto": 947,
+  "cromo": 97,
+  "yPrimerDato": null,
+  "desbordeH": false,
+  "interactivos": 15,
+  "nChicos": 0,
+  "chicos": [],
+  "textoTotal": 26,
+  "textoChico": 0,
+  "nSizes": 6,
+  "sizes": [
+   [
+    "14",
+    8
+   ],
+   [
+    "13",
+    7
+   ],
+   [
+    "12",
+    4
+   ],
+   [
+    "15",
+    4
+   ],
+   [
+    "12.5",
+    2
+   ],
+   [
+    "36",
+    1
+   ]
+  ],
+  "nWeights": 4,
+  "weights": [
+   [
+    "600",
+    14
+   ],
+   [
+    "700",
+    6
+   ],
+   [
+    "400",
+    5
+   ],
+   [
+    "800",
+    1
+   ]
+  ],
+  "fams": [
+   [
+    "Inter",
+    25
+   ],
+   [
+    "Barlow Condensed",
+    1
+   ]
+  ],
+  "nTextColors": 6,
+  "tcolors": [
+   [
+    "rgb(156, 149, 138)",
+    11
+   ],
+   [
+    "rgb(242, 237, 228)",
+    9
+   ],
+   [
+    "rgb(251, 247, 240)",
+    2
+   ],
+   [
+    "rgb(232, 103, 92)",
+    2
+   ],
+   [
+    "rgb(52, 211, 153)",
+    1
+   ],
+   [
+    "rgb(251, 191, 36)",
+    1
+   ]
+  ],
+  "nEyebrowSizes": 1,
+  "eyebrows": [
+   [
+    "12",
+    3
+   ]
+  ],
+  "emojiUI": 0,
+  "nBgs": 10,
+  "bgs": [
+   [
+    "rgb(21, 19, 17)",
+    4
+   ],
+   [
+    "oklab(0.150388 0.00104634 0.00251868 / 0.85)",
+    3
+   ],
+   [
+    "rgb(33, 29, 25)",
+    2
+   ],
+   [
+    "oklab(0.772937 -0.14692 0.0443151 / 0.1)",
+    2
+   ],
+   [
+    "oklab(0.836863 0.0160027 0.163654 / 0.1)",
+    2
+   ],
+   [
+    "rgb(12, 11, 10)",
+    1
+   ],
+   [
+    "oklab(0.150388 0.00104634 0.00251868 / 0.7)",
+    1
+   ],
+   [
+    "rgb(52, 211, 153)",
+    1
+   ],
+   [
+    "oklab(0.581255 0.163163 0.0885327 / 0.1)",
+    1
+   ],
+   [
+    "oklab(0.66481 0.0134017 0.0340803 / 0.15)",
+    1
+   ]
+  ],
+  "nBorders": 3,
+  "nRadii": 3,
+  "radii": [
+   [
+    "3.35544e+07px",
+    10
+   ],
+   [
+    "16px",
+    6
+   ],
+   [
+    "12px",
+    5
+   ]
+  ],
+  "nPads": 2,
+  "nBotones": 14,
+  "nFirmasBoton": 9,
+  "firmas": [
+   [
+    "rgba(0, 0, 0, 0) | rgb(156, 149, 138) 0px | 3.35544e+07px | 0px | 16px",
+    3
+   ],
+   [
+    "rgba(0, 0, 0, 0) | oklab(0.947513 0.00178179 0.0130511 / 0.0611765) 0px 0px 1px | 0px | 0px 16px | 16px",
+    2
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(242, 237, 228) 0px | 0px | 0px 16px | 16px",
+    2
+   ],
+   [
+    "oklab(0.150388 0.00104634 0.00251868 / 0.85) | oklab(0.581255 0.163163 0.0885327 / 0.45) 1px | 16px | 0px | 14px",
+    2
+   ],
+   [
+    "rgb(21, 19, 17) | rgba(242, 237, 228, 0.1) 1px | 3.35544e+07px | 0px | 16px",
+    1
+   ],
+   [
+    "rgb(33, 29, 25) | rgba(242, 237, 228, 0.1) 1px | 3.35544e+07px | 0px | 13px",
+    1
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(251, 247, 240) 0px | 3.35544e+07px | 0px 16px | 12.5px",
+    1
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(251, 247, 240) 0px | 16px | 0px | 14px",
+    1
+   ],
+   [
+    "rgb(33, 29, 25) | rgb(242, 237, 228) 0px | 3.35544e+07px | 0px | 16px",
+    1
+   ]
+  ],
+  "contrasteMedidos": 26,
+  "contrasteSinMedir": 0,
+  "contrasteInactivos": 0,
+  "nContrasteMal": 0,
+  "contrasteMal": [],
+  "imgDeformadas": 0,
+  "imgSinAlt": 0,
+  "h1": 1,
+  "solapados": 0,
+  "solapadosDetalle": []
+ },
+ {
+  "area": "barbero",
+  "pantalla": "Mi dia",
+  "ruta": "/barbero",
+  "rol": "barbero",
+  "vp": "movil",
+  "http": 200,
+  "url": "http://localhost:3000/barbero",
+  "sw": 375,
+  "vw": 375,
+  "alto": 1001,
+  "cromo": 97,
+  "yPrimerDato": null,
+  "desbordeH": false,
+  "interactivos": 13,
+  "nChicos": 0,
+  "chicos": [],
+  "textoTotal": 31,
+  "textoChico": 0,
+  "nSizes": 9,
+  "sizes": [
+   [
+    "14",
+    8
+   ],
+   [
+    "12.5",
+    6
+   ],
+   [
+    "12",
+    5
+   ],
+   [
+    "16",
+    3
+   ],
+   [
+    "20",
+    3
+   ],
+   [
+    "30",
+    2
+   ],
+   [
+    "13.5",
+    2
+   ],
+   [
+    "26",
+    1
+   ],
+   [
+    "34",
+    1
+   ]
+  ],
+  "nWeights": 4,
+  "weights": [
+   [
+    "700",
+    14
+   ],
+   [
+    "400",
+    9
+   ],
+   [
+    "600",
+    7
+   ],
+   [
+    "800",
+    1
+   ]
+  ],
+  "fams": [
+   [
+    "Inter",
+    23
+   ],
+   [
+    "Barlow Condensed",
+    8
+   ]
+  ],
+  "nTextColors": 5,
+  "tcolors": [
+   [
+    "rgb(156, 149, 138)",
+    11
+   ],
+   [
+    "rgb(242, 237, 228)",
+    8
+   ],
+   [
+    "rgb(232, 103, 92)",
+    6
+   ],
+   [
+    "rgb(52, 211, 153)",
+    5
+   ],
+   [
+    "rgb(251, 247, 240)",
+    1
+   ]
+  ],
+  "nEyebrowSizes": 1,
+  "eyebrows": [
+   [
+    "12",
+    4
+   ]
+  ],
+  "emojiUI": 0,
+  "nBgs": 6,
+  "bgs": [
+   [
+    "rgb(21, 19, 17)",
+    6
+   ],
+   [
+    "rgb(33, 29, 25)",
+    3
+   ],
+   [
+    "oklab(0.581255 0.163163 0.0885327 / 0.12)",
+    3
+   ],
+   [
+    "oklab(0.150388 0.00104634 0.00251868 / 0.85)",
+    3
+   ],
+   [
+    "rgb(12, 11, 10)",
+    1
+   ],
+   [
+    "oklab(0.150388 0.00104634 0.00251868 / 0.7)",
+    1
+   ]
+  ],
+  "nBorders": 2,
+  "nRadii": 4,
+  "radii": [
+   [
+    "3.35544e+07px",
+    13
+   ],
+   [
+    "16px",
+    7
+   ],
+   [
+    "12px",
+    1
+   ],
+   [
+    "18px",
+    1
+   ]
+  ],
+  "nPads": 2,
+  "nBotones": 12,
+  "nFirmasBoton": 7,
+  "firmas": [
+   [
+    "rgb(21, 19, 17) | rgba(242, 237, 228, 0.1) 1px | 16px | 10px 14px | 16px",
+    3
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(156, 149, 138) 0px | 3.35544e+07px | 0px | 16px",
+    3
+   ],
+   [
+    "oklab(0.150388 0.00104634 0.00251868 / 0.85) | oklab(0.581255 0.163163 0.0885327 / 0.45) 1px | 16px | 0px | 14px",
+    2
+   ],
+   [
+    "rgb(21, 19, 17) | rgba(242, 237, 228, 0.1) 1px | 3.35544e+07px | 0px | 16px",
+    1
+   ],
+   [
+    "rgb(33, 29, 25) | rgba(242, 237, 228, 0.1) 1px | 3.35544e+07px | 0px | 13px",
+    1
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(251, 247, 240) 0px | 16px | 0px | 14px",
+    1
+   ],
+   [
+    "rgb(33, 29, 25) | rgb(242, 237, 228) 0px | 3.35544e+07px | 0px | 16px",
+    1
+   ]
+  ],
+  "contrasteMedidos": 31,
+  "contrasteSinMedir": 0,
+  "contrasteInactivos": 0,
+  "nContrasteMal": 0,
+  "contrasteMal": [],
+  "imgDeformadas": 0,
+  "imgSinAlt": 0,
+  "h1": 1,
+  "solapados": 0,
+  "solapadosDetalle": []
+ },
+ {
+  "area": "admin",
+  "pantalla": "Hoy",
+  "ruta": "/admin",
+  "rol": "admin",
+  "vp": "escritorio",
+  "http": 200,
+  "url": "http://localhost:3000/admin",
+  "sw": 1280,
+  "vw": 1280,
+  "alto": 1231,
+  "cromo": 132,
+  "yPrimerDato": null,
+  "desbordeH": false,
+  "interactivos": 18,
+  "nChicos": 0,
+  "chicos": [],
+  "textoTotal": 102,
+  "textoChico": 0,
+  "nSizes": 10,
+  "sizes": [
+   [
+    "12",
+    50
+   ],
+   [
+    "13",
+    19
+   ],
+   [
+    "15",
+    9
+   ],
+   [
+    "12.5",
+    7
+   ],
+   [
+    "14",
+    6
+   ],
+   [
+    "24",
+    6
+   ],
+   [
+    "13.5",
+    2
+   ],
+   [
+    "26",
+    1
+   ],
+   [
+    "30",
+    1
+   ],
+   [
+    "52",
+    1
+   ]
+  ],
+  "nWeights": 4,
+  "weights": [
+   [
+    "400",
+    37
+   ],
+   [
+    "600",
+    25
+   ],
+   [
+    "700",
+    20
+   ],
+   [
+    "800",
+    20
+   ]
+  ],
+  "fams": [
+   [
+    "Inter",
+    83
+   ],
+   [
+    "Barlow Condensed",
+    18
+   ],
+   [
+    "ui-monospace",
+    1
+   ]
+  ],
+  "nTextColors": 6,
+  "tcolors": [
+   [
+    "rgb(156, 149, 138)",
+    60
+   ],
+   [
+    "rgb(242, 237, 228)",
+    30
+   ],
+   [
+    "rgb(251, 191, 36)",
+    5
+   ],
+   [
+    "oklab(0.947513 0.00178179 0.0130511 / 0.85)",
+    5
+   ],
+   [
+    "rgb(12, 11, 10)",
+    1
+   ],
+   [
+    "rgb(52, 211, 153)",
+    1
+   ]
+  ],
+  "nEyebrowSizes": 1,
+  "eyebrows": [
+   [
+    "12",
+    11
+   ]
+  ],
+  "emojiUI": 0,
+  "nBgs": 9,
+  "bgs": [
+   [
+    "rgb(21, 19, 17)",
+    19
+   ],
+   [
+    "rgb(33, 29, 25)",
+    8
+   ],
+   [
+    "rgb(251, 191, 36)",
+    4
+   ],
+   [
+    "rgb(12, 11, 10)",
+    2
+   ],
+   [
+    "oklab(0.836863 0.0160027 0.163654 / 0.04)",
+    2
+   ],
+   [
+    "oklab(0.150388 0.00104634 0.00251868 / 0.9)",
+    1
+   ],
+   [
+    "rgb(242, 237, 228)",
+    1
+   ],
+   [
+    "oklab(0.836863 0.0160027 0.163654 / 0.1)",
+    1
+   ],
+   [
+    "oklab(0.947513 0.00178179 0.0130511 / 0.0611765)",
+    1
+   ]
+  ],
+  "nBorders": 3,
+  "nRadii": 6,
+  "radii": [
+   [
+    "3.35544e+07px",
+    30
+   ],
+   [
+    "16px",
+    16
+   ],
+   [
+    "10px",
+    2
+   ],
+   [
+    "4px",
+    1
+   ],
+   [
+    "12px",
+    1
+   ],
+   [
+    "8px",
+    1
+   ]
+  ],
+  "nPads": 5,
+  "nBotones": 8,
+  "nFirmasBoton": 7,
+  "firmas": [
+   [
+    "rgba(0, 0, 0, 0) | rgb(156, 149, 138) 0px | 3.35544e+07px | 0px 14px | 13px",
+    2
+   ],
+   [
+    "rgb(242, 237, 228) | rgb(12, 11, 10) 0px | 3.35544e+07px | 0px 14px | 13px",
+    1
+   ],
+   [
+    "rgb(21, 19, 17) | rgba(242, 237, 228, 0.1) 1px | 3.35544e+07px | 0px 16px | 13px",
+    1
+   ],
+   [
+    "rgb(21, 19, 17) | rgba(242, 237, 228, 0.1) 1px | 3.35544e+07px | 0px | 16px",
+    1
+   ],
+   [
+    "rgb(33, 29, 25) | rgba(242, 237, 228, 0.1) 1px | 3.35544e+07px | 0px | 13px",
+    1
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgba(0, 0, 0, 0) 0px 0px 2px | 0px | 0px 12px | 13px",
+    1
+   ],
+   [
+    "oklab(0.836863 0.0160027 0.163654 / 0.1) | oklab(0.836863 0.0160027 0.163654 / 0.35) 1px | 12px | 8px 14px | 13px",
+    1
+   ]
+  ],
+  "contrasteMedidos": 102,
+  "contrasteSinMedir": 0,
+  "contrasteInactivos": 0,
+  "nContrasteMal": 0,
+  "contrasteMal": [],
+  "imgDeformadas": 0,
+  "imgSinAlt": 0,
+  "h1": 1,
+  "solapados": 0,
+  "solapadosDetalle": []
+ },
+ {
+  "area": "admin",
+  "pantalla": "Agenda dia",
+  "ruta": "/admin/agenda",
+  "rol": "admin",
+  "vp": "escritorio",
+  "http": 200,
+  "url": "http://localhost:3000/admin/agenda",
+  "sw": 1280,
+  "vw": 1280,
+  "alto": 948,
+  "cromo": 132,
+  "yPrimerDato": null,
+  "desbordeH": false,
+  "interactivos": 21,
+  "nChicos": 0,
+  "chicos": [],
+  "textoTotal": 44,
+  "textoChico": 0,
+  "nSizes": 6,
+  "sizes": [
+   [
+    "12",
+    22
+   ],
+   [
+    "13",
+    13
+   ],
+   [
+    "12.5",
+    5
+   ],
+   [
+    "16",
+    2
+   ],
+   [
+    "20",
+    1
+   ],
+   [
+    "32",
+    1
+   ]
+  ],
+  "nWeights": 4,
+  "weights": [
+   [
+    "400",
+    25
+   ],
+   [
+    "600",
+    11
+   ],
+   [
+    "700",
+    7
+   ],
+   [
+    "800",
+    1
+   ]
+  ],
+  "fams": [
+   [
+    "Inter",
+    41
+   ],
+   [
+    "Barlow Condensed",
+    2
+   ],
+   [
+    "ui-monospace",
+    1
+   ]
+  ],
+  "nTextColors": 4,
+  "tcolors": [
+   [
+    "rgb(156, 149, 138)",
+    30
+   ],
+   [
+    "rgb(242, 237, 228)",
+    11
+   ],
+   [
+    "rgb(12, 11, 10)",
+    2
+   ],
+   [
+    "rgb(251, 247, 240)",
+    1
+   ]
+  ],
+  "nEyebrowSizes": 1,
+  "eyebrows": [
+   [
+    "12",
+    1
+   ]
+  ],
+  "emojiUI": 0,
+  "nBgs": 5,
+  "bgs": [
+   [
+    "rgb(21, 19, 17)",
+    6
+   ],
+   [
+    "rgb(12, 11, 10)",
+    2
+   ],
+   [
+    "rgb(242, 237, 228)",
+    2
+   ],
+   [
+    "oklab(0.150388 0.00104634 0.00251868 / 0.9)",
+    1
+   ],
+   [
+    "rgb(33, 29, 25)",
+    1
+   ]
+  ],
+  "nBorders": 6,
+  "nRadii": 3,
+  "radii": [
+   [
+    "3.35544e+07px",
+    17
+   ],
+   [
+    "4px",
+    7
+   ],
+   [
+    "16px",
+    1
+   ]
+  ],
+  "nPads": 5,
+  "nBotones": 13,
+  "nFirmasBoton": 11,
+  "firmas": [
+   [
+    "rgba(0, 0, 0, 0) | oklab(0.947513 0.00178179 0.0130511 / 0.0611765) 0px 0px 0px 1px | 0px | 10px 8px | 16px",
+    3
+   ],
+   [
+    "rgb(242, 237, 228) | rgb(12, 11, 10) 0px | 3.35544e+07px | 0px 14px | 13px",
+    1
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(156, 149, 138) 0px | 3.35544e+07px | 0px 14px | 13px",
+    1
+   ],
+   [
+    "rgb(21, 19, 17) | rgba(242, 237, 228, 0.1) 1px | 3.35544e+07px | 0px 16px | 13px",
+    1
+   ],
+   [
+    "rgb(21, 19, 17) | rgba(242, 237, 228, 0.1) 1px | 3.35544e+07px | 0px | 16px",
+    1
+   ],
+   [
+    "rgb(33, 29, 25) | rgba(242, 237, 228, 0.1) 1px | 3.35544e+07px | 0px | 13px",
+    1
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgba(0, 0, 0, 0) 0px 0px 2px | 0px | 0px 12px | 13px",
+    1
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(242, 237, 228) 0px | 3.35544e+07px | 0px | 13px",
+    1
+   ],
+   [
+    "rgb(242, 237, 228) | rgb(242, 237, 228) 1px | 3.35544e+07px | 0px 16px | 13px",
+    1
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgba(242, 237, 228, 0.1) 1px | 3.35544e+07px | 0px 16px | 12.5px",
+    1
+   ]
+  ],
+  "contrasteMedidos": 44,
+  "contrasteSinMedir": 0,
+  "contrasteInactivos": 0,
+  "nContrasteMal": 0,
+  "contrasteMal": [],
+  "imgDeformadas": 0,
+  "imgSinAlt": 0,
+  "h1": 1,
+  "solapados": 0,
+  "solapadosDetalle": []
+ },
+ {
+  "area": "admin",
+  "pantalla": "Agenda semana",
+  "ruta": "/admin/agenda?vista=semana",
+  "rol": "admin",
+  "vp": "escritorio",
+  "http": 200,
+  "url": "http://localhost:3000/admin/agenda?vista=semana",
+  "sw": 1280,
+  "vw": 1280,
+  "alto": 800,
+  "cromo": 132,
+  "yPrimerDato": null,
+  "desbordeH": false,
+  "interactivos": 27,
+  "nChicos": 2,
+  "chicos": [
+   {
+    "t": "4:30 pm BARBAS",
+    "w": 164,
+    "h": 25
+   },
+   {
+    "t": "5:15 pm BARBAS",
+    "w": 164,
+    "h": 25
+   }
+  ],
+  "textoTotal": 51,
+  "textoChico": 0,
+  "nSizes": 7,
+  "sizes": [
+   [
+    "12",
+    26
+   ],
+   [
+    "13",
+    12
+   ],
+   [
+    "18",
+    7
+   ],
+   [
+    "16",
+    2
+   ],
+   [
+    "12.5",
+    2
+   ],
+   [
+    "20",
+    1
+   ],
+   [
+    "32",
+    1
+   ]
+  ],
+  "nWeights": 4,
+  "weights": [
+   [
+    "400",
+    26
+   ],
+   [
+    "700",
+    13
+   ],
+   [
+    "600",
+    11
+   ],
+   [
+    "800",
+    1
+   ]
+  ],
+  "fams": [
+   [
+    "Inter",
+    41
+   ],
+   [
+    "Barlow Condensed",
+    9
+   ],
+   [
+    "ui-monospace",
+    1
+   ]
+  ],
+  "nTextColors": 6,
+  "tcolors": [
+   [
+    "rgb(156, 149, 138)",
+    29
+   ],
+   [
+    "rgb(242, 237, 228)",
+    13
+   ],
+   [
+    "rgb(251, 191, 36)",
+    4
+   ],
+   [
+    "rgb(12, 11, 10)",
+    3
+   ],
+   [
+    "rgb(251, 247, 240)",
+    1
+   ],
+   [
+    "rgb(232, 103, 92)",
+    1
+   ]
+  ],
+  "nEyebrowSizes": 1,
+  "eyebrows": [
+   [
+    "12",
+    1
+   ]
+  ],
+  "emojiUI": 0,
+  "nBgs": 7,
+  "bgs": [
+   [
+    "rgb(21, 19, 17)",
+    4
+   ],
+   [
+    "rgb(242, 237, 228)",
+    3
+   ],
+   [
+    "rgb(12, 11, 10)",
+    2
+   ],
+   [
+    "oklab(0.836863 0.0160027 0.163654 / 0.1)",
+    2
+   ],
+   [
+    "oklab(0.150388 0.00104634 0.00251868 / 0.9)",
+    1
+   ],
+   [
+    "rgb(33, 29, 25)",
+    1
+   ],
+   [
+    "oklab(0.581255 0.163163 0.0885327 / 0.1)",
+    1
+   ]
+  ],
+  "nBorders": 4,
+  "nRadii": 4,
+  "radii": [
+   [
+    "3.35544e+07px",
+    15
+   ],
+   [
+    "4px",
+    7
+   ],
+   [
+    "6px",
+    2
+   ],
+   [
+    "16px",
+    1
+   ]
+  ],
+  "nPads": 6,
+  "nBotones": 13,
+  "nFirmasBoton": 12,
+  "firmas": [
+   [
+    "oklab(0.836863 0.0160027 0.163654 / 0.1) | oklab(0.836863 0.0160027 0.163654 / 0.25) oklab(0.836863 0.0160027 0.163654 / 0.25) oklab(0.836863 0.0160027 0.163654 / 0.25) rgb(251, 191, 36) 1px 1px 1px 3px | 6px | 4px 6px | 12px",
+    2
+   ],
+   [
+    "rgb(242, 237, 228) | rgb(12, 11, 10) 0px | 3.35544e+07px | 0px 14px | 13px",
+    1
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(156, 149, 138) 0px | 3.35544e+07px | 0px 14px | 13px",
+    1
+   ],
+   [
+    "rgb(21, 19, 17) | rgba(242, 237, 228, 0.1) 1px | 3.35544e+07px | 0px 16px | 13px",
+    1
+   ],
+   [
+    "rgb(21, 19, 17) | rgba(242, 237, 228, 0.1) 1px | 3.35544e+07px | 0px | 16px",
+    1
+   ],
+   [
+    "rgb(33, 29, 25) | rgba(242, 237, 228, 0.1) 1px | 3.35544e+07px | 0px | 13px",
+    1
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgba(0, 0, 0, 0) 0px 0px 2px | 0px | 0px 12px | 13px",
+    1
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(156, 149, 138) 0px | 3.35544e+07px | 0px | 13px",
+    1
+   ],
+   [
+    "rgb(242, 237, 228) | rgb(242, 237, 228) 1px | 3.35544e+07px | 0px 16px | 13px",
+    1
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgba(242, 237, 228, 0.1) 1px | 3.35544e+07px | 0px 16px | 12.5px",
+    1
+   ]
+  ],
+  "contrasteMedidos": 51,
+  "contrasteSinMedir": 0,
+  "contrasteInactivos": 0,
+  "nContrasteMal": 0,
+  "contrasteMal": [],
+  "imgDeformadas": 0,
+  "imgSinAlt": 0,
+  "h1": 1,
+  "solapados": 0,
+  "solapadosDetalle": []
+ },
+ {
+  "area": "admin",
+  "pantalla": "Caja (cuadre)",
+  "ruta": "/admin/cuadre",
+  "rol": "admin",
+  "vp": "escritorio",
+  "http": 200,
+  "url": "http://localhost:3000/admin/cuadre",
+  "sw": 1280,
+  "vw": 1280,
+  "alto": 1657,
+  "cromo": 124,
+  "yPrimerDato": null,
+  "desbordeH": false,
+  "interactivos": 44,
+  "nChicos": 0,
+  "chicos": [],
+  "textoTotal": 124,
+  "textoChico": 0,
+  "nSizes": 12,
+  "sizes": [
+   [
+    "12",
+    45
+   ],
+   [
+    "13",
+    27
+   ],
+   [
+    "12.5",
+    13
+   ],
+   [
+    "13.5",
+    9
+   ],
+   [
+    "15",
+    7
+   ],
+   [
+    "20",
+    7
+   ],
+   [
+    "14",
+    5
+   ],
+   [
+    "17",
+    3
+   ],
+   [
+    "26",
+    3
+   ],
+   [
+    "24",
+    2
+   ],
+   [
+    "30",
+    2
+   ],
+   [
+    "32",
+    1
+   ]
+  ],
+  "nWeights": 5,
+  "weights": [
+   [
+    "400",
+    55
+   ],
+   [
+    "600",
+    37
+   ],
+   [
+    "700",
+    30
+   ],
+   [
+    "500",
+    1
+   ],
+   [
+    "800",
+    1
+   ]
+  ],
+  "fams": [
+   [
+    "Inter",
+    97
+   ],
+   [
+    "Barlow Condensed",
+    26
+   ],
+   [
+    "ui-monospace",
+    1
+   ]
+  ],
+  "nTextColors": 8,
+  "tcolors": [
+   [
+    "rgb(156, 149, 138)",
+    65
+   ],
+   [
+    "rgb(242, 237, 228)",
+    27
+   ],
+   [
+    "rgb(52, 211, 153)",
+    9
+   ],
+   [
+    "rgb(232, 103, 92)",
+    8
+   ],
+   [
+    "rgb(251, 191, 36)",
+    6
+   ],
+   [
+    "rgb(251, 247, 240)",
+    6
+   ],
+   [
+    "rgb(12, 11, 10)",
+    2
+   ],
+   [
+    "oklab(0.836863 0.0160027 0.163654 / 0.8)",
+    1
+   ]
+  ],
+  "nEyebrowSizes": 1,
+  "eyebrows": [
+   [
+    "12",
+    4
+   ]
+  ],
+  "emojiUI": 0,
+  "nBgs": 13,
+  "bgs": [
+   [
+    "rgb(12, 11, 10)",
+    15
+   ],
+   [
+    "rgb(21, 19, 17)",
+    15
+   ],
+   [
+    "oklab(0.772937 -0.14692 0.0443151 / 0.1)",
+    5
+   ],
+   [
+    "oklab(0.772937 -0.14692 0.0443151 / 0.15)",
+    3
+   ],
+   [
+    "oklab(0.836863 0.0160027 0.163654 / 0.15)",
+    3
+   ],
+   [
+    "oklab(0.581255 0.163163 0.0885327 / 0.1)",
+    2
+   ],
+   [
+    "rgb(52, 211, 153)",
+    2
+   ],
+   [
+    "oklab(0.836863 0.0160027 0.163654 / 0.08)",
+    2
+   ],
+   [
+    "rgb(242, 237, 228)",
+    2
+   ],
+   [
+    "oklab(0.150388 0.00104634 0.00251868 / 0.9)",
+    1
+   ]
+  ],
+  "nBorders": 8,
+  "nRadii": 5,
+  "radii": [
+   [
+    "3.35544e+07px",
+    42
+   ],
+   [
+    "16px",
+    14
+   ],
+   [
+    "8px",
+    10
+   ],
+   [
+    "12px",
+    6
+   ],
+   [
+    "4px",
+    1
+   ]
+  ],
+  "nPads": 4,
+  "nBotones": 32,
+  "nFirmasBoton": 9,
+  "firmas": [
+   [
+    "rgba(0, 0, 0, 0) | rgba(242, 237, 228, 0.1) 1px | 3.35544e+07px | 0px 16px | 13px",
+    14
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(251, 247, 240) 0px | 3.35544e+07px | 0px 16px | 12.5px",
+    6
+   ],
+   [
+    "oklab(0.772937 -0.14692 0.0443151 / 0.1) | oklab(0.772937 -0.14692 0.0443151 / 0.4) 1px | 3.35544e+07px | 0px 16px | 12px",
+    5
+   ],
+   [
+    "rgb(242, 237, 228) | rgb(242, 237, 228) 1px | 3.35544e+07px | 0px 16px | 13px",
+    2
+   ],
+   [
+    "rgb(21, 19, 17) | rgba(242, 237, 228, 0.1) 1px | 3.35544e+07px | 0px 16px | 13px",
+    1
+   ],
+   [
+    "rgb(21, 19, 17) | rgba(242, 237, 228, 0.1) 1px | 3.35544e+07px | 0px | 16px",
+    1
+   ],
+   [
+    "rgb(33, 29, 25) | rgba(242, 237, 228, 0.1) 1px | 3.35544e+07px | 0px | 13px",
+    1
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgba(0, 0, 0, 0) 0px 0px 2px | 0px | 0px 12px | 13px",
+    1
+   ],
+   [
+    "rgb(12, 11, 10) | rgba(242, 237, 228, 0.1) 1px | 8px | 8px 12px | 16px",
+    1
+   ]
+  ],
+  "contrasteMedidos": 124,
+  "contrasteSinMedir": 0,
+  "contrasteInactivos": 0,
+  "nContrasteMal": 0,
+  "contrasteMal": [],
+  "imgDeformadas": 0,
+  "imgSinAlt": 0,
+  "h1": 1,
+  "solapados": 0,
+  "solapadosDetalle": []
+ },
+ {
+  "area": "admin",
+  "pantalla": "Clientes",
+  "ruta": "/admin/clientes",
+  "rol": "admin",
+  "vp": "escritorio",
+  "http": 200,
+  "url": "http://localhost:3000/admin/clientes",
+  "sw": 1280,
+  "vw": 1280,
+  "alto": 1923,
+  "cromo": 132,
+  "yPrimerDato": 332,
+  "desbordeH": false,
+  "interactivos": 42,
+  "nChicos": 0,
+  "chicos": [],
+  "textoTotal": 149,
+  "textoChico": 0,
+  "nSizes": 7,
+  "sizes": [
+   [
+    "12",
+    79
+   ],
+   [
+    "15",
+    29
+   ],
+   [
+    "17",
+    22
+   ],
+   [
+    "13",
+    13
+   ],
+   [
+    "24",
+    4
+   ],
+   [
+    "32",
+    1
+   ],
+   [
+    "12.5",
+    1
+   ]
+  ],
+  "nWeights": 4,
+  "weights": [
+   [
+    "400",
+    73
+   ],
+   [
+    "700",
+    59
+   ],
+   [
+    "600",
+    16
+   ],
+   [
+    "800",
+    1
+   ]
+  ],
+  "fams": [
+   [
+    "Inter",
+    92
+   ],
+   [
+    "Barlow Condensed",
+    56
+   ],
+   [
+    "ui-monospace",
+    1
+   ]
+  ],
+  "nTextColors": 4,
+  "tcolors": [
+   [
+    "rgb(156, 149, 138)",
+    84
+   ],
+   [
+    "rgb(242, 237, 228)",
+    41
+   ],
+   [
+    "rgb(12, 11, 10)",
+    23
+   ],
+   [
+    "rgb(251, 247, 240)",
+    1
+   ]
+  ],
+  "nEyebrowSizes": 1,
+  "eyebrows": [
+   [
+    "12",
+    2
+   ]
+  ],
+  "emojiUI": 1,
+  "nBgs": 11,
+  "bgs": [
+   [
+    "rgb(217, 160, 102)",
+    8
+   ],
+   [
+    "rgb(21, 19, 17)",
+    7
+   ],
+   [
+    "rgb(143, 122, 96)",
+    5
+   ],
+   [
+    "rgb(232, 103, 92)",
+    4
+   ],
+   [
+    "rgb(163, 144, 124)",
+    4
+   ],
+   [
+    "rgb(12, 11, 10)",
+    3
+   ],
+   [
+    "oklab(0.150388 0.00104634 0.00251868 / 0.9)",
+    1
+   ],
+   [
+    "rgb(242, 237, 228)",
+    1
+   ],
+   [
+    "rgb(33, 29, 25)",
+    1
+   ],
+   [
+    "rgb(201, 177, 138)",
+    1
+   ]
+  ],
+  "nBorders": 3,
+  "nRadii": 4,
+  "radii": [
+   [
+    "3.35544e+07px",
+    55
+   ],
+   [
+    "16px",
+    5
+   ],
+   [
+    "12px",
+    2
+   ],
+   [
+    "4px",
+    1
+   ]
+  ],
+  "nPads": 5,
+  "nBotones": 13,
+  "nFirmasBoton": 10,
+  "firmas": [
+   [
+    "rgb(21, 19, 17) | rgba(242, 237, 228, 0.1) 1px | 16px | 12px 16px | 16px",
+    3
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(156, 149, 138) 0px | 3.35544e+07px | 0px 14px | 13px",
+    2
+   ],
+   [
+    "rgb(242, 237, 228) | rgb(12, 11, 10) 0px | 3.35544e+07px | 0px 14px | 13px",
+    1
+   ],
+   [
+    "rgb(21, 19, 17) | rgba(242, 237, 228, 0.1) 1px | 3.35544e+07px | 0px 16px | 13px",
+    1
+   ],
+   [
+    "rgb(21, 19, 17) | rgba(242, 237, 228, 0.1) 1px | 3.35544e+07px | 0px | 16px",
+    1
+   ],
+   [
+    "rgb(33, 29, 25) | rgba(242, 237, 228, 0.1) 1px | 3.35544e+07px | 0px | 13px",
+    1
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgba(0, 0, 0, 0) 0px 0px 2px | 0px | 0px 12px | 13px",
+    1
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(242, 237, 228) 0px | 3.35544e+07px | 0px | 13px",
+    1
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(251, 247, 240) 0px | 3.35544e+07px | 0px 16px | 12.5px",
+    1
+   ],
+   [
+    "oklab(0.581255 0.163163 0.0885327 / 0.1) | rgb(210, 63, 52) 1px | 16px | 12px 16px | 16px",
+    1
+   ]
+  ],
+  "contrasteMedidos": 149,
+  "contrasteSinMedir": 0,
+  "contrasteInactivos": 0,
+  "nContrasteMal": 0,
+  "contrasteMal": [],
+  "imgDeformadas": 0,
+  "imgSinAlt": 0,
+  "h1": 1,
+  "solapados": 0,
+  "solapadosDetalle": []
+ },
+ {
+  "area": "admin",
+  "pantalla": "Servicios y precios",
+  "ruta": "/admin/precios",
+  "rol": "admin",
+  "vp": "escritorio",
+  "http": 200,
+  "url": "http://localhost:3000/admin/precios",
+  "sw": 1280,
+  "vw": 1280,
+  "alto": 2214,
+  "cromo": 132,
+  "yPrimerDato": null,
+  "desbordeH": false,
+  "interactivos": 73,
+  "nChicos": 0,
+  "chicos": [],
+  "textoTotal": 119,
+  "textoChico": 0,
+  "nSizes": 7,
+  "sizes": [
+   [
+    "12",
+    70
+   ],
+   [
+    "16",
+    21
+   ],
+   [
+    "13",
+    15
+   ],
+   [
+    "14",
+    8
+   ],
+   [
+    "24",
+    3
+   ],
+   [
+    "18",
+    1
+   ],
+   [
+    "32",
+    1
+   ]
+  ],
+  "nWeights": 4,
+  "weights": [
+   [
+    "600",
+    77
+   ],
+   [
+    "400",
+    29
+   ],
+   [
+    "700",
+    12
+   ],
+   [
+    "800",
+    1
+   ]
+  ],
+  "fams": [
+   [
+    "Inter",
+    106
+   ],
+   [
+    "Barlow Condensed",
+    12
+   ],
+   [
+    "ui-monospace",
+    1
+   ]
+  ],
+  "nTextColors": 6,
+  "tcolors": [
+   [
+    "rgb(156, 149, 138)",
+    57
+   ],
+   [
+    "rgb(242, 237, 228)",
+    35
+   ],
+   [
+    "oklab(0.947513 0.00178179 0.0130511 / 0.85)",
+    14
+   ],
+   [
+    "oklab(0.947519 0.00173855 0.0130325 / 0.85)",
+    7
+   ],
+   [
+    "rgb(12, 11, 10)",
+    4
+   ],
+   [
+    "rgb(251, 191, 36)",
+    2
+   ]
+  ],
+  "nEyebrowSizes": 1,
+  "eyebrows": [
+   [
+    "12",
+    1
+   ]
+  ],
+  "emojiUI": 0,
+  "nBgs": 16,
+  "bgs": [
+   [
+    "rgb(33, 29, 25)",
+    18
+   ],
+   [
+    "rgb(21, 19, 17)",
+    13
+   ],
+   [
+    "rgb(210, 63, 52)",
+    7
+   ],
+   [
+    "oklab(0.772937 -0.14692 0.0443151 / 0.25)",
+    4
+   ],
+   [
+    "rgb(52, 211, 153)",
+    4
+   ],
+   [
+    "rgb(12, 11, 10)",
+    3
+   ],
+   [
+    "rgb(242, 237, 228)",
+    3
+   ],
+   [
+    "rgb(156, 149, 138)",
+    3
+   ],
+   [
+    "rgb(51, 47, 28)",
+    2
+   ],
+   [
+    "rgb(30, 53, 39)",
+    2
+   ]
+  ],
+  "nBorders": 8,
+  "nRadii": 6,
+  "radii": [
+   [
+    "3.35544e+07px",
+    48
+   ],
+   [
+    "8px",
+    28
+   ],
+   [
+    "16px",
+    11
+   ],
+   [
+    "12px",
+    8
+   ],
+   [
+    "10px",
+    7
+   ],
+   [
+    "4px",
+    1
+   ]
+  ],
+  "nPads": 5,
+  "nBotones": 66,
+  "nFirmasBoton": 14,
+  "firmas": [
+   [
+    "rgba(0, 0, 0, 0) | rgba(242, 237, 228, 0.1) 1px | 3.35544e+07px | 0px 14px | 12px",
+    14
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(156, 149, 138) 0px | 0px | 0px | 12px",
+    14
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(242, 237, 228) 0px | 8px | 0px 8px | 16px",
+    14
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(242, 237, 228) 0px | 12px | 0px | 16px",
+    7
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(242, 237, 228) 0px | 0px | 0px | 16px",
+    7
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(156, 149, 138) 0px | 3.35544e+07px | 0px 14px | 13px",
+    2
+   ],
+   [
+    "rgb(242, 237, 228) | rgb(12, 11, 10) 0px | 3.35544e+07px | 0px 14px | 13px",
+    1
+   ],
+   [
+    "rgb(21, 19, 17) | rgba(242, 237, 228, 0.1) 1px | 3.35544e+07px | 0px 16px | 13px",
+    1
+   ],
+   [
+    "rgb(21, 19, 17) | rgba(242, 237, 228, 0.1) 1px | 3.35544e+07px | 0px | 16px",
+    1
+   ],
+   [
+    "rgb(33, 29, 25) | rgba(242, 237, 228, 0.1) 1px | 3.35544e+07px | 0px | 13px",
+    1
+   ]
+  ],
+  "contrasteMedidos": 119,
+  "contrasteSinMedir": 0,
+  "contrasteInactivos": 0,
+  "nContrasteMal": 0,
+  "contrasteMal": [],
+  "imgDeformadas": 0,
+  "imgSinAlt": 0,
+  "h1": 1,
+  "solapados": 0,
+  "solapadosDetalle": []
+ },
+ {
+  "area": "admin",
+  "pantalla": "Productos y stock",
+  "ruta": "/admin/inventario",
+  "rol": "admin",
+  "vp": "escritorio",
+  "http": 200,
+  "url": "http://localhost:3000/admin/inventario",
+  "sw": 1280,
+  "vw": 1280,
+  "alto": 2167,
+  "cromo": 132,
+  "yPrimerDato": null,
+  "desbordeH": false,
+  "interactivos": 106,
+  "nChicos": 0,
+  "chicos": [],
+  "textoTotal": 191,
+  "textoChico": 0,
+  "nSizes": 7,
+  "sizes": [
+   [
+    "13",
+    67
+   ],
+   [
+    "12",
+    47
+   ],
+   [
+    "12.5",
+    32
+   ],
+   [
+    "15",
+    15
+   ],
+   [
+    "18",
+    15
+   ],
+   [
+    "16",
+    14
+   ],
+   [
+    "32",
+    1
+   ]
+  ],
+  "nWeights": 4,
+  "weights": [
+   [
+    "400",
+    80
+   ],
+   [
+    "600",
+    58
+   ],
+   [
+    "700",
+    37
+   ],
+   [
+    "800",
+    16
+   ]
+  ],
+  "fams": [
+   [
+    "Inter",
+    160
+   ],
+   [
+    "Barlow Condensed",
+    30
+   ],
+   [
+    "ui-monospace",
+    1
+   ]
+  ],
+  "nTextColors": 7,
+  "tcolors": [
+   [
+    "rgb(156, 149, 138)",
+    72
+   ],
+   [
+    "rgb(242, 237, 228)",
+    62
+   ],
+   [
+    "rgb(232, 103, 92)",
+    30
+   ],
+   [
+    "oklab(0.947519 0.00173855 0.0130325 / 0.85)",
+    14
+   ],
+   [
+    "rgb(251, 191, 36)",
+    10
+   ],
+   [
+    "rgb(12, 11, 10)",
+    2
+   ],
+   [
+    "rgb(251, 247, 240)",
+    1
+   ]
+  ],
+  "nEyebrowSizes": 2,
+  "eyebrows": [
+   [
+    "13",
+    2
+   ],
+   [
+    "12",
+    1
+   ]
+  ],
+  "emojiUI": 0,
+  "nBgs": 18,
+  "bgs": [
+   [
+    "rgb(33, 29, 25)",
+    20
+   ],
+   [
+    "rgb(21, 19, 17)",
+    18
+   ],
+   [
+    "rgb(210, 63, 52)",
+    15
+   ],
+   [
+    "oklab(0.581255 0.163163 0.0885327 / 0.07)",
+    13
+   ],
+   [
+    "oklab(0.772937 -0.14692 0.0443151 / 0.25)",
+    9
+   ],
+   [
+    "rgb(52, 211, 153)",
+    9
+   ],
+   [
+    "rgb(156, 149, 138)",
+    6
+   ],
+   [
+    "rgb(51, 47, 28)",
+    5
+   ],
+   [
+    "rgb(38, 40, 45)",
+    4
+   ],
+   [
+    "rgb(12, 11, 10)",
+    2
+   ]
+  ],
+  "nBorders": 9,
+  "nRadii": 5,
+  "radii": [
+   [
+    "3.35544e+07px",
+    102
+   ],
+   [
+    "12px",
+    17
+   ],
+   [
+    "16px",
+    15
+   ],
+   [
+    "10px",
+    15
+   ],
+   [
+    "4px",
+    1
+   ]
+  ],
+  "nPads": 5,
+  "nBotones": 100,
+  "nFirmasBoton": 16,
+  "firmas": [
+   [
+    "rgba(0, 0, 0, 0) | rgb(242, 237, 228) 0px | 12px | 0px | 16px",
+    15
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(242, 237, 228) 0px | 0px | 0px | 18px",
+    15
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(156, 149, 138) 0px | 0px | 0px | 12.5px",
+    15
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgba(242, 237, 228, 0.1) 1px | 3.35544e+07px | 0px 16px | 13px",
+    15
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(242, 237, 228) 0px | 0px | 0px | 16px",
+    15
+   ],
+   [
+    "oklab(0.581255 0.163163 0.0885327 / 0.07) | oklab(0.581255 0.163163 0.0885327 / 0.4) 1px | 3.35544e+07px | 0px 16px | 13px",
+    13
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(156, 149, 138) 0px | 3.35544e+07px | 0px 14px | 13px",
+    2
+   ],
+   [
+    "oklab(0.836863 0.0160027 0.163654 / 0.1) | oklab(0.836863 0.0160027 0.163654 / 0.5) 1px | 3.35544e+07px | 0px 16px | 13px",
+    2
+   ],
+   [
+    "rgb(242, 237, 228) | rgb(12, 11, 10) 0px | 3.35544e+07px | 0px 14px | 13px",
+    1
+   ],
+   [
+    "rgb(21, 19, 17) | rgba(242, 237, 228, 0.1) 1px | 3.35544e+07px | 0px 16px | 13px",
+    1
+   ]
+  ],
+  "contrasteMedidos": 191,
+  "contrasteSinMedir": 0,
+  "contrasteInactivos": 0,
+  "nContrasteMal": 0,
+  "contrasteMal": [],
+  "imgDeformadas": 0,
+  "imgSinAlt": 0,
+  "h1": 1,
+  "solapados": 0,
+  "solapadosDetalle": []
+ },
+ {
+  "area": "admin",
+  "pantalla": "Equipo",
+  "ruta": "/admin/equipo",
+  "rol": "admin",
+  "vp": "escritorio",
+  "http": 200,
+  "url": "http://localhost:3000/admin/equipo",
+  "sw": 1280,
+  "vw": 1280,
+  "alto": 3134,
+  "cromo": 124,
+  "yPrimerDato": null,
+  "desbordeH": false,
+  "interactivos": 54,
+  "nChicos": 0,
+  "chicos": [],
+  "textoTotal": 113,
+  "textoChico": 0,
+  "nSizes": 9,
+  "sizes": [
+   [
+    "12",
+    46
+   ],
+   [
+    "13",
+    32
+   ],
+   [
+    "12.5",
+    22
+   ],
+   [
+    "17",
+    8
+   ],
+   [
+    "14",
+    1
+   ],
+   [
+    "15",
+    1
+   ],
+   [
+    "18",
+    1
+   ],
+   [
+    "32",
+    1
+   ],
+   [
+    "13.5",
+    1
+   ]
+  ],
+  "nWeights": 4,
+  "weights": [
+   [
+    "700",
+    49
+   ],
+   [
+    "600",
+    33
+   ],
+   [
+    "400",
+    30
+   ],
+   [
+    "800",
+    1
+   ]
+  ],
+  "fams": [
+   [
+    "Inter",
+    102
+   ],
+   [
+    "Barlow Condensed",
+    10
+   ],
+   [
+    "ui-monospace",
+    1
+   ]
+  ],
+  "nTextColors": 5,
+  "tcolors": [
+   [
+    "rgb(242, 237, 228)",
+    52
+   ],
+   [
+    "rgb(156, 149, 138)",
+    43
+   ],
+   [
+    "rgb(251, 247, 240)",
+    9
+   ],
+   [
+    "rgb(52, 211, 153)",
+    8
+   ],
+   [
+    "oklab(0.947513 0.00178179 0.0130511 / 0.85)",
+    1
+   ]
+  ],
+  "nEyebrowSizes": 1,
+  "eyebrows": [
+   [
+    "12",
+    10
+   ]
+  ],
+  "emojiUI": 0,
+  "nBgs": 6,
+  "bgs": [
+   [
+    "rgb(21, 19, 17)",
+    28
+   ],
+   [
+    "rgb(33, 29, 25)",
+    9
+   ],
+   [
+    "oklab(0.772937 -0.14692 0.0443151 / 0.15)",
+    8
+   ],
+   [
+    "rgb(12, 11, 10)",
+    5
+   ],
+   [
+    "oklab(0.150388 0.00104634 0.00251868 / 0.9)",
+    1
+   ],
+   [
+    "rgb(156, 149, 138)",
+    1
+   ]
+  ],
+  "nBorders": 3,
+  "nRadii": 5,
+  "radii": [
+   [
+    "3.35544e+07px",
+    54
+   ],
+   [
+    "16px",
+    25
+   ],
+   [
+    "12px",
+    10
+   ],
+   [
+    "8px",
+    3
+   ],
+   [
+    "4px",
+    1
+   ]
+  ],
+  "nPads": 5,
+  "nBotones": 39,
+  "nFirmasBoton": 11,
+  "firmas": [
+   [
+    "rgba(0, 0, 0, 0) | rgba(242, 237, 228, 0.1) 1px | 3.35544e+07px | 0px 14px | 12px",
+    14
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(251, 247, 240) 0px | 3.35544e+07px | 0px 16px | 12.5px",
+    9
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgba(242, 237, 228, 0.1) 1px | 3.35544e+07px | 0px 16px | 12.5px",
+    8
+   ],
+   [
+    "rgb(21, 19, 17) | rgba(242, 237, 228, 0.1) 1px | 3.35544e+07px | 0px 16px | 13px",
+    1
+   ],
+   [
+    "rgb(21, 19, 17) | rgba(242, 237, 228, 0.1) 1px | 3.35544e+07px | 0px | 16px",
+    1
+   ],
+   [
+    "rgb(33, 29, 25) | rgba(242, 237, 228, 0.1) 1px | 3.35544e+07px | 0px | 13px",
+    1
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(210, 63, 52) 0px 0px 2px | 0px | 0px 12px | 13px",
+    1
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(242, 237, 228) 0px | 3.35544e+07px | 0px | 13px",
+    1
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(242, 237, 228) 0px | 0px | 0px | 16px",
+    1
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(156, 149, 138) 0px | 3.35544e+07px | 0px | 12px",
+    1
+   ]
+  ],
+  "contrasteMedidos": 106,
+  "contrasteSinMedir": 0,
+  "contrasteInactivos": 7,
+  "nContrasteMal": 0,
+  "contrasteMal": [],
+  "imgDeformadas": 0,
+  "imgSinAlt": 0,
+  "h1": 1,
+  "solapados": 0,
+  "solapadosDetalle": []
+ },
+ {
+  "area": "admin",
+  "pantalla": "Liquidacion",
+  "ruta": "/admin/liquidacion",
+  "rol": "admin",
+  "vp": "escritorio",
+  "http": 200,
+  "url": "http://localhost:3000/admin/liquidacion",
+  "sw": 1280,
+  "vw": 1280,
+  "alto": 2082,
+  "cromo": 132,
+  "yPrimerDato": null,
+  "desbordeH": false,
+  "interactivos": 22,
+  "nChicos": 0,
+  "chicos": [],
+  "textoTotal": 138,
+  "textoChico": 0,
+  "nSizes": 6,
+  "sizes": [
+   [
+    "12",
+    77
+   ],
+   [
+    "19",
+    30
+   ],
+   [
+    "13",
+    23
+   ],
+   [
+    "26",
+    6
+   ],
+   [
+    "15",
+    1
+   ],
+   [
+    "32",
+    1
+   ]
+  ],
+  "nWeights": 5,
+  "weights": [
+   [
+    "700",
+    79
+   ],
+   [
+    "400",
+    37
+   ],
+   [
+    "600",
+    14
+   ],
+   [
+    "800",
+    7
+   ],
+   [
+    "900",
+    1
+   ]
+  ],
+  "fams": [
+   [
+    "Inter",
+    98
+   ],
+   [
+    "Barlow Condensed",
+    39
+   ],
+   [
+    "ui-monospace",
+    1
+   ]
+  ],
+  "nTextColors": 5,
+  "tcolors": [
+   [
+    "rgb(156, 149, 138)",
+    83
+   ],
+   [
+    "rgb(242, 237, 228)",
+    46
+   ],
+   [
+    "rgb(232, 103, 92)",
+    7
+   ],
+   [
+    "rgb(12, 11, 10)",
+    1
+   ],
+   [
+    "oklab(0.672627 0.00335035 0.0176046 / 0.4)",
+    1
+   ]
+  ],
+  "nEyebrowSizes": 1,
+  "eyebrows": [
+   [
+    "12",
+    7
+   ]
+  ],
+  "emojiUI": 0,
+  "nBgs": 8,
+  "bgs": [
+   [
+    "rgb(21, 19, 17)",
+    34
+   ],
+   [
+    "oklab(0.947513 0.00178179 0.0130511 / 0.0407843)",
+    6
+   ],
+   [
+    "oklab(0.233851 0.00376438 0.00898756 / 0.4)",
+    6
+   ],
+   [
+    "rgb(12, 11, 10)",
+    2
+   ],
+   [
+    "oklab(0.150388 0.00104634 0.00251868 / 0.9)",
+    1
+   ],
+   [
+    "rgb(242, 237, 228)",
+    1
+   ],
+   [
+    "rgb(33, 29, 25)",
+    1
+   ],
+   [
+    "oklab(0.581255 0.163163 0.0885327 / 0.07)",
+    1
+   ]
+  ],
+  "nBorders": 5,
+  "nRadii": 4,
+  "radii": [
+   [
+    "3.35544e+07px",
+    15
+   ],
+   [
+    "16px",
+    7
+   ],
+   [
+    "12px",
+    4
+   ],
+   [
+    "4px",
+    1
+   ]
+  ],
+  "nPads": 4,
+  "nBotones": 14,
+  "nFirmasBoton": 8,
+  "firmas": [
+   [
+    "rgba(0, 0, 0, 0) | rgba(242, 237, 228, 0.1) 1px | 3.35544e+07px | 0px 14px | 12px",
+    6
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(156, 149, 138) 0px | 3.35544e+07px | 0px 14px | 13px",
+    2
+   ],
+   [
+    "rgb(242, 237, 228) | rgb(12, 11, 10) 0px | 3.35544e+07px | 0px 14px | 13px",
+    1
+   ],
+   [
+    "rgb(21, 19, 17) | rgba(242, 237, 228, 0.1) 1px | 3.35544e+07px | 0px 16px | 13px",
+    1
+   ],
+   [
+    "rgb(21, 19, 17) | rgba(242, 237, 228, 0.1) 1px | 3.35544e+07px | 0px | 16px",
+    1
+   ],
+   [
+    "rgb(33, 29, 25) | rgba(242, 237, 228, 0.1) 1px | 3.35544e+07px | 0px | 13px",
+    1
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(210, 63, 52) 0px 0px 2px | 0px | 0px 12px | 13px",
+    1
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(242, 237, 228) 0px | 3.35544e+07px | 0px | 13px",
+    1
+   ]
+  ],
+  "contrasteMedidos": 137,
+  "contrasteSinMedir": 0,
+  "contrasteInactivos": 1,
+  "nContrasteMal": 0,
+  "contrasteMal": [],
+  "imgDeformadas": 0,
+  "imgSinAlt": 0,
+  "h1": 1,
+  "solapados": 0,
+  "solapadosDetalle": []
+ },
+ {
+  "area": "admin",
+  "pantalla": "Metricas",
+  "ruta": "/admin/metricas",
+  "rol": "admin",
+  "vp": "escritorio",
+  "http": 200,
+  "url": "http://localhost:3000/admin/metricas",
+  "sw": 1280,
+  "vw": 1280,
+  "alto": 1530,
+  "cromo": 132,
+  "yPrimerDato": null,
+  "desbordeH": false,
+  "interactivos": 22,
+  "nChicos": 0,
+  "chicos": [],
+  "textoTotal": 90,
+  "textoChico": 0,
+  "nSizes": 8,
+  "sizes": [
+   [
+    "12",
+    33
+   ],
+   [
+    "13",
+    31
+   ],
+   [
+    "13.5",
+    12
+   ],
+   [
+    "18",
+    5
+   ],
+   [
+    "36",
+    4
+   ],
+   [
+    "24",
+    3
+   ],
+   [
+    "15",
+    1
+   ],
+   [
+    "32",
+    1
+   ]
+  ],
+  "nWeights": 4,
+  "weights": [
+   [
+    "400",
+    43
+   ],
+   [
+    "600",
+    39
+   ],
+   [
+    "700",
+    7
+   ],
+   [
+    "800",
+    1
+   ]
+  ],
+  "fams": [
+   [
+    "Inter",
+    75
+   ],
+   [
+    "Barlow Condensed",
+    14
+   ],
+   [
+    "ui-monospace",
+    1
+   ]
+  ],
+  "nTextColors": 5,
+  "tcolors": [
+   [
+    "rgb(156, 149, 138)",
+    44
+   ],
+   [
+    "rgb(242, 237, 228)",
+    41
+   ],
+   [
+    "rgb(232, 103, 92)",
+    2
+   ],
+   [
+    "rgb(52, 211, 153)",
+    2
+   ],
+   [
+    "rgb(12, 11, 10)",
+    1
+   ]
+  ],
+  "nEyebrowSizes": 1,
+  "eyebrows": [
+   [
+    "12",
+    5
+   ]
+  ],
+  "emojiUI": 0,
+  "nBgs": 9,
+  "bgs": [
+   [
+    "oklab(0.581255 0.163163 0.0885327 / 0.7)",
+    34
+   ],
+   [
+    "rgb(33, 29, 25)",
+    16
+   ],
+   [
+    "rgb(21, 19, 17)",
+    13
+   ],
+   [
+    "rgb(12, 11, 10)",
+    4
+   ],
+   [
+    "oklab(0.947513 0.00178179 0.0130511 / 0.04)",
+    4
+   ],
+   [
+    "oklab(0.150388 0.00104634 0.00251868 / 0.9)",
+    1
+   ],
+   [
+    "rgb(242, 237, 228)",
+    1
+   ],
+   [
+    "oklab(0.581255 0.163163 0.0885327 / 0.15)",
+    1
+   ],
+   [
+    "oklab(0.581255 0.163163 0.0885327 / 0.07)",
+    1
+   ]
+  ],
+  "nBorders": 4,
+  "nRadii": 5,
+  "radii": [
+   [
+    "3.35544e+07px",
+    46
+   ],
+   [
+    "4px 4px 0px 0px",
+    22
+   ],
+   [
+    "12px",
+    12
+   ],
+   [
+    "16px",
+    10
+   ],
+   [
+    "4px",
+    1
+   ]
+  ],
+  "nPads": 4,
+  "nBotones": 10,
+  "nFirmasBoton": 9,
+  "firmas": [
+   [
+    "rgba(0, 0, 0, 0) | rgb(156, 149, 138) 0px | 3.35544e+07px | 0px 14px | 13px",
+    2
+   ],
+   [
+    "rgb(242, 237, 228) | rgb(12, 11, 10) 0px | 3.35544e+07px | 0px 14px | 13px",
+    1
+   ],
+   [
+    "rgb(21, 19, 17) | rgba(242, 237, 228, 0.1) 1px | 3.35544e+07px | 0px 16px | 13px",
+    1
+   ],
+   [
+    "rgb(21, 19, 17) | rgba(242, 237, 228, 0.1) 1px | 3.35544e+07px | 0px | 16px",
+    1
+   ],
+   [
+    "rgb(33, 29, 25) | rgba(242, 237, 228, 0.1) 1px | 3.35544e+07px | 0px | 13px",
+    1
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(210, 63, 52) 0px 0px 2px | 0px | 0px 12px | 13px",
+    1
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(242, 237, 228) 0px | 3.35544e+07px | 0px | 13px",
+    1
+   ],
+   [
+    "oklab(0.581255 0.163163 0.0885327 / 0.15) | rgb(210, 63, 52) 1px | 12px | 0px 16px | 13px",
+    1
+   ],
+   [
+    "oklab(0.581255 0.163163 0.0885327 / 0.07) | oklab(0.581255 0.163163 0.0885327 / 0.45) 1px | 12px | 0px 16px | 13px",
+    1
+   ]
+  ],
+  "contrasteMedidos": 90,
+  "contrasteSinMedir": 0,
+  "contrasteInactivos": 0,
+  "nContrasteMal": 0,
+  "contrasteMal": [],
+  "imgDeformadas": 0,
+  "imgSinAlt": 0,
+  "h1": 1,
+  "solapados": 0,
+  "solapadosDetalle": []
+ },
+ {
+  "area": "admin",
+  "pantalla": "Avisos",
+  "ruta": "/admin/avisos",
+  "rol": "admin",
+  "vp": "escritorio",
+  "http": 200,
+  "url": "http://localhost:3000/admin/avisos",
+  "sw": 1280,
+  "vw": 1280,
+  "alto": 1573,
+  "cromo": 124,
+  "yPrimerDato": null,
+  "desbordeH": false,
+  "interactivos": 24,
+  "nChicos": 0,
+  "chicos": [],
+  "textoTotal": 50,
+  "textoChico": 0,
+  "nSizes": 7,
+  "sizes": [
+   [
+    "13",
+    19
+   ],
+   [
+    "12",
+    14
+   ],
+   [
+    "13.5",
+    6
+   ],
+   [
+    "12.5",
+    5
+   ],
+   [
+    "18",
+    3
+   ],
+   [
+    "24",
+    2
+   ],
+   [
+    "32",
+    1
+   ]
+  ],
+  "nWeights": 4,
+  "weights": [
+   [
+    "600",
+    25
+   ],
+   [
+    "400",
+    18
+   ],
+   [
+    "700",
+    4
+   ],
+   [
+    "800",
+    3
+   ]
+  ],
+  "fams": [
+   [
+    "Inter",
+    43
+   ],
+   [
+    "Barlow Condensed",
+    6
+   ],
+   [
+    "ui-monospace",
+    1
+   ]
+  ],
+  "nTextColors": 3,
+  "tcolors": [
+   [
+    "rgb(156, 149, 138)",
+    31
+   ],
+   [
+    "rgb(242, 237, 228)",
+    17
+   ],
+   [
+    "rgb(251, 247, 240)",
+    2
+   ]
+  ],
+  "nEyebrowSizes": 1,
+  "eyebrows": [
+   [
+    "12",
+    3
+   ]
+  ],
+  "emojiUI": 0,
+  "nBgs": 8,
+  "bgs": [
+   [
+    "rgb(52, 211, 153)",
+    7
+   ],
+   [
+    "rgb(21, 19, 17)",
+    5
+   ],
+   [
+    "rgb(33, 29, 25)",
+    4
+   ],
+   [
+    "rgb(12, 11, 10)",
+    2
+   ],
+   [
+    "oklab(0.581255 0.163163 0.0885327 / 0.15)",
+    2
+   ],
+   [
+    "oklab(0.150388 0.00104634 0.00251868 / 0.9)",
+    1
+   ],
+   [
+    "oklab(0.772937 -0.14692 0.0443151 / 0.25)",
+    1
+   ],
+   [
+    "rgb(156, 149, 138)",
+    1
+   ]
+  ],
+  "nBorders": 4,
+  "nRadii": 4,
+  "radii": [
+   [
+    "3.35544e+07px",
+    17
+   ],
+   [
+    "12px",
+    12
+   ],
+   [
+    "16px",
+    3
+   ],
+   [
+    "4px",
+    1
+   ]
+  ],
+  "nPads": 3,
+  "nBotones": 19,
+  "nFirmasBoton": 9,
+  "firmas": [
+   [
+    "rgba(0, 0, 0, 0) | rgba(242, 237, 228, 0.1) 1px | 12px | 0px 16px | 13px",
+    8
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(242, 237, 228) 0px | 0px | 0px | 16px",
+    2
+   ],
+   [
+    "oklab(0.581255 0.163163 0.0885327 / 0.15) | rgb(210, 63, 52) 1px | 12px | 0px 16px | 13px",
+    2
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(251, 247, 240) 0px | 3.35544e+07px | 0px 16px | 12.5px",
+    2
+   ],
+   [
+    "rgb(21, 19, 17) | rgba(242, 237, 228, 0.1) 1px | 3.35544e+07px | 0px 16px | 13px",
+    1
+   ],
+   [
+    "rgb(21, 19, 17) | rgba(242, 237, 228, 0.1) 1px | 3.35544e+07px | 0px | 16px",
+    1
+   ],
+   [
+    "rgb(33, 29, 25) | rgba(242, 237, 228, 0.1) 1px | 3.35544e+07px | 0px | 13px",
+    1
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(210, 63, 52) 0px 0px 2px | 0px | 0px 12px | 13px",
+    1
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(242, 237, 228) 0px | 3.35544e+07px | 0px | 13px",
+    1
+   ]
+  ],
+  "contrasteMedidos": 48,
+  "contrasteSinMedir": 0,
+  "contrasteInactivos": 2,
+  "nContrasteMal": 0,
+  "contrasteMal": [],
+  "imgDeformadas": 0,
+  "imgSinAlt": 0,
+  "h1": 1,
+  "solapados": 0,
+  "solapadosDetalle": []
+ },
+ {
+  "area": "admin",
+  "pantalla": "Horarios",
+  "ruta": "/admin/horarios",
+  "rol": "admin",
+  "vp": "escritorio",
+  "http": 200,
+  "url": "http://localhost:3000/admin/horarios",
+  "sw": 1280,
+  "vw": 1280,
+  "alto": 1894,
+  "cromo": 124,
+  "yPrimerDato": null,
+  "desbordeH": false,
+  "interactivos": 53,
+  "nChicos": 0,
+  "chicos": [],
+  "textoTotal": 72,
+  "textoChico": 0,
+  "nSizes": 7,
+  "sizes": [
+   [
+    "13",
+    42
+   ],
+   [
+    "12",
+    10
+   ],
+   [
+    "15",
+    7
+   ],
+   [
+    "12.5",
+    7
+   ],
+   [
+    "14",
+    3
+   ],
+   [
+    "32",
+    2
+   ],
+   [
+    "18",
+    1
+   ]
+  ],
+  "nWeights": 4,
+  "weights": [
+   [
+    "600",
+    35
+   ],
+   [
+    "400",
+    24
+   ],
+   [
+    "700",
+    11
+   ],
+   [
+    "800",
+    2
+   ]
+  ],
+  "fams": [
+   [
+    "Inter",
+    61
+   ],
+   [
+    "Barlow Condensed",
+    10
+   ],
+   [
+    "ui-monospace",
+    1
+   ]
+  ],
+  "nTextColors": 5,
+  "tcolors": [
+   [
+    "rgb(156, 149, 138)",
+    44
+   ],
+   [
+    "rgb(242, 237, 228)",
+    17
+   ],
+   [
+    "rgb(52, 211, 153)",
+    8
+   ],
+   [
+    "rgb(232, 103, 92)",
+    2
+   ],
+   [
+    "rgb(251, 247, 240)",
+    1
+   ]
+  ],
+  "nEyebrowSizes": 1,
+  "eyebrows": [
+   [
+    "12",
+    5
+   ]
+  ],
+  "emojiUI": 0,
+  "nBgs": 8,
+  "bgs": [
+   [
+    "rgb(12, 11, 10)",
+    20
+   ],
+   [
+    "oklab(0.772937 -0.14692 0.0443151 / 0.15)",
+    8
+   ],
+   [
+    "rgb(21, 19, 17)",
+    7
+   ],
+   [
+    "rgb(33, 29, 25)",
+    2
+   ],
+   [
+    "rgb(210, 63, 52)",
+    2
+   ],
+   [
+    "oklab(0.581255 0.163163 0.0885327 / 0.15)",
+    2
+   ],
+   [
+    "oklab(0.150388 0.00104634 0.00251868 / 0.9)",
+    1
+   ],
+   [
+    "rgb(156, 149, 138)",
+    1
+   ]
+  ],
+  "nBorders": 3,
+  "nRadii": 6,
+  "radii": [
+   [
+    "8px",
+    15
+   ],
+   [
+    "12px",
+    15
+   ],
+   [
+    "3.35544e+07px",
+    14
+   ],
+   [
+    "16px",
+    4
+   ],
+   [
+    "6px",
+    2
+   ],
+   [
+    "4px",
+    1
+   ]
+  ],
+  "nPads": 4,
+  "nBotones": 32,
+  "nFirmasBoton": 14,
+  "firmas": [
+   [
+    "oklab(0.772937 -0.14692 0.0443151 / 0.15) | rgb(52, 211, 153) 0px | 0px | 0px 16px | 13px",
+    7
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(156, 149, 138) 0px | 0px | 0px 16px | 13px",
+    7
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(242, 237, 228) 0px | 0px | 0px | 16px",
+    3
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(242, 237, 228) 0px | 3.35544e+07px | 0px | 13px",
+    2
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgba(242, 237, 228, 0.1) 1px | 3.35544e+07px | 0px 16px | 12.5px",
+    2
+   ],
+   [
+    "oklab(0.581255 0.163163 0.0885327 / 0.15) | rgb(232, 103, 92) 0px | 8px | 0px 14px | 12.5px",
+    2
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(156, 149, 138) 0px | 8px | 0px 14px | 12.5px",
+    2
+   ],
+   [
+    "rgb(21, 19, 17) | rgba(242, 237, 228, 0.1) 1px | 3.35544e+07px | 0px 16px | 13px",
+    1
+   ],
+   [
+    "rgb(21, 19, 17) | rgba(242, 237, 228, 0.1) 1px | 3.35544e+07px | 0px | 16px",
+    1
+   ],
+   [
+    "rgb(33, 29, 25) | rgba(242, 237, 228, 0.1) 1px | 3.35544e+07px | 0px | 13px",
+    1
+   ]
+  ],
+  "contrasteMedidos": 72,
+  "contrasteSinMedir": 0,
+  "contrasteInactivos": 0,
+  "nContrasteMal": 0,
+  "contrasteMal": [],
+  "imgDeformadas": 0,
+  "imgSinAlt": 0,
+  "h1": 2,
+  "solapados": 0,
+  "solapadosDetalle": []
+ },
+ {
+  "area": "admin",
+  "pantalla": "Cupones",
+  "ruta": "/admin/cupones",
+  "rol": "admin",
+  "vp": "escritorio",
+  "http": 200,
+  "url": "http://localhost:3000/admin/cupones",
+  "sw": 1280,
+  "vw": 1280,
+  "alto": 800,
+  "cromo": 124,
+  "yPrimerDato": null,
+  "desbordeH": false,
+  "interactivos": 18,
+  "nChicos": 0,
+  "chicos": [],
+  "textoTotal": 18,
+  "textoChico": 0,
+  "nSizes": 6,
+  "sizes": [
+   [
+    "13",
+    11
+   ],
+   [
+    "12",
+    2
+   ],
+   [
+    "20",
+    2
+   ],
+   [
+    "14",
+    1
+   ],
+   [
+    "32",
+    1
+   ],
+   [
+    "12.5",
+    1
+   ]
+  ],
+  "nWeights": 4,
+  "weights": [
+   [
+    "600",
+    9
+   ],
+   [
+    "400",
+    5
+   ],
+   [
+    "700",
+    3
+   ],
+   [
+    "800",
+    1
+   ]
+  ],
+  "fams": [
+   [
+    "Inter",
+    14
+   ],
+   [
+    "Barlow Condensed",
+    3
+   ],
+   [
+    "ui-monospace",
+    1
+   ]
+  ],
+  "nTextColors": 4,
+  "tcolors": [
+   [
+    "rgb(156, 149, 138)",
+    10
+   ],
+   [
+    "rgb(242, 237, 228)",
+    6
+   ],
+   [
+    "rgb(12, 11, 10)",
+    1
+   ],
+   [
+    "rgb(251, 247, 240)",
+    1
+   ]
+  ],
+  "nEyebrowSizes": 1,
+  "eyebrows": [
+   [
+    "12",
+    1
+   ]
+  ],
+  "emojiUI": 0,
+  "nBgs": 5,
+  "bgs": [
+   [
+    "rgb(12, 11, 10)",
+    7
+   ],
+   [
+    "rgb(21, 19, 17)",
+    4
+   ],
+   [
+    "oklab(0.150388 0.00104634 0.00251868 / 0.9)",
+    1
+   ],
+   [
+    "rgb(33, 29, 25)",
+    1
+   ],
+   [
+    "rgb(242, 237, 228)",
+    1
+   ]
+  ],
+  "nBorders": 3,
+  "nRadii": 5,
+  "radii": [
+   [
+    "3.35544e+07px",
+    8
+   ],
+   [
+    "8px",
+    5
+   ],
+   [
+    "4px",
+    1
+   ],
+   [
+    "16px",
+    1
+   ],
+   [
+    "12px",
+    1
+   ]
+  ],
+  "nPads": 3,
+  "nBotones": 8,
+  "nFirmasBoton": 8,
+  "firmas": [
+   [
+    "rgb(21, 19, 17) | rgba(242, 237, 228, 0.1) 1px | 3.35544e+07px | 0px 16px | 13px",
+    1
+   ],
+   [
+    "rgb(21, 19, 17) | rgba(242, 237, 228, 0.1) 1px | 3.35544e+07px | 0px | 16px",
+    1
+   ],
+   [
+    "rgb(33, 29, 25) | rgba(242, 237, 228, 0.1) 1px | 3.35544e+07px | 0px | 13px",
+    1
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(210, 63, 52) 0px 0px 2px | 0px | 0px 12px | 13px",
+    1
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(242, 237, 228) 0px | 3.35544e+07px | 0px | 13px",
+    1
+   ],
+   [
+    "rgb(242, 237, 228) | rgb(242, 237, 228) 1px | 3.35544e+07px | 0px 16px | 13px",
+    1
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgba(242, 237, 228, 0.1) 1px | 3.35544e+07px | 0px 16px | 13px",
+    1
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(251, 247, 240) 0px | 3.35544e+07px | 0px 16px | 12.5px",
+    1
+   ]
+  ],
+  "contrasteMedidos": 18,
+  "contrasteSinMedir": 0,
+  "contrasteInactivos": 0,
+  "nContrasteMal": 0,
+  "contrasteMal": [],
+  "imgDeformadas": 0,
+  "imgSinAlt": 0,
+  "h1": 1,
+  "solapados": 0,
+  "solapadosDetalle": []
+ },
+ {
+  "area": "admin",
+  "pantalla": "Comisiones",
+  "ruta": "/admin/comisiones",
+  "rol": "admin",
+  "vp": "escritorio",
+  "http": 200,
+  "url": "http://localhost:3000/admin/comisiones",
+  "sw": 1280,
+  "vw": 1280,
+  "alto": 800,
+  "cromo": 124,
+  "yPrimerDato": null,
+  "desbordeH": false,
+  "interactivos": 16,
+  "nChicos": 0,
+  "chicos": [],
+  "textoTotal": 43,
+  "textoChico": 0,
+  "nSizes": 5,
+  "sizes": [
+   [
+    "13",
+    16
+   ],
+   [
+    "12",
+    14
+   ],
+   [
+    "16",
+    6
+   ],
+   [
+    "13.5",
+    6
+   ],
+   [
+    "32",
+    1
+   ]
+  ],
+  "nWeights": 4,
+  "weights": [
+   [
+    "600",
+    21
+   ],
+   [
+    "400",
+    13
+   ],
+   [
+    "700",
+    8
+   ],
+   [
+    "800",
+    1
+   ]
+  ],
+  "fams": [
+   [
+    "Inter",
+    41
+   ],
+   [
+    "ui-monospace",
+    1
+   ],
+   [
+    "Barlow Condensed",
+    1
+   ]
+  ],
+  "nTextColors": 3,
+  "tcolors": [
+   [
+    "rgb(242, 237, 228)",
+    20
+   ],
+   [
+    "rgb(156, 149, 138)",
+    17
+   ],
+   [
+    "rgb(232, 103, 92)",
+    6
+   ]
+  ],
+  "nEyebrowSizes": 1,
+  "eyebrows": [
+   [
+    "12",
+    1
+   ]
+  ],
+  "emojiUI": 0,
+  "nBgs": 4,
+  "bgs": [
+   [
+    "rgb(21, 19, 17)",
+    4
+   ],
+   [
+    "rgb(12, 11, 10)",
+    2
+   ],
+   [
+    "oklab(0.150388 0.00104634 0.00251868 / 0.9)",
+    1
+   ],
+   [
+    "rgb(33, 29, 25)",
+    1
+   ]
+  ],
+  "nBorders": 3,
+  "nRadii": 4,
+  "radii": [
+   [
+    "3.35544e+07px",
+    17
+   ],
+   [
+    "8px",
+    6
+   ],
+   [
+    "16px",
+    2
+   ],
+   [
+    "4px",
+    1
+   ]
+  ],
+  "nPads": 4,
+  "nBotones": 11,
+  "nFirmasBoton": 6,
+  "firmas": [
+   [
+    "rgba(0, 0, 0, 0) | rgb(242, 237, 228) 0px | 8px | 8px 10px | 16px",
+    6
+   ],
+   [
+    "rgb(21, 19, 17) | rgba(242, 237, 228, 0.1) 1px | 3.35544e+07px | 0px 16px | 13px",
+    1
+   ],
+   [
+    "rgb(21, 19, 17) | rgba(242, 237, 228, 0.1) 1px | 3.35544e+07px | 0px | 16px",
+    1
+   ],
+   [
+    "rgb(33, 29, 25) | rgba(242, 237, 228, 0.1) 1px | 3.35544e+07px | 0px | 13px",
+    1
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(210, 63, 52) 0px 0px 2px | 0px | 0px 12px | 13px",
+    1
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(242, 237, 228) 0px | 3.35544e+07px | 0px | 13px",
+    1
+   ]
+  ],
+  "contrasteMedidos": 43,
+  "contrasteSinMedir": 0,
+  "contrasteInactivos": 0,
+  "nContrasteMal": 0,
+  "contrasteMal": [],
+  "imgDeformadas": 0,
+  "imgSinAlt": 0,
+  "h1": 1,
+  "solapados": 0,
+  "solapadosDetalle": []
+ },
+ {
+  "area": "admin",
+  "pantalla": "Tarjeta de fidelidad",
+  "ruta": "/admin/tarjeta",
+  "rol": "admin",
+  "vp": "escritorio",
+  "http": 200,
+  "url": "http://localhost:3000/admin/tarjeta",
+  "sw": 1280,
+  "vw": 1280,
+  "alto": 1172,
+  "cromo": 124,
+  "yPrimerDato": null,
+  "desbordeH": false,
+  "interactivos": 24,
+  "nChicos": 0,
+  "chicos": [],
+  "textoTotal": 50,
+  "textoChico": 0,
+  "nSizes": 6,
+  "sizes": [
+   [
+    "12",
+    18
+   ],
+   [
+    "13",
+    17
+   ],
+   [
+    "15",
+    10
+   ],
+   [
+    "12.5",
+    3
+   ],
+   [
+    "18",
+    1
+   ],
+   [
+    "32",
+    1
+   ]
+  ],
+  "nWeights": 4,
+  "weights": [
+   [
+    "700",
+    31
+   ],
+   [
+    "400",
+    10
+   ],
+   [
+    "600",
+    8
+   ],
+   [
+    "800",
+    1
+   ]
+  ],
+  "fams": [
+   [
+    "Inter",
+    37
+   ],
+   [
+    "Barlow Condensed",
+    12
+   ],
+   [
+    "ui-monospace",
+    1
+   ]
+  ],
+  "nTextColors": 4,
+  "tcolors": [
+   [
+    "rgb(156, 149, 138)",
+    33
+   ],
+   [
+    "rgb(242, 237, 228)",
+    15
+   ],
+   [
+    "rgb(251, 247, 240)",
+    1
+   ],
+   [
+    "rgb(52, 211, 153)",
+    1
+   ]
+  ],
+  "nEyebrowSizes": 1,
+  "eyebrows": [
+   [
+    "12",
+    1
+   ]
+  ],
+  "emojiUI": 0,
+  "nBgs": 5,
+  "bgs": [
+   [
+    "rgb(12, 11, 10)",
+    4
+   ],
+   [
+    "rgb(21, 19, 17)",
+    4
+   ],
+   [
+    "oklab(0.581255 0.163163 0.0885327 / 0.15)",
+    2
+   ],
+   [
+    "oklab(0.150388 0.00104634 0.00251868 / 0.9)",
+    1
+   ],
+   [
+    "rgb(33, 29, 25)",
+    1
+   ]
+  ],
+  "nBorders": 3,
+  "nRadii": 4,
+  "radii": [
+   [
+    "12px",
+    13
+   ],
+   [
+    "3.35544e+07px",
+    6
+   ],
+   [
+    "16px",
+    2
+   ],
+   [
+    "4px",
+    1
+   ]
+  ],
+  "nPads": 3,
+  "nBotones": 16,
+  "nFirmasBoton": 8,
+  "firmas": [
+   [
+    "rgba(0, 0, 0, 0) | rgba(242, 237, 228, 0.1) 1px | 12px | 0px | 16px",
+    8
+   ],
+   [
+    "oklab(0.581255 0.163163 0.0885327 / 0.15) | rgb(210, 63, 52) 1px | 12px | 0px | 16px",
+    2
+   ],
+   [
+    "rgb(21, 19, 17) | rgba(242, 237, 228, 0.1) 1px | 3.35544e+07px | 0px 16px | 13px",
+    1
+   ],
+   [
+    "rgb(21, 19, 17) | rgba(242, 237, 228, 0.1) 1px | 3.35544e+07px | 0px | 16px",
+    1
+   ],
+   [
+    "rgb(33, 29, 25) | rgba(242, 237, 228, 0.1) 1px | 3.35544e+07px | 0px | 13px",
+    1
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(210, 63, 52) 0px 0px 2px | 0px | 0px 12px | 13px",
+    1
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(242, 237, 228) 0px | 3.35544e+07px | 0px | 13px",
+    1
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(251, 247, 240) 0px | 3.35544e+07px | 0px 16px | 12.5px",
+    1
+   ]
+  ],
+  "contrasteMedidos": 49,
+  "contrasteSinMedir": 0,
+  "contrasteInactivos": 1,
+  "nContrasteMal": 0,
+  "contrasteMal": [],
+  "imgDeformadas": 0,
+  "imgSinAlt": 0,
+  "h1": 1,
+  "solapados": 0,
+  "solapadosDetalle": []
+ },
+ {
+  "area": "admin",
+  "pantalla": "Ayuda",
+  "ruta": "/admin/ayuda",
+  "rol": "admin",
+  "vp": "escritorio",
+  "http": 200,
+  "url": "http://localhost:3000/admin/ayuda",
+  "sw": 1280,
+  "vw": 1280,
+  "alto": 2247,
+  "cromo": 124,
+  "yPrimerDato": null,
+  "desbordeH": false,
+  "interactivos": 11,
+  "nChicos": 0,
+  "chicos": [],
+  "textoTotal": 73,
+  "textoChico": 0,
+  "nSizes": 7,
+  "sizes": [
+   [
+    "13",
+    38
+   ],
+   [
+    "14.5",
+    14
+   ],
+   [
+    "12",
+    10
+   ],
+   [
+    "24",
+    4
+   ],
+   [
+    "13.5",
+    3
+   ],
+   [
+    "12.5",
+    3
+   ],
+   [
+    "32",
+    1
+   ]
+  ],
+  "nWeights": 4,
+  "weights": [
+   [
+    "700",
+    37
+   ],
+   [
+    "400",
+    27
+   ],
+   [
+    "600",
+    8
+   ],
+   [
+    "800",
+    1
+   ]
+  ],
+  "fams": [
+   [
+    "Inter",
+    53
+   ],
+   [
+    "Barlow Condensed",
+    19
+   ],
+   [
+    "ui-monospace",
+    1
+   ]
+  ],
+  "nTextColors": 5,
+  "tcolors": [
+   [
+    "rgb(156, 149, 138)",
+    33
+   ],
+   [
+    "rgb(242, 237, 228)",
+    22
+   ],
+   [
+    "rgb(232, 103, 92)",
+    14
+   ],
+   [
+    "rgb(251, 191, 36)",
+    3
+   ],
+   [
+    "oklab(0.947513 0.00178179 0.0130511 / 0.85)",
+    1
+   ]
+  ],
+  "nEyebrowSizes": 1,
+  "eyebrows": [
+   [
+    "12",
+    1
+   ]
+  ],
+  "emojiUI": 0,
+  "nBgs": 6,
+  "bgs": [
+   [
+    "rgb(21, 19, 17)",
+    12
+   ],
+   [
+    "rgb(52, 211, 153)",
+    5
+   ],
+   [
+    "oklab(0.836863 0.0160027 0.163654 / 0.06)",
+    3
+   ],
+   [
+    "rgb(12, 11, 10)",
+    2
+   ],
+   [
+    "oklab(0.150388 0.00104634 0.00251868 / 0.9)",
+    1
+   ],
+   [
+    "rgb(33, 29, 25)",
+    1
+   ]
+  ],
+  "nBorders": 4,
+  "nRadii": 3,
+  "radii": [
+   [
+    "3.35544e+07px",
+    26
+   ],
+   [
+    "16px",
+    13
+   ],
+   [
+    "4px",
+    1
+   ]
+  ],
+  "nPads": 3,
+  "nBotones": 5,
+  "nFirmasBoton": 5,
+  "firmas": [
+   [
+    "rgb(21, 19, 17) | rgba(242, 237, 228, 0.1) 1px | 3.35544e+07px | 0px 16px | 13px",
+    1
+   ],
+   [
+    "rgb(21, 19, 17) | rgba(242, 237, 228, 0.1) 1px | 3.35544e+07px | 0px | 16px",
+    1
+   ],
+   [
+    "rgb(33, 29, 25) | rgba(242, 237, 228, 0.1) 1px | 3.35544e+07px | 0px | 13px",
+    1
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(210, 63, 52) 0px 0px 2px | 0px | 0px 12px | 13px",
+    1
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(242, 237, 228) 0px | 3.35544e+07px | 0px | 13px",
+    1
+   ]
+  ],
+  "contrasteMedidos": 73,
+  "contrasteSinMedir": 0,
+  "contrasteInactivos": 0,
+  "nContrasteMal": 0,
+  "contrasteMal": [],
+  "imgDeformadas": 0,
+  "imgSinAlt": 0,
+  "h1": 1,
+  "solapados": 0,
+  "solapadosDetalle": []
+ },
+ {
+  "area": "mostrador",
+  "pantalla": "Turnos",
+  "ruta": "/barbero?tab=turnos",
+  "rol": "sede",
+  "vp": "escritorio",
+  "http": 200,
+  "url": "http://localhost:3000/barbero?tab=turnos",
+  "sw": 1280,
+  "vw": 1280,
+  "alto": 800,
+  "cromo": 113,
+  "yPrimerDato": null,
+  "desbordeH": false,
+  "interactivos": 13,
+  "nChicos": 0,
+  "chicos": [],
+  "textoTotal": 26,
+  "textoChico": 0,
+  "nSizes": 8,
+  "sizes": [
+   [
+    "14",
+    8
+   ],
+   [
+    "12",
+    4
+   ],
+   [
+    "12.5",
+    4
+   ],
+   [
+    "16",
+    3
+   ],
+   [
+    "20",
+    3
+   ],
+   [
+    "30",
+    2
+   ],
+   [
+    "13",
+    1
+   ],
+   [
+    "13.5",
+    1
+   ]
+  ],
+  "nWeights": 3,
+  "weights": [
+   [
+    "700",
+    14
+   ],
+   [
+    "400",
+    6
+   ],
+   [
+    "600",
+    6
+   ]
+  ],
+  "fams": [
+   [
+    "Inter",
+    20
+   ],
+   [
+    "Barlow Condensed",
+    6
+   ]
+  ],
+  "nTextColors": 5,
+  "tcolors": [
+   [
+    "rgb(242, 237, 228)",
+    8
+   ],
+   [
+    "rgb(156, 149, 138)",
+    7
+   ],
+   [
+    "rgb(232, 103, 92)",
+    6
+   ],
+   [
+    "rgb(52, 211, 153)",
+    4
+   ],
+   [
+    "rgb(251, 247, 240)",
+    1
+   ]
+  ],
+  "nEyebrowSizes": 1,
+  "eyebrows": [
+   [
+    "12",
+    3
+   ]
+  ],
+  "emojiUI": 0,
+  "nBgs": 6,
+  "bgs": [
+   [
+    "rgb(21, 19, 17)",
+    5
+   ],
+   [
+    "oklab(0.581255 0.163163 0.0885327 / 0.12)",
+    3
+   ],
+   [
+    "oklab(0.150388 0.00104634 0.00251868 / 0.85)",
+    3
+   ],
+   [
+    "rgb(33, 29, 25)",
+    2
+   ],
+   [
+    "rgb(12, 11, 10)",
+    1
+   ],
+   [
+    "oklab(0.150388 0.00104634 0.00251868 / 0.7)",
+    1
+   ]
+  ],
+  "nBorders": 2,
+  "nRadii": 3,
+  "radii": [
+   [
+    "3.35544e+07px",
+    13
+   ],
+   [
+    "16px",
+    6
+   ],
+   [
+    "18px",
+    1
+   ]
+  ],
+  "nPads": 2,
+  "nBotones": 12,
+  "nFirmasBoton": 7,
+  "firmas": [
+   [
+    "rgb(21, 19, 17) | rgba(242, 237, 228, 0.1) 1px | 16px | 10px 14px | 16px",
+    3
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(156, 149, 138) 0px | 3.35544e+07px | 0px | 16px",
+    3
+   ],
+   [
+    "oklab(0.150388 0.00104634 0.00251868 / 0.85) | oklab(0.581255 0.163163 0.0885327 / 0.45) 1px | 16px | 0px | 14px",
+    2
+   ],
+   [
+    "rgb(21, 19, 17) | rgba(242, 237, 228, 0.1) 1px | 3.35544e+07px | 0px | 16px",
+    1
+   ],
+   [
+    "rgb(33, 29, 25) | rgba(242, 237, 228, 0.1) 1px | 3.35544e+07px | 0px | 13px",
+    1
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(251, 247, 240) 0px | 16px | 0px | 14px",
+    1
+   ],
+   [
+    "rgb(33, 29, 25) | rgb(242, 237, 228) 0px | 3.35544e+07px | 0px | 16px",
+    1
+   ]
+  ],
+  "contrasteMedidos": 26,
+  "contrasteSinMedir": 0,
+  "contrasteInactivos": 0,
+  "nContrasteMal": 0,
+  "contrasteMal": [],
+  "imgDeformadas": 0,
+  "imgSinAlt": 0,
+  "h1": 1,
+  "solapados": 0,
+  "solapadosDetalle": []
+ },
+ {
+  "area": "mostrador",
+  "pantalla": "Agenda",
+  "ruta": "/barbero?tab=calendario",
+  "rol": "sede",
+  "vp": "escritorio",
+  "http": 200,
+  "url": "http://localhost:3000/barbero?tab=calendario",
+  "sw": 1280,
+  "vw": 1280,
+  "alto": 917,
+  "cromo": 117,
+  "yPrimerDato": null,
+  "desbordeH": false,
+  "interactivos": 19,
+  "nChicos": 0,
+  "chicos": [],
+  "textoTotal": 39,
+  "textoChico": 0,
+  "nSizes": 6,
+  "sizes": [
+   [
+    "12",
+    20
+   ],
+   [
+    "14",
+    8
+   ],
+   [
+    "12.5",
+    5
+   ],
+   [
+    "13",
+    3
+   ],
+   [
+    "16",
+    2
+   ],
+   [
+    "20",
+    1
+   ]
+  ],
+  "nWeights": 3,
+  "weights": [
+   [
+    "400",
+    23
+   ],
+   [
+    "700",
+    9
+   ],
+   [
+    "600",
+    7
+   ]
+  ],
+  "fams": [
+   [
+    "Inter",
+    38
+   ],
+   [
+    "Barlow Condensed",
+    1
+   ]
+  ],
+  "nTextColors": 5,
+  "tcolors": [
+   [
+    "rgb(156, 149, 138)",
+    24
+   ],
+   [
+    "rgb(242, 237, 228)",
+    10
+   ],
+   [
+    "rgb(251, 247, 240)",
+    2
+   ],
+   [
+    "rgb(232, 103, 92)",
+    2
+   ],
+   [
+    "rgb(12, 11, 10)",
+    1
+   ]
+  ],
+  "nEyebrowSizes": 0,
+  "eyebrows": [],
+  "emojiUI": 0,
+  "nBgs": 6,
+  "bgs": [
+   [
+    "rgb(21, 19, 17)",
+    4
+   ],
+   [
+    "oklab(0.150388 0.00104634 0.00251868 / 0.85)",
+    3
+   ],
+   [
+    "rgb(33, 29, 25)",
+    2
+   ],
+   [
+    "rgb(12, 11, 10)",
+    1
+   ],
+   [
+    "oklab(0.150388 0.00104634 0.00251868 / 0.7)",
+    1
+   ],
+   [
+    "rgb(242, 237, 228)",
+    1
+   ]
+  ],
+  "nBorders": 6,
+  "nRadii": 3,
+  "radii": [
+   [
+    "3.35544e+07px",
+    16
+   ],
+   [
+    "4px",
+    6
+   ],
+   [
+    "16px",
+    4
+   ]
+  ],
+  "nPads": 3,
+  "nBotones": 15,
+  "nFirmasBoton": 10,
+  "firmas": [
+   [
+    "rgba(0, 0, 0, 0) | oklab(0.947513 0.00178179 0.0130511 / 0.0611765) 0px 0px 0px 1px | 0px | 10px 8px | 16px",
+    3
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(156, 149, 138) 0px | 3.35544e+07px | 0px | 16px",
+    3
+   ],
+   [
+    "oklab(0.150388 0.00104634 0.00251868 / 0.85) | oklab(0.581255 0.163163 0.0885327 / 0.45) 1px | 16px | 0px | 14px",
+    2
+   ],
+   [
+    "rgb(21, 19, 17) | rgba(242, 237, 228, 0.1) 1px | 3.35544e+07px | 0px | 16px",
+    1
+   ],
+   [
+    "rgb(33, 29, 25) | rgba(242, 237, 228, 0.1) 1px | 3.35544e+07px | 0px | 13px",
+    1
+   ],
+   [
+    "rgb(242, 237, 228) | rgb(242, 237, 228) 1px | 3.35544e+07px | 0px 16px | 13px",
+    1
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgba(242, 237, 228, 0.1) 1px | 3.35544e+07px | 0px 16px | 12.5px",
+    1
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(251, 247, 240) 0px | 3.35544e+07px | 0px 16px | 12.5px",
+    1
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(251, 247, 240) 0px | 16px | 0px | 14px",
+    1
+   ],
+   [
+    "rgb(33, 29, 25) | rgb(242, 237, 228) 0px | 3.35544e+07px | 0px | 16px",
+    1
+   ]
+  ],
+  "contrasteMedidos": 39,
+  "contrasteSinMedir": 0,
+  "contrasteInactivos": 0,
+  "nContrasteMal": 0,
+  "contrasteMal": [],
+  "imgDeformadas": 0,
+  "imgSinAlt": 0,
+  "h1": 1,
+  "solapados": 0,
+  "solapadosDetalle": []
+ },
+ {
+  "area": "mostrador",
+  "pantalla": "Espera",
+  "ruta": "/barbero?tab=espera",
+  "rol": "sede",
+  "vp": "escritorio",
+  "http": 200,
+  "url": "http://localhost:3000/barbero?tab=espera",
+  "sw": 1280,
+  "vw": 1280,
+  "alto": 800,
+  "cromo": 97,
+  "yPrimerDato": null,
+  "desbordeH": false,
+  "interactivos": 11,
+  "nChicos": 0,
+  "chicos": [],
+  "textoTotal": 13,
+  "textoChico": 0,
+  "nSizes": 3,
+  "sizes": [
+   [
+    "14",
+    10
+   ],
+   [
+    "13",
+    2
+   ],
+   [
+    "24",
+    1
+   ]
+  ],
+  "nWeights": 3,
+  "weights": [
+   [
+    "600",
+    6
+   ],
+   [
+    "700",
+    4
+   ],
+   [
+    "400",
+    3
+   ]
+  ],
+  "fams": [
+   [
+    "Inter",
+    12
+   ],
+   [
+    "Barlow Condensed",
+    1
+   ]
+  ],
+  "nTextColors": 4,
+  "tcolors": [
+   [
+    "rgb(242, 237, 228)",
+    5
+   ],
+   [
+    "rgb(156, 149, 138)",
+    5
+   ],
+   [
+    "rgb(232, 103, 92)",
+    2
+   ],
+   [
+    "rgb(251, 247, 240)",
+    1
+   ]
+  ],
+  "nEyebrowSizes": 0,
+  "eyebrows": [],
+  "emojiUI": 0,
+  "nBgs": 5,
+  "bgs": [
+   [
+    "oklab(0.150388 0.00104634 0.00251868 / 0.85)",
+    3
+   ],
+   [
+    "rgb(33, 29, 25)",
+    2
+   ],
+   [
+    "rgb(12, 11, 10)",
+    1
+   ],
+   [
+    "oklab(0.150388 0.00104634 0.00251868 / 0.7)",
+    1
+   ],
+   [
+    "rgb(21, 19, 17)",
+    1
+   ]
+  ],
+  "nBorders": 2,
+  "nRadii": 2,
+  "radii": [
+   [
+    "3.35544e+07px",
+    8
+   ],
+   [
+    "16px",
+    3
+   ]
+  ],
+  "nPads": 2,
+  "nBotones": 10,
+  "nFirmasBoton": 7,
+  "firmas": [
+   [
+    "rgba(0, 0, 0, 0) | rgb(156, 149, 138) 0px | 3.35544e+07px | 0px | 16px",
+    3
+   ],
+   [
+    "oklab(0.150388 0.00104634 0.00251868 / 0.85) | oklab(0.581255 0.163163 0.0885327 / 0.45) 1px | 16px | 0px | 14px",
+    2
+   ],
+   [
+    "rgb(21, 19, 17) | rgba(242, 237, 228, 0.1) 1px | 3.35544e+07px | 0px | 16px",
+    1
+   ],
+   [
+    "rgb(33, 29, 25) | rgba(242, 237, 228, 0.1) 1px | 3.35544e+07px | 0px | 13px",
+    1
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgba(242, 237, 228, 0.1) 1px | 3.35544e+07px | 0px 16px | 13px",
+    1
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(251, 247, 240) 0px | 16px | 0px | 14px",
+    1
+   ],
+   [
+    "rgb(33, 29, 25) | rgb(242, 237, 228) 0px | 3.35544e+07px | 0px | 16px",
+    1
+   ]
+  ],
+  "contrasteMedidos": 13,
+  "contrasteSinMedir": 0,
+  "contrasteInactivos": 0,
+  "nContrasteMal": 0,
+  "contrasteMal": [],
+  "imgDeformadas": 0,
+  "imgSinAlt": 0,
+  "h1": 1,
+  "solapados": 0,
+  "solapadosDetalle": []
+ },
+ {
+  "area": "mostrador",
+  "pantalla": "Cierre",
+  "ruta": "/barbero?tab=cierre",
+  "rol": "sede",
+  "vp": "escritorio",
+  "http": 200,
+  "url": "http://localhost:3000/barbero?tab=cierre",
+  "sw": 1280,
+  "vw": 1280,
+  "alto": 901,
+  "cromo": 97,
+  "yPrimerDato": null,
+  "desbordeH": false,
+  "interactivos": 15,
+  "nChicos": 0,
+  "chicos": [],
+  "textoTotal": 26,
+  "textoChico": 0,
+  "nSizes": 6,
+  "sizes": [
+   [
+    "14",
+    8
+   ],
+   [
+    "13",
+    7
+   ],
+   [
+    "12",
+    4
+   ],
+   [
+    "15",
+    4
+   ],
+   [
+    "12.5",
+    2
+   ],
+   [
+    "36",
+    1
+   ]
+  ],
+  "nWeights": 4,
+  "weights": [
+   [
+    "600",
+    14
+   ],
+   [
+    "700",
+    6
+   ],
+   [
+    "400",
+    5
+   ],
+   [
+    "800",
+    1
+   ]
+  ],
+  "fams": [
+   [
+    "Inter",
+    25
+   ],
+   [
+    "Barlow Condensed",
+    1
+   ]
+  ],
+  "nTextColors": 6,
+  "tcolors": [
+   [
+    "rgb(156, 149, 138)",
+    11
+   ],
+   [
+    "rgb(242, 237, 228)",
+    9
+   ],
+   [
+    "rgb(251, 247, 240)",
+    2
+   ],
+   [
+    "rgb(232, 103, 92)",
+    2
+   ],
+   [
+    "rgb(52, 211, 153)",
+    1
+   ],
+   [
+    "rgb(251, 191, 36)",
+    1
+   ]
+  ],
+  "nEyebrowSizes": 1,
+  "eyebrows": [
+   [
+    "12",
+    3
+   ]
+  ],
+  "emojiUI": 0,
+  "nBgs": 10,
+  "bgs": [
+   [
+    "rgb(21, 19, 17)",
+    4
+   ],
+   [
+    "oklab(0.150388 0.00104634 0.00251868 / 0.85)",
+    3
+   ],
+   [
+    "rgb(33, 29, 25)",
+    2
+   ],
+   [
+    "oklab(0.772937 -0.14692 0.0443151 / 0.1)",
+    2
+   ],
+   [
+    "oklab(0.836863 0.0160027 0.163654 / 0.1)",
+    2
+   ],
+   [
+    "rgb(12, 11, 10)",
+    1
+   ],
+   [
+    "oklab(0.150388 0.00104634 0.00251868 / 0.7)",
+    1
+   ],
+   [
+    "rgb(52, 211, 153)",
+    1
+   ],
+   [
+    "oklab(0.581255 0.163163 0.0885327 / 0.1)",
+    1
+   ],
+   [
+    "oklab(0.66481 0.0134017 0.0340803 / 0.15)",
+    1
+   ]
+  ],
+  "nBorders": 3,
+  "nRadii": 3,
+  "radii": [
+   [
+    "3.35544e+07px",
+    10
+   ],
+   [
+    "16px",
+    6
+   ],
+   [
+    "12px",
+    5
+   ]
+  ],
+  "nPads": 2,
+  "nBotones": 14,
+  "nFirmasBoton": 9,
+  "firmas": [
+   [
+    "rgba(0, 0, 0, 0) | rgb(156, 149, 138) 0px | 3.35544e+07px | 0px | 16px",
+    3
+   ],
+   [
+    "rgba(0, 0, 0, 0) | oklab(0.947513 0.00178179 0.0130511 / 0.0611765) 0px 0px 1px | 0px | 0px 16px | 16px",
+    2
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(242, 237, 228) 0px | 0px | 0px 16px | 16px",
+    2
+   ],
+   [
+    "oklab(0.150388 0.00104634 0.00251868 / 0.85) | oklab(0.581255 0.163163 0.0885327 / 0.45) 1px | 16px | 0px | 14px",
+    2
+   ],
+   [
+    "rgb(21, 19, 17) | rgba(242, 237, 228, 0.1) 1px | 3.35544e+07px | 0px | 16px",
+    1
+   ],
+   [
+    "rgb(33, 29, 25) | rgba(242, 237, 228, 0.1) 1px | 3.35544e+07px | 0px | 13px",
+    1
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(251, 247, 240) 0px | 3.35544e+07px | 0px 16px | 12.5px",
+    1
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(251, 247, 240) 0px | 16px | 0px | 14px",
+    1
+   ],
+   [
+    "rgb(33, 29, 25) | rgb(242, 237, 228) 0px | 3.35544e+07px | 0px | 16px",
+    1
+   ]
+  ],
+  "contrasteMedidos": 26,
+  "contrasteSinMedir": 0,
+  "contrasteInactivos": 0,
+  "nContrasteMal": 0,
+  "contrasteMal": [],
+  "imgDeformadas": 0,
+  "imgSinAlt": 0,
+  "h1": 1,
+  "solapados": 0,
+  "solapadosDetalle": []
+ },
+ {
+  "area": "barbero",
+  "pantalla": "Mi dia",
+  "ruta": "/barbero",
+  "rol": "barbero",
+  "vp": "escritorio",
+  "http": 200,
+  "url": "http://localhost:3000/barbero",
+  "sw": 1280,
+  "vw": 1280,
+  "alto": 800,
+  "cromo": 97,
+  "yPrimerDato": null,
+  "desbordeH": false,
+  "interactivos": 13,
+  "nChicos": 0,
+  "chicos": [],
+  "textoTotal": 31,
+  "textoChico": 0,
+  "nSizes": 9,
+  "sizes": [
+   [
+    "14",
+    8
+   ],
+   [
+    "12.5",
+    6
+   ],
+   [
+    "12",
+    5
+   ],
+   [
+    "16",
+    3
+   ],
+   [
+    "20",
+    3
+   ],
+   [
+    "30",
+    2
+   ],
+   [
+    "13.5",
+    2
+   ],
+   [
+    "26",
+    1
+   ],
+   [
+    "34",
+    1
+   ]
+  ],
+  "nWeights": 4,
+  "weights": [
+   [
+    "700",
+    14
+   ],
+   [
+    "400",
+    9
+   ],
+   [
+    "600",
+    7
+   ],
+   [
+    "800",
+    1
+   ]
+  ],
+  "fams": [
+   [
+    "Inter",
+    23
+   ],
+   [
+    "Barlow Condensed",
+    8
+   ]
+  ],
+  "nTextColors": 5,
+  "tcolors": [
+   [
+    "rgb(156, 149, 138)",
+    11
+   ],
+   [
+    "rgb(242, 237, 228)",
+    8
+   ],
+   [
+    "rgb(232, 103, 92)",
+    6
+   ],
+   [
+    "rgb(52, 211, 153)",
+    5
+   ],
+   [
+    "rgb(251, 247, 240)",
+    1
+   ]
+  ],
+  "nEyebrowSizes": 1,
+  "eyebrows": [
+   [
+    "12",
+    4
+   ]
+  ],
+  "emojiUI": 0,
+  "nBgs": 6,
+  "bgs": [
+   [
+    "rgb(21, 19, 17)",
+    6
+   ],
+   [
+    "rgb(33, 29, 25)",
+    3
+   ],
+   [
+    "oklab(0.581255 0.163163 0.0885327 / 0.12)",
+    3
+   ],
+   [
+    "oklab(0.150388 0.00104634 0.00251868 / 0.85)",
+    3
+   ],
+   [
+    "rgb(12, 11, 10)",
+    1
+   ],
+   [
+    "oklab(0.150388 0.00104634 0.00251868 / 0.7)",
+    1
+   ]
+  ],
+  "nBorders": 2,
+  "nRadii": 4,
+  "radii": [
+   [
+    "3.35544e+07px",
+    13
+   ],
+   [
+    "16px",
+    7
+   ],
+   [
+    "12px",
+    1
+   ],
+   [
+    "18px",
+    1
+   ]
+  ],
+  "nPads": 2,
+  "nBotones": 12,
+  "nFirmasBoton": 7,
+  "firmas": [
+   [
+    "rgb(21, 19, 17) | rgba(242, 237, 228, 0.1) 1px | 16px | 10px 14px | 16px",
+    3
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(156, 149, 138) 0px | 3.35544e+07px | 0px | 16px",
+    3
+   ],
+   [
+    "oklab(0.150388 0.00104634 0.00251868 / 0.85) | oklab(0.581255 0.163163 0.0885327 / 0.45) 1px | 16px | 0px | 14px",
+    2
+   ],
+   [
+    "rgb(21, 19, 17) | rgba(242, 237, 228, 0.1) 1px | 3.35544e+07px | 0px | 16px",
+    1
+   ],
+   [
+    "rgb(33, 29, 25) | rgba(242, 237, 228, 0.1) 1px | 3.35544e+07px | 0px | 13px",
+    1
+   ],
+   [
+    "rgba(0, 0, 0, 0) | rgb(251, 247, 240) 0px | 16px | 0px | 14px",
+    1
+   ],
+   [
+    "rgb(33, 29, 25) | rgb(242, 237, 228) 0px | 3.35544e+07px | 0px | 16px",
+    1
+   ]
+  ],
+  "contrasteMedidos": 31,
+  "contrasteSinMedir": 0,
+  "contrasteInactivos": 0,
+  "nContrasteMal": 0,
+  "contrasteMal": [],
+  "imgDeformadas": 0,
+  "imgSinAlt": 0,
+  "h1": 1,
+  "solapados": 0,
+  "solapadosDetalle": []
+ }
+]

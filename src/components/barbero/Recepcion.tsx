@@ -163,7 +163,7 @@ export function Recepcion({
       {/* Encabezado del local */}
       <div className="mb-4 flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="font-display text-[11px] font-bold uppercase tracking-[0.3em] text-accent-soft">
+          <p className="font-display text-[12px] font-bold uppercase tracking-[0.26em] text-accent-soft">
             Mostrador
           </p>
           <h1 className="mt-1 font-display text-[30px] font-bold uppercase leading-none">{sedeNombre}</h1>
@@ -185,7 +185,7 @@ export function Recepcion({
             es donde acompaña al título. */}
         <div className="text-left sm:text-right">
           <div className="font-display text-[30px] font-bold leading-none tabular-nums text-ok">{cop(cobrado)}</div>
-          <div className="text-[11px] uppercase tracking-[0.14em] text-muted">cobrado hoy en la sede</div>
+          <div className="text-[12px] uppercase tracking-[0.12em] text-muted">cobrado hoy en la sede</div>
         </div>
       </div>
 
@@ -235,7 +235,7 @@ export function Recepcion({
                   <div className="font-display text-[15px] font-bold tabular-nums text-ok">
                     {cop(porBarbero[b.id] ?? 0)}
                   </div>
-                  <div className="text-[11px] uppercase tracking-[0.1em] text-muted">{cerradas} cerradas</div>
+                  <div className="text-[12px] uppercase tracking-[0.1em] text-muted">{cerradas} cerradas</div>
                 </div>
               </header>
 

@@ -56,7 +56,7 @@ export function HistorialVentas({ ventas }: { ventas: VentaDelDia[] }) {
   return (
     <section className="overflow-hidden rounded-2xl border border-line bg-panel">
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 border-b border-line/60 px-4 py-3">
-        <span className="font-display text-[11px] font-bold uppercase tracking-[0.18em] text-muted">
+        <span className="font-display text-[12px] font-bold uppercase tracking-[0.16em] text-muted">
           Lo vendido hoy
         </span>
         <span className="text-[12.5px] text-muted">

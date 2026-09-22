@@ -109,7 +109,7 @@ export function HorarioSemanalAdmin({ sedes, horario }: { sedes: Sede[]; horario
           const e = filas[d.dow];
           if (!e) return null;
           return (
-            <div key={d.dow} className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3">
+            <div key={d.dow} className="flex flex-wrap items-center gap-x-4 gap-y-2.5 px-4 py-3">
               <span className="w-24 shrink-0 font-display text-[15px] font-bold uppercase">{d.nombre}</span>
 
               {/* Abre / Cierra el día */}
@@ -122,7 +122,7 @@ export function HorarioSemanalAdmin({ sedes, horario }: { sedes: Sede[]; horario
                     key={o.txt}
                     type="button"
                     onClick={() => setFila(d.dow, { abierta: o.v }, true)}
-                    className={`min-h-9 px-3 text-[12.5px] font-semibold transition ${
+                    className={`min-h-11 px-4 text-[13px] font-semibold transition ${
                       e.abierta === o.v
                         ? o.v
                           ? "bg-ok/15 text-ok"
@@ -137,24 +137,24 @@ export function HorarioSemanalAdmin({ sedes, horario }: { sedes: Sede[]; horario
 
               {/* Horas (solo si abre) */}
               {e.abierta ? (
-                <div className="flex items-center gap-2 text-[13px] text-muted">
-                  <span>de</span>
+                <div className="flex min-w-0 basis-full items-center gap-2 text-[13px] text-muted sm:basis-auto">
+                  <span className="shrink-0">de</span>
                   <input
                     type="time"
                     step={1800}
                     value={minToTime(e.abreMin)}
                     onChange={(ev) => setFila(d.dow, { abreMin: timeToMin(ev.target.value) })}
                     onBlur={() => guardar(d.dow, e)}
-                    className="rounded-lg border border-line bg-bg px-2 py-1.5 text-ink focus:border-accent focus:outline-none"
+                    className="min-h-11 min-w-[7.75rem] flex-1 rounded-xl border border-line bg-bg px-3 text-[14px] text-ink focus:border-ink/60 focus:outline-none sm:flex-none"
                   />
-                  <span>a</span>
+                  <span className="shrink-0">a</span>
                   <input
                     type="time"
                     step={1800}
                     value={minToTime(e.cierraMin)}
                     onChange={(ev) => setFila(d.dow, { cierraMin: timeToMin(ev.target.value) })}
                     onBlur={() => guardar(d.dow, e)}
-                    className="rounded-lg border border-line bg-bg px-2 py-1.5 text-ink focus:border-accent focus:outline-none"
+                    className="min-h-11 min-w-[7.75rem] flex-1 rounded-xl border border-line bg-bg px-3 text-[14px] text-ink focus:border-ink/60 focus:outline-none sm:flex-none"
                   />
                 </div>
               ) : (

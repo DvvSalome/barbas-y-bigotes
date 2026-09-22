@@ -345,7 +345,7 @@ export function AgendaDia({
             {v.label}
           </span>
         ))}
-        <span className="hidden lg:inline text-muted/70">· con el mouse: arrastra una cita para moverla</span>
+        <span className="hidden lg:inline text-muted">· con el mouse: arrastra una cita para moverla</span>
       </div>
 
       {/* Resultado del arrastre (guardando / error del server) */}
@@ -399,7 +399,7 @@ export function AgendaDia({
                     {!abiertaDia ? (
                       <p className="px-1 py-2 text-center text-[12px] text-muted">Cerrado</p>
                     ) : citasDia.length === 0 ? (
-                      <p className="px-1 py-2 text-center text-[12px] text-muted/60">—</p>
+                      <p className="px-1 py-2 text-center text-[12px] text-muted">—</p>
                     ) : (
                       citasDia.map((c) => {
                         const est = estiloDe(c.estado);

@@ -101,7 +101,7 @@ export function TarjetaCaja({
       <div className="px-4 py-4 sm:px-5">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="eyebrow">Caja de la sede</p>
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-ok/10 px-2.5 py-1 text-[11.5px] font-bold uppercase tracking-[0.06em] text-ok">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-ok/10 px-2.5 py-1 text-[12px] font-bold uppercase tracking-[0.06em] text-ok">
             <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-ok" />
             {aperturaHoy
               ? `Abierta ${horaBogota(caja.abiertaEn)}`

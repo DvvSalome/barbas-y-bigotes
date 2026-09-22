@@ -77,7 +77,7 @@ function SedeSelector({ sedes }: { sedes: Sede[] }) {
               type="button"
               aria-pressed={activo}
               onClick={() => ir(o.id)}
-              className={`min-h-9 whitespace-nowrap rounded-full px-3.5 text-[13px] font-semibold transition ${
+              className={`min-h-11 whitespace-nowrap rounded-full px-3.5 text-[13px] font-semibold transition ${
                 activo ? "bg-ink text-bg" : "text-muted hover:text-ink"
               }`}
             >
@@ -103,7 +103,7 @@ export function AdminTopbar({ email, sedes }: { email: string; sedes: Sede[] }) 
         <Link
           href="/admin"
           aria-label="Barbas & Bigotes · Hoy"
-          className="grid h-11 w-11 shrink-0 place-items-center rounded-full transition hover:bg-panel sm:h-auto sm:w-auto sm:rounded-none sm:hover:bg-transparent"
+          className="grid h-11 w-11 shrink-0 place-items-center rounded-full transition hover:bg-panel sm:min-h-11 sm:w-auto sm:rounded-none sm:hover:bg-transparent"
         >
           <Image src="/brand/logo-face-transparent.png" alt="" width={190} height={230} className="logo-staff h-8 w-auto sm:hidden" />
           <Image

@@ -2,6 +2,7 @@
 
 import { botonClases } from "@/components/ui/Boton";
 import { useState } from "react";
+import { Switch } from "@/components/admin/Switch";
 import { useRouter } from "next/navigation";
 import { marcarDiaEspecial, quitarDiaEspecial } from "@/lib/actions";
 import { bogotaYmd } from "@/lib/slots";
@@ -138,7 +139,7 @@ export function DiasEspecialesAdmin({
               key={String(o.v)}
               type="button"
               onClick={() => setAbierta(o.v)}
-              className={`flex-1 rounded-md px-3 py-1.5 text-[13px] font-semibold transition ${
+              className={`min-h-11 flex-1 rounded-md px-3 text-[13px] font-semibold transition ${
                 abierta === o.v
                   ? o.v
                     ? "bg-ok/15 text-ok shadow-[inset_0_0_0_1px_rgba(52,211,153,.35)]"
@@ -154,32 +155,31 @@ export function DiasEspecialesAdmin({
         {/* Horario propio del día: solo tiene sentido si ese día se abre. */}
         {abierta && (
           <div className="rounded-lg border border-line bg-bg px-3 py-2.5 sm:col-span-4">
-            <label className="flex cursor-pointer items-center gap-2 text-[13px] text-ink">
-              <input
-                type="checkbox"
+            <div className="flex items-center justify-between gap-3">
+              <span className="min-w-0 text-[13px] text-ink">Ese día con un horario distinto al de siempre</span>
+              <Switch
                 checked={horarioPropio}
-                onChange={(e) => setHorarioPropio(e.target.checked)}
-                className="accent-accent"
+                onChange={setHorarioPropio}
+                label="Ese día con un horario distinto al de siempre"
               />
-              Ese día con un horario distinto al de siempre
-            </label>
+            </div>
             {horarioPropio && (
-              <div className="mt-2.5 flex flex-wrap items-center gap-2 text-[13px] text-muted">
-                <span>de</span>
+              <div className="mt-2.5 flex min-w-0 items-center gap-2 text-[13px] text-muted">
+                <span className="shrink-0">de</span>
                 <input
                   type="time"
                   step={1800}
                   value={minToTime(abreMin)}
                   onChange={(e) => setAbreMin(timeToMin(e.target.value))}
-                  className={input}
+                  className={`${input} min-w-0 flex-1`}
                 />
-                <span>a</span>
+                <span className="shrink-0">a</span>
                 <input
                   type="time"
                   step={1800}
                   value={minToTime(cierraMin)}
                   onChange={(e) => setCierraMin(timeToMin(e.target.value))}
-                  className={input}
+                  className={`${input} min-w-0 flex-1`}
                 />
               </div>
             )}
@@ -254,7 +254,7 @@ export function DiasEspecialesAdmin({
                 </div>
                 <button
                   onClick={() => quitar(d.id)}
-                  className="shrink-0 rounded-full border border-line px-3 py-1.5 text-xs text-muted transition hover:border-accent/40 hover:text-ink"
+                  className="inline-flex min-h-11 shrink-0 items-center rounded-full border border-line px-4 text-[12.5px] text-muted transition hover:border-accent/40 hover:text-ink"
                 >
                   Quitar
                 </button>
