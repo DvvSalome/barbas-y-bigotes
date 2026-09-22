@@ -216,6 +216,12 @@ export function comisionDeItems(items: ItemComision[]): number {
  * Puede dar NEGATIVO y así se muestra: si pidió más adelantos de lo que produjo,
  * el dueño necesita verlo, no un cero tranquilizador.
  */
-export function netoLiquidacion(x: { comision: number; adelantos: number; consumos: number }): number {
-  return x.comision - x.adelantos - x.consumos;
+export function netoLiquidacion(x: {
+  comision: number;
+  adelantos: number;
+  consumos: number;
+  /** Ajustes a mano del dueño (0075). Con signo: suma o resta. */
+  ajustes?: number;
+}): number {
+  return x.comision - x.adelantos - x.consumos + (x.ajustes ?? 0);
 }

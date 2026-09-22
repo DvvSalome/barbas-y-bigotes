@@ -94,6 +94,17 @@ export function MiDia({
                 Ya descontados {cop(semana.adelantos)} de adelantos y {cop(semana.consumos)} de consumos.
               </p>
             )}
+            {/* Los ajustes del dueño, CON su motivo. El neto de arriba ya los
+                lleva; callarlos sería cambiarle el número sin decirle por qué. */}
+            {semana.detalleAjustes.map((a) => (
+              <p key={a.id} className="mt-1 text-[12px] text-muted">
+                <span className={`font-semibold ${a.monto < 0 ? "text-warn" : "text-ok"}`}>
+                  {a.monto > 0 ? "+" : "−"}
+                  {cop(Math.abs(a.monto))}
+                </span>{" "}
+                {a.nota}
+              </p>
+            ))}
           </div>
         )}
       </div>

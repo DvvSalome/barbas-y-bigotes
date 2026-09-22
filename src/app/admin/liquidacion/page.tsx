@@ -4,6 +4,7 @@ import { getLiquidacion, getSedes } from "@/lib/data/queries";
 import type { SedeId } from "@/lib/data/types";
 import { cop } from "@/lib/format";
 import { SectionHeader } from "@/components/admin/SectionHeader";
+import { AjusteLiquidacion } from "@/components/admin/AjusteLiquidacion";
 import { bogotaYmd, bogotaDayRangeDeFecha, semanaDeFecha, MON } from "@/lib/slots";
 
 export const metadata: Metadata = { title: "Liquidación · Admin" };
@@ -144,6 +145,19 @@ export default async function LiquidacionPage({
                         .map((c) => `${fechaCorta(c.fecha)}: ${c.cantidad > 1 ? `${c.cantidad}× ` : ""}${c.producto} ${cop(c.total)}`)
                         .join(" · ")}
                     </div>
+                  )}
+
+                  {/* Sumar o restar a mano (0075). Va antes del total porque es
+                      parte de la cuenta, no una nota al pie. Solo el dueño puede
+                      tocarlo —lo pidió así— pero el barbero SÍ lo ve en lo suyo:
+                      si le cambia lo que cobra y no lo ve, no le cuadra. */}
+                  {!arriendo && (
+                    <AjusteLiquidacion
+                      barberoId={f.barberoId}
+                      nombre={f.nombre}
+                      ajustes={f.ajustes}
+                      detalle={f.detalleAjustes}
+                    />
                   )}
 
                   <div className="flex items-baseline justify-between gap-3 border-t border-line bg-elevated/40 px-4 py-3">

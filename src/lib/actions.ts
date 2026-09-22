@@ -2060,7 +2060,11 @@ export async function completarReserva(input: {
     servicioEfectivo = (input.servicioIdOverride ?? "").trim() || r.servicio_id;
     clienteEfectivo = r.cliente_ref;
   } else {
-    barberoId = input.barberoId || staff.barberoId;
+    // "local" = el administrador lo vendió a nombre del local (una bebida, un
+    // producto): venta SIN barbero, y por lo tanto sin comisión para nadie. Se
+    // manda como palabra y no como cadena vacía para que se distinga de "no
+    // eligió todavía", que es lo que significa el vacío en el selector.
+    barberoId = input.barberoId === "local" ? null : input.barberoId || staff.barberoId;
     if (barberoId && !(await staffPuedeOperarBarbero(staff, barberoId)))
       return { ok: false, error: "Ese barbero es de otra sede." };
     sedeEfectiva = input.sede;
@@ -2240,7 +2244,10 @@ export async function completarReserva(input: {
         ref_id: sel.id,
         descripcion: pr.nombre,
         cantidad,
-        precio_unitario: pr.precio,
+        // El precio editado en el mostrador manda, igual que en los servicios;
+        // el de catálogo queda guardado en precio_lista para poder ver después
+        // a qué se vendió distinto y por cuánto.
+        precio_unitario: precioEditado.get(sel.id) ?? pr.precio,
         precio_lista: pr.precio,
         comision_pct: pr.comision_pct !== null ? Number(pr.comision_pct) : 0,
       });
@@ -3600,6 +3607,83 @@ export async function actualizarAjusteVerSemana(activo: boolean): Promise<Action
     .eq("id", 1);
   if (error) return { ok: false, error: errorPublico("actualizarAjusteVerSemana", error) };
   revalidatePath("/admin/equipo");
+  revalidatePath("/barbero");
+  return { ok: true };
+}
+
+// ---------- Ajustar a mano la liquidación de un barbero (0075) ----------
+
+/**
+ * Suma o resta plata en la liquidación de la semana de UN barbero.
+ *
+ * Lo pidió el administrador: "por si le sumo o le resto algo que me deje
+ * cambiarlo acá". Pasa todas las semanas —se le prestó fuera del adelanto, se le
+ * descuenta un daño, se le paga un domicilio que hizo— y hasta ahora se arreglaba
+ * de palabra, con el número de la pantalla diciendo otra cosa.
+ *
+ * SOLO EL DUEÑO, que es lo que él pidió: requireAdmin acá y `is_admin()` en la
+ * política de la tabla, así que ni una action invocada a mano sirve de nada. El
+ * barbero SÍ lo ve (la política de lectura es de staff): si le cambia lo que
+ * cobra el sábado y no lo ve, la cuenta no le cuadra y con razón.
+ *
+ * El monto va CON SIGNO: positivo suma, negativo resta. Es como lo dijo él.
+ */
+export async function ajustarLiquidacion(input: {
+  barberoId: string;
+  /** Entero de pesos, positivo o negativo. Nunca cero. */
+  monto: number;
+  /** Obligatoria: es la mitad del punto. Sin ella el descuento es a ciegas. */
+  nota: string;
+  /** Día al que se carga el ajuste (YYYY-MM-DD). Por defecto, hoy en Bogotá. */
+  fecha?: string;
+}): Promise<ActionResult> {
+  const sb = await supabaseServerAuth();
+  const denied = await requireAdmin(sb);
+  if (denied) return { ok: false, error: denied };
+
+  // sanearCop rechaza decimales y no-numéricos pero NO negativos, y acá el
+  // negativo es justamente medio pedido: se sanea el valor absoluto y se le
+  // devuelve el signo.
+  const crudoMonto = Number(input.monto);
+  if (!Number.isFinite(crudoMonto)) return { ok: false, error: "Pon un monto en pesos enteros." };
+  const signo = crudoMonto < 0 ? -1 : 1;
+  const abs = sanearCop(Math.abs(crudoMonto));
+  if (abs === null || abs === 0)
+    return { ok: false, error: "El monto tiene que ser un número entero de pesos, distinto de cero." };
+  const monto = signo * abs;
+
+  const nota = (input.nota ?? "").trim();
+  if (!nota) return { ok: false, error: "Escribe por qué es el ajuste: el barbero tiene que poder entenderlo." };
+  if (nota.length > 200) return { ok: false, error: "El motivo es muy largo (máximo 200 caracteres)." };
+
+  if (!input.barberoId) return { ok: false, error: "Elige a qué barbero se le ajusta." };
+
+  const { data: user } = await sb.auth.getUser();
+  const fila: Record<string, unknown> = {
+    barbero_id: input.barberoId,
+    monto,
+    nota,
+    creado_por: user.user?.id ?? null,
+  };
+  // Solo se manda la fecha si la piden: el default de la tabla ya es hoy en Bogotá.
+  if (input.fecha) fila.fecha = input.fecha;
+
+  const { error } = await sb.from("ajustes_liquidacion").insert(fila);
+  if (error) return { ok: false, error: errorPublico("ajustarLiquidacion", error) };
+  revalidatePath("/admin/liquidacion");
+  revalidatePath("/barbero");
+  return { ok: true };
+}
+
+/** Quitar un ajuste que se puso mal. Solo el dueño, igual que ponerlo. */
+export async function quitarAjusteLiquidacion(id: string): Promise<ActionResult> {
+  const sb = await supabaseServerAuth();
+  const denied = await requireAdmin(sb);
+  if (denied) return { ok: false, error: denied };
+  if (!id) return { ok: false, error: "Falta cuál ajuste." };
+  const { error } = await sb.from("ajustes_liquidacion").delete().eq("id", id);
+  if (error) return { ok: false, error: errorPublico("quitarAjusteLiquidacion", error) };
+  revalidatePath("/admin/liquidacion");
   revalidatePath("/barbero");
   return { ok: true };
 }

@@ -2540,10 +2540,15 @@ export type LiquidacionBarbero = {
   cobros: number;
   adelantos: number;
   consumos: number;
-  /** Lo que queda por pagarle: su parte − adelantos − consumos. */
+  /** Ajustes a mano del dueño en el período, ya sumados con su signo (0075). */
+  ajustes: number;
+  /** Lo que queda por pagarle: su parte − adelantos − consumos + ajustes. */
   neto: number;
   /** Detalle de lo consumido, para que el descuento no sea un número a ciegas. */
   detalleConsumos: { producto: string; cantidad: number; total: number; fecha: string }[];
+  /** Cada ajuste con su motivo. Sin el motivo, el barbero ve que le restaron
+   *  $30.000 y no sabe por qué — que es justo lo que hay que evitar. */
+  detalleAjustes: { id: string; monto: number; nota: string; fecha: string }[];
 };
 
 /**
@@ -2563,7 +2568,7 @@ export async function getLiquidacion(
   sede?: SedeId | null,
 ): Promise<LiquidacionBarbero[]> {
   const admin = supabaseAdmin();
-  const [barbRes, ventasRes, adelRes, consRes] = await Promise.all([
+  const [barbRes, ventasRes, adelRes, consRes, ajuRes] = await Promise.all([
     admin
       .from("barberos")
       .select("id,nombre,sede_id,tipo_contrato,comision_pct,arriendo_mensual")
@@ -2585,10 +2590,18 @@ export async function getLiquidacion(
       .select("barbero_id,cantidad,precio_unitario,fecha,productos(nombre)")
       .gte("fecha", bogotaYmd(desde))
       .lte("fecha", bogotaYmd(new Date(hasta.getTime() - 1))),
+    admin
+      .from("ajustes_liquidacion")
+      .select("id,barbero_id,monto,nota,fecha")
+      .gte("fecha", bogotaYmd(desde))
+      .lte("fecha", bogotaYmd(new Date(hasta.getTime() - 1))),
   ]);
   // La tabla de consumos puede no existir todavía (deploy antes de aplicar 0063):
   // eso no puede tumbar la pantalla, solo deja el descuento en cero.
   if (consRes.error) console.error("getLiquidacion consumos:", consRes.error.message);
+  // Mismo criterio para los ajustes (0075): sin tabla, cero ajustes y la
+  // liquidación sigue siendo la de siempre.
+  if (ajuRes.error) console.error("getLiquidacion ajustes:", ajuRes.error.message);
 
   const barberos = ((barbRes.data ?? []) as Record<string, unknown>[]).filter(
     (b) => !sede || b.sede_id === sede,
@@ -2608,8 +2621,10 @@ export async function getLiquidacion(
       cobros: 0,
       adelantos: 0,
       consumos: 0,
+      ajustes: 0,
       neto: 0,
       detalleConsumos: [],
+      detalleAjustes: [],
     });
   }
 
@@ -2640,6 +2655,19 @@ export async function getLiquidacion(
       cantidad: (c.cantidad as number) ?? 1,
       total,
       fecha: c.fecha as string,
+    });
+  }
+
+  for (const a of (ajuRes.data ?? []) as Record<string, unknown>[]) {
+    const fila = porBarbero.get(a.barbero_id as string);
+    if (!fila) continue;
+    const monto = (a.monto as number) ?? 0;
+    fila.ajustes += monto;
+    fila.detalleAjustes.push({
+      id: a.id as string,
+      monto,
+      nota: (a.nota as string) ?? "",
+      fecha: a.fecha as string,
     });
   }
 
@@ -2677,6 +2705,10 @@ export type MiSemana = {
   propinas: number;
   adelantos: number;
   consumos: number;
+  /** Ajustes a mano del dueño, con signo y con su motivo (0075). El neto ya los
+   *  lleva: si no se le dice cuáles fueron, el número le cambia sin explicación. */
+  ajustes: number;
+  detalleAjustes: { id: string; monto: number; nota: string; fecha: string }[];
   /** Lo que le queda por cobrar el fin de semana. */
   neto: number;
   cobros: number;
@@ -2706,6 +2738,8 @@ export async function getMiSemana(barberoId: string): Promise<MiSemana | null> {
     propinas: mia.propinas,
     adelantos: mia.adelantos,
     consumos: mia.consumos,
+    ajustes: mia.ajustes,
+    detalleAjustes: mia.detalleAjustes,
     neto: mia.neto,
     cobros: mia.cobros,
   };

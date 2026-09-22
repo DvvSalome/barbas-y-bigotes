@@ -996,6 +996,11 @@ export function CheckoutForm({
     : undefined;
   /** Precio de catálogo de un servicio en esta sede (null si no tiene). */
   const listaDe = (id: string) => serviciosSede.find((s) => s.id === id)?.precios[sedeId] ?? null;
+  /** Lo mismo para un producto. Comparten el mapa `preciosEdit`: los ids son
+   *  UUID de tablas distintas, no se pisan, y así el payload de `precios` los
+   *  manda solos sin tocar el envío. */
+  const listaProdDe = (id: string) => productosSede.find((p) => p.id === id)?.precio ?? null;
+  const cobradoProdDe = (id: string) => preciosEdit[id] ?? listaProdDe(id) ?? 0;
   /** Lo que de verdad se va a cobrar por ese servicio. */
   const cobradoDe = (id: string) => preciosEdit[id] ?? listaDe(id) ?? 0;
   const editarPrecio = (id: string, n: number | null) =>
@@ -1083,7 +1088,7 @@ export function CheckoutForm({
       ...(precioFijo != null ? [{ precio: precioFijo, cantidad: 1 }] : []),
       ...extras.map((id) => ({ precio: cobradoDe(id), cantidad: 1 })),
       ...Object.entries(prodQty).map(([id, cantidad]) => ({
-        precio: productosSede.find((p) => p.id === id)?.precio ?? 0,
+        precio: cobradoProdDe(id),
         cantidad,
       })),
     ],
@@ -1284,10 +1289,16 @@ export function CheckoutForm({
                 él mismo, sin selector. */}
             {elegirBarbero && (
               <select value={barberoId} onChange={(e) => setBarberoId(e.target.value)} className={fld}>
-                <option value="">¿Qué barbero vende?</option>
+                <option value="">¿Quién vende?</option>
                 {barberosSede.map((b) => (
                   <option key={b.id} value={b.id}>{b.nombre}</option>
                 ))}
+                {/* "El local": una gaseosa que despachó el administrador no la
+                    vendió ningún barbero, y ponerle uno cualquiera le regala una
+                    comisión que no se ganó. El servidor ya aceptaba barbero null
+                    -la venta entra a la caja igual-; lo que faltaba era poder
+                    DECIRLO. Va al final para que no se elija por inercia. */}
+                <option value="local">El local (sin comisión)</option>
               </select>
             )}
             <input
@@ -1464,8 +1475,22 @@ export function CheckoutForm({
                           agotado ? "text-muted line-through" : resta <= 3 ? "text-warn" : "text-muted"
                         }`}
                       >
-                        {cop(p.precio)} · {agotado ? "Agotado" : `quedan ${resta}${resta <= 3 ? " · poco stock" : ""}`}
+                        {agotado ? "Agotado" : `quedan ${resta}${resta <= 3 ? " · poco stock" : ""}`}
                       </div>
+                      {/* El precio, tocable, SOLO cuando ya se agregó al menos uno:
+                          si no, la lista de productos se llena de botones de editar
+                          para cosas que nadie está vendiendo. Los servicios ya se
+                          podían cambiar; los productos no, y el administrador vende
+                          bebidas a precio distinto del de lista todo el tiempo. */}
+                      {q > 0 ? (
+                        <PrecioCobro
+                          precio={cobradoProdDe(p.id)}
+                          lista={listaProdDe(p.id)}
+                          onChange={(n) => editarPrecio(p.id, n)}
+                        />
+                      ) : (
+                        <div className="text-xs tabular-nums text-muted">{cop(p.precio)}</div>
+                      )}
                     </div>
                     <div className="flex items-center rounded-full border border-line bg-elevated">
                       <button
