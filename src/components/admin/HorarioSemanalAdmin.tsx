@@ -35,6 +35,7 @@ export function HorarioSemanalAdmin({ sedes, horario }: { sedes: Sede[]; horario
   const [sedeId, setSedeId] = useState<string>(sedes[0]?.id ?? "");
   const [msg, setMsg] = useState<{ dow: number; text: string; ok: boolean } | null>(null);
   const [busy, setBusy] = useState<number | null>(null);
+  const [copiando, setCopiando] = useState(false);
 
   // Estado local por (sede, dow): arranca de la BD; el respaldo es 9-20 abierto
   // (dom cerrado) por si la migración aún no se aplicó y no hay filas.
@@ -73,6 +74,57 @@ export function HorarioSemanalAdmin({ sedes, horario }: { sedes: Sede[]; horario
     setBusy(null);
     setMsg({ dow, text: res.ok ? "Guardado" : res.error ?? "Error", ok: res.ok });
     if (res.ok) router.refresh();
+  }
+
+  /**
+   * Copia el horario de UN dia a todos los demas de la semana.
+   *
+   * Medido en la base: 09:00 aparece seis veces y 19:30 seis veces. El dueno
+   * escribe lo mismo doce veces para decir "de lunes a sabado, de 9 a 7:30".
+   *
+   * Copia la HORA, no el "abre/cerrado": el domingo casi siempre esta cerrado y
+   * copiar tambien eso lo abriria sin que nadie lo pidiera. Los dias cerrados se
+   * quedan cerrados, con su horario ya listo por si algun dia se abren.
+   */
+  /** ¿El horario de este día ya es el de TODOS los demás? Entonces copiarlo no
+   *  haría nada y el botón sobra. */
+  const esElDeTodos = (dow: number) => {
+    const base = filas[dow];
+    if (!base) return true;
+    return DIAS.every((d) => {
+      const o = filas[d.dow];
+      return !o || (o.abreMin === base.abreMin && o.cierraMin === base.cierraMin);
+    });
+  };
+
+  async function copiarATodos(dow: number) {
+    const base = filas[dow];
+    if (!base) return;
+    setCopiando(true);
+    setMsg(null);
+    const otros = DIAS.filter((d) => d.dow !== dow);
+    setFilas((prev) => {
+      const next = { ...prev };
+      for (const d of otros) next[d.dow] = { ...next[d.dow], abreMin: base.abreMin, cierraMin: base.cierraMin };
+      return next;
+    });
+    // Secuencial y no en paralelo: son seis escrituras a la misma tabla y el
+    // orden no importa, pero un fallo a mitad deja claro cual fue.
+    let fallo: string | null = null;
+    for (const d of otros) {
+      const e = filas[d.dow];
+      const res = await actualizarHorarioSemanal({
+        sede: sedeId,
+        dow: d.dow,
+        abierta: e?.abierta ?? d.dow !== 0,
+        abreMin: base.abreMin,
+        cierraMin: base.cierraMin,
+      });
+      if (!res.ok) fallo = res.error ?? "No se pudo copiar";
+    }
+    setCopiando(false);
+    setMsg({ dow, text: fallo ?? "Copiado a toda la semana", ok: !fallo });
+    router.refresh();
   }
 
   const setFila = (dow: number, patch: Partial<Estado>, guardarYa = false) => {
@@ -159,6 +211,21 @@ export function HorarioSemanalAdmin({ sedes, horario }: { sedes: Sede[]; horario
                 </div>
               ) : (
                 <span className="text-[12.5px] text-muted">No se atiende</span>
+              )}
+
+              {/* "El mismo, todos los dias". Solo en los dias que abren -copiar
+                  el horario de un dia cerrado no significa nada- y solo cuando su
+                  horario NO es ya el de todos, para que no invite a tocar algo que
+                  no cambiaria nada. */}
+              {e.abierta && !esElDeTodos(d.dow) && (
+                <button
+                  type="button"
+                  onClick={() => copiarATodos(d.dow)}
+                  disabled={copiando}
+                  className="inline-flex min-h-11 shrink-0 items-center px-2 text-[12.5px] text-muted underline decoration-line underline-offset-4 transition hover:text-ink disabled:opacity-50"
+                >
+                  {copiando ? "Copiando…" : "Poner este horario todos los días"}
+                </button>
               )}
 
               {busy === d.dow && <span className="text-[12px] text-muted">…</span>}
