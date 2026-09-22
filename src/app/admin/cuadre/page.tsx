@@ -11,6 +11,7 @@ import {
   getServicios,
   getPreciosServiciosStaff,
   getProductos,
+  getVentasDelDia,
   type MedioPago,
 } from "@/lib/data/queries";
 import { CuadreForms } from "@/components/admin/CuadreForms";
@@ -22,6 +23,7 @@ import { cop } from "@/lib/format";
 import type { TotalesPorMedio } from "@/lib/cobro";
 import { SectionHeader } from "@/components/admin/SectionHeader";
 import { AvisoCaja } from "@/components/admin/AvisoCaja";
+import { HistorialVentas } from "@/components/admin/HistorialVentas";
 
 export const metadata: Metadata = { title: "Cuadre de caja · Admin" };
 
@@ -52,7 +54,7 @@ function desgloseCierre(totales: TotalesPorMedio, medios: MedioPago[]) {
 }
 
 export default async function CuadrePage() {
-  const [cuadre, sedes, barberos, cajas, pendientes, anteriores, medios, adelantos, servicios, preciosServicios, productos] =
+  const [cuadre, sedes, barberos, cajas, pendientes, anteriores, medios, adelantos, servicios, preciosServicios, productos, ventasHoy] =
     await Promise.all([
       getCuadre(),
       getSedes(),
@@ -65,6 +67,9 @@ export default async function CuadrePage() {
       getServicios(),
       getPreciosServiciosStaff(),
       getProductos(),
+      // El historial de lo vendido hoy, de las DOS sedes: el dueño mira el cuadre
+      // completo, no el de una sola. Es la única lectura que incluye las anuladas.
+      getVentasDelDia(null),
     ]);
   const fecha = new Date().toLocaleDateString("es-CO", { timeZone: "America/Bogota", weekday: "long", day: "numeric", month: "long" });
   const totalPendiente = pendientes.reduce((a, p) => a + p.monto, 0);
@@ -145,6 +150,14 @@ export default async function CuadrePage() {
             <MediosPago medios={medios} />
           </div>
         </aside>
+      </div>
+
+      {/* Lo vendido hoy, con poder anular. Lo pidió el administrador: metió dos
+          ventas de ejemplo y no tenía cómo sacarlas. Va antes de las bitácoras de
+          gastos y adelantos porque es la misma familia —"qué pasó hoy"— y esta es
+          la que más se mira. */}
+      <div className="mt-8">
+        <HistorialVentas ventas={ventasHoy} />
       </div>
 
       {/* Las bitácoras del día, a lo ancho y lado a lado */}

@@ -603,7 +603,7 @@ export async function getVentasSedeHoy(sedeId: string | null): Promise<VentaHoy[
     .from("ventas")
     .select(
       "id,reserva_id,barbero_id,total,propina,descuento,medio,creado_en,cliente_nombre,clientes(nombre),venta_items(tipo,descripcion,cantidad,precio_unitario)",
-    )
+    ).is("anulada_en", null)
     .gte("creado_en", desde.toISOString())
     .lt("creado_en", hasta.toISOString())
     .order("creado_en", { ascending: false });
@@ -634,6 +634,72 @@ export async function getVentasSedeHoy(sedeId: string | null): Promise<VentaHoy[
   }));
 }
 
+export type VentaDelDia = {
+  id: string;
+  creadoEn: string;
+  sedeId: string;
+  barbero: string | null;
+  cliente: string;
+  medio: string;
+  total: number;
+  propina: number;
+  reservaId: string | null;
+  cuponCodigo: string | null;
+  items: { tipo: string; descripcion: string; cantidad: number; precioUnitario: number }[];
+  anuladaEn: string | null;
+  anuladaMotivo: string | null;
+};
+
+/**
+ * El historial de lo vendido HOY, para el dueño (0076).
+ *
+ * Lo pidió el administrador: "debería haber como un historial de lo vendido para
+ * poder eliminar o modificar en su caso". Es la ÚNICA lectura de `ventas` que a
+ * propósito INCLUYE las anuladas: sin ellas no sería un historial, sería la
+ * misma lista de siempre con dos filas menos y sin explicación de a dónde
+ * fueron. Cada una trae su motivo.
+ */
+export async function getVentasDelDia(sedeId: string | null): Promise<VentaDelDia[]> {
+  const admin = supabaseAdmin();
+  const { desde, hasta } = bogotaDayRange();
+  let q = admin
+    .from("ventas")
+    .select(
+      "id,creado_en,sede_id,total,propina,medio,reserva_id,cupon_codigo,cliente_nombre,anulada_en,anulada_motivo,clientes(nombre),barberos(nombre),venta_items(tipo,descripcion,cantidad,precio_unitario)",
+    )
+    .gte("creado_en", desde.toISOString())
+    .lt("creado_en", hasta.toISOString())
+    .order("creado_en", { ascending: false });
+  if (sedeId) q = q.eq("sede_id", sedeId);
+  const { data, error } = await q;
+  if (error) console.error("getVentasDelDia:", error.message);
+  return ((data ?? []) as Record<string, unknown>[]).map((v) => ({
+    id: v.id as string,
+    creadoEn: v.creado_en as string,
+    sedeId: v.sede_id as string,
+    barbero: (v.barberos as { nombre?: string } | null)?.nombre ?? null,
+    cliente:
+      (v.clientes as { nombre?: string } | null)?.nombre ?? (v.cliente_nombre as string) ?? "",
+    medio: v.medio as string,
+    total: (v.total as number) ?? 0,
+    propina: (v.propina as number) ?? 0,
+    reservaId: (v.reserva_id as string) ?? null,
+    cuponCodigo: (v.cupon_codigo as string) ?? null,
+    items: (
+      (v.venta_items as
+        | { tipo: string; descripcion: string; cantidad: number; precio_unitario: number }[]
+        | null) ?? []
+    ).map((i) => ({
+      tipo: i.tipo,
+      descripcion: i.descripcion,
+      cantidad: i.cantidad,
+      precioUnitario: i.precio_unitario,
+    })),
+    anuladaEn: (v.anulada_en as string) ?? null,
+    anuladaMotivo: (v.anulada_motivo as string) ?? null,
+  }));
+}
+
 // "Cobrado hoy" del header de la agenda: suma de ventas del día civil (Bogotá).
 // Con la sesión del staff, RLS (0010) scopea las ventas al barbero logueado; el
 // admin (sin filtro) ve todas. Si se pasa barberoId, filtra explícito para
@@ -643,7 +709,7 @@ export async function getCobradoHoy(barberoId?: string | null): Promise<number> 
   const { desde, hasta } = bogotaDayRange();
   let q = sb
     .from("ventas")
-    .select("total")
+    .select("total").is("anulada_en", null)
     .gte("creado_en", desde.toISOString())
     .lt("creado_en", hasta.toISOString());
   if (barberoId) q = q.eq("barbero_id", barberoId);
@@ -656,7 +722,7 @@ export async function getHistorialCliente(clienteRef: string) {
   const sb = await supabaseServerAuth();
   const { data } = await sb
     .from("ventas")
-    .select("id,total,medio,creado_en,barberos(nombre),venta_items(descripcion,cantidad)")
+    .select("id,total,medio,creado_en,barberos(nombre),venta_items(descripcion,cantidad)").is("anulada_en", null)
     .eq("cliente_ref", clienteRef)
     .order("creado_en", { ascending: false })
     .limit(20);
@@ -677,7 +743,7 @@ export async function getResumen() {
   const { desde } = bogotaDayRange();
   const mesInicio = `${bogotaYmd().slice(0, 8)}01`; // primer día del mes civil en Bogotá
   const [ventasRes, prodsRes, adelRes] = await Promise.all([
-    sb.from("ventas").select("total,medio,pagos").gte("creado_en", desde.toISOString()),
+    sb.from("ventas").select("total,medio,pagos").is("anulada_en", null).gte("creado_en", desde.toISOString()),
     sb.from("productos").select("stock,stock_minimo"),
     sb.from("adelantos").select("monto").gte("fecha", mesInicio),
   ]);
@@ -715,7 +781,7 @@ export async function getCuadre() {
   const { desde, hasta } = bogotaDayRange();
   const [sedesRes, ventasRes, gastosRes] = await Promise.all([
     sb.from("sedes").select("id,nombre").order("nombre"),
-    sb.from("ventas").select("sede_id,medio,total,pagos").gte("creado_en", desde.toISOString()),
+    sb.from("ventas").select("sede_id,medio,total,pagos").is("anulada_en", null).gte("creado_en", desde.toISOString()),
     // Gastos por creado_en dentro del día de Bogotá [desde, hasta), igual que las
     // ventas y el cierre de caja. Antes se filtraba por la columna `fecha` (date con
     // default current_date en UTC) con un `>=` abierto: un gasto de la noche quedaba
@@ -862,10 +928,10 @@ export async function ventasDeSesion(
   cols: string,
 ): Promise<Record<string, unknown>[]> {
   const [tagged, sinTag] = await Promise.all([
-    client.from("ventas").select(cols).eq("sede_id", sede).eq("caja_sesion_id", sesionId),
+    client.from("ventas").select(cols).is("anulada_en", null).eq("sede_id", sede).eq("caja_sesion_id", sesionId),
     client
       .from("ventas")
-      .select(cols)
+      .select(cols).is("anulada_en", null)
       .eq("sede_id", sede)
       .is("caja_sesion_id", null)
       .gte("creado_en", abiertaEnISO),
@@ -906,7 +972,7 @@ export async function getCajaSesiones(): Promise<CajaSesionSede[]> {
         ? ventasDeSesion(sb, s.id, sess.id, sess.abierta_en, "medio,total,propina,propinaMedio:propina_medio,pagos")
         : sb
             .from("ventas")
-            .select("medio,total,propina,propinaMedio:propina_medio,pagos")
+            .select("medio,total,propina,propinaMedio:propina_medio,pagos").is("anulada_en", null)
             .eq("sede_id", s.id)
             .gte("creado_en", start)
             .then((r) => (r.data ?? []) as unknown as Record<string, unknown>[]),
@@ -1197,7 +1263,7 @@ export async function getCierresHoy(sede?: string | null): Promise<CajaHoy[]> {
       const ab = abiertaRow as { id: string; abierta_en: string };
       const { data: ventas } = await admin
         .from("ventas")
-        .select("total")
+        .select("total").is("anulada_en", null)
         .eq("sede_id", s.id)
         .gte("creado_en", ab.abierta_en);
       const total = ((ventas ?? []) as { total: number }[]).reduce((a, v) => a + v.total, 0);
@@ -1340,7 +1406,7 @@ export async function getClientes(): Promise<ClienteRow[]> {
   const sb = await supabaseServerAuth();
   const [clientesRes, ventasRes, reservasRes] = await Promise.all([
     sb.from("clientes").select("id,nombre,telefono,email,creado_en").order("nombre"),
-    sb.from("ventas").select("cliente_ref,total,creado_en,sede_id"),
+    sb.from("ventas").select("cliente_ref,total,creado_en,sede_id").is("anulada_en", null),
     // Las CITAS también dicen de qué sede es alguien: el que reservó en Plaza y
     // todavía no ha venido no tiene venta, y filtrando por sede desaparecería
     // justo del listado donde el dueño lo iba a buscar.
@@ -1426,7 +1492,7 @@ export async function getClienteDetalle(id: string): Promise<ClienteDetalle | nu
   const [ventasRes, reservasRes, notasRes, walletRes, resenasRes, puntosRes, califRes] = await Promise.all([
     sb
       .from("ventas")
-      .select("id,total,medio,creado_en,barberos(nombre),venta_items(descripcion,cantidad)")
+      .select("id,total,medio,creado_en,barberos(nombre),venta_items(descripcion,cantidad)").is("anulada_en", null)
       .eq("cliente_ref", id)
       .order("creado_en", { ascending: false })
       .limit(50),
@@ -1597,7 +1663,7 @@ export async function ventasHoyPorMedio(sede?: SedeId | null): Promise<VentasHoy
   const { desde, hasta } = bogotaDayRange();
   let q = sb
     .from("ventas")
-    .select("medio,total,propina")
+    .select("medio,total,propina").is("anulada_en", null)
     .gte("creado_en", desde.toISOString())
     .lt("creado_en", hasta.toISOString());
   if (sede) q = q.eq("sede_id", sede);
@@ -1786,7 +1852,7 @@ export async function atendidasSinCobrar(sede?: SedeId | null): Promise<Atendida
   // cobre mañana igual está cobrada, no hay que gritarla.
   const { data: ventasData } = await sb
     .from("ventas")
-    .select("reserva_id")
+    .select("reserva_id").is("anulada_en", null)
     .in("reserva_id", reservas.map((r) => r.id as string));
   const cobradas = new Set(
     ((ventasData ?? []) as { reserva_id: string | null }[]).map((v) => v.reserva_id).filter(Boolean),
@@ -1895,7 +1961,7 @@ export async function serie7Dias(sede?: SedeId | null): Promise<Serie7Dias> {
   const desde14 = bogotaDayRangeDeFecha(bogotaYmd(new Date(Date.now() - 13 * 86_400_000))).desde;
   let q = sb
     .from("ventas")
-    .select("creado_en,total")
+    .select("creado_en,total").is("anulada_en", null)
     .gte("creado_en", desde14.toISOString())
     .lt("creado_en", hasta.toISOString());
   if (sede) q = q.eq("sede_id", sede);
@@ -1988,10 +2054,13 @@ export async function contarCortesCliente(sb: SupabaseClient, clienteRef: string
   if (corteIds.length === 0) return 0;
   const { data } = await sb
     .from("venta_items")
-    .select("venta_id, ventas!inner(cliente_ref)")
+    .select("venta_id, ventas!inner(cliente_ref,anulada_en)")
     .eq("tipo", "servicio")
     .in("ref_id", corteIds)
-    .eq("ventas.cliente_ref", clienteRef);
+    .eq("ventas.cliente_ref", clienteRef)
+    // Una venta anulada NO cuenta un corte: si no, el 5º premio le llega al
+    // cliente antes de tiempo y eso es plata regalada sin que nadie se entere.
+    .is("ventas.anulada_en", null);
   return new Set(((data ?? []) as { venta_id: string }[]).map((r) => r.venta_id)).size;
 }
 
@@ -2247,7 +2316,7 @@ export async function getMetricas(p: Periodo = "mes", sede?: SedeId | null): Pro
   // más que mantener. ponytail: mover a SQL si esto pasa de ~10k ventas por período.
   let q = sb
     .from("ventas")
-    .select("id,total,propina,creado_en,barbero_id,cliente_ref,barberos(nombre,foto_url)")
+    .select("id,total,propina,creado_en,barbero_id,cliente_ref,barberos(nombre,foto_url)").is("anulada_en", null)
     .gte("creado_en", prevDesde.toISOString())
     .lt("creado_en", hasta.toISOString());
   if (sede) q = q.eq("sede_id", sede);
@@ -2337,7 +2406,7 @@ export async function getMetricas(p: Periodo = "mes", sede?: SedeId | null): Pro
   if (refs.length) {
     const { data: viejas } = await sb
       .from("ventas")
-      .select("cliente_ref")
+      .select("cliente_ref").is("anulada_en", null)
       .in("cliente_ref", refs)
       .lt("creado_en", desde.toISOString());
     repiten = new Set(((viejas ?? []) as { cliente_ref: string }[]).map((r) => r.cliente_ref)).size;
@@ -2376,7 +2445,7 @@ export async function getVentasParaCsv(
     .from("ventas")
     .select(
       "creado_en,sede_id,medio,pagos,total,propina,descuento,cupon_codigo,cliente_nombre,barberos(nombre),clientes(nombre),venta_items(tipo,descripcion,cantidad,precio_unitario)",
-    )
+    ).is("anulada_en", null)
     .gte("creado_en", desde.toISOString())
     .lt("creado_en", hasta.toISOString())
     .order("creado_en");
@@ -2412,7 +2481,7 @@ export async function pulsoDelDia(sede?: SedeId | null): Promise<PulsoDia> {
 
   let qVentas = sb
     .from("ventas")
-    .select("barbero_id,total")
+    .select("barbero_id,total").is("anulada_en", null)
     .gte("creado_en", desde.toISOString())
     .lt("creado_en", hasta.toISOString());
   if (sede) qVentas = qVentas.eq("sede_id", sede);
@@ -2577,7 +2646,7 @@ export async function getLiquidacion(
       .order("nombre"),
     admin
       .from("ventas")
-      .select("id,barbero_id,sede_id,total,propina,creado_en,venta_items(cantidad,precio_unitario,comision_pct)")
+      .select("id,barbero_id,sede_id,total,propina,creado_en,venta_items(cantidad,precio_unitario,comision_pct)").is("anulada_en", null)
       .gte("creado_en", desde.toISOString())
       .lt("creado_en", hasta.toISOString()),
     admin

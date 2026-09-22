@@ -3611,6 +3611,108 @@ export async function actualizarAjusteVerSemana(activo: boolean): Promise<Action
   return { ok: true };
 }
 
+// ---------- Anular una venta mal registrada (0076) ----------
+
+/**
+ * Anula una venta y DESHACE todo lo que la venta hizo.
+ *
+ * Lo pidió el administrador: "me equivoqué en dos, necesito borrarlos y no me
+ * deja". Cobrar no es solo guardar una fila: baja stock, suma puntos, marca la
+ * cita como completada y gasta un uso de cupón. Una anulación que solo tachara
+ * la venta dejaría el inventario descuadrado y al cliente con puntos regalados.
+ *
+ * Se MARCA, no se borra: `ventas` es la fuente de la caja, la liquidación y las
+ * comisiones, y borrar filas de ahí es reescribir la contabilidad sin dejar
+ * rastro. Todas las lecturas (19 en queries.ts, más la de la tarjeta de cortes
+ * que entra por venta_items) excluyen `anulada_en is not null`.
+ *
+ * Lo que se deshace, en este orden y con service role porque son tablas que el
+ * rol del que cobra no puede tocar:
+ *   1. stock de cada producto (decrement_stock con cantidad NEGATIVA: la función
+ *      hace `stock - p_qty`, así que un negativo suma);
+ *   2. los puntos que ganó el cliente (van atados por venta_id);
+ *   3. el uso del cupón, si lo hubo;
+ *   4. la cita vuelve a "confirmada" para poder cobrarla otra vez bien.
+ *
+ * Si algún paso falla NO se aborta: se anula igual y se deja el error en el log.
+ * Una anulación a medias es fea, pero dejarla sin anular —que es lo que pasaría
+ * si se abortara— le deja al dueño una venta falsa en la caja del día, que es
+ * exactamente el problema que vino a resolver.
+ */
+export async function anularVenta(input: { ventaId: string; motivo: string }): Promise<ActionResult> {
+  const sb = await supabaseServerAuth();
+  const denied = await requireAdmin(sb);
+  if (denied) return { ok: false, error: denied };
+
+  const motivo = (input.motivo ?? "").trim();
+  if (!motivo) return { ok: false, error: "Escribe por qué se anula: en dos semanas nadie va a recordarlo." };
+  if (motivo.length > 200) return { ok: false, error: "El motivo es muy largo (máximo 200 caracteres)." };
+  if (!input.ventaId) return { ok: false, error: "Falta cuál venta." };
+
+  const admin = supabaseAdmin();
+  const { data: venta, error: vErr } = await admin
+    .from("ventas")
+    .select("id,reserva_id,cliente_ref,cupon_codigo,anulada_en,venta_items(tipo,ref_id,cantidad)")
+    .eq("id", input.ventaId)
+    .maybeSingle();
+  if (vErr) return { ok: false, error: errorPublico("anularVenta leer", vErr) };
+  if (!venta) return { ok: false, error: "Esa venta ya no existe." };
+  if ((venta as { anulada_en?: string }).anulada_en) return { ok: false, error: "Esa venta ya estaba anulada." };
+
+  const { data: user } = await sb.auth.getUser();
+
+  // Se marca PRIMERO: si algo de lo de abajo falla, la venta igual queda fuera
+  // de todos los totales, que es lo que el dueño necesita que pase.
+  const { error: mErr } = await admin
+    .from("ventas")
+    .update({
+      anulada_en: new Date().toISOString(),
+      anulada_por: user.user?.id ?? null,
+      anulada_motivo: motivo,
+    })
+    .eq("id", input.ventaId)
+    .is("anulada_en", null);
+  if (mErr) return { ok: false, error: errorPublico("anularVenta marcar", mErr) };
+
+  const items = ((venta as { venta_items?: { tipo: string; ref_id: string; cantidad: number }[] }).venta_items ?? []);
+
+  // 1) Devolver el stock de los productos.
+  for (const it of items.filter((i) => i.tipo === "producto")) {
+    const { error } = await admin.rpc("decrement_stock", { p_id: it.ref_id, p_qty: -it.cantidad });
+    if (error) errorPublico("anularVenta devolver stock", error);
+  }
+
+  // 2) Quitar los puntos que dio.
+  const { error: ptsErr } = await admin.from("puntos_mov").delete().eq("venta_id", input.ventaId);
+  if (ptsErr) errorPublico("anularVenta puntos", ptsErr);
+
+  // 3) Devolver el uso del cupón.
+  const cupon = (venta as { cupon_codigo?: string | null }).cupon_codigo;
+  if (cupon) {
+    const { error } = await admin.rpc("unbump_cupon_uso", { p_codigo: cupon });
+    if (error) errorPublico("anularVenta cupon", error);
+  }
+
+  // 4) La cita vuelve a estar por cobrar. "confirmada" y no el estado exacto que
+  //    tenía: el que anula quiere volver a cobrarla bien, y desde confirmada se
+  //    puede. Solo si sigue en "completada" — si alguien ya la movió, no se pisa.
+  const reservaId = (venta as { reserva_id?: string | null }).reserva_id;
+  if (reservaId) {
+    const { error } = await admin
+      .from("reservas")
+      .update({ estado: "confirmada" })
+      .eq("id", reservaId)
+      .eq("estado", "completada");
+    if (error) errorPublico("anularVenta reabrir reserva", error);
+  }
+
+  revalidatePath("/admin/cuadre");
+  revalidatePath("/admin/liquidacion");
+  revalidatePath("/admin");
+  revalidatePath("/barbero");
+  return { ok: true };
+}
+
 // ---------- Ajustar a mano la liquidación de un barbero (0075) ----------
 
 /**
