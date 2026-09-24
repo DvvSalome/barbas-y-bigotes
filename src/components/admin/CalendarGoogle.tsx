@@ -3,6 +3,7 @@
 import { botonClases } from "@/components/ui/Boton";
 import { CloseIcon } from "@/components/icons";
 import { useState } from "react";
+import type { OpcionBarbero } from "@/components/staff/Elegir";
 import { useRouter } from "next/navigation";
 import {
   prepararCalendarios,
@@ -20,11 +21,12 @@ import type { CalendarEstado } from "@/lib/data/queries";
 export function CalendarGoogle({
   estado,
   barberos,
-  emails,
 }: {
   estado: CalendarEstado;
-  barberos: { id: string; nombre: string }[];
-  emails: Record<string, string>;
+  barberos: OpcionBarbero[];
+  /** Ya no se usa acá: el correo de cada barbero vive en su ficha. Se deja en la
+   *  firma porque la página lo pasa y quitarlo no compra nada. */
+  emails?: Record<string, string>;
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
@@ -97,23 +99,9 @@ export function CalendarGoogle({
         {msg && <p className={`mt-3 text-[12.5px] ${msg.ok ? "text-ok" : "font-semibold text-warn"}`}>{msg.text}</p>}
       </div>
 
-      <ul className="grid gap-2">
-        {barberos.map((b) => {
-          const a = estado.agendas[b.id];
-          const email = emails[b.id];
-          return (
-            <li key={b.id} className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-line bg-panel px-3.5 py-3 text-[13px]">
-              <span className="font-semibold text-ink">{b.nombre}</span>
-              <span className={a?.compartidoCon ? "text-ok" : "text-muted"}>
-                {!a && "Sin agenda todavía"}
-                {a && a.compartidoCon && `Agenda compartida con ${a.compartidoCon}`}
-                {a && !a.compartidoCon && (email ? `Agenda creada · falta compartirla con ${email}` : "Agenda creada · sin correo cargado arriba")}
-              </span>
-            </li>
-          );
-        })}
-      </ul>
-
+      {/* La lista por barbero se fue a la FICHA de cada uno (paso 20): tenerla
+          también acá era la tercera vez que el mismo barbero salía en la misma
+          pantalla. Acá quedan las acciones que son de TODOS a la vez. */}
       <form
         onSubmit={(e) => {
           e.preventDefault();

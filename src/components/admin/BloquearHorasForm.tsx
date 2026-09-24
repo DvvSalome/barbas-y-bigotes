@@ -2,6 +2,7 @@
 
 import { botonClases } from "@/components/ui/Boton";
 import { useState } from "react";
+import { CaraBarbero } from "@/components/staff/Elegir";
 import { bloquearHoras } from "@/lib/actions";
 import { fmtTime } from "@/lib/slots";
 import type { Barbero } from "@/lib/data/types";
@@ -75,7 +76,13 @@ export function BloquearHorasForm({
         <div className={sLabel}>Barbero</div>
         <div className="flex flex-wrap gap-2">
           {barberos.map((b) => (
-            <button key={b.id} type="button" onClick={() => setBarberoId(b.id)} className={btn(barberoId === b.id)}>
+            <button
+              key={b.id}
+              type="button"
+              onClick={() => setBarberoId(b.id)}
+              className={`${btn(barberoId === b.id)} inline-flex items-center gap-2`}
+            >
+              <CaraBarbero b={b} size={22} />
               {b.nombre}
             </button>
           ))}

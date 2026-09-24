@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { cop } from "@/lib/format";
 import {
@@ -289,7 +289,6 @@ export function AgendaList({
         setCompleteFor(null);
         router.refresh();
       }}
-      onCancel={() => setCompleteFor(null)}
     />
   );
 
@@ -549,7 +548,6 @@ export function AgendaList({
               setVentaOpen(false);
               router.refresh();
             }}
-            onCancel={() => setVentaOpen(false)}
           />
         </HojaInferior>
       )}
@@ -798,10 +796,13 @@ function PrecioCobro({
   precio,
   lista,
   onChange,
+  grande,
 }: {
   precio: number;
   lista: number | null;
   onChange: (n: number | null) => void;
+  /** En la barra de cobro el precio ES el total: va del tamaño del total. */
+  grande?: boolean;
 }) {
   const [editando, setEditando] = useState(false);
   const [val, setVal] = useState(String(precio));
@@ -830,8 +831,10 @@ function PrecioCobro({
             setErr(false);
             setEditando(true);
           }}
-          aria-label="Tocar para cambiar el precio de esta línea"
-          className="inline-flex min-h-11 items-center gap-1 font-bold text-ink tabular-nums underline decoration-dotted decoration-line underline-offset-4 transition hover:decoration-accent"
+          aria-label={grande ? "Tocar para cambiar cuánto se cobra" : "Tocar para cambiar el precio de esta línea"}
+          className={`inline-flex min-h-11 max-w-full items-center gap-1 font-bold text-ink tabular-nums underline decoration-dotted decoration-line underline-offset-4 transition hover:decoration-accent ${
+            grande ? "font-display text-[26px] leading-tight" : ""
+          }`}
         >
           {cop(precio)}
           <span aria-hidden className="text-[11px] font-normal text-muted">✎</span>
@@ -893,7 +896,6 @@ export function CheckoutForm({
   medios,
   elegirBarbero = false,
   onDone,
-  onCancel,
 }: {
   reserva: AgendaItem | null;
   sedes: Sede[];
@@ -904,7 +906,6 @@ export function CheckoutForm({
   medios: MedioPago[];
   elegirBarbero?: boolean;
   onDone: () => void;
-  onCancel?: () => void;
 }) {
   const rapida = !reserva;
   // Token de idempotencia: se genera UNA vez por apertura del form (el initializer
@@ -913,6 +914,8 @@ export function CheckoutForm({
   // molesta (el claim ya protege). Al cerrar y reabrir el form, el componente se
   // remonta y nace un token nuevo → cada cobro real usa su propio token.
   const [idemToken] = useState(() => crypto.randomUUID());
+  // Adonde lleva el total cuando hay varias líneas y no se puede editar solo.
+  const refLineas = useRef<HTMLDivElement | null>(null);
   const [sede, setSede] = useState(reserva?.sede ?? sedes[0]?.id ?? "");
   const [barberoId, setBarberoId] = useState(""); // venta rápida: el admin puede cobrar por otro
   const [nombre, setNombre] = useState(""); // venta rápida: nombre del cliente (opcional)
@@ -1098,6 +1101,27 @@ export function CheckoutForm({
   });
   const sinItems = rapida && extras.length === 0 && Object.keys(prodQty).length === 0;
 
+  // Las líneas que componen el total, para poder tocarlo. El servicio de la cita
+  // cuenta como una; los productos cuentan por línea, no por unidad.
+  const lineas: { id: string; precio: number; lista: number | null }[] = [
+    ...(servicioFijo && precioFijo != null
+      ? [{ id: servicioFijo.id, precio: precioFijo, lista: precioListaFijo ?? null }]
+      : []),
+    ...extras.map((id) => ({ id, precio: cobradoDe(id), lista: listaDe(id) ?? null })),
+    ...Object.keys(prodQty).map((id) => ({ id, precio: cobradoProdDe(id), lista: listaProdDe(id) ?? null })),
+  ];
+  // Tocar el total solo edita solo cuando NO hay nada más metido en el medio: con
+  // dos líneas no se sabe a cuál cargarle la diferencia, y con cupón, propina o
+  // tarjeta el total ya no es la suma de las líneas. En esos casos el total lleva
+  // a las líneas, que es donde el precio se cambia de verdad.
+  const unicaLinea =
+    lineas.length === 1 &&
+    Object.values(prodQty).every((q) => q <= 1) &&
+    !cuponInfo?.ok &&
+    descuentoTarjeta === 0
+      ? lineas[0]
+      : null;
+
   // El reparto solo existe si está completo y cuadra; si no, se cobra con un solo
   // medio (mejor eso que guardar un desglose falso).
   const segundo = Math.round(Number(monto2) || 0);
@@ -1258,21 +1282,9 @@ export function CheckoutForm({
   // (calcularCobro + completarReserva) es exactamente la misma de antes.
   return (
     <div className={`${rapida ? "" : "mt-3 "}rounded-2xl border border-line bg-bg`}>
-      <div className="flex items-center justify-between gap-3 border-b border-line/60 px-4 py-3.5">
-        <span className="font-display text-lg font-semibold text-ink">
-          {rapida ? "Venta rápida (sin cita)" : "Cerrar y cobrar"}
-        </span>
-        {onCancel && (
-          <button
-            type="button"
-            onClick={onCancel}
-            aria-label="Cerrar sin cobrar"
-            className="-mr-1.5 grid h-11 w-11 shrink-0 place-items-center rounded-lg text-xl text-muted transition hover:text-ink"
-          >
-            ✕
-          </button>
-        )}
-      </div>
+      {/* Sin título ni X propios: los TRES sitios que abren este formulario lo
+          meten en una hoja que ya trae título y cerrar. Se veía "Cobrar sin
+          cita" y debajo "Venta rápida (sin cita)" con otra X. */}
 
       <div className="flex flex-col gap-5 p-4">
         {rapida && (
@@ -1288,18 +1300,18 @@ export function CheckoutForm({
                 null y el barbero perdía su comisión. El login de barbero cae en
                 él mismo, sin selector. */}
             {elegirBarbero && (
-              <select value={barberoId} onChange={(e) => setBarberoId(e.target.value)} className={fld}>
-                <option value="">¿Quién vende?</option>
-                {barberosSede.map((b) => (
-                  <option key={b.id} value={b.id}>{b.nombre}</option>
-                ))}
-                {/* "El local": una gaseosa que despachó el administrador no la
-                    vendió ningún barbero, y ponerle uno cualquiera le regala una
-                    comisión que no se ganó. El servidor ya aceptaba barbero null
-                    -la venta entra a la caja igual-; lo que faltaba era poder
-                    DECIRLO. Va al final para que no se elija por inercia. */}
-                <option value="local">El local (sin comisión)</option>
-              </select>
+              /* "El local": una gaseosa que despachó el administrador no la
+                 vendió ningún barbero, y ponerle uno cualquiera le regala una
+                 comisión que no se ganó. El servidor ya aceptaba barbero null
+                 -la venta entra a la caja igual-; lo que faltaba era poder
+                 DECIRLO. Va al final para que no se elija por inercia. */
+              <ElegirBarbero
+                barberos={barberosSede}
+                value={barberoId}
+                onChange={setBarberoId}
+                placeholder="¿Quién vende?"
+                extra={{ id: "local", etiqueta: "El local (sin comisión)" }}
+              />
             )}
             <input
               value={nombre}
@@ -1434,7 +1446,7 @@ export function CheckoutForm({
               walk-in, que es la mitad del mostrador) no tenía dónde ajustar un
               valor: los chips son de elegir, no de cobrar. */}
           {extras.length > 0 && (
-            <div className="mt-2.5 space-y-1.5">
+            <div ref={refLineas} className="mt-2.5 space-y-1.5 scroll-mt-24">
               {extras.map((id) => (
                 <div
                   key={id}
@@ -1498,7 +1510,7 @@ export function CheckoutForm({
                         aria-label={`Quitar ${p.nombre}`}
                         onClick={() => setQty(p.id, q - 1)}
                         disabled={q === 0}
-                        className="h-[38px] w-[38px] rounded-full text-lg font-bold text-ink transition disabled:text-muted/40"
+                        className="h-11 w-11 rounded-full text-lg font-bold text-ink transition disabled:text-muted/40"
                       >
                         −
                       </button>
@@ -1508,7 +1520,7 @@ export function CheckoutForm({
                         aria-label={`Agregar ${p.nombre}`}
                         onClick={() => setQty(p.id, Math.min(q + 1, p.stock))}
                         disabled={agotado || resta <= 0}
-                        className="h-[38px] w-[38px] rounded-full text-lg font-bold text-ink transition disabled:text-muted/40"
+                        className="h-11 w-11 rounded-full text-lg font-bold text-ink transition disabled:text-muted/40"
                       >
                         +
                       </button>
@@ -1785,7 +1797,27 @@ export function CheckoutForm({
               Total a cobrar · {medioNombre}
               {vivo.descuento > 0 && <span className="tabular-nums"> · −{cop(vivo.descuento)} de descuento</span>}
             </div>
-            <div className="truncate font-display text-[26px] font-bold leading-tight text-ink tabular-nums">{cop(vivo.total)}</div>
+            {/* El número grande ES el control. Antes era texto y el dueño se
+                quedaba mirándolo esperando poder escribir encima. */}
+            {unicaLinea ? (
+              <PrecioCobro
+                precio={vivo.total}
+                lista={unicaLinea.lista}
+                onChange={(n) => editarPrecio(unicaLinea.id, n)}
+                grande
+              />
+            ) : lineas.length > 0 ? (
+              <button
+                type="button"
+                onClick={() => refLineas.current?.scrollIntoView({ behavior: "smooth", block: "center" })}
+                className="block max-w-full truncate font-display text-[26px] font-bold leading-tight text-ink tabular-nums underline decoration-dotted decoration-line underline-offset-4 transition hover:decoration-accent"
+              >
+                {cop(vivo.total)}
+                <span aria-hidden className="ml-1 align-middle text-[11px] font-normal text-muted">✎</span>
+              </button>
+            ) : (
+              <div className="truncate font-display text-[26px] font-bold leading-tight text-ink tabular-nums">{cop(vivo.total)}</div>
+            )}
             {vivo.propina > 0 && (
               <div className="text-xs text-ok tabular-nums">
                 + {cop(vivo.propina)} de propina · en la mano {cop(vivo.aCobrar)}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { CaraBarbero } from "@/components/staff/Elegir";
 import { getDisponibilidad, agendarCita, buscarClientesStaff } from "@/lib/actions";
 import { recargarSiDeployViejo } from "@/lib/skew";
 import {
@@ -230,8 +231,9 @@ export function AgendarCitaForm({
                 setBarberoId(b.id);
                 setSlot(null);
               }}
-              className={btn(barberoId === b.id)}
+              className={`${btn(barberoId === b.id)} inline-flex items-center gap-2`}
             >
+              <CaraBarbero b={b} size={22} />
               {b.nombre}
             </button>
           ))}

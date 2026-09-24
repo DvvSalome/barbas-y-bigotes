@@ -82,6 +82,7 @@ export function ElegirBarbero({
   placeholder = "¿Quién atiende?",
   permitirVacio,
   etiquetaVacio = "El primero que se desocupe",
+  extra,
 }: {
   barberos: OpcionBarbero[];
   value: string;
@@ -89,10 +90,14 @@ export function ElegirBarbero({
   placeholder?: string;
   permitirVacio?: boolean;
   etiquetaVacio?: string;
+  /** Una opción que no es una persona y va al FINAL, para que no se elija por
+   *  inercia: hoy la usa "El local (sin comisión)" de la venta rápida. */
+  extra?: { id: string; etiqueta: string };
 }) {
   const [abierto, setAbierto] = useState(false);
   const caja = useCerrarAfuera(abierto, () => setAbierto(false));
   const sel = barberos.find((b) => b.id === value) ?? null;
+  const esExtra = !!extra && value === extra.id;
 
   return (
     <div ref={caja} className="relative">
@@ -102,6 +107,8 @@ export function ElegirBarbero({
             <CaraBarbero b={sel} />
             <span className="flex-1 truncate text-[13.5px] font-semibold">{sel.nombre}</span>
           </>
+        ) : esExtra ? (
+          <span className="flex-1 truncate text-[13.5px] font-semibold">{extra.etiqueta}</span>
         ) : (
           <span className="flex-1 truncate text-[13.5px] text-muted">{placeholder}</span>
         )}
@@ -141,6 +148,23 @@ export function ElegirBarbero({
               {b.id === value && <span className="text-[12px] text-accent-soft">✓</span>}
             </button>
           ))}
+          {extra && (
+            <button
+              type="button"
+              role="option"
+              aria-selected={esExtra}
+              onClick={() => {
+                onChange(extra.id);
+                setAbierto(false);
+              }}
+              className={`flex w-full items-center gap-2.5 border-t border-line px-3 py-2.5 text-left text-[13px] transition hover:bg-elevated ${
+                esExtra ? "bg-accent/10 text-ink" : "text-muted"
+              }`}
+            >
+              {extra.etiqueta}
+              {esExtra && <span className="ml-auto text-[12px] text-accent-soft">✓</span>}
+            </button>
+          )}
         </div>
       )}
     </div>

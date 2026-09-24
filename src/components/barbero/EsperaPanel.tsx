@@ -334,14 +334,13 @@ function EsperaForm({
         <span className={lbl}>
           ¿Con quién? <span className="font-normal text-muted">· opcional</span>
         </span>
-        <select value={barberoId} onChange={(e) => setBarberoId(e.target.value)} className={`${fld} w-full`}>
-          <option value="">El primero que se desocupe</option>
-          {sedeBarberos.map((b) => (
-            <option key={b.id} value={b.id}>
-              {b.nombre}
-            </option>
-          ))}
-        </select>
+        <ElegirBarbero
+          barberos={sedeBarberos}
+          value={barberoId}
+          onChange={setBarberoId}
+          placeholder="El primero que se desocupe"
+          permitirVacio
+        />
       </label>
 
       <label className={sedeFija ? "" : "sm:col-span-2"}>

@@ -1,173 +1,347 @@
 "use client";
 
-import { botonClases } from "@/components/ui/Boton";
-import { chipFiltroClases } from "@/components/ui/Chip";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { registrarGasto, registrarAdelanto } from "@/lib/actions";
 import { sanearCop } from "@/lib/admin-reglas";
-import { TagIcon, PercentIcon } from "@/components/icons";
+import { chipFiltroClases } from "@/components/ui/Chip";
+import { Campo, CampoSelect } from "@/components/ui/Campo";
+import { Hoja, PieHoja, primarioDeHoja } from "@/components/ui/Hoja";
+import { Grupo, Fila } from "@/components/ui/ListaAgrupada";
 import { ElegirBarbero } from "@/components/staff/Elegir";
+import { CheckoutForm } from "@/components/barbero/AgendaList";
+import { MediosPago } from "@/components/admin/MediosPago";
+import { TagIcon, PercentIcon, CashIcon, WalletIcon } from "@/components/icons";
+import { cop } from "@/lib/format";
 import type { Sede, Barbero } from "@/lib/data/types";
+import type { MedioPago } from "@/lib/data/queries";
 
-const fld =
-  "w-full rounded-lg border border-line bg-bg px-3 py-2 text-ink placeholder:text-muted focus:border-accent focus:outline-none";
-const btn = botonClases("primario");
+/*
+  REGISTRAR: el grupo de acciones de la caja (paso 14 de la tanda 2).
+
+  ANTES eran dos formularios enteros SIEMPRE abiertos en la columna derecha, más
+  un botón suelto de "Cobrar directo" y la tarjeta de medios de pago debajo. En
+  un celular eso son cuatro bloques desplegados que el dueño scrollea cada vez
+  que entra a la caja, y que usa —con suerte— una vez al día. La pantalla medía
+  4.024 px.
+
+  AHORA son cuatro filas de 72 px y cada una abre su hoja. Es el mismo patrón
+  con el que se rehizo el Cierre del mostrador (paso 6), y el mismo motivo: la
+  caja se ENTRA a mirar, no a llenar formularios.
+
+  Los cuatro viven en UN componente y no en cuatro: así el grupo es una sola
+  tarjeta con sus divisiones, y las hojas se dibujan fuera de ella (una hoja es
+  `fixed`, y colgarla dentro del `divide-y` del grupo le pintaba una raya
+  encima).
+*/
 
 // Categorías frecuentes del gasto: con texto libre cada quien escribía distinto
 // ("papeleria"/"Papelería"/"aseo") y la lista quedaba inagrupable.
 // Exportada: el mostrador registra gastos con las MISMAS categorías (GastoRapido).
 export const CATS_GASTO = ["Insumos", "Aseo", "Papelería", "Servicios", "Comida", "Arreglos"];
 
+type PropsCobro = Omit<React.ComponentProps<typeof CheckoutForm>, "reserva" | "onDone" | "elegirBarbero">;
+
+type Abierta = null | "gasto" | "adelanto" | "cobro" | "medios";
+
 export function CuadreForms({
   sedes,
   barberos,
   medios = [],
+  mediosTodos,
+  cobro,
 }: {
   sedes: Sede[];
   barberos: Barbero[];
   /** Medios de pago ACTIVOS (0067): con qué se pagó el gasto / el adelanto. */
   medios?: { slug: string; nombre: string }[];
+  /** Todos, activos y apagados: es lo que administra la hoja "Medios de pago". */
+  mediosTodos: MedioPago[];
+  /** Lo que necesita el cobro sin cita (el mismo formulario del mostrador). */
+  cobro: PropsCobro;
+}) {
+  const [abierta, setAbierta] = useState<Abierta>(null);
+  const cerrar = () => setAbierta(null);
+  const activos = mediosTodos.filter((m) => m.activo).length;
+
+  return (
+    <>
+      <Grupo eyebrow="Registrar">
+        <Fila
+          onClick={() => setAbierta("cobro")}
+          icono={<CashIcon />}
+          tinte="plata"
+          titulo="Cobrar sin cita"
+          subtitulo="El que llegó y no estaba agendado"
+          destacada
+        />
+        <Fila
+          onClick={() => setAbierta("gasto")}
+          icono={<TagIcon />}
+          tinte="plata"
+          titulo="Gasto del día"
+          subtitulo="Insumos, aseo, arreglos… sale del cuadre"
+        />
+        <Fila
+          onClick={() => setAbierta("adelanto")}
+          icono={<PercentIcon />}
+          tinte="equipo"
+          titulo="Adelanto a un barbero"
+          subtitulo="Se le descuenta en la liquidación del domingo"
+        />
+        <Fila
+          onClick={() => setAbierta("medios")}
+          icono={<WalletIcon />}
+          tinte="neutro"
+          titulo="Medios de pago"
+          subtitulo="Con qué se cobra en el mostrador"
+          valor={`${activos} activos`}
+        />
+      </Grupo>
+
+      {abierta === "cobro" && (
+        <Hoja titulo="Cobrar sin cita" onCerrar={cerrar}>
+          <CheckoutForm {...cobro} reserva={null} elegirBarbero onDone={cerrar} />
+        </Hoja>
+      )}
+      {abierta === "gasto" && <HojaGasto sedes={sedes} medios={medios} onCerrar={cerrar} />}
+      {abierta === "adelanto" && <HojaAdelanto barberos={barberos} medios={medios} onCerrar={cerrar} />}
+      {abierta === "medios" && (
+        <Hoja titulo="Medios de pago" onCerrar={cerrar}>
+          <MediosPago medios={mediosTodos} />
+        </Hoja>
+      )}
+    </>
+  );
+}
+
+/** Chips de una sola elección (categoría del gasto, medio de pago). */
+function Chips({
+  opciones,
+  valor,
+  onElegir,
+}: {
+  opciones: { k: string; t: string }[];
+  valor: string;
+  onElegir: (k: string) => void;
+}) {
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {opciones.map((o) => (
+        <button key={o.k} type="button" onClick={() => onElegir(o.k)} className={chipFiltroClases(valor === o.k)}>
+          {o.t}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function HojaGasto({
+  sedes,
+  medios,
+  onCerrar,
+}: {
+  sedes: Sede[];
+  medios: { slug: string; nombre: string }[];
+  onCerrar: () => void;
 }) {
   const router = useRouter();
+  const [sede, setSede] = useState(sedes[0]?.id ?? "");
+  const [cat, setCat] = useState("");
+  const [monto, setMonto] = useState("");
+  const [desc, setDesc] = useState("");
+  const [medio, setMedio] = useState("efectivo");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
 
-  const [gSede, setGSede] = useState(sedes[0]?.id ?? "");
-  const [gCat, setGCat] = useState("");
-  const [gMonto, setGMonto] = useState("");
-  const [gDesc, setGDesc] = useState("");
-  const [gMedio, setGMedio] = useState("efectivo");
-  const [gSaving, setGSaving] = useState(false);
-  const [gError, setGError] = useState("");
-  const [gOk, setGOk] = useState("");
+  // El monto tiene que ser un entero en pesos > 0: vacío o negativo guardaba un
+  // gasto de $0 (o restaba plata) sin avisar. Se valida ACÁ para que el botón
+  // del pie esté apagado hasta que el formulario sirva de verdad.
+  const montoOk = (sanearCop(monto) ?? 0) > 0;
 
-  const [aBarbero, setABarbero] = useState("");
-  const [aMonto, setAMonto] = useState("");
-  const [aNota, setANota] = useState("");
-  const [aMedio, setAMedio] = useState("efectivo");
-  const [aSaving, setASaving] = useState(false);
-  const [aError, setAError] = useState("");
-  const [aOk, setAOk] = useState("");
-
-  async function submitGasto(e: React.FormEvent) {
-    e.preventDefault();
-    // El monto tiene que ser un entero en pesos > 0: vacío o negativo guardaba
-    // un gasto de $0 (o restaba plata) sin avisar. sanearCop ya rechaza vacío,
-    // negativo, decimal y no-numérico; acá sólo falta exigir > 0.
-    const monto = sanearCop(gMonto);
-    if (monto === null || monto <= 0) {
-      setGError("Pon un monto válido en pesos (mayor a $0, sin decimales).");
+  async function guardar() {
+    const n = sanearCop(monto);
+    if (n === null || n <= 0) {
+      setError("Pon un monto válido en pesos (mayor a $0, sin decimales).");
       return;
     }
-    setGError("");
-    setGOk("");
-    setGSaving(true);
-    const res = await registrarGasto({ sede: gSede, categoria: gCat || "Otro", monto, descripcion: gDesc, medio: gMedio });
-    setGSaving(false);
-    if (res.ok) {
-      setGOk(`Gasto de ${gCat || "Otro"} guardado ✓ — aparece abajo en "Gastos de hoy".`);
-      setGCat("");
-      setGMonto("");
-      setGDesc("");
-      router.refresh();
-    } else setGError(res.error ?? "No se pudo guardar el gasto.");
-  }
-
-  async function submitAdelanto(e: React.FormEvent) {
-    e.preventDefault();
-    if (!aBarbero) {
-      setAError("Elige el barbero.");
+    setError("");
+    setSaving(true);
+    const res = await registrarGasto({ sede, categoria: cat || "Otro", monto: n, descripcion: desc, medio });
+    setSaving(false);
+    if (!res.ok) {
+      setError(res.error ?? "No se pudo guardar el gasto.");
       return;
     }
-    const monto = sanearCop(aMonto);
-    if (monto === null || monto <= 0) {
-      setAError("Pon un monto válido en pesos (mayor a $0, sin decimales).");
-      return;
-    }
-    setAError("");
-    setAOk("");
-    setASaving(true);
-    const res = await registrarAdelanto({ barberoId: aBarbero, monto, nota: aNota, medio: aMedio });
-    setASaving(false);
-    if (res.ok) {
-      const nombre = barberos.find((b) => b.id === aBarbero)?.nombre ?? "el barbero";
-      setAOk(`Adelanto registrado ✓ para ${nombre} — queda abajo en "Adelantos de hoy".`);
-      setAMonto("");
-      setANota("");
-      router.refresh();
-    } else setAError(res.error ?? "No se pudo guardar el adelanto.");
+    onCerrar();
+    router.refresh();
   }
 
   return (
-    // Apiladas: las formas viven en el panel derecho (angosto) del cuadre.
-    <div className="grid gap-5">
-      <form onSubmit={submitGasto} className="space-y-3 rounded-2xl border border-line bg-panel p-5">
-        <h3 className="flex items-center gap-2 font-display text-xl">
-          <TagIcon className="h-4 w-4 text-accent" /> Registrar gasto
-        </h3>
-        <select value={gSede} onChange={(e) => setGSede(e.target.value as typeof gSede)} className={fld}>
+    <Hoja
+      titulo="Gasto del día"
+      onCerrar={onCerrar}
+      ancho="max-w-lg"
+      pie={
+        <PieHoja onCancelar={onCerrar}>
+          <button type="button" onClick={guardar} disabled={saving || !montoOk} className={primarioDeHoja}>
+            {saving ? "Guardando…" : montoOk ? `Guardar ${cop(sanearCop(monto) ?? 0)}` : "Guardar"}
+          </button>
+        </PieHoja>
+      }
+    >
+      <div className="space-y-4 pb-2">
+        <CampoSelect
+          id="gasto-sede"
+          etiqueta="¿En qué sede?"
+          value={sede}
+          onChange={(e) => setSede(e.target.value as typeof sede)}
+        >
           {sedes.map((s) => (
-            <option key={s.id} value={s.id}>{s.nombre}</option>
+            <option key={s.id} value={s.id}>
+              {s.nombre}
+            </option>
           ))}
-        </select>
-        {/* Categorías con chips (un toque) + campo libre para lo que no encaje */}
-        <div className="flex flex-wrap gap-1.5">
-          {CATS_GASTO.map((c) => (
-            <button
-              key={c}
-              type="button"
-              onClick={() => setGCat(gCat === c ? "" : c)}
-              className={chipFiltroClases(gCat === c)}
-            >
-              {c}
-            </button>
-          ))}
+        </CampoSelect>
+
+        <div>
+          <p className="eyebrow mb-2">En qué se fue</p>
+          <Chips opciones={CATS_GASTO.map((c) => ({ k: c, t: c }))} valor={cat} onElegir={(c) => setCat(cat === c ? "" : c)} />
+          <Campo
+            id="gasto-cat"
+            etiqueta="Otra categoría"
+            className="mt-2.5"
+            value={cat}
+            onChange={(e) => setCat(e.target.value)}
+            ayuda="Si no encaja en ninguna de arriba, escríbela."
+          />
         </div>
-        <input value={gCat} onChange={(e) => setGCat(e.target.value)} placeholder="Otra categoría (o toca un chip)" className={fld} />
-        <input type="number" inputMode="numeric" min={1} step={1} value={gMonto} onChange={(e) => { setGMonto(e.target.value); if (gError) setGError(""); }} placeholder="Monto" className={fld} />
-        <input value={gDesc} onChange={(e) => setGDesc(e.target.value)} placeholder="Descripción (opcional)" className={fld} />
+
+        <Campo
+          id="gasto-monto"
+          etiqueta="Monto"
+          obligatorio
+          type="number"
+          inputMode="numeric"
+          min={1}
+          step={1}
+          value={monto}
+          onChange={(e) => {
+            setMonto(e.target.value);
+            if (error) setError("");
+          }}
+          error={error || undefined}
+        />
+        <Campo id="gasto-desc" etiqueta="Descripción (opcional)" value={desc} onChange={(e) => setDesc(e.target.value)} />
+
         {/* Con qué se pagó (0067): solo el efectivo descuenta del cajón. */}
         {medios.length > 0 && (
-          <div className="flex flex-wrap gap-1.5">
-            {medios.map((m) => (
-              <button key={m.slug} type="button" onClick={() => setGMedio(m.slug)} className={chipFiltroClases(gMedio === m.slug)}>
-                {m.nombre}
-              </button>
-            ))}
+          <div>
+            <p className="eyebrow mb-2">Con qué se pagó</p>
+            <Chips opciones={medios.map((m) => ({ k: m.slug, t: m.nombre }))} valor={medio} onElegir={setMedio} />
+            <p className="mt-2 text-[12px] text-muted">Del cajón solo se descuenta lo que se pagó en efectivo.</p>
           </div>
         )}
-        {gError && <p className="text-xs text-red-500">{gError}</p>}
-        {gOk && <p className="rounded-lg border border-ok/40 bg-ok/10 px-3 py-2 text-xs text-ok">{gOk}</p>}
-        <button disabled={gSaving} className={btn}>{gSaving ? "Guardando…" : "Agregar gasto"}</button>
-      </form>
+      </div>
+    </Hoja>
+  );
+}
 
-      <form onSubmit={submitAdelanto} className="space-y-3 rounded-2xl border border-line bg-panel p-5">
-        <h3 className="flex items-center gap-2 font-display text-xl">
-          <PercentIcon className="h-4 w-4 text-accent" /> Registrar adelanto
-        </h3>
+function HojaAdelanto({
+  barberos,
+  medios,
+  onCerrar,
+}: {
+  barberos: Barbero[];
+  medios: { slug: string; nombre: string }[];
+  onCerrar: () => void;
+}) {
+  const router = useRouter();
+  const [barbero, setBarbero] = useState("");
+  const [monto, setMonto] = useState("");
+  const [nota, setNota] = useState("");
+  const [medio, setMedio] = useState("efectivo");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  const listo = !!barbero && (sanearCop(monto) ?? 0) > 0;
+
+  async function guardar() {
+    const n = sanearCop(monto);
+    if (!barbero) {
+      setError("Elige el barbero.");
+      return;
+    }
+    if (n === null || n <= 0) {
+      setError("Pon un monto válido en pesos (mayor a $0, sin decimales).");
+      return;
+    }
+    setError("");
+    setSaving(true);
+    const res = await registrarAdelanto({ barberoId: barbero, monto: n, nota, medio });
+    setSaving(false);
+    if (!res.ok) {
+      setError(res.error ?? "No se pudo guardar el adelanto.");
+      return;
+    }
+    onCerrar();
+    router.refresh();
+  }
+
+  const nombre = barberos.find((b) => b.id === barbero)?.nombre.split(" ")[0] ?? "";
+
+  return (
+    <Hoja
+      titulo="Adelanto a un barbero"
+      onCerrar={onCerrar}
+      ancho="max-w-lg"
+      pie={
+        <PieHoja onCancelar={onCerrar}>
+          <button type="button" onClick={guardar} disabled={saving || !listo} className={primarioDeHoja}>
+            {saving ? "Guardando…" : listo ? `Darle ${cop(sanearCop(monto) ?? 0)} a ${nombre}` : "Guardar"}
+          </button>
+        </PieHoja>
+      }
+    >
+      <div className="space-y-4 pb-2">
         {/* Con foto: el adelanto es plata que se le descuenta a una persona, y
             elegirla de una lista de nombres sueltos es fácil de errar. */}
-        <ElegirBarbero
-          barberos={barberos.map((b) => ({ id: b.id, nombre: b.nombre, fotoUrl: b.fotoUrl }))}
-          value={aBarbero}
-          onChange={setABarbero}
-          placeholder="¿A quién se le adelanta?"
+        <div>
+          <p className="eyebrow mb-2">¿A quién se le adelanta?</p>
+          <ElegirBarbero
+            barberos={barberos.map((b) => ({ id: b.id, nombre: b.nombre, fotoUrl: b.fotoUrl }))}
+            value={barbero}
+            onChange={setBarbero}
+            placeholder="¿A quién se le adelanta?"
+          />
+        </div>
+
+        <Campo
+          id="adelanto-monto"
+          etiqueta="Monto del adelanto"
+          obligatorio
+          type="number"
+          inputMode="numeric"
+          min={1}
+          step={1}
+          value={monto}
+          onChange={(e) => {
+            setMonto(e.target.value);
+            if (error) setError("");
+          }}
+          error={error || undefined}
+          ayuda="Se le resta de lo que se le paga el domingo."
         />
-        <input type="number" inputMode="numeric" min={1} step={1} value={aMonto} onChange={(e) => { setAMonto(e.target.value); if (aError) setAError(""); }} placeholder="Monto del adelanto" className={fld} />
-        <input value={aNota} onChange={(e) => setANota(e.target.value)} placeholder="Nota (opcional)" className={fld} />
+        <Campo id="adelanto-nota" etiqueta="Nota (opcional)" value={nota} onChange={(e) => setNota(e.target.value)} />
+
         {/* Cómo se le entregó la plata: queda en la bitácora del cuadre. */}
         {medios.length > 0 && (
-          <div className="flex flex-wrap gap-1.5">
-            {medios.map((m) => (
-              <button key={m.slug} type="button" onClick={() => setAMedio(m.slug)} className={chipFiltroClases(aMedio === m.slug)}>
-                {m.nombre}
-              </button>
-            ))}
+          <div>
+            <p className="eyebrow mb-2">Cómo se le entregó</p>
+            <Chips opciones={medios.map((m) => ({ k: m.slug, t: m.nombre }))} valor={medio} onElegir={setMedio} />
           </div>
         )}
-        {aError && <p className="text-xs text-red-500">{aError}</p>}
-        {aOk && <p className="rounded-lg border border-ok/40 bg-ok/10 px-3 py-2 text-xs text-ok">{aOk}</p>}
-        <button disabled={aSaving} className={btn}>{aSaving ? "Guardando…" : "Agregar adelanto"}</button>
-      </form>
-    </div>
+      </div>
+    </Hoja>
   );
 }

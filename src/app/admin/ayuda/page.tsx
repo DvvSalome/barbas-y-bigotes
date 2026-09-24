@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { SectionHeader } from "@/components/admin/SectionHeader";
+import { Plegable } from "@/components/ui/Plegable";
 import { CANCELACION_MIN_HORAS } from "@/lib/slots";
 
 export const metadata: Metadata = { title: "Cómo se usa · Admin" };
@@ -135,79 +136,88 @@ export default function AyudaPage() {
         description="Lo que hace falta para operar el día. Vive acá adentro a propósito: si cambia una pantalla, cambia esta guía."
       />
 
-      <section aria-label="Mostrador" className="mt-7">
-        <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <h2 className="font-display text-2xl font-bold uppercase text-ink">En el mostrador</h2>
-          <Link href="/barbero" className="inline-flex min-h-11 items-center text-[13px] font-semibold text-ink/85 underline decoration-line underline-offset-4 transition hover:text-ink">
+      {/* Cuatro plegables en vez de cuatro secciones abiertas. Medido: la
+          pantalla eran 3.569 px de texto corrido a 390 px —la más larga del
+          panel que no tiene nada que tocar— y para llegar a "Tres reglas" había
+          que pasar por todo lo demás. Ahora los cuatro temas se ven de una y se
+          abre el que hace falta.
+
+          `Plegable` es <details> nativo: abre sin JavaScript y el buscador del
+          navegador (Ctrl-F) encuentra el texto aunque esté cerrado, que en una
+          guía importa más que en cualquier otra pantalla.
+
+          El del mostrador arranca ABIERTO: es el que se consulta de verdad, y
+          casi siempre desde el celular del local con el cliente esperando. */}
+      <div className="mt-6 rounded-2xl border border-line bg-panel px-4 [&>details:first-child]:border-t-0">
+        <Plegable
+          titulo="En el mostrador"
+          subtitulo="Los 6 pasos del día, para los barberos"
+          abierto
+        >
+          <Link
+            href="/barbero"
+            className="mb-3 inline-flex min-h-11 items-center text-[13px] font-semibold text-ink/85 underline decoration-line underline-offset-4 transition hover:text-ink"
+          >
             Abrir el mostrador →
           </Link>
-        </div>
-        <p className="mt-1 text-[13px] text-muted">Lo usan los barberos, en el celular del local.</p>
-        <div aria-hidden className="bb-poste mt-3 h-1 rounded-full" />
-        <ol className={`${CAJA} mt-3`}>
-          {MOSTRADOR.map((p) => (
-            <li
-              key={p.n}
-              className="grid grid-cols-[34px_1fr] gap-3 border-b border-line/60 px-4 py-3.5 last:border-b-0"
-            >
-              <span className="mt-0.5 grid h-7 w-7 place-items-center rounded-full border border-accent/40 font-display text-[13px] font-bold text-accent-soft">
-                {p.n}
-              </span>
-              <span>
-                <span className="block text-[14.5px] font-bold text-ink">{p.que}</span>
+          <ol className={CAJA}>
+            {MOSTRADOR.map((p) => (
+              <li
+                key={p.n}
+                className="grid grid-cols-[34px_1fr] gap-3 border-b border-line/60 px-4 py-3.5 last:border-b-0"
+              >
+                <span className="mt-0.5 grid h-7 w-7 place-items-center rounded-full border border-accent/40 font-display text-[13px] font-bold text-accent-soft">
+                  {p.n}
+                </span>
+                <span>
+                  <span className="block text-[14.5px] font-bold text-ink">{p.que}</span>
+                  <span className="mt-0.5 block text-[13px] leading-relaxed text-muted">{p.detalle}</span>
+                </span>
+              </li>
+            ))}
+          </ol>
+        </Plegable>
+
+        <Plegable titulo="En el panel" subtitulo="Qué hay en cada pestaña — acá se mira y se decide, no se opera">
+          <div className="grid gap-3 sm:grid-cols-2">
+            {PANEL.map((p) => (
+              <div key={p.n} className={`${CAJA} bb-relieve px-4 py-3.5`}>
+                <span className="inline-block rounded-full border border-line px-2.5 py-0.5 font-display text-[12px] font-bold uppercase tracking-wide text-accent-soft">
+                  {p.n}
+                </span>
+                <span className="mt-2 block text-[14.5px] font-bold text-ink">{p.que}</span>
                 <span className="mt-0.5 block text-[13px] leading-relaxed text-muted">{p.detalle}</span>
-              </span>
-            </li>
-          ))}
-        </ol>
-      </section>
+              </div>
+            ))}
+          </div>
+        </Plegable>
 
-      <section aria-label="Panel" className="mt-9">
-        <h2 className="font-display text-2xl font-bold uppercase text-ink">En el panel</h2>
-        <p className="mt-1 text-[13px] text-muted">Para el dueño: acá se mira y se decide, no se opera.</p>
-        <div aria-hidden className="bb-poste mt-3 h-1 rounded-full" />
-        <div className="mt-3 grid gap-3 sm:grid-cols-2">
-          {PANEL.map((p) => (
-            <div key={p.n} className={`${CAJA} bb-relieve px-4 py-3.5`}>
-              <span className="inline-block rounded-full border border-line px-2.5 py-0.5 font-display text-[12px] font-bold uppercase tracking-wide text-accent-soft">
-                {p.n}
-              </span>
-              <span className="mt-2 block text-[14.5px] font-bold text-ink">{p.que}</span>
-              <span className="mt-0.5 block text-[13px] leading-relaxed text-muted">{p.detalle}</span>
-            </div>
-          ))}
-        </div>
-      </section>
+        <Plegable titulo="Lo que sale solo" subtitulo="Los avisos automáticos. Si alguno no llegó, es una falla — avisa">
+          <ul className={CAJA}>
+            {AUTOMATICO.map((t) => (
+              <li
+                key={t}
+                className="flex gap-3 border-b border-line/60 px-4 py-3 text-[13px] leading-relaxed text-muted last:border-b-0"
+              >
+                <span aria-hidden className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-ok" />
+                {t}
+              </li>
+            ))}
+          </ul>
+        </Plegable>
 
-      <section aria-label="Avisos automáticos" className="mt-9">
-        <h2 className="font-display text-2xl font-bold uppercase text-ink">Lo que sale solo</h2>
-        <p className="mt-1 text-[13px] text-muted">
-          Nadie manda esto a mano. Si algo de esto no llegó, es una falla — avisa.
-        </p>
-        <ul className={`${CAJA} mt-3`}>
-          {AUTOMATICO.map((t) => (
-            <li
-              key={t}
-              className="flex gap-3 border-b border-line/60 px-4 py-3 text-[13px] leading-relaxed text-muted last:border-b-0"
-            >
-              <span aria-hidden className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-ok" />
-              {t}
-            </li>
-          ))}
-        </ul>
-      </section>
+        <Plegable titulo="Tres reglas que evitan líos" subtitulo="Caja, cambios de cita y cobros">
+          <div className="grid gap-3 sm:grid-cols-3">
+            {REGLAS.map(([t, d]) => (
+              <div key={t} className="rounded-2xl border border-warn/35 bg-warn/[0.06] px-4 py-3.5">
+                <span className="block text-[13.5px] font-bold text-warn">{t}</span>
+                <span className="mt-1 block text-[12.5px] leading-relaxed text-muted">{d}</span>
+              </div>
+            ))}
+          </div>
+        </Plegable>
+      </div>
 
-      <section aria-label="Reglas" className="mt-9 pb-4">
-        <h2 className="font-display text-2xl font-bold uppercase text-ink">Tres reglas que evitan líos</h2>
-        <div className="mt-3 grid gap-3 sm:grid-cols-3">
-          {REGLAS.map(([t, d]) => (
-            <div key={t} className="rounded-2xl border border-warn/35 bg-warn/[0.06] px-4 py-3.5">
-              <span className="block text-[13.5px] font-bold text-warn">{t}</span>
-              <span className="mt-1 block text-[12.5px] leading-relaxed text-muted">{d}</span>
-            </div>
-          ))}
-        </div>
-      </section>
     </div>
   );
 }

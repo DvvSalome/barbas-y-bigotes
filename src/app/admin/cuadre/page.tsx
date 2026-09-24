@@ -15,13 +15,12 @@ import {
   type MedioPago,
 } from "@/lib/data/queries";
 import { CuadreForms } from "@/components/admin/CuadreForms";
-import { CobroDirectoAdmin } from "@/components/admin/CobroDirectoAdmin";
 import { CajaSesiones } from "@/components/admin/CajaSesiones";
-import { MediosPago } from "@/components/admin/MediosPago";
 import { PendientesCobrar } from "@/components/staff/PendientesCobrar";
 import { cop } from "@/lib/format";
 import type { TotalesPorMedio } from "@/lib/cobro";
 import { SectionHeader } from "@/components/admin/SectionHeader";
+import { CaraBarbero } from "@/components/staff/Elegir";
 import { AvisoCaja } from "@/components/admin/AvisoCaja";
 import { HistorialVentas } from "@/components/admin/HistorialVentas";
 
@@ -103,18 +102,6 @@ export default async function CuadrePage() {
         <CajaSesiones cajas={cajas} medios={medios} />
       </div>
 
-      {/* Cobro sin cita desde el admin: el mismo formulario del mostrador. */}
-      <div className="mt-4 flex justify-end">
-        <CobroDirectoAdmin
-          sedes={sedes}
-          barberos={barberos}
-          servicios={servicios}
-          preciosServicios={preciosServicios}
-          productos={productos}
-          medios={medios.filter((m) => m.activo)}
-        />
-      </div>
-
       {/* Con cobro AHÍ MISMO (medio + propina): antes era solo lectura y había
           que irse a la app del barbero hasta para un cobro simple. */}
       {pendientes.length > 0 && (
@@ -144,11 +131,21 @@ export default async function CuadrePage() {
 
         {/* Panel de ACCIONES, fijo a la derecha con su propio scroll. El id es el
             ancla del atajo "+ Gasto" del tablero Hoy. */}
-        <aside id="registrar" className="lg:sticky lg:top-28 lg:max-h-[calc(100dvh-8.5rem)] lg:overflow-y-auto lg:scroll-mt-28">
-          <CuadreForms sedes={sedes} barberos={barberos} medios={medios.filter((m) => m.activo)} />
-          <div className="mt-6">
-            <MediosPago medios={medios} />
-          </div>
+        <aside id="registrar" className="min-w-0 lg:sticky lg:top-28 lg:max-h-[calc(100dvh-8.5rem)] lg:overflow-y-auto lg:scroll-mt-28">
+          <CuadreForms
+            sedes={sedes}
+            barberos={barberos}
+            medios={medios.filter((m) => m.activo)}
+            mediosTodos={medios}
+            cobro={{
+              sedes,
+              barberos,
+              servicios,
+              preciosServicios,
+              productos,
+              medios: medios.filter((m) => m.activo),
+            }}
+          />
         </aside>
       </div>
 
@@ -193,10 +190,13 @@ export default async function CuadrePage() {
               <h2 className="mb-3 eyebrow">Adelantos de hoy</h2>
               <ul className="divide-y divide-line/60 overflow-hidden rounded-2xl border border-line bg-panel">
                 {adelantos.map((a) => (
-                  <li key={a.id} className="flex items-center justify-between gap-3 px-4 py-3 text-sm">
-                    <span className="min-w-0">
+                  <li key={a.id} className="flex items-center justify-between gap-3 px-4 py-3 text-[13px]">
+                    <span className="flex min-w-0 items-center gap-2.5">
+                      <CaraBarbero b={{ id: a.barberoId, nombre: a.barbero, fotoUrl: a.fotoUrl }} size={30} />
+                      <span className="min-w-0">
                       <span className="block font-medium">{a.barbero}</span>
                       {a.nota && <span className="block text-xs text-muted">{a.nota}</span>}
+                      </span>
                     </span>
                     <span className="flex shrink-0 items-center gap-2">
                       <span className="rounded-full border border-line px-2 py-0.5 text-[12px] uppercase tracking-wide text-muted">
@@ -223,7 +223,7 @@ export default async function CuadrePage() {
             {anteriores.map((c) => (
               <li key={c.id} className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3">
                 <span className="min-w-[160px] flex-1">
-                  <span className="block text-[13.5px] font-semibold text-ink">
+                  <span className="block text-[13px] font-semibold text-ink">
                     {c.sede}
                     <span className="ml-2 font-normal text-muted">
                       {new Date(c.fecha).toLocaleDateString("es-CO", {

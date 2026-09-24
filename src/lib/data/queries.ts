@@ -513,7 +513,10 @@ export async function getAgendaSedeRango(sedeId: string, desdeYmd: string, dias:
 
 export type AdelantoHoy = {
   id: string;
+  barberoId: string;
   barbero: string;
+  /** Para pintarle la cara: la fila dice "a quién se le dio plata". */
+  fotoUrl: string | null;
   monto: number;
   nota: string | null;
   creadoEn: string;
@@ -530,14 +533,16 @@ export async function getAdelantosHoy(): Promise<AdelantoHoy[]> {
   const { data, error } = await admin
     .from("adelantos")
     // select("*") tolera que `medio` (0067) aún no exista.
-    .select("*,barberos(nombre)")
+    .select("*,barberos(nombre,foto_url)")
     .gte("creado_en", desde.toISOString())
     .lt("creado_en", hasta.toISOString())
     .order("creado_en", { ascending: false });
   if (error) console.error("getAdelantosHoy:", error.message);
   return ((data ?? []) as Record<string, unknown>[]).map((a) => ({
     id: a.id as string,
+    barberoId: (a.barbero_id as string) ?? "",
     barbero: (a.barberos as { nombre?: string } | null)?.nombre ?? "",
+    fotoUrl: (a.barberos as { foto_url?: string } | null)?.foto_url ?? null,
     monto: a.monto as number,
     nota: (a.nota as string) ?? null,
     creadoEn: a.creado_en as string,
@@ -2597,6 +2602,9 @@ export async function getTestimoniosPublicos(limite = 3): Promise<TestimonioPubl
 export type LiquidacionBarbero = {
   barberoId: string;
   nombre: string;
+  /** Para pintarle la cara en la pantalla: una lista de nombres en mayúscula no
+   *  se reconoce de un vistazo, una fila de caras sí. */
+  fotoUrl: string | null;
   sedeId: string;
   tipoContrato: TipoContrato;
   /** Lo que entró por su trabajo en el período (neto, sin propina). */
@@ -2640,7 +2648,7 @@ export async function getLiquidacion(
   const [barbRes, ventasRes, adelRes, consRes, ajuRes] = await Promise.all([
     admin
       .from("barberos")
-      .select("id,nombre,sede_id,tipo_contrato,comision_pct,arriendo_mensual")
+      .select("id,nombre,sede_id,tipo_contrato,comision_pct,arriendo_mensual,foto_url")
       .eq("activo", true)
       .order("sede_id")
       .order("nombre"),
@@ -2681,6 +2689,7 @@ export async function getLiquidacion(
     porBarbero.set(b.id as string, {
       barberoId: b.id as string,
       nombre: (b.nombre as string) ?? "",
+      fotoUrl: (b.foto_url as string | null) ?? null,
       sedeId: b.sede_id as string,
       tipoContrato: ((b.tipo_contrato as TipoContrato) ?? "porcentaje") as TipoContrato,
       facturado: 0,

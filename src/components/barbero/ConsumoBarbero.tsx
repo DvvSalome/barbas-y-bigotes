@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { registrarConsumoBarbero } from "@/lib/actions";
 import { cop } from "@/lib/format";
+import { ElegirBarbero, type OpcionBarbero } from "@/components/staff/Elegir";
 
 // "Me tomé algo del local". Lo registra el propio barbero, no el dueño: es la
 // regla del proyecto (el dueño mira y decide, el equipo registra) y además es el
@@ -15,7 +16,7 @@ import { cop } from "@/lib/format";
 // llevaba de memoria.
 
 type Prod = { id: string; nombre: string; precio: number; stock: number };
-type Barb = { id: string; nombre: string };
+
 
 export function ConsumoBarbero({
   productos,
@@ -24,7 +25,7 @@ export function ConsumoBarbero({
   dentroDeHoja = false,
 }: {
   productos: Prod[];
-  barberos: Barb[];
+  barberos: OpcionBarbero[];
   miBarberoId: string | null;
   /** La Hoja del hub de Cierre ya pone titulo y cerrar: aca no se repiten. */
   dentroDeHoja?: boolean;
@@ -138,19 +139,14 @@ export function ConsumoBarbero({
         {/* El mostrador es compartido: el que anota no siempre es el que se lo
             tomó, así que se elige a quién se le descuenta. */}
         {barberos.length > 1 && (
-          <select
+          // El "(yo)" se va con el <select>: con la foto, el barbero se
+          // reconoce antes de leer nada. Y el suyo queda de primero.
+          <ElegirBarbero
+            barberos={[...barberos].sort((a, b) => Number(b.id === miBarberoId) - Number(a.id === miBarberoId))}
             value={barberoId}
-            onChange={(e) => setBarberoId(e.target.value)}
-            className="w-full rounded-xl border border-line bg-bg px-3.5 py-3 text-sm text-ink focus:border-accent focus:outline-none"
-          >
-            <option value="">¿De quién es?</option>
-            {barberos.map((b) => (
-              <option key={b.id} value={b.id}>
-                {b.nombre}
-                {b.id === miBarberoId ? " (yo)" : ""}
-              </option>
-            ))}
-          </select>
+            onChange={setBarberoId}
+            placeholder="¿De quién es?"
+          />
         )}
 
         <div className="flex flex-wrap items-center gap-2">

@@ -109,7 +109,7 @@ function CajaCard({ caja, medios }: { caja: CajaSesionSede; medios: MedioPago[] 
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-accent/40 text-accent">
             <CashIcon className="h-4 w-4" />
           </div>
-          <div className="font-display text-2xl">{caja.nombre}</div>
+          <div className="font-display text-[26px]">{caja.nombre}</div>
         </div>
         <span
           className={`flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1 text-[12px] font-semibold uppercase tracking-wide ${
@@ -163,7 +163,7 @@ function CajaCard({ caja, medios }: { caja: CajaSesionSede; medios: MedioPago[] 
       )}
 
       {err && (
-        <div className="mt-3 rounded-lg border border-accent/40 bg-accent/10 px-3 py-2 text-sm text-accent-soft">{err}</div>
+        <div className="mt-3 rounded-lg border border-accent/40 bg-accent/10 px-3 py-2 text-[13px] text-accent-soft">{err}</div>
       )}
 
       {/* Resultado del cierre: EL dato por el que existe la caja. Sobrevive al
@@ -174,7 +174,7 @@ function CajaCard({ caja, medios }: { caja: CajaSesionSede; medios: MedioPago[] 
             cierre.diferencia === 0 ? "border-ok/40 bg-ok/10 text-ok" : "border-warn/45 bg-warn/10 text-warn"
           }`}
         >
-          <div className="text-sm font-bold">
+          <div className="text-[13px] font-bold">
             {cierre.diferencia === 0
               ? "Caja cerrada · cuadró ✓"
               : cierre.diferencia > 0
@@ -233,7 +233,7 @@ function CajaCard({ caja, medios }: { caja: CajaSesionSede; medios: MedioPago[] 
             <button disabled={busy} className={botonClases("primario")}>
               {busy ? "Cerrando…" : "Confirmar cierre"}
             </button>
-            <button type="button" onClick={() => setOpenForm(false)} className="rounded-full border border-line px-5 py-3 text-sm text-muted">
+            <button type="button" onClick={() => setOpenForm(false)} className="rounded-full border border-line px-5 py-3 text-[13px] text-muted">
               Cancelar
             </button>
           </div>
@@ -252,7 +252,7 @@ function CajaCard({ caja, medios }: { caja: CajaSesionSede; medios: MedioPago[] 
             <button disabled={busy} className={botonClases("primario")}>
               {busy ? "Abriendo…" : "Abrir caja"}
             </button>
-            <button type="button" onClick={() => setOpenForm(false)} className="rounded-full border border-line px-5 py-3 text-sm text-muted">
+            <button type="button" onClick={() => setOpenForm(false)} className="rounded-full border border-line px-5 py-3 text-[13px] text-muted">
               Cancelar
             </button>
           </div>

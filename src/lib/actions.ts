@@ -341,6 +341,24 @@ export async function actualizarComisionProducto(id: string, pct: number): Promi
   return { ok: true };
 }
 
+// El número bajo el cual salta el aviso de "se está acabando". Solo se podía
+// poner al CREAR el producto: si el dueño ponía 5 y resultaba que se le acababa
+// cada semana, no había manera de subirlo a 12 sin borrar el producto y volverlo
+// a crear. No toca el stock ni deja movimiento en el kardex: es una preferencia
+// de aviso, no un hecho de inventario.
+export async function actualizarStockMinimo(productoId: string, minimo: number): Promise<ActionResult> {
+  const sb = await supabaseServerAuth();
+  const denied = await requireAdmin(sb);
+  if (denied) return { ok: false, error: denied };
+  const n = sanearCantidad(minimo);
+  if (n === null || n < 0) return { ok: false, error: "El aviso tiene que ser un número entero, 0 o más." };
+  const { error } = await sb.from("productos").update({ stock_minimo: n }).eq("id", productoId);
+  if (error) return { ok: false, error: errorPublico("actualizarStockMinimo", error) };
+  revalidatePath("/admin/inventario");
+  revalidatePath("/admin");
+  return { ok: true, total: n };
+}
+
 // Entrada de mercancía: SUMA al stock y deja el rastro (quién, cuándo, cuánto).
 // Se suma en la base (RPC) y no se pisa el número: en el local venden mientras
 // el dueño registra el pedido que acaba de llegar.
@@ -3676,9 +3694,21 @@ export async function anularVenta(input: { ventaId: string; motivo: string }): P
 
   const items = ((venta as { venta_items?: { tipo: string; ref_id: string; cantidad: number }[] }).venta_items ?? []);
 
-  // 1) Devolver el stock de los productos.
+  // 1) Devolver el stock de los productos, CON su movimiento en el kardex.
+  //    Antes se usaba decrement_stock con cantidad negativa: subía el contador
+  //    pero ese RPC solo escribe el kardex cuando la cantidad es positiva, así
+  //    que la devolución quedaba muda y el stock dejaba de cuadrar con la suma
+  //    de sus movimientos — justo lo que usa el reporte de inventario del mes.
   for (const it of items.filter((i) => i.tipo === "producto")) {
-    const { error } = await admin.rpc("decrement_stock", { p_id: it.ref_id, p_qty: -it.cantidad });
+    const { error } = await admin.rpc("ingresar_stock", {
+      p_producto_id: it.ref_id,
+      p_cantidad: it.cantidad,
+      // 'ajuste' y no 'anulacion': el CHECK de motivo no la admite y sumarla
+      // pediría migración. La nota dice qué fue.
+      p_motivo: "ajuste",
+      p_nota: `Venta anulada: ${motivo}`.slice(0, 200),
+      p_barbero_id: null,
+    });
     if (error) errorPublico("anularVenta devolver stock", error);
   }
 

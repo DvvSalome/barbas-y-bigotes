@@ -5,6 +5,7 @@ import type { SedeId } from "@/lib/data/types";
 import { cop } from "@/lib/format";
 import { SectionHeader } from "@/components/admin/SectionHeader";
 import { AjusteLiquidacion } from "@/components/admin/AjusteLiquidacion";
+import { CaraBarbero } from "@/components/staff/Elegir";
 import { bogotaYmd, bogotaDayRangeDeFecha, semanaDeFecha, MON } from "@/lib/slots";
 
 export const metadata: Metadata = { title: "Liquidación · Admin" };
@@ -87,7 +88,7 @@ export default async function LiquidacionPage({
           // Descarga: <a> y no <Link> porque es un route handler con
           // Content-Disposition (mismo patrón que Métricas y Clientes).
           <a
-            href={`/admin/liquidacion/csv${qs(desdeYmd)}`}
+            href={`/admin/liquidacion/xlsx${qs(desdeYmd)}`}
             className="ml-auto flex min-h-11 items-center rounded-xl border border-line px-4 text-[13px] font-semibold text-muted transition hover:border-ink/25 hover:text-ink"
           >
             ↓ Excel
@@ -112,8 +113,13 @@ export default async function LiquidacionPage({
               const arriendo = f.tipoContrato === "arriendo";
               return (
                 <div key={f.barberoId} className="overflow-hidden rounded-2xl border border-line bg-panel">
-                  <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 border-b border-line/60 px-4 py-3">
-                    <span className="font-display text-[19px] font-bold uppercase leading-tight text-ink">{f.nombre}</span>
+                  <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 border-b border-line/60 px-4 py-3">
+                    {/* La cara primero. Con seis barberos en pantalla, el dueño
+                        busca a quién le paga por la foto, no leyendo nombres. */}
+                    <span className="flex min-w-0 items-center gap-2.5">
+                      <CaraBarbero b={{ id: f.barberoId, nombre: f.nombre, fotoUrl: f.fotoUrl }} size={38} aro />
+                      <span className="font-display text-[19px] font-bold uppercase leading-tight text-ink">{f.nombre}</span>
+                    </span>
                     <span className="text-[12px] text-muted">
                       {sedes.find((s) => s.id === f.sedeId)?.nombre ?? f.sedeId} ·{" "}
                       {arriendo ? "paga arriendo de silla" : "por comisión"}

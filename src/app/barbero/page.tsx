@@ -289,7 +289,7 @@ export default async function BarberoPage({
                   productos={productos
                     .filter((p) => p.sede === sedeBarbero)
                     .map((p) => ({ id: p.id, nombre: p.nombre, precio: p.precio, stock: p.stock }))}
-                  barberos={mostrador.barberosSede.map((b) => ({ id: b.id, nombre: b.nombre }))}
+                  barberos={mostrador.barberosSede}
                   miBarberoId={staff.barberoId}
                   dentroDeHoja
                 />

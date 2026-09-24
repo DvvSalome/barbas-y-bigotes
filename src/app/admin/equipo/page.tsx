@@ -4,15 +4,19 @@ import { getBarberos, getSedes, getAusenciasAdmin, getEmailsBarberos, getCalenda
 import { bogotaYmd } from "@/lib/slots";
 import { getBarberosPinEstado, getSedesPinEstado } from "@/lib/barbero-auth";
 import { SectionHeader } from "@/components/admin/SectionHeader";
-import { EquipoPinAdmin } from "@/components/admin/EquipoPinAdmin";
-import { SedePinAdmin } from "@/components/admin/SedePinAdmin";
-import { AusenciasAdmin } from "@/components/admin/AusenciasAdmin";
-import { CorreosBarberos } from "@/components/admin/CorreosBarberos";
-import { CalendarGoogle } from "@/components/admin/CalendarGoogle";
-import { VerSemanaToggle } from "@/components/admin/VerSemanaToggle";
+import { EquipoFichas } from "@/components/admin/EquipoFichas";
+import { EquipoLocal } from "@/components/admin/EquipoLocal";
 
 export const metadata: Metadata = { title: "Equipo · Admin" };
 
+/*
+  El equipo, en fichas (paso 20 de la tanda 2).
+
+  Antes esta pantalla apilaba seis secciones y el mismo barbero aparecía en tres
+  de ellas (PIN, correo, agenda de Google). Medía 5.269 px a 390 px: la más larga
+  del panel. Ahora son dos grupos de filas —lo del LOCAL y las PERSONAS— y todo
+  lo demás vive detrás de la fila que lo nombra.
+*/
 export default async function EquipoPage() {
   const [barberos, sedes, estado, estadoSedes, ausencias, emails, calendar, ajustesEquipo] = await Promise.all([
     getBarberos(),
@@ -24,83 +28,58 @@ export default async function EquipoPage() {
     getCalendarEstado(),
     getAjustesEquipo(),
   ]);
+
+  const sinCorreo = barberos.filter((b) => !emails[b.id]).length;
+
   return (
-    <div className="max-w-6xl">
+    <div className="max-w-3xl">
       <SectionHeader
-        eyebrow="Acceso"
-        title="Quién entra a la app"
-        description="El PIN del mostrador lo usa todo el equipo del local; el de cada barbero es personal. Los dos entran desde /login."
+        eyebrow="Equipo"
+        title="Quién trabaja acá"
+        description="Cada barbero tiene su ficha: el PIN con el que entra, el correo al que le avisamos las citas, su agenda de Google y el perfil que ve el cliente."
       />
 
-      {/* DOS PANELES en escritorio (patrón del panel): a la izquierda el ACCESO
-          (PIN del mostrador + PIN de cada barbero); a la derecha, FIJAS, las
-          ausencias — se marca quién falta viendo al equipo, sin bajar una
-          columna eterna. En móvil se apila en el mismo orden de siempre. */}
-      <div className="mt-5 grid gap-6 lg:grid-cols-[minmax(0,1fr)_400px] lg:items-start">
-        <section className="min-w-0">
-          <h2 className="mb-3 eyebrow">PIN del mostrador</h2>
-          <SedePinAdmin sedes={sedes} estado={estadoSedes} />
+      {sinCorreo > 0 && (
+        <p className="mt-4 rounded-xl border border-warn/40 bg-warn/[0.08] px-3.5 py-2.5 text-[12.5px] text-warn">
+          <b>
+            {sinCorreo} de {barberos.length} barberos sin correo
+          </b>
+          : a ellos no les llega ningún aviso cuando les reservan.
+        </p>
+      )}
 
-          {/* Qué ve cada barbero de su propia plata (0074). Vive acá y no en
-              Comisiones porque es un permiso del equipo, no un número. */}
-          <h2 className="mb-3 mt-8 eyebrow">Qué ve el equipo</h2>
-          <VerSemanaToggle inicial={ajustesEquipo.barberoVeSemana} />
+      <EquipoLocal
+        sedes={sedes}
+        estadoSedes={estadoSedes}
+        barberoVeSemana={ajustesEquipo.barberoVeSemana}
+        calendar={calendar}
+        barberos={barberos}
+        emails={emails}
+        ausencias={ausencias}
+      />
 
-          <h2 className="mb-3 mt-8 eyebrow">PIN de cada barbero</h2>
-          <EquipoPinAdmin
-            barberos={barberos}
-            sedes={sedes}
-            estado={estado}
-            ausentesHoy={ausencias.filter((a) => a.fecha === bogotaYmd()).map((a) => a.barberoId)}
-          />
-
-          <h2 className="mb-3 mt-8 eyebrow">Correo de avisos</h2>
-          <p className="mb-3 text-[12.5px] text-muted">
-            Cuando un cliente reserva, al barbero le llega un correo con la cita al instante. Pon acá el correo de
-            cada uno; se guarda solo al salir del campo. Vacío = sin aviso (le queda solo la notificación push, si
-            la tiene activa).
-          </p>
-          {barberos.filter((b) => !emails[b.id]).length > 0 && (
-            <p className="mb-3 rounded-xl border border-warn/40 bg-warn/[0.08] px-3.5 py-2.5 text-[12.5px] text-warn">
-              <b>
-                {barberos.filter((b) => !emails[b.id]).length} de {barberos.length} barberos sin correo
-              </b>
-              : a ellos no les llega ningún aviso de cita.
-            </p>
-          )}
-          <CorreosBarberos barberos={barberos} emails={emails} />
-
-          <h2 className="mb-3 mt-8 eyebrow">Google Calendar</h2>
-          <p className="mb-3 text-[12.5px] text-muted">
-            Cada barbero tiene una agenda de Google que la app llena sola con sus citas (altas, cambios y
-            cancelaciones). Se comparte al correo de avisos de arriba; el barbero la acepta una vez y la ve en su
-            Google Calendar, con recordatorios en el celular.
-          </p>
-          <CalendarGoogle estado={calendar} barberos={barberos.map((b) => ({ id: b.id, nombre: b.nombre }))} emails={emails} />
-        </section>
-
-        <aside className="lg:sticky lg:top-28 lg:max-h-[calc(100dvh-8.5rem)] lg:overflow-y-auto">
-          <h2 className="mb-3 eyebrow">Ausencias</h2>
-          <p className="mb-4 text-[12.5px] text-muted">
-            Si un barbero no va un día, márcalo acá: deja de aparecer para reservar esa fecha. Los bloqueos por horas
-            (almuerzo) se crean desde el calendario y también se listan abajo.
-          </p>
-          <AusenciasAdmin barberos={barberos} sedes={sedes} ausencias={ausencias} />
-        </aside>
-      </div>
+      <EquipoFichas
+        barberos={barberos}
+        sedes={sedes}
+        estado={estado}
+        emails={emails}
+        calendar={calendar}
+        ausentesHoy={ausencias.filter((a) => a.fecha === bogotaYmd()).map((a) => a.barberoId)}
+      />
 
       {/* El horario de la sede (semana + días especiales) se movió a su propia
           sección "Horarios": acá viven las cosas del EQUIPO (personas), allá las
           del LOCAL (cuándo abre). */}
-      <div className="mt-10 rounded-2xl border border-line bg-panel px-4 py-4">
-        <p className="text-[13px] text-muted">
-          ¿Buscas los horarios de la barbería (abrir un festivo, cambiar un sábado)? Ahora están en{" "}
-          <Link href="/admin/horarios" className="inline-flex min-h-11 items-center font-semibold text-ink/85 underline decoration-line underline-offset-4 transition hover:text-ink">
-            Equipo → Horarios
-          </Link>
-          .
-        </p>
-      </div>
+      <p className="mt-8 rounded-2xl border border-line bg-panel px-4 py-4 text-[13px] text-muted">
+        ¿Buscas los horarios de la barbería (abrir un festivo, cambiar un sábado)? Están en{" "}
+        <Link
+          href="/admin/horarios"
+          className="inline-flex min-h-11 items-center font-semibold text-ink/85 underline decoration-line underline-offset-4 transition hover:text-ink"
+        >
+          Equipo → Horarios
+        </Link>
+        .
+      </p>
     </div>
   );
 }

@@ -81,7 +81,7 @@ export function HistorialVentas({ ventas }: { ventas: VentaDelDia[] }) {
               <li key={v.id} className={`px-4 py-3 ${anulada ? "opacity-60" : ""}`}>
                 <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-1">
                   <div className="min-w-0 flex-1">
-                    <div className={`text-[14px] text-ink ${anulada ? "line-through" : ""}`}>
+                    <div className={`text-[15px] text-ink ${anulada ? "line-through" : ""}`}>
                       <span className="font-display font-bold tabular-nums text-accent-soft">
                         {horaBogota(v.creadoEn)}
                       </span>{" "}
@@ -136,7 +136,7 @@ export function HistorialVentas({ ventas }: { ventas: VentaDelDia[] }) {
                       maxLength={200}
                       autoFocus
                       placeholder="Por qué se anula (ej.: me equivoqué al meterla)"
-                      className="w-full min-h-11 rounded-xl border border-line bg-bg px-3 text-[14px] text-ink placeholder:text-muted focus:border-ink/60 focus:outline-none"
+                      className="w-full min-h-11 rounded-xl border border-line bg-bg px-3 text-[15px] text-ink placeholder:text-muted focus:border-ink/60 focus:outline-none"
                     />
                     {err && <p className="text-[12.5px] text-warn">{err}</p>}
                     <div className="flex items-center gap-2">

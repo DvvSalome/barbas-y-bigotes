@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { addProducto, subirFotoProducto } from "@/lib/actions";
 import { sanearCop, sanearCantidad, sanearNombre, sanearComisionPct } from "@/lib/admin-reglas";
 import { achicarFoto } from "@/lib/imagen-cliente";
-import { BoxIcon, CamIcon } from "@/components/icons";
+import { CamIcon } from "@/components/icons";
 import type { Sede } from "@/lib/data/types";
 
 const input =
@@ -109,11 +109,11 @@ export function AddProductForm({
     }
   }
 
+  // Sin tarjeta propia ni título: vive dentro de la Hoja "Nuevo producto", que ya
+  // pone el marco y el título. Antes se veía un panel dentro de otro panel y la
+  // palabra "Nuevo producto" dos veces seguidas.
   return (
-    <form onSubmit={submit} className="grid gap-3 rounded-2xl border border-line bg-panel p-5 sm:grid-cols-3 lg:grid-cols-6">
-      <h3 className="flex items-center gap-2 font-display text-lg sm:col-span-6">
-        <BoxIcon className="h-4 w-4 text-accent" /> Nuevo producto
-      </h3>
+    <form onSubmit={submit} className="grid gap-3 pb-2 sm:grid-cols-3 lg:grid-cols-6">
       <label className="sm:col-span-3">
         <span className={lbl}>Nombre del producto</span>
         <input required value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Ej: Cera mate fijación fuerte" className={`${input} w-full`} />
@@ -152,13 +152,13 @@ export function AddProductForm({
         <button
           type="button"
           onClick={() => fotoRef.current?.click()}
-          className="flex items-center gap-2 rounded-lg border border-line px-3 py-2 text-xs text-muted transition hover:text-ink"
+          className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-line px-4 text-[12.5px] text-muted transition hover:text-ink"
         >
           <CamIcon className="h-4 w-4" />
           {foto ? foto.name : "Foto (opcional)"}
         </button>
         {foto && (
-          <button type="button" onClick={() => setFoto(null)} className="text-xs text-muted transition hover:text-ink">
+          <button type="button" onClick={() => setFoto(null)} className="inline-flex min-h-11 items-center px-2 text-[12.5px] text-muted transition hover:text-ink">
             Quitar
           </button>
         )}
@@ -173,7 +173,9 @@ export function AddProductForm({
       {err && (
         <div className="rounded-lg border border-accent/40 bg-accent/10 px-3 py-2 text-sm text-accent-soft sm:col-span-6">{err}</div>
       )}
-      <div className="flex gap-2 sm:col-span-6">
+      {/* Pegado abajo: con el teclado abierto, un "Guardar" al final del scroll
+          queda fuera de alcance. Es la misma regla del pie de <Hoja>. */}
+      <div className="sticky bottom-0 -mx-1 flex gap-2 bg-bg/95 px-1 py-3 backdrop-blur sm:col-span-6">
         <button disabled={saving} className={botonClases("primario")}>
           {saving ? "Guardando…" : "Guardar"}
         </button>

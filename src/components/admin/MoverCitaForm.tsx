@@ -2,6 +2,7 @@
 
 import { botonClases } from "@/components/ui/Boton";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { CaraBarbero } from "@/components/staff/Elegir";
 import { getDisponibilidad, moverCita } from "@/lib/actions";
 import { DOW, fmtTime, slotsDisponibles, computeTaken, nextDays, horarioEfectivo } from "@/lib/slots";
 import { instanteBogota } from "@/lib/slots";
@@ -136,8 +137,9 @@ export function MoverCitaForm({
                 setBarberoId(b.id);
                 setSlot(null);
               }}
-              className={btn(barberoId === b.id)}
+              className={`${btn(barberoId === b.id)} inline-flex items-center gap-2`}
             >
+              <CaraBarbero b={b} size={22} />
               {b.nombre}
             </button>
           ))}

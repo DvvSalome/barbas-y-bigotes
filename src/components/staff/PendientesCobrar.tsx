@@ -98,10 +98,10 @@ export function PendientesCobrar({
     <div className={dentroDeHoja ? "" : "rounded-2xl border border-line bg-panel p-5"}>
       {!dentroDeHoja && (
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="flex items-center gap-2 font-display text-2xl">
+          <h2 className="flex items-center gap-2 font-display text-[26px]">
             <span className="h-2 w-2 rounded-full bg-warn" /> Pendientes por cobrar
           </h2>
-          <span className="text-sm text-muted">
+          <span className="text-[13px] text-muted">
             {visibles.length} {visibles.length === 1 ? "reserva" : "reservas"} ·{" "}
             <b className="text-accent-soft">{cop(total)}</b> proyectado
           </span>
@@ -117,7 +117,7 @@ export function PendientesCobrar({
           return (
             <div
               key={p.id}
-              className={`rounded-xl border bg-bg text-sm transition ${
+              className={`rounded-xl border bg-bg text-[13px] transition ${
                 abiertaEsta ? "border-accent/50" : "border-line hover:border-accent/30"
               }`}
             >
@@ -169,7 +169,7 @@ export function PendientesCobrar({
                         value={propina}
                         onChange={(e) => setPropina(e.target.value)}
                         placeholder="$0"
-                        className="mt-1 block w-32 rounded-xl border border-line bg-elevated px-3 py-2 text-sm text-ink tabular-nums placeholder:text-muted focus:border-accent focus:outline-none"
+                        className="mt-1 block w-32 rounded-xl border border-line bg-elevated px-3 py-2 text-[13px] text-ink tabular-nums placeholder:text-muted focus:border-accent focus:outline-none"
                       />
                     </label>
                     {propina.trim() !== "" && Number(propina) > 0 && (

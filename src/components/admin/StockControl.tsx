@@ -3,12 +3,14 @@
 import { botonClases } from "@/components/ui/Boton";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ingresarStock, ajustarStock } from "@/lib/actions";
+import { ingresarStock, ajustarStock, actualizarStockMinimo } from "@/lib/actions";
 import { sanearCantidad } from "@/lib/admin-reglas";
 
 // Control de stock del producto. Dos gestos distintos, a propósito:
 //  · "Entró mercancía" SUMA (es lo que pasa en el local: llegaron 12 aguas).
 //  · "Corregir" fija el número contado (el dueño contó y hay otra cantidad).
+//  · "Avisarme bajo N" cambia el umbral del aviso, que antes solo se podía
+//    poner al crear el producto y quedaba congelado para siempre.
 // El número en bodega lo muestra la tarjeta; acá solo viven las dos acciones,
 // a 44 px y con texto legible (auditoría del 6-sep).
 export function StockControl({
@@ -21,7 +23,7 @@ export function StockControl({
   stockMinimo: number;
 }) {
   const router = useRouter();
-  const [modo, setModo] = useState<null | "entrada" | "correccion">(null);
+  const [modo, setModo] = useState<null | "entrada" | "correccion" | "minimo">(null);
   const [val, setVal] = useState("");
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -30,15 +32,19 @@ export function StockControl({
 
   async function enviar() {
     const n = sanearCantidad(val);
-    if (n === null || (modo === "entrada" && n <= 0) || (modo === "correccion" && n < 0)) {
-      setError(modo === "entrada" ? "¿Cuántas entraron?" : "Pon el número contado.");
+    if (n === null || (modo === "entrada" && n <= 0) || n < 0) {
+      setError(
+        modo === "entrada" ? "¿Cuántas entraron?" : modo === "minimo" ? "Pon un número, 0 o más." : "Pon el número contado.",
+      );
       return;
     }
     setGuardando(true);
     const res =
       modo === "entrada"
         ? await ingresarStock({ productoId, cantidad: n })
-        : await ajustarStock(productoId, n);
+        : modo === "minimo"
+          ? await actualizarStockMinimo(productoId, n)
+          : await ajustarStock(productoId, n);
     setGuardando(false);
     if (res.ok) {
       setModo(null);
@@ -58,7 +64,9 @@ export function StockControl({
         <p className="text-[12.5px] font-semibold text-ink">
           {modo === "entrada"
             ? `¿Cuántas ENTRARON? (se suman a ${stock})`
-            : "¿Cuántas hay REALMENTE? (fija el total contado)"}
+            : modo === "minimo"
+              ? "¿Con cuántas quieres que te avisemos? (no cambia el stock)"
+              : "¿Cuántas hay REALMENTE? (fija el total contado)"}
         </p>
         <div className="flex flex-wrap items-center gap-2">
           <input
@@ -76,8 +84,14 @@ export function StockControl({
               if (e.key === "Enter") enviar();
               if (e.key === "Escape") setModo(null);
             }}
-            placeholder={modo === "entrada" ? "+ cuántas" : "quedan"}
-            aria-label={modo === "entrada" ? "Cuántas unidades entraron" : "Cuántas hay realmente"}
+            placeholder={modo === "entrada" ? "+ cuántas" : modo === "minimo" ? "avisar bajo" : "quedan"}
+            aria-label={
+              modo === "entrada"
+                ? "Cuántas unidades entraron"
+                : modo === "minimo"
+                  ? "Avisarme cuando queden estas o menos"
+                  : "Cuántas hay realmente"
+            }
             className="min-h-11 w-[96px] rounded-xl border border-accent/60 bg-bg px-3 text-sm text-ink tabular-nums focus:outline-none"
           />
           <button
@@ -131,6 +145,16 @@ export function StockControl({
         className="inline-flex min-h-11 items-center rounded-full border border-line px-4 text-[13px] text-muted transition hover:text-ink"
       >
         Corregir
+      </button>
+      <button
+        type="button"
+        onClick={() => {
+          setModo("minimo");
+          setVal(String(stockMinimo));
+        }}
+        className="inline-flex min-h-11 items-center px-2 text-[12.5px] text-muted underline decoration-line underline-offset-4 transition hover:text-ink"
+      >
+        Avisarme bajo {stockMinimo}
       </button>
     </div>
   );
