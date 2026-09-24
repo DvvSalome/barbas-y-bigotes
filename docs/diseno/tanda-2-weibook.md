@@ -107,7 +107,7 @@ Calendario día×barbero con carriles, línea de «ahora», drag y mover · bloq
 | 4 | Mostrador: nav de 4, FAB de una acción, cabecera fundida, `?cobrar=` | M | alto | 2 | — |
 | 5 | Una sola `Hoja`; fuera `confirm()` y `alert()` (sin `CierreCaja`) | M | alto | 2 | — |
 | 6 | Mostrador · Cierre como hub (dueño único de `CierreCaja`) | M | alto | 2, 5 | — |
-| 7 | **«El local»: Perfil \| Horario \| Días especiales — cierra la deuda de la tanda 1** | M | alto | 2, 3 | **0078** |
+| 7 | **«El local»: Perfil \| Horario \| Días especiales — cierra la deuda de la tanda 1** | M | alto | 2, 3 | **0079** |
 | 8 | Agenda: cabecera compacta + tira de semana + FAB; leyenda al «?» | M | alto | 2, 3 | — |
 | 9 | **Agenda: filtro por barbero «Solo yo» + hora grande** | M | alto | 8 | — |
 | 10 | `HojaCita`: registrar desde el calendario | M | alto | 4, 5, 8 | — |
@@ -120,16 +120,16 @@ Calendario día×barbero con carriles, línea de «ahora», drag y mover · bloq
 | 17 | Hub `Estadísticas e informes` (+ Gastos y Reseñas) | M | medio | 16 | — |
 | 18 | Inicio B: cifras del mes, últimas visitas, «Ahora mismo» | M | medio | 15 | — |
 | 19 | Catálogo e Inventario: filas + `ServicioSheet` / `ProductoSheet` | M | medio | 2, 5 | *(RLS)* |
-| 20 | Equipo: una ficha por colaborador + baja | M | medio | 2, 16 | **0079** |
+| 20 | Equipo: una ficha por colaborador + baja | M | medio | 2, 16 | **0080** |
 | 21 | **Marketing y sueltos: `Campo` y `EstadoVacio` donde el hub señala** | S | medio | 2, 16 | — |
 | 22 | Ficha del cliente: secciones apiladas en vez de 8 pestañas | L | medio | 12 | *(RLS)* |
 | 23 | **Cierre de medición: re-correr el arnés y publicar el «después»** | S | alto | 1,3,7,8,12,14 | — |
 
 ### Migraciones — el dueño las aplica a mano en el SQL Editor, **antes** del deploy que las usa
 
-**`0078_sedes_contacto.sql`** — antes del paso 7.
+**`0079_sedes_contacto.sql`** — antes del paso 7.
 
-> **Renumerada dos veces.** El plan la llamaba `0074`; ese número se lo llevó
+> **Renumerada cuatro veces.** El plan la llamaba `0074`; ese número se lo llevó
 > `0074_ajustes_equipo.sql` (16-sep) y luego `0075` se lo llevó `0075_ajustes_liquidacion.sql`
 > (20-sep, pedido del administrador). Los dos números de este bloque quedan en **0077 y 0078**.
 > Regla: el plan propone números, las migraciones aplicadas mandan.
@@ -138,6 +138,10 @@ Calendario día×barbero con carriles, línea de «ahora», drag y mover · bloq
 > de cada producto, primer paso del módulo de reportes). Estas dos quedan en **0078 y
 > 0079**. Antes de crear una migración, mirar cuál es la última APLICADA, no la que
 > dice el plan.
+>
+> **Y una cuarta (24-sep):** `0078` se la llevó `0078_unir_clientes_avisos.sql` («Unir
+> fichas» borraba en cascada los avisos de marketing de la ficha unida). Quedan en
+> **0079 y 0080**.
 
 ```sql
 alter table public.sedes
@@ -151,7 +155,7 @@ notify pgrst, 'reload schema';
 
 `google_review_url` ya existe (0018) y `foto_url` también (0058). `getSedes` debe tolerar columnas ausentes mientras no esté aplicada — el patrón ya está en el repo: `getCuadre` hace `select("*")` sobre `gastos` justamente por eso.
 
-**`0079_bucket_barberos.sql`** — antes del paso 20.
+**`0080_bucket_barberos.sql`** — antes del paso 20.
 
 ```sql
 insert into storage.buckets (id, name, public)
