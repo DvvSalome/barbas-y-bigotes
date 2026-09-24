@@ -1,10 +1,11 @@
 import { supabaseServerAuth } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/actions";
-import { getVentasParaCsv, getSedes } from "@/lib/data/queries";
+import { getVentasParaCsv, getSedes, getMediosTodos } from "@/lib/data/queries";
 import type { SedeId } from "@/lib/data/types";
 import { esPeriodo, rangoFechas, type Periodo } from "@/lib/slots";
 import { libroBarbas, cabecerasXlsx, type Columna } from "@/lib/excel";
 import { repartoDeVenta } from "@/lib/cobro";
+import { cop } from "@/lib/format";
 
 // El detalle de cobros para el contador, en Excel de verdad. Es un GET con
 // Content-Disposition en vez de una server action + Blob en el cliente: así el
@@ -49,8 +50,12 @@ export async function GET(req: Request) {
     });
   }
 
-  const sedes = await getSedes();
+  const [sedes, medios] = await Promise.all([getSedes(), getMediosTodos()]);
   const sede = (sedes.find((s) => s.id === url.searchParams.get("sede"))?.id as SedeId | undefined) ?? null;
+  // El medio se guarda como slug ("nequi"); en el archivo va el nombre que se lee
+  // en el mostrador ("Nequi"). Un medio que ya no exista cae con mayúscula inicial.
+  const nombreMedio = (slug: string) =>
+    medios.find((m) => m.slug === slug)?.nombre ?? (slug ? slug.charAt(0).toUpperCase() + slug.slice(1) : "");
 
   const ventas = await getVentasParaCsv(p, sede, rango ?? undefined);
   const nombreSede = (id: string) => sedes.find((s) => s.id === id)?.nombre ?? id;
@@ -61,10 +66,10 @@ export async function GET(req: Request) {
     { k: "sede", t: "Sede", ancho: 20 },
     { k: "barbero", t: "Barbero", ancho: 20 },
     { k: "cliente", t: "Cliente", ancho: 24 },
-    { k: "servicios", t: "Servicios", ancho: 30 },
-    { k: "productos", t: "Productos", ancho: 24 },
+    { k: "servicios", t: "Servicios", ancho: 34, envolver: true },
+    { k: "productos", t: "Productos", ancho: 26, envolver: true },
     { k: "medio", t: "Medio de pago", ancho: 15 },
-    { k: "reparto", t: "Reparto del pago", ancho: 24 },
+    { k: "reparto", t: "Reparto del pago", ancho: 30, envolver: true },
     { k: "descuento", t: "Descuento", tipo: "plata", total: true },
     { k: "cupon", t: "Cupón", ancho: 13 },
     { k: "propina", t: "Propina", tipo: "plata", total: true },
@@ -94,8 +99,8 @@ export async function GET(req: Request) {
       cliente: (v.clientes as { nombre?: string } | null)?.nombre ?? (v.cliente_nombre as string) ?? "",
       servicios: detalle("servicio"),
       productos: detalle("producto"),
-      medio: String(v.medio ?? ""),
-      reparto: partes.length > 1 ? partes.map((x) => `${x.medio} ${x.monto}`).join(" + ") : "",
+      medio: nombreMedio(String(v.medio ?? "")),
+      reparto: partes.length > 1 ? partes.map((x) => `${nombreMedio(x.medio)} ${cop(x.monto)}`).join(" + ") : "",
       descuento: (v.descuento as number) || null,
       cupon: (v.cupon_codigo as string) ?? "",
       propina: (v.propina as number) || null,

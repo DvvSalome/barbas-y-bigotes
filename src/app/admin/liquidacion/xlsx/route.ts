@@ -127,7 +127,7 @@ export async function GET(req: Request) {
         { k: "barbero", t: "Barbero", ancho: 24 },
         { k: "sede", t: "Sede", ancho: 20 },
         { k: "fecha", t: "Fecha", ancho: 12 },
-        { k: "producto", t: "Producto", ancho: 28 },
+        { k: "producto", t: "Producto", ancho: 28, envolver: true },
         { k: "cantidad", t: "Cantidad", tipo: "entero", total: true },
         { k: "total", t: "Total", tipo: "plata", total: true },
       ],

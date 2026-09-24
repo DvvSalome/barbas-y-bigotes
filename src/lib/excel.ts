@@ -45,6 +45,9 @@ export type Columna = {
   tipo?: TipoCelda;
   /** Suma esta columna en la fila TOTAL. Solo tiene sentido en números. */
   total?: boolean;
+  /** Envolver el texto en vez de cortarlo. Excel RECORTA una celda de texto
+   *  cuando la de al lado tiene algo: "Agua + Bebida (gaseosa / energiz". */
+  envolver?: boolean;
 };
 
 export type Hoja = {
@@ -177,7 +180,9 @@ export async function libroBarbas(hojas: Hoja[]): Promise<Buffer> {
     // ── Datos ─────────────────────────────────────────────────────────────
     h.filas.forEach((f, n) => {
       const row = ws.getRow(FILA_CABECERA + 1 + n);
-      row.height = 19;
+      // Alto fijo solo si ninguna columna envuelve: si no, Excel no la agranda
+      // y la segunda línea del texto queda escondida.
+      if (!h.columnas.some((c) => c.envolver)) row.height = 19;
       h.columnas.forEach((col, i) => {
         const cel = row.getCell(i + 1);
         const v = f[col.k];
@@ -191,7 +196,7 @@ export async function libroBarbas(hojas: Hoja[]): Promise<Buffer> {
           indent: numerica(col) ? 1 : 0,
           // Solo la última columna (los detalles largos) envuelve: si envolvieran
           // todas, una fila con un nombre largo estiraría la tabla entera.
-          wrapText: i === h.columnas.length - 1 && (col.tipo ?? "texto") === "texto",
+          wrapText: !!col.envolver || (i === h.columnas.length - 1 && (col.tipo ?? "texto") === "texto"),
         };
         if (n % 2 === 1) cel.fill = { type: "pattern", pattern: "solid", fgColor: { argb: C.cebra } };
         cel.border = { bottom: { style: "hair", color: { argb: C.linea } } };
