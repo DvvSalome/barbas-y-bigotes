@@ -22,6 +22,13 @@ const nextConfig: NextConfig = {
     // es para fotos que van con degradado oscuro encima (tarjetas de Sedes).
     qualities: [70, 75],
   },
+  // El .xlsx de marca lee `public/brand/logo-lockup.jpg` en tiempo de ejecución
+  // y el trazador de Next no ve un `path.join` armado en código: sin esto el
+  // archivo no viaja al bundle de la función en Vercel y el reporte sale sin
+  // logo (el módulo lo tolera, pero la gracia era el logo).
+  outputFileTracingIncludes: {
+    "/admin/*/xlsx": ["public/brand/logo-lockup.jpg"],
+  },
   // Permite probar el dev server desde el celular u otro dispositivo en la
   // misma red Wi-Fi (sin esto, Next bloquea el HMR por origen cruzado).
   allowedDevOrigins: ["192.168.40.12"],

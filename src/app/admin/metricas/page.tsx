@@ -128,7 +128,7 @@ export default async function MetricasPage({
         ))}
         {m.servicios > 0 && (
           <a
-            href={`/admin/metricas/csv${qs(p)}`}
+            href={`/admin/metricas/xlsx${qs(p)}`}
             className="ml-auto flex min-h-11 items-center gap-2 rounded-xl border border-line px-4 text-[13px] font-semibold text-muted transition hover:border-ink/25 hover:text-ink"
           >
             ↓ Excel
@@ -142,7 +142,7 @@ export default async function MetricasPage({
           propósito: cuando el período elegido sale vacío igual hace falta poder
           bajar otro rango (es el caso en el que más se busca). */}
       <form
-        action="/admin/metricas/csv"
+        action="/admin/metricas/xlsx"
         className="mt-3 flex flex-wrap items-end gap-2 rounded-2xl border border-line bg-panel px-3.5 py-3"
       >
         {sede && <input type="hidden" name="sede" value={sede} />}

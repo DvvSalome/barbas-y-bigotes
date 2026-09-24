@@ -145,7 +145,7 @@ export function ClientesLista({
               Métricas. Va con <a> y no con <Link> porque es una DESCARGA (route
               handler con Content-Disposition): <Link> haría un fetch RSC. */}
           <a
-            href={sedeActiva ? `/admin/clientes/csv?sede=${sedeActiva}` : "/admin/clientes/csv"}
+            href={sedeActiva ? `/admin/clientes/xlsx?sede=${sedeActiva}` : "/admin/clientes/xlsx"}
             className="flex min-h-11 shrink-0 items-center gap-1.5 rounded-xl border border-line px-4 text-[13px] font-semibold text-muted transition hover:border-ink/25 hover:text-ink"
             aria-label={
               sedeActiva
