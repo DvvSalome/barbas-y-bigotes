@@ -1493,8 +1493,16 @@ export type ClienteDetalle = {
   walletBalance: number;
   ratingProm: number | null;
   puntosBalance: number;
-  historial: { id: string; total: number; fecha: string; medio: string; barbero: string; items: string[] }[];
-  reservas: { id: string; inicio: string; estado: string; servicio: string; barbero: string }[];
+  historial: {
+    id: string;
+    total: number;
+    fecha: string;
+    medio: string;
+    barbero: string;
+    barberoFoto: string | null;
+    items: { nombre: string; cantidad: number; tipo: string }[];
+  }[];
+  reservas: { id: string; inicio: string; estado: string; servicio: string; barbero: string; barberoFoto: string | null }[];
   notas: { id: string; nota: string; fecha: string }[];
   wallet: { id: string; tipo: string; monto: number; nota: string; fecha: string }[];
   resenas: { id: string; score: number; nota: string; barbero: string; fecha: string }[];
@@ -1516,13 +1524,15 @@ export async function getClienteDetalle(id: string): Promise<ClienteDetalle | nu
   const [ventasRes, reservasRes, notasRes, walletRes, resenasRes, puntosRes, califRes] = await Promise.all([
     sb
       .from("ventas")
-      .select("id,total,medio,creado_en,barberos(nombre),venta_items(descripcion,cantidad)").is("anulada_en", null)
+      .select("id,total,medio,creado_en,barberos(nombre,foto_url),venta_items(descripcion,cantidad,tipo)").is("anulada_en", null)
       .eq("cliente_ref", id)
-      .order("creado_en", { ascending: false })
-      .limit(50),
+      // Sin tope: la lista de clientes suma TODAS las ventas, y con limit(50) la
+      // ficha de un habitual iba a decir menos visitas y menos plata que la fila
+      // que la abrió. Un cliente tiene decenas de ventas, no miles.
+      .order("creado_en", { ascending: false }),
     sb
       .from("reservas")
-      .select("id,inicio,estado,servicios(nombre),barberos(nombre)")
+      .select("id,inicio,estado,servicios(nombre),barberos(nombre,foto_url)")
       .eq("cliente_ref", id)
       .order("inicio", { ascending: false })
       .limit(30),
@@ -1570,9 +1580,12 @@ export async function getClienteDetalle(id: string): Promise<ClienteDetalle | nu
       fecha: v.creado_en as string,
       medio: v.medio as string,
       barbero: (v.barberos as { nombre?: string } | null)?.nombre ?? "",
-      items: ((v.venta_items as { descripcion: string; cantidad: number }[]) ?? []).map((i) =>
-        i.cantidad > 1 ? `${i.descripcion} ×${i.cantidad}` : i.descripcion,
-      ),
+      barberoFoto: (v.barberos as { foto_url?: string | null } | null)?.foto_url ?? null,
+      items: ((v.venta_items as { descripcion: string; cantidad: number; tipo: string }[]) ?? []).map((i) => ({
+        nombre: i.descripcion,
+        cantidad: i.cantidad,
+        tipo: i.tipo,
+      })),
     })),
     reservas: ((reservasRes.data ?? []) as Record<string, unknown>[]).map((r) => ({
       id: r.id as string,
@@ -1580,6 +1593,7 @@ export async function getClienteDetalle(id: string): Promise<ClienteDetalle | nu
       estado: r.estado as string,
       servicio: (r.servicios as { nombre?: string } | null)?.nombre ?? "—",
       barbero: (r.barberos as { nombre?: string } | null)?.nombre ?? "—",
+      barberoFoto: (r.barberos as { foto_url?: string | null } | null)?.foto_url ?? null,
     })),
     notas: ((notasRes.data ?? []) as { id: string; nota: string; creado_en: string }[]).map((n) => ({
       id: n.id,
@@ -2400,6 +2414,18 @@ export async function getMetricas(p: Periodo = "mes", sede?: SedeId | null): Pro
     acc.plata += cant * (((it.precio_unitario as number) ?? 0));
     destino.set(clave, acc);
   }
+  // Los productos son POR SEDE: el "Agua" de Plaza y el de Parque son dos filas de
+  // `productos` con el mismo nombre, y mirando ambas sedes salían dos "Agua" (con
+  // la llave de React repetida). Después de juntar por ref_id, se junta por nombre.
+  const productos = new Map<string, Linea>();
+  for (const l of porProducto.values()) {
+    const k = l.nombre.trim().toLowerCase();
+    const acc = productos.get(k);
+    if (acc) {
+      acc.veces += l.veces;
+      acc.plata += l.plata;
+    } else productos.set(k, { ...l });
+  }
 
   // Un balde por CADA día civil de Bogotá en [desde, hasta], inclusive. Antes se
   // usaba Math.round(span/día) y se caminaba hacia atrás desde `hasta`: como el período
@@ -2449,7 +2475,7 @@ export async function getMetricas(p: Periodo = "mes", sede?: SedeId | null): Pro
     porServicio: [...porServicio.values()].sort((a, b) => b.veces - a.veces),
     // Los productos se ordenan por PLATA, no por unidades: importa cuánto deja el
     // mostrador, y una cera de $32k no compite en unidades con las gaseosas.
-    porProducto: [...porProducto.values()].sort((a, b) => b.plata - a.plata),
+    porProducto: [...productos.values()].sort((a, b) => b.plata - a.plata),
     serie: [...serie.entries()].map(([ymd, total]) => ({ ymd, total })),
     clientes: { total: refs.length, repiten },
     dias,

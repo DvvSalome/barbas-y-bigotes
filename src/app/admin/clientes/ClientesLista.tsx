@@ -42,9 +42,10 @@ function fechaCorta(iso: string | null) {
 // buscador y los filtros corren acá, sobre la lista completa, para que filtren
 // mientras se escribe: con un submit por letra el dueño abandona la búsqueda.
 // Tono del avatar, estable por nombre (decorativo, sin token propio; mismos
-// tonos que la agenda del barbero).
+// tonos que la agenda del barbero). Exportado: la ficha lo usa para que el
+// cliente tenga el mismo color en la lista y adentro.
 const TONOS = ["#a3907c", "#e8675c", "#c9b18a", "#8f7a60", "#d9a066"];
-const tono = (n: string) => TONOS[(n?.trim().length ?? 0) % TONOS.length];
+export const tono = (n: string) => TONOS[(n?.trim().length ?? 0) % TONOS.length];
 
 export function ClientesLista({
   clientes,

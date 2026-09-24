@@ -1,11 +1,24 @@
 "use client";
 
 import { Estrellas } from "@/components/ui/Estrellas";
-import { PencilIcon, StarIcon } from "@/components/icons";
-import { useEffect, useRef, useState } from "react";
+import {
+  BookIcon,
+  CalendarIcon,
+  ChevronRightIcon,
+  PencilIcon,
+  ReceiptIcon,
+  ScissorsIcon,
+  StarIcon,
+  StoreIcon,
+  TicketIcon,
+  UsersIcon,
+  WalletIcon,
+} from "@/components/icons";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { motion } from "motion/react";
 import { cop } from "@/lib/format";
+import { bogotaYmd } from "@/lib/slots";
+import { linkWhatsApp, telefonoWhatsApp } from "@/lib/whatsapp";
 import {
   agregarNotaCliente,
   editarNotaCliente,
@@ -16,8 +29,15 @@ import {
   borrarResenaCliente,
   canjearPuntos,
 } from "@/lib/actions";
-import { Kpi } from "@/components/admin/Kpi";
-import type { ClienteDetalle as Detalle } from "@/lib/data/queries";
+import { Grupo, Fila } from "@/components/ui/ListaAgrupada";
+import { Hoja } from "@/components/ui/Hoja";
+import { IconTile } from "@/components/ui/IconTile";
+import { EstadoVacio } from "@/components/ui/EstadoVacio";
+import { botonClases } from "@/components/ui/Boton";
+import { CaraBarbero, ElegirBarbero } from "@/components/staff/Elegir";
+import { MedioLogo } from "@/components/staff/MedioLogo";
+import { tono } from "@/app/admin/clientes/ClientesLista";
+import type { ClienteDetalle as Detalle, MedioPago } from "@/lib/data/queries";
 import type { Barbero } from "@/lib/data/types";
 
 const fld = "w-full rounded-lg border border-line bg-bg px-3 py-2 text-ink placeholder:text-muted focus:border-accent focus:outline-none";
@@ -27,24 +47,78 @@ const ESTADO: Record<string, string> = {
   pendiente: "Pendiente", confirmada: "Confirmada", en_curso: "En curso",
   completada: "Completada", cancelada: "Cancelada", no_show: "No llegó",
 };
+const TONO_ESTADO: Record<string, string> = {
+  pendiente: "bg-elevated text-muted",
+  confirmada: "bg-elevated text-ink",
+  en_curso: "bg-ok/10 text-ok",
+  completada: "bg-ok/10 text-ok",
+  cancelada: "bg-warn/10 text-warn",
+  no_show: "bg-warn/10 text-warn",
+};
 
-type Tab = "info" | "historial" | "reservas" | "notas" | "wallet" | "fidelidad" | "resenas" | "calificaciones";
-const TABS: { id: Tab; label: string }[] = [
-  { id: "info", label: "Información" },
-  { id: "historial", label: "Historial" },
-  { id: "reservas", label: "Reservas" },
-  { id: "notas", label: "Notas" },
-  { id: "wallet", label: "Wallet" },
-  { id: "fidelidad", label: "Fidelidad" },
-  // Ojo con los nombres: "resenas" = el staff califica AL cliente; "calificaciones" = el cliente
-  // opina de su visita. Las etiquetas visibles los distinguen; los keys internos no cambian.
-  { id: "resenas", label: "Nota del staff" },
-  { id: "calificaciones", label: "Su opinión" },
-];
+// Antes eran 8 pestañas en scroll horizontal: en un celular se veían 3 y media, y
+// lo que el dueño viene a mirar (qué pide, con quién, cada cuánto) no estaba en
+// ninguna. Ahora arriba va lo que se lee de un vistazo y cada sección es una fila
+// que abre su hoja — con el MISMO cuerpo que tenía la pestaña, sin perder nada.
+type Seccion = "historial" | "reservas" | "fidelidad" | "wallet" | "notas" | "resenas" | "calificaciones";
+const TITULO: Record<Seccion, string> = {
+  historial: "Historial",
+  reservas: "Reservas",
+  fidelidad: "Fidelidad",
+  wallet: "Wallet",
+  notas: "Bitácora",
+  // Ojo con los nombres: "resenas" = el staff califica AL cliente; "calificaciones" = el
+  // cliente opina de su visita. Los títulos los distinguen; los keys internos no cambian.
+  resenas: "Nota del staff",
+  calificaciones: "Su opinión",
+};
+
+// Todas las fechas en hora de Bogotá: el servidor de Vercel corre en UTC, y un
+// cobro de las 8 pm salía con la fecha de mañana en el primer render.
+const ZONA = "America/Bogota";
 
 function fecha(iso: string) {
-  return new Date(iso).toLocaleDateString("es-CO", { day: "numeric", month: "short", year: "2-digit" });
+  return new Date(iso).toLocaleDateString("es-CO", { timeZone: ZONA, day: "numeric", month: "short", year: "2-digit" });
 }
+
+function fechaCorta(iso: string) {
+  return new Date(iso).toLocaleDateString("es-CO", { timeZone: ZONA, day: "numeric", month: "short" });
+}
+
+/** "Corte (clásico, degradado, tijera o niño)" → "Corte": lo de adentro describe,
+ *  no distingue (igual que las tarjetas del walk-in). */
+const corto = (nombre: string) => nombre.split(" (")[0];
+
+function cuando(iso: string) {
+  const f = new Date(iso);
+  const dia = f.toLocaleDateString("es-CO", { timeZone: ZONA, weekday: "short", day: "numeric", month: "short" });
+  const hora = f.toLocaleTimeString("es-CO", { timeZone: ZONA, hour: "numeric", minute: "2-digit" });
+  return `${dia} · ${hora}`;
+}
+
+/** Días de a hasta b, dos fechas civiles YYYY-MM-DD. */
+function diasEntre(a: string, b: string) {
+  return Math.round((Date.parse(`${b}T00:00:00Z`) - Date.parse(`${a}T00:00:00Z`)) / 86_400_000);
+}
+
+function haceTexto(dias: number) {
+  if (dias <= 0) return "hoy";
+  if (dias === 1) return "ayer";
+  if (dias < 60) return `hace ${dias} días`;
+  return `hace ${Math.round(dias / 30)} meses`;
+}
+
+/** Lo que más se repite y cuántas veces. En empate gana el más reciente (la lista viene de nueva a vieja). */
+function elMasRepetido(xs: string[]): { valor: string; veces: number } | null {
+  const n = new Map<string, number>();
+  for (const x of xs) n.set(x, (n.get(x) ?? 0) + 1);
+  let top: { valor: string; veces: number } | null = null;
+  for (const [valor, veces] of n) if (!top || veces > top.veces) top = { valor, veces };
+  return top;
+}
+
+const iniciales = (n: string) =>
+  n.trim().split(/\s+/).slice(0, 2).map((p) => p.charAt(0).toUpperCase()).join("") || "?";
 
 export type TarjetaClienteView = {
   cortesTotales: number;
@@ -59,107 +133,361 @@ export function ClienteDetalle({
   detalle,
   barberos,
   tarjeta,
+  medios,
+  hoy,
 }: {
   detalle: Detalle;
   barberos: Barbero[];
   tarjeta: TarjetaClienteView;
+  medios: MedioPago[];
+  /** YYYY-MM-DD en Bogotá, calculado en el servidor. */
+  hoy: string;
 }) {
-  // Arranca en "historial": la info del cliente ya está en el encabezado.
-  const [tab, setTab] = useState<Tab>("historial");
   const d = detalle;
+  const h = d.historial;
+  const [abierta, setAbierta] = useState<Seccion | null>(null);
 
-  // Pista de scroll: en celular las pestañas desbordan con el scrollbar oculto,
-  // así que mostramos un degradado a la derecha mientras quede alguna fuera de vista.
-  const tabsRef = useRef<HTMLDivElement>(null);
-  const [hayMasTabs, setHayMasTabs] = useState(false);
-  useEffect(() => {
-    const el = tabsRef.current;
-    if (!el) return;
-    const medir = () => setHayMasTabs(el.scrollLeft + el.clientWidth < el.scrollWidth - 4);
-    medir();
-    el.addEventListener("scroll", medir, { passive: true });
-    window.addEventListener("resize", medir);
-    return () => {
-      el.removeEventListener("scroll", medir);
-      window.removeEventListener("resize", medir);
-    };
-  }, []);
+  // El medio se guarda como slug ("nequi"); acá va el nombre que se lee en el mostrador.
+  const nombreMedio = (slug: string) =>
+    medios.find((m) => m.slug === slug)?.nombre ?? (slug ? slug.charAt(0).toUpperCase() + slug.slice(1) : "—");
+
+  // Lo de siempre: con quién se corta, qué pide y con qué paga.
+  const barbero = elMasRepetido(h.filter((v) => v.barbero).map((v) => v.barbero));
+  const fotoDe = (nombre: string) => h.find((v) => v.barbero === nombre)?.barberoFoto ?? null;
+  const servicios = h.flatMap((v) => v.items.filter((i) => i.tipo === "servicio").map((i) => i.nombre));
+  const pide = elMasRepetido(servicios.length ? servicios : h.flatMap((v) => v.items.map((i) => i.nombre)));
+  const medio = elMasRepetido(h.map((v) => v.medio).filter(Boolean));
+  const deVisitas = (veces: number) =>
+    veces >= d.visitas ? (d.visitas === 1 ? "su única visita" : "todas las veces") : `${veces} de ${d.visitas} veces`;
+
+  // Cada cuánto viene: por DÍAS distintos (un corte y una cera comprada aparte el
+  // mismo día no son dos visitas).
+  const dias = [...new Set(h.map((v) => bogotaYmd(new Date(v.fecha))))].sort();
+  const cada = dias.length >= 2 ? Math.round(diasEntre(dias[0], dias[dias.length - 1]) / (dias.length - 1)) : null;
+  const ultimaDias = d.ultima ? diasEntre(bogotaYmd(new Date(d.ultima)), hoy) : null;
+
+  const proxima =
+    d.reservas
+      .filter((r) => (r.estado === "pendiente" || r.estado === "confirmada") && bogotaYmd(new Date(r.inicio)) >= hoy)
+      .sort((a, b) => a.inicio.localeCompare(b.inicio))[0] ?? null;
+
+  const tel = telefonoWhatsApp(d.telefono);
+  const wa = linkWhatsApp(d.telefono, `Hola ${d.nombre.trim().split(/\s+/)[0]}! Te escribimos de Barbas & Bigotes ✂️`);
+  const desde = new Date(d.creadoEn).toLocaleDateString("es-CO", { timeZone: ZONA, month: "short", year: "numeric" });
+  const promCalif = d.calificaciones.length
+    ? Math.round((d.calificaciones.reduce((a, c) => a + c.score, 0) / d.calificaciones.length) * 10) / 10
+    : null;
 
   return (
     <div>
-      <div className="mt-3 flex flex-wrap items-end justify-between gap-4">
+      {/* Quién es: el mismo color de avatar que en la lista. */}
+      <div className="mt-4 flex items-center gap-4">
+        <span
+          aria-hidden
+          className="grid h-14 w-14 shrink-0 place-items-center rounded-full font-display text-[22px] font-bold text-[#0c0b0a]"
+          style={{ background: tono(d.nombre) }}
+        >
+          {iniciales(d.nombre)}
+        </span>
         <div className="min-w-0">
-          <h1 className="font-display text-3xl font-semibold sm:text-4xl">{d.nombre}</h1>
-          <p className="mt-1 text-sm text-muted">
-            {d.telefono || "sin teléfono"}
-            {d.email ? ` · ${d.email}` : ""} · cliente desde {fecha(d.creadoEn)}
+          <h1 className="font-display text-[28px] font-semibold leading-tight sm:text-4xl">{d.nombre}</h1>
+          <p className="mt-0.5 text-sm text-muted">
+            {d.telefono || "Sin teléfono"} · cliente desde {desde}
           </p>
+          {d.email && <p className="truncate text-sm text-muted">{d.email}</p>}
         </div>
-        {d.ratingProm !== null && (
-          <div className="text-right">
-            <div className="text-xs uppercase tracking-wide text-muted">Nota del staff</div>
-            <div className="flex items-center gap-1.5 font-display text-2xl text-ink"><StarIcon className="h-5 w-5 fill-current text-warn" /> {d.ratingProm}</div>
+      </div>
+
+      {tel && wa && (
+        <div className="mt-4 flex gap-2">
+          <a href={wa} target="_blank" rel="noopener noreferrer" className={botonClases("secundario", "sm")}>
+            WhatsApp
+          </a>
+          <a href={`tel:+${tel}`} className={botonClases("secundario", "sm")}>
+            Llamar
+          </a>
+        </div>
+      )}
+
+      {/* Las cifras en UNA tarjeta, con línea fina entre celdas. */}
+      <div className="mt-5 grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-line bg-line sm:grid-cols-4">
+        <Cifra etiqueta="Facturado" valor={cop(d.facturado)} plata />
+        <Cifra
+          etiqueta="Visitas"
+          valor={String(d.visitas)}
+          pie={cada !== null ? `viene cada ~${cada} ${cada === 1 ? "día" : "días"}` : undefined}
+        />
+        <Cifra etiqueta="Por visita" valor={d.visitas ? cop(Math.round(d.facturado / d.visitas)) : "—"} plata />
+        <Cifra
+          etiqueta="Última"
+          valor={d.ultima ? fechaCorta(d.ultima) : "—"}
+          pie={ultimaDias !== null ? haceTexto(ultimaDias) : undefined}
+        />
+      </div>
+
+      {h.length > 0 && (
+        <section className="mt-6">
+          <p className="eyebrow mb-2">Lo de siempre</p>
+          <div className="grid grid-cols-3 gap-px overflow-hidden rounded-2xl border border-line bg-line">
+            <Siempre
+              titulo="Su barbero"
+              visual={
+                barbero ? (
+                  <CaraBarbero b={{ id: barbero.valor, nombre: barbero.valor, fotoUrl: fotoDe(barbero.valor) }} size={44} />
+                ) : (
+                  <IconTile tinte="local">
+                    <StoreIcon />
+                  </IconTile>
+                )
+              }
+              valor={barbero?.valor ?? "El local"}
+              pie={barbero ? deVisitas(barbero.veces) : "sin barbero"}
+            />
+            <Siempre
+              titulo="Lo que pide"
+              visual={
+                <IconTile tinte="marca">
+                  <ScissorsIcon />
+                </IconTile>
+              }
+              valor={pide ? corto(pide.valor) : "—"}
+              pie={pide ? `${pide.veces} ${pide.veces === 1 ? "vez" : "veces"}` : undefined}
+            />
+            <Siempre
+              titulo="Paga con"
+              visual={
+                medio ? (
+                  <MedioLogo slug={medio.valor} nombre={nombreMedio(medio.valor)} size={44} />
+                ) : (
+                  <IconTile tinte="plata">
+                    <WalletIcon />
+                  </IconTile>
+                )
+              }
+              valor={medio ? nombreMedio(medio.valor) : "—"}
+              pie={medio ? deVisitas(medio.veces) : undefined}
+            />
+          </div>
+        </section>
+      )}
+
+      <section className="mt-6">
+        <p className="eyebrow mb-2">Últimas visitas</p>
+        {h.length ? (
+          <ul className="divide-y divide-line/60 overflow-hidden rounded-2xl border border-line bg-panel">
+            {h.slice(0, 3).map((v) => (
+              <Visita key={v.id} v={v} nombreMedio={nombreMedio} hoy={hoy} />
+            ))}
+            {h.length > 3 && (
+              <li>
+                <button
+                  type="button"
+                  onClick={() => setAbierta("historial")}
+                  className="flex min-h-12 w-full items-center justify-center gap-1 text-[13.5px] font-semibold text-accent-soft transition hover:bg-elevated/60"
+                >
+                  Ver las {h.length} visitas <ChevronRightIcon className="h-4 w-4" />
+                </button>
+              </li>
+            )}
+          </ul>
+        ) : (
+          <div className="rounded-2xl border border-line bg-panel">
+            <EstadoVacio
+              icono={<ReceiptIcon />}
+              tinte="plata"
+              titulo="Todavía no tiene visitas"
+              texto="Cuando se le cobre con su nombre, aquí sale qué pidió, con quién y cuánto pagó."
+            />
           </div>
         )}
-      </div>
+      </section>
 
-      <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <Kpi size="sm" label="Facturado" value={cop(d.facturado)} />
-        <Kpi size="sm" label="Visitas" value={String(d.visitas)} accent={false} />
-        <Kpi size="sm" label="Saldo wallet" value={cop(d.walletBalance)} accent={d.walletBalance > 0} />
-        <Kpi size="sm" label="Última visita" value={d.ultima ? fecha(d.ultima) : "—"} accent={false} />
-      </div>
+      {/* En escritorio, dos columnas de alto parejo: Agenda + Notas | Fidelidad + Opiniones. */}
+      <div className="mt-6 grid gap-6 lg:grid-cols-2 lg:items-start">
+        <div className="grid gap-6">
+          <Grupo eyebrow="Agenda">
+            <Fila
+              icono={<CalendarIcon />}
+              tinte="marca"
+              titulo="Reservas"
+              subtitulo={
+                proxima
+                  ? `Próxima: ${cuando(proxima.inicio)}`
+                  : d.reservas.length
+                    ? `${d.reservas.length} ${d.reservas.length === 1 ? "reserva" : "reservas"}, ninguna pendiente`
+                    : "Nunca ha reservado"
+              }
+              onClick={() => setAbierta("reservas")}
+            />
+          </Grupo>
 
-      <div className="relative mt-8">
-        <div
-          ref={tabsRef}
-          role="tablist"
-          aria-label="Secciones del cliente"
-          className="flex gap-1 overflow-x-auto border-b border-line [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-        >
-          {TABS.map((t) => (
-            <button
-              key={t.id}
-              role="tab"
-              aria-selected={tab === t.id}
-              onClick={() => setTab(t.id)}
-              className={`relative min-h-11 shrink-0 whitespace-nowrap px-4 py-2.5 text-sm transition ${
-                tab === t.id ? "text-ink" : "text-muted hover:text-ink"
-              }`}
-            >
-              {t.label}
-              {t.id === "notas" && d.notas.length ? ` (${d.notas.length})` : ""}
-              {t.id === "resenas" && d.resenas.length ? ` (${d.resenas.length})` : ""}
-              {t.id === "calificaciones" && d.calificaciones.length ? ` (${d.calificaciones.length})` : ""}
-              {tab === t.id && (
-                <motion.span
-                  layoutId="cliente-tab-underline"
-                  className="absolute inset-x-2 -bottom-px h-[2px] rounded-full bg-accent"
-                  transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
-                />
-              )}
-            </button>
-          ))}
+          <Grupo eyebrow="Notas">
+            <NotaFicha clienteRef={d.id} nota={d.notasFicha} />
+            <Fila
+              icono={<BookIcon />}
+              titulo="Bitácora"
+              subtitulo={
+                d.notas.length
+                  ? `${d.notas.length} ${d.notas.length === 1 ? "nota" : "notas"} · la última del ${fecha(d.notas[0].fecha)}`
+                  : "Notas con fecha: qué se habló, qué pidió"
+              }
+              onClick={() => setAbierta("notas")}
+            />
+          </Grupo>
         </div>
-        {hayMasTabs && (
-          <span
-            aria-hidden
-            className="pointer-events-none absolute inset-y-0 right-0 w-12 bg-gradient-to-l from-bg to-transparent"
-          />
-        )}
+
+        <div className="grid gap-6">
+          <Grupo eyebrow="Fidelidad">
+            <Fila
+              icono={<TicketIcon />}
+              tinte="marca"
+              titulo="Tarjeta de cortes"
+              subtitulo={`${tarjeta.sellos} de ${tarjeta.tamano} sellos · ${d.puntosBalance} pts`}
+              onClick={() => setAbierta("fidelidad")}
+            />
+            <Fila
+              icono={<WalletIcon />}
+              tinte="plata"
+              titulo="Wallet"
+              subtitulo={
+                d.wallet.length
+                  ? `${d.wallet.length} ${d.wallet.length === 1 ? "movimiento" : "movimientos"}`
+                  : "Saldo que el cliente deja a favor"
+              }
+              valor={cop(d.walletBalance)}
+              onClick={() => setAbierta("wallet")}
+            />
+          </Grupo>
+
+          <Grupo eyebrow="Opiniones">
+            <Fila
+              icono={<UsersIcon />}
+              tinte="equipo"
+              titulo="Nota del staff"
+              subtitulo={
+                d.ratingProm !== null
+                  ? `${d.ratingProm} de 5 · ${d.resenas.length} ${d.resenas.length === 1 ? "nota" : "notas"}`
+                  : "Cómo es de cliente: puntualidad, trato"
+              }
+              onClick={() => setAbierta("resenas")}
+            />
+            <Fila
+              icono={<StarIcon />}
+              tinte="marca"
+              titulo="Su opinión"
+              subtitulo={
+                promCalif !== null
+                  ? `${promCalif} de 5 · ${d.calificaciones.length} ${d.calificaciones.length === 1 ? "visita calificada" : "visitas calificadas"}`
+                  : "Todavía no califica sus visitas"
+              }
+              onClick={() => setAbierta("calificaciones")}
+            />
+          </Grupo>
+        </div>
       </div>
 
-      <div className="mt-6">
-        {tab === "info" && <InfoTab d={d} />}
-        {tab === "historial" && <HistorialTab d={d} />}
-        {tab === "reservas" && <ReservasTab d={d} />}
-        {tab === "notas" && <NotasTab d={d} />}
-        {tab === "wallet" && <WalletTab d={d} />}
-        {tab === "fidelidad" && <FidelidadTab d={d} tarjeta={tarjeta} />}
-        {tab === "resenas" && <ResenasTab d={d} barberos={barberos} />}
-        {tab === "calificaciones" && <CalificacionesTab d={d} />}
-      </div>
+      {abierta && (
+        <Hoja titulo={TITULO[abierta]} onCerrar={() => setAbierta(null)}>
+          <div className="pb-4">
+            {abierta === "historial" && <HistorialTab d={d} nombreMedio={nombreMedio} hoy={hoy} />}
+            {abierta === "reservas" && <ReservasTab d={d} />}
+            {abierta === "fidelidad" && <FidelidadTab d={d} tarjeta={tarjeta} />}
+            {abierta === "wallet" && <WalletTab d={d} />}
+            {abierta === "notas" && <NotasTab d={d} />}
+            {abierta === "resenas" && <ResenasTab d={d} barberos={barberos} />}
+            {abierta === "calificaciones" && <CalificacionesTab d={d} />}
+          </div>
+        </Hoja>
+      )}
     </div>
+  );
+}
+
+function Cifra({ etiqueta, valor, pie, plata }: { etiqueta: string; valor: string; pie?: string; plata?: boolean }) {
+  return (
+    <div className="min-w-0 bg-panel px-4 py-3">
+      <div className="eyebrow">{etiqueta}</div>
+      <div className={`mt-1 font-display text-2xl font-semibold tabular-nums leading-tight text-ink ${plata ? "bb-monto" : ""}`}>
+        {valor}
+      </div>
+      {pie && <div className="mt-0.5 text-[12px] text-muted">{pie}</div>}
+    </div>
+  );
+}
+
+function Siempre({ titulo, visual, valor, pie }: { titulo: string; visual: React.ReactNode; valor: string; pie?: string }) {
+  return (
+    <div className="flex min-w-0 flex-col items-center gap-1 bg-panel px-2 py-4 text-center">
+      {visual}
+      <span className="eyebrow mt-1.5">{titulo}</span>
+      <span className="line-clamp-2 text-[14px] font-semibold leading-snug text-ink">{valor}</span>
+      {pie && <span className="text-[12px] text-muted">{pie}</span>}
+    </div>
+  );
+}
+
+/** Una visita: el día en un cuadro, lo que se llevó (servicios rellenos, productos
+ *  con borde), la cara de quién lo atendió y el logo de con qué pagó. */
+function Visita({
+  v,
+  nombreMedio,
+  hoy,
+}: {
+  v: Detalle["historial"][number];
+  nombreMedio: (slug: string) => string;
+  hoy: string;
+}) {
+  const f = new Date(v.fecha);
+  const dia = f.toLocaleDateString("es-CO", { timeZone: ZONA, day: "numeric" });
+  const mes = f.toLocaleDateString("es-CO", { timeZone: ZONA, month: "short" }).replace(".", "");
+  const anio = bogotaYmd(f).slice(0, 4);
+  const items = [...v.items].sort((a, b) => Number(b.tipo === "servicio") - Number(a.tipo === "servicio"));
+  return (
+    <li className="flex items-start gap-3 px-4 py-3.5">
+      <span className="flex h-12 w-12 shrink-0 flex-col items-center justify-center rounded-xl bg-elevated leading-none">
+        <span className="font-display text-[20px] font-bold text-ink">{dia}</span>
+        <span className="mt-1 text-[12px] font-semibold uppercase text-muted">
+          {mes}
+          {anio !== hoy.slice(0, 4) ? ` ${anio.slice(2)}` : ""}
+        </span>
+      </span>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-start justify-between gap-3">
+          <ul className="flex min-w-0 flex-wrap gap-1.5">
+            {items.length ? (
+              items.map((i, k) => (
+                <li
+                  key={k}
+                  className={`rounded-full px-2.5 py-1 text-[12.5px] font-semibold leading-tight ${
+                    i.tipo === "servicio" ? "bg-accent/12 text-ink" : "border border-line text-muted"
+                  }`}
+                >
+                  {corto(i.nombre)}
+                  {i.cantidad > 1 ? ` ×${i.cantidad}` : ""}
+                </li>
+              ))
+            ) : (
+              <li className="text-[13px] text-muted">Sin detalle</li>
+            )}
+          </ul>
+          <span className="bb-monto shrink-0 font-display text-[17px] font-bold tabular-nums text-ink">{cop(v.total)}</span>
+        </div>
+        <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[13px] text-muted">
+          {v.barbero && (
+            <span className="inline-flex items-center gap-1.5">
+              <CaraBarbero b={{ id: v.barbero, nombre: v.barbero, fotoUrl: v.barberoFoto }} size={22} />
+              {v.barbero}
+            </span>
+          )}
+          {v.medio && (
+            <span className="inline-flex items-center gap-1.5">
+              <MedioLogo slug={v.medio} nombre={nombreMedio(v.medio)} size={22} />
+              {nombreMedio(v.medio)}
+            </span>
+          )}
+        </div>
+      </div>
+    </li>
   );
 }
 
@@ -167,20 +495,8 @@ function Empty({ children }: { children: React.ReactNode }) {
   return <p className="rounded-xl border border-line bg-panel px-4 py-6 text-center text-sm text-muted">{children}</p>;
 }
 
-function InfoTab({ d }: { d: Detalle }) {
-  return (
-    <div className="space-y-3 rounded-2xl border border-line bg-panel p-5 text-sm">
-      <Row k="Nombre" v={d.nombre} />
-      <Row k="Teléfono" v={d.telefono || "—"} />
-      <Row k="Correo" v={d.email || "—"} />
-      <Row k="Cliente desde" v={fecha(d.creadoEn)} />
-      <NotaFicha clienteRef={d.id} nota={d.notasFicha} />
-    </div>
-  );
-}
-
 /** Nota FIJA de la ficha (clientes.notas): editable donde se lee. Distinta de la
- *  pestaña Notas (bitácora con fecha); acá va lo permanente (alergias, gustos). */
+ *  Bitácora (notas con fecha); acá va lo permanente (alergias, gustos). */
 function NotaFicha({ clienteRef, nota }: { clienteRef: string; nota: string | null }) {
   const router = useRouter();
   const [editando, setEditando] = useState(false);
@@ -201,35 +517,43 @@ function NotaFicha({ clienteRef, nota }: { clienteRef: string; nota: string | nu
 
   if (!editando) {
     return (
-      <div className="flex items-start justify-between gap-4">
-        <span className="shrink-0 text-muted">Nota de ficha</span>
-        <button
-          type="button"
-          onClick={() => {
-            setTexto(nota ?? "");
-            setErr(null);
-            setEditando(true);
-          }}
-          className="min-w-0 text-right text-ink transition hover:text-accent-soft"
-          title="Lo permanente del cliente (alergias, gustos); las notas con fecha van en la pestaña Notas"
-        >
+      <button
+        type="button"
+        onClick={() => {
+          setTexto(nota ?? "");
+          setErr(null);
+          setEditando(true);
+        }}
+        className="flex min-h-[72px] w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-elevated/60"
+      >
+        <IconTile>
+          <PencilIcon />
+        </IconTile>
+        <span className="min-w-0 flex-1">
+          <span className="block text-[15px] font-semibold text-ink">Nota de la ficha</span>
           {nota ? (
-            <>
-              {nota} <PencilIcon className="h-3.5 w-3.5 shrink-0 text-muted" />
-            </>
+            <span className="mt-0.5 block whitespace-pre-line text-[13px] text-ink/85">{nota}</span>
           ) : (
-            <span className="text-accent-soft">+ Agregar (alergias, gustos…)</span>
+            <span className="mt-0.5 block text-[13px] text-accent-soft">+ Agregar alergias, gustos, cómo le gusta el corte</span>
           )}
-        </button>
-      </div>
+        </span>
+      </button>
     );
   }
 
   return (
-    <div className="space-y-2">
-      <span className="text-muted">Nota de ficha</span>
-      <textarea value={texto} onChange={(e) => setTexto(e.target.value)} rows={2} maxLength={500} autoFocus className={fld} />
-      <p className="text-[12px] text-muted">Lo permanente (alergias, gustos). Las notas del día a día van en la pestaña Notas.</p>
+    <div className="space-y-2 px-4 py-3">
+      <p className="text-[15px] font-semibold text-ink">Nota de la ficha</p>
+      <textarea
+        value={texto}
+        onChange={(e) => setTexto(e.target.value)}
+        rows={2}
+        maxLength={500}
+        autoFocus
+        aria-label="Nota de la ficha"
+        className={fld}
+      />
+      <p className="text-[12px] text-muted">Lo permanente (alergias, gustos). Lo del día a día va en la Bitácora.</p>
       {err && <p className="text-[12px] text-accent-soft">{err}</p>}
       <div className="flex gap-1.5">
         <button type="button" onClick={guardar} disabled={busy} className={btn}>
@@ -250,46 +574,48 @@ function NotaFicha({ clienteRef, nota }: { clienteRef: string; nota: string | nu
   );
 }
 
-function Row({ k, v }: { k: string; v: string }) {
-  return (
-    <div className="flex justify-between gap-4 border-b border-line/50 pb-2 last:border-0">
-      <span className="text-muted">{k}</span>
-      <span className="text-right text-ink">{v}</span>
-    </div>
-  );
-}
-
-function HistorialTab({ d }: { d: Detalle }) {
+function HistorialTab({
+  d,
+  nombreMedio,
+  hoy,
+}: {
+  d: Detalle;
+  nombreMedio: (slug: string) => string;
+  hoy: string;
+}) {
   if (!d.historial.length) return <Empty>Sin visitas registradas todavía.</Empty>;
   return (
-    <div className="space-y-2">
-      {d.historial.map((h) => (
-        <div key={h.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-line bg-panel px-4 py-3 text-sm">
-          <div className="min-w-0">
-            <div>{h.items.join(", ") || "Servicio"}</div>
-            <div className="text-xs text-muted">{fecha(h.fecha)} · {h.barbero || "—"} · {h.medio}</div>
-          </div>
-          <span className="shrink-0 tabular-nums text-ink">{cop(h.total)}</span>
-        </div>
+    <ul className="divide-y divide-line/60 overflow-hidden rounded-2xl border border-line bg-panel">
+      {d.historial.map((v) => (
+        <Visita key={v.id} v={v} nombreMedio={nombreMedio} hoy={hoy} />
       ))}
-    </div>
+    </ul>
   );
 }
 
 function ReservasTab({ d }: { d: Detalle }) {
   if (!d.reservas.length) return <Empty>Sin reservas registradas.</Empty>;
   return (
-    <div className="space-y-2">
+    <ul className="divide-y divide-line/60 overflow-hidden rounded-2xl border border-line bg-panel">
       {d.reservas.map((r) => (
-        <div key={r.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-line bg-panel px-4 py-3 text-sm">
-          <div className="min-w-0">
-            <div>{r.servicio} · {r.barbero}</div>
-            <div className="text-xs text-muted">{new Date(r.inicio).toLocaleString("es-CO", { dateStyle: "medium", timeStyle: "short" })}</div>
+        <li key={r.id} className="flex items-center gap-3 px-4 py-3 text-sm">
+          <CaraBarbero b={{ id: r.barbero, nombre: r.barbero, fotoUrl: r.barberoFoto }} size={36} />
+          <div className="min-w-0 flex-1">
+            <div className="truncate font-semibold text-ink">{r.servicio}</div>
+            <div className="text-[13px] text-muted">
+              {cuando(r.inicio)} · {r.barbero}
+            </div>
           </div>
-          <span className="shrink-0 text-xs uppercase tracking-wide text-muted">{ESTADO[r.estado] ?? r.estado}</span>
-        </div>
+          <span
+            className={`shrink-0 rounded-full px-2.5 py-1 text-[12px] font-bold uppercase tracking-wide ${
+              TONO_ESTADO[r.estado] ?? "bg-elevated text-muted"
+            }`}
+          >
+            {ESTADO[r.estado] ?? r.estado}
+          </span>
+        </li>
       ))}
-    </div>
+    </ul>
   );
 }
 
@@ -369,7 +695,7 @@ function WalletTab({ d }: { d: Detalle }) {
     <div>
       <div className="mb-5 rounded-2xl border border-line bg-panel p-5">
         <div className="text-xs uppercase tracking-wide text-muted">Saldo a favor</div>
-        <div className="font-display text-3xl tabular-nums text-ink">{cop(d.walletBalance)}</div>
+        <div className="bb-monto font-display text-3xl tabular-nums text-ink">{cop(d.walletBalance)}</div>
         <p className="mt-1 text-xs text-muted">Registro manual. No es un cobro: refleja el saldo que el cliente dejó a favor.</p>
 
         <form onSubmit={add} className="mt-4 space-y-2">
@@ -381,7 +707,7 @@ function WalletTab({ d }: { d: Detalle }) {
                 type="button"
                 key={t}
                 onClick={() => setTipo(t)}
-                className={`rounded-lg border px-3 py-1.5 text-xs transition ${tipo === t ? "border-accent bg-accent/10 text-ink" : "border-line text-muted"}`}
+                className={`min-h-11 rounded-lg border px-3 text-xs transition ${tipo === t ? "border-accent bg-accent/10 text-ink" : "border-line text-muted"}`}
               >
                 {t === "recarga" ? "Recarga (+)" : "Consumo (−)"}
               </button>
@@ -404,7 +730,7 @@ function WalletTab({ d }: { d: Detalle }) {
                 {w.nota ? <span className="text-muted"> · {w.nota}</span> : null}
                 <div className="text-xs text-muted">{fecha(w.fecha)}</div>
               </div>
-              <span className={`shrink-0 ${w.tipo === "recarga" ? "text-ok" : "text-warn"}`}>
+              <span className={`bb-monto shrink-0 ${w.tipo === "recarga" ? "text-ok" : "text-warn"}`}>
                 {w.tipo === "recarga" ? "+" : "−"}{cop(w.monto)}
               </span>
             </div>
@@ -457,7 +783,13 @@ function FidelidadTab({ d, tarjeta }: { d: Detalle; tarjeta: TarjetaClienteView 
             )}
           </span>
         </div>
-        <p className="mt-1 text-xs text-muted">
+        {/* Los sellos como en la tarjeta de papel: lleno el que ya tiene. */}
+        <div aria-hidden className="mt-3 flex flex-wrap gap-1.5">
+          {Array.from({ length: tarjeta.tamano }, (_, i) => (
+            <span key={i} className={`h-3.5 w-3.5 rounded-full ${i < tarjeta.sellos ? "bg-accent" : "bg-line"}`} />
+          ))}
+        </div>
+        <p className="mt-3 text-xs text-muted">
           {/* La regla ya no se escribe acá: la pone el dueño en Marketing → Tarjeta,
               y repetirla a mano garantizaba que un día dijera algo distinto. */}
           {tarjeta.cortesTotales} corte{tarjeta.cortesTotales === 1 ? "" : "s"} en total. Los premios se
@@ -468,7 +800,7 @@ function FidelidadTab({ d, tarjeta }: { d: Detalle; tarjeta: TarjetaClienteView 
       <div className="mb-5 rounded-2xl border border-line bg-panel p-5">
         <div className="text-xs uppercase tracking-wide text-muted">Puntos de fidelidad</div>
         <div className="font-display text-3xl text-accent-soft">{d.puntosBalance} pts</div>
-        <p className="mt-1 text-xs text-muted">Se ganan automáticamente al cobrar (1 punto por cada $1.000). Canjealos por el premio que defina el negocio.</p>
+        <p className="mt-1 text-xs text-muted">Se ganan automáticamente al cobrar (1 punto por cada $1.000). Canjéalos por el premio que defina el negocio.</p>
 
         <form onSubmit={canjear} className="mt-4 space-y-2">
           {err && <div className="rounded-lg border border-accent/40 bg-accent/10 px-3 py-2 text-sm text-accent-soft">{err}</div>}
@@ -501,8 +833,8 @@ function FidelidadTab({ d, tarjeta }: { d: Detalle; tarjeta: TarjetaClienteView 
   );
 }
 
-// Postventa: lo que EL CLIENTE opinó del servicio (pestaña "Su opinión", al revés
-// de "Nota del staff", donde el staff califica al cliente). Solo lectura — se crea desde /cuenta.
+// Postventa: lo que EL CLIENTE opinó del servicio ("Su opinión", al revés de
+// "Nota del staff", donde el staff califica al cliente). Solo lectura — se crea desde /cuenta.
 function CalificacionesTab({ d }: { d: Detalle }) {
   if (!d.calificaciones.length) return <Empty>Este cliente todavía no calificó ninguna visita.</Empty>;
   return (
@@ -566,12 +898,15 @@ function ResenasTab({ d, barberos }: { d: Detalle; barberos: Barbero[] }) {
             </button>
           ))}
         </div>
-        <select value={barberoId} onChange={(e) => setBarberoId(e.target.value)} className={fld}>
-          <option value="">Barbero que atendió (opcional)…</option>
-          {barberos.map((b) => (
-            <option key={b.id} value={b.id}>{b.nombre}</option>
-          ))}
-        </select>
+        {/* Con la cara de cada uno, como en el resto del staff. */}
+        <ElegirBarbero
+          barberos={barberos}
+          value={barberoId}
+          onChange={setBarberoId}
+          placeholder="Barbero que atendió (opcional)"
+          permitirVacio
+          etiquetaVacio="Ninguno en particular"
+        />
         <input value={nota} onChange={(e) => setNota(e.target.value)} placeholder="Comentario (puntualidad, trato…)" className={fld} />
         <button disabled={busy} className={btn}>{busy ? "Guardando…" : "Guardar reseña"}</button>
       </form>
