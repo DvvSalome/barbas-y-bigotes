@@ -4,15 +4,35 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { registrarGasto, registrarAdelanto } from "@/lib/actions";
 import { sanearCop } from "@/lib/admin-reglas";
-import { chipFiltroClases } from "@/components/ui/Chip";
 import { Campo, CampoSelect } from "@/components/ui/Campo";
 import { Hoja, PieHoja, primarioDeHoja } from "@/components/ui/Hoja";
 import { Grupo, Fila } from "@/components/ui/ListaAgrupada";
 import { Segmentado } from "@/components/ui/Segmentado";
 import { ElegirBarbero } from "@/components/staff/Elegir";
+import { MedioLogo } from "@/components/staff/MedioLogo";
 import { CheckoutForm } from "@/components/barbero/AgendaList";
 import { MediosPago } from "@/components/admin/MediosPago";
-import { TagIcon, PercentIcon, CashIcon, WalletIcon } from "@/components/icons";
+import {
+  TagIcon,
+  PercentIcon,
+  CashIcon,
+  WalletIcon,
+  PlusIcon,
+  BoxIcon,
+  DropIcon,
+  KeyIcon,
+  BoltIcon,
+  WifiIcon,
+  LandmarkIcon,
+  BuildingIcon,
+  MegaphoneIcon,
+  RepeatIcon,
+  ReceiptIcon,
+  PaperIcon,
+  CupIcon,
+  WrenchIcon,
+  SprayIcon,
+} from "@/components/icons";
 import { cop } from "@/lib/format";
 import type { Sede, Barbero } from "@/lib/data/types";
 import type { MedioPago } from "@/lib/data/queries";
@@ -55,6 +75,26 @@ const CATS_CUENTA = [
   "Publicidad",
   "Suscripciones",
 ];
+
+// El icono de cada categoría: se reconoce antes de leer. Monocromos a propósito
+// (el color en este panel significa algo: rojo es acción, ámbar es aviso), y el
+// elegido se INVIERTE, el mismo gesto que los chips y el segmentado de la casa.
+const ICONO_CAT: Record<string, (p: { className?: string }) => React.ReactElement> = {
+  Insumos: BoxIcon,
+  Aseo: SprayIcon,
+  Papelería: PaperIcon,
+  Servicios: ReceiptIcon,
+  Comida: CupIcon,
+  Arreglos: WrenchIcon,
+  Arriendo: KeyIcon,
+  Luz: BoltIcon,
+  Agua: DropIcon,
+  "Internet y teléfono": WifiIcon,
+  Impuestos: LandmarkIcon,
+  Administración: BuildingIcon,
+  Publicidad: MegaphoneIcon,
+  Suscripciones: RepeatIcon,
+};
 
 type PropsCobro = Omit<React.ComponentProps<typeof CheckoutForm>, "reserva" | "onDone" | "elegirBarbero">;
 
@@ -131,23 +171,86 @@ export function CuadreForms({
   );
 }
 
-/** Chips de una sola elección (categoría del gasto, medio de pago). */
-function Chips({
+/**
+ * Las categorías como mosaico de iconos: tres por fila en el celular, cada una
+ * de 78 px de alto. Con chips de texto había que LEER ocho palabras para dar con
+ * "Luz"; con iconos el ojo va directo al rayo. La última es "Otra", que abre el
+ * campo de texto — antes el campo estaba siempre a la vista, repitiendo lo que
+ * uno acababa de tocar.
+ */
+function Mosaico({
   opciones,
+  valor,
+  otra,
+  onElegir,
+  onOtra,
+}: {
+  opciones: string[];
+  valor: string;
+  otra: boolean;
+  onElegir: (c: string) => void;
+  onOtra: () => void;
+}) {
+  const tile = (activo: boolean) =>
+    `flex min-h-[78px] flex-col items-center justify-center gap-1.5 rounded-2xl border px-1.5 py-2 text-center transition ${
+      activo ? "border-ink/70 bg-elevated text-ink" : "border-line text-muted hover:border-ink/30 hover:text-ink"
+    }`;
+  const circulo = (activo: boolean) =>
+    `grid h-9 w-9 place-items-center rounded-full transition ${activo ? "bg-ink text-bg" : "bg-elevated text-ink"}`;
+  return (
+    <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+      {opciones.map((c) => {
+        const Icono = ICONO_CAT[c] ?? TagIcon;
+        const activo = !otra && valor === c;
+        return (
+          <button key={c} type="button" aria-pressed={activo} onClick={() => onElegir(c)} className={tile(activo)}>
+            <span className={circulo(activo)}>
+              <Icono className="h-[18px] w-[18px]" />
+            </span>
+            <span className="text-[12.5px] font-semibold leading-tight">{c}</span>
+          </button>
+        );
+      })}
+      <button type="button" aria-pressed={otra} onClick={onOtra} className={tile(otra)}>
+        <span className={circulo(otra)}>
+          <PlusIcon className="h-[18px] w-[18px]" />
+        </span>
+        <span className="text-[12.5px] font-semibold leading-tight">Otra</span>
+      </button>
+    </div>
+  );
+}
+
+/** El medio de pago con su logo (el mismo MedioLogo del cobro): Nequi se
+ *  reconoce por su morado antes de leer la palabra. */
+function Medios({
+  medios,
   valor,
   onElegir,
 }: {
-  opciones: { k: string; t: string }[];
+  medios: { slug: string; nombre: string }[];
   valor: string;
-  onElegir: (k: string) => void;
+  onElegir: (slug: string) => void;
 }) {
   return (
-    <div className="flex flex-wrap gap-1.5">
-      {opciones.map((o) => (
-        <button key={o.k} type="button" onClick={() => onElegir(o.k)} className={chipFiltroClases(valor === o.k)}>
-          {o.t}
-        </button>
-      ))}
+    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+      {medios.map((m) => {
+        const activo = valor === m.slug;
+        return (
+          <button
+            key={m.slug}
+            type="button"
+            aria-pressed={activo}
+            onClick={() => onElegir(m.slug)}
+            className={`flex min-h-12 items-center gap-2.5 rounded-xl border px-3 text-left transition ${
+              activo ? "border-ink/70 bg-elevated text-ink" : "border-line text-muted hover:border-ink/30 hover:text-ink"
+            }`}
+          >
+            <MedioLogo slug={m.slug} nombre={m.nombre} size={28} />
+            <span className="min-w-0 truncate text-[13px] font-semibold">{m.nombre}</span>
+          </button>
+        );
+      })}
     </div>
   );
 }
@@ -164,6 +267,8 @@ function HojaGasto({
   const router = useRouter();
   const [sede, setSede] = useState(sedes[0]?.id ?? "");
   const [cat, setCat] = useState("");
+  // "Otra" abre el campo de texto; con una categoría conocida no hace falta.
+  const [otra, setOtra] = useState(false);
   const [monto, setMonto] = useState("");
   const [desc, setDesc] = useState("");
   const [medio, setMedio] = useState("efectivo");
@@ -178,6 +283,7 @@ function HojaGasto({
   function cambiarTipo(t: "dia" | "mes") {
     setTipo(t);
     setCat("");
+    setOtra(false);
     setFecha(hoy);
     // Las cuentas del mes casi nunca salen del cajón: arriendo y servicios se
     // pagan por transferencia. Arrancar en efectivo las descontaría del cuadre.
@@ -238,39 +344,59 @@ function HojaGasto({
           valor={tipo}
           onCambio={cambiarTipo}
         />
-        <CampoSelect
-          id="gasto-sede"
-          etiqueta="¿En qué sede?"
-          value={sede}
-          onChange={(e) => setSede(e.target.value as typeof sede)}
-        >
-          {sedes.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.nombre}
-            </option>
+        {/* La sede: con dos sedes son dos botones con el nombre a la vista, no
+            un desplegable que hay que abrir para ver en cuál quedó. Con más de
+            tres, vuelve el select. */}
+        {sedes.length > 1 &&
+          (sedes.length <= 3 ? (
+            <Segmentado
+              etiqueta="Sede"
+              opciones={sedes.map((x) => ({ valor: x.id, texto: x.nombre }))}
+              valor={sede}
+              onCambio={(v) => setSede(v as typeof sede)}
+            />
+          ) : (
+            <CampoSelect id="gasto-sede" etiqueta="¿En qué sede?" value={sede} onChange={(e) => setSede(e.target.value as typeof sede)}>
+              {sedes.map((x) => (
+                <option key={x.id} value={x.id}>
+                  {x.nombre}
+                </option>
+              ))}
+            </CampoSelect>
           ))}
-        </CampoSelect>
 
         <div>
           <p className="eyebrow mb-2">{tipo === "mes" ? "Qué cuenta" : "En qué se fue"}</p>
-          <Chips
-            opciones={(tipo === "mes" ? CATS_CUENTA : CATS_GASTO).map((c) => ({ k: c, t: c }))}
+          <Mosaico
+            opciones={tipo === "mes" ? CATS_CUENTA : CATS_GASTO}
             valor={cat}
-            onElegir={(c) => setCat(cat === c ? "" : c)}
+            otra={otra}
+            onElegir={(c) => {
+              setOtra(false);
+              setCat(cat === c ? "" : c);
+            }}
+            onOtra={() => {
+              setOtra(true);
+              setCat("");
+            }}
           />
-          <Campo
-            id="gasto-cat"
-            etiqueta="Otra categoría"
-            className="mt-2.5"
-            value={cat}
-            onChange={(e) => setCat(e.target.value)}
-            ayuda="Si no encaja en ninguna de arriba, escríbela."
-          />
+          {otra && (
+            <Campo
+              id="gasto-cat"
+              etiqueta="¿Qué fue?"
+              className="mt-2.5"
+              autoFocus
+              maxLength={40}
+              value={cat}
+              onChange={(e) => setCat(e.target.value)}
+              ayuda="Así queda escrito en el cuadre y en el reporte del mes."
+            />
+          )}
         </div>
 
         <Campo
           id="gasto-monto"
-          etiqueta="Monto"
+          etiqueta="¿Cuánto?"
           obligatorio
           type="number"
           inputMode="numeric"
@@ -282,8 +408,21 @@ function HojaGasto({
             if (error) setError("");
           }}
           error={error || undefined}
+          ayuda={montoOk ? `Son ${cop(sanearCop(monto) ?? 0)}` : undefined}
         />
-        <Campo id="gasto-desc" etiqueta="Descripción (opcional)" value={desc} onChange={(e) => setDesc(e.target.value)} />
+
+        {/* Con qué se pagó (0067): solo el efectivo descuenta del cajón. */}
+        {medios.length > 0 && (
+          <div>
+            <p className="eyebrow mb-2">Con qué se pagó</p>
+            <Medios medios={medios} valor={medio} onElegir={setMedio} />
+            <p className="mt-2 text-[12px] text-muted">
+              {medio === "efectivo"
+                ? "Sale del cajón: se descuenta del cuadre de hoy."
+                : "No sale del cajón: el cuadre del efectivo no cambia."}
+            </p>
+          </div>
+        )}
 
         {/* Solo en las cuentas del mes: el recibo de la luz se paga el 20 y a
             veces se anota el 2 del mes siguiente. Sin fecha caería en otro mes. */}
@@ -299,14 +438,7 @@ function HojaGasto({
           />
         )}
 
-        {/* Con qué se pagó (0067): solo el efectivo descuenta del cajón. */}
-        {medios.length > 0 && (
-          <div>
-            <p className="eyebrow mb-2">Con qué se pagó</p>
-            <Chips opciones={medios.map((m) => ({ k: m.slug, t: m.nombre }))} valor={medio} onElegir={setMedio} />
-            <p className="mt-2 text-[12px] text-muted">Del cajón solo se descuenta lo que se pagó en efectivo.</p>
-          </div>
-        )}
+        <Campo id="gasto-desc" etiqueta="Nota (opcional)" value={desc} onChange={(e) => setDesc(e.target.value)} />
       </div>
     </Hoja>
   );
@@ -403,7 +535,7 @@ function HojaAdelanto({
         {medios.length > 0 && (
           <div>
             <p className="eyebrow mb-2">Cómo se le entregó</p>
-            <Chips opciones={medios.map((m) => ({ k: m.slug, t: m.nombre }))} valor={medio} onElegir={setMedio} />
+            <Medios medios={medios} valor={medio} onElegir={setMedio} />
           </div>
         )}
       </div>
