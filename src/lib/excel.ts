@@ -248,6 +248,14 @@ export async function libroBarbas(hojas: Hoja[]): Promise<Buffer> {
       cel.value = h.nota;
       cel.font = { name: "Calibri", size: 9, italic: true, color: { argb: C.aviso } };
       cel.alignment = { wrapText: true, vertical: "top" };
+      // Excel NO agranda solo una fila de celdas combinadas: una nota de dos
+      // renglones salía cortada en el primero (se vio al imprimir el reporte del
+      // mes). Se calcula el alto: ~1,1 caracteres de 9 pt por unidad de ancho.
+      const anchoTotal = h.columnas.reduce(
+        (a, c, i) => a + (i === 0 ? Math.max(c.ancho ?? ANCHO[c.tipo ?? "texto"], 26) : (c.ancho ?? ANCHO[c.tipo ?? "texto"])),
+        0,
+      );
+      ws.getRow(r).height = Math.ceil(h.nota.length / (anchoTotal * 1.1)) * 12 + 4;
     }
 
     ws.headerFooter.oddFooter = `&L&9Barbas y Bigotes · ${h.titulo}&R&9Página &P de &N`;

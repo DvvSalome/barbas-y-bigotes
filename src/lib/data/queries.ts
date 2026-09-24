@@ -19,6 +19,7 @@ import {
   type BeneficioTarjeta,
   type ConfigTarjeta,
 } from "@/lib/tarjeta";
+import { armarReporte, mesDelReporte, type MesReporte, type Reporte } from "@/lib/reporte";
 import type { Sede, SedeId, Servicio, Barbero, Producto, Categoria, TipoContrato } from "./types";
 
 export async function getSedes(): Promise<Sede[]> {
@@ -2797,6 +2798,127 @@ export async function getLiquidacion(
   for (const fila of porBarbero.values()) fila.neto = netoLiquidacion(fila);
   // Primero el que más produjo: es el orden en que el dueño quiere leerlo.
   return [...porBarbero.values()].sort((a, b) => b.facturado - a.facturado);
+}
+
+// ---------- Reporte del mes (el Excel del dueño) ----------
+
+/**
+ * El mes como lo lleva el dueño en su Excel: consolidado día por día + inventario.
+ * La cuenta vive en `lib/reporte.ts` (probada con scripts/check-reporte.ts); acá
+ * solo se lee y se pasa cada fila a su día de Bogotá.
+ *
+ * Service role porque dos de las fuentes no las lee una sesión: el contrato de
+ * cada barbero (0049) y el costo de los productos (0077). Por eso el candado de
+ * admin va ADENTRO, además del de la página: el Excel sale de un route handler.
+ * Una lectura que falla TIRA en vez de seguir: un reporte de plata con una tabla
+ * en cero parece un mes malo, no un error.
+ */
+export async function getReporteMes(
+  mesParam: string | null,
+  sede: SedeId | null,
+): Promise<{ mes: MesReporte; reporte: Reporte } | null> {
+  const auth = await supabaseServerAuth();
+  const {
+    data: { user },
+  } = await auth.auth.getUser();
+  if (!user) return null;
+  const { data: prof } = await auth.from("profiles").select("rol").eq("auth_id", user.id).maybeSingle();
+  if ((prof as { rol?: string } | null)?.rol !== "admin") return null;
+
+  const mes = mesDelReporte(mesParam, bogotaYmd());
+  const desde = bogotaDayRangeDeFecha(mes.desdeYmd).desde;
+  const hasta = bogotaDayRangeDeFecha(mes.hastaYmd).hasta;
+  const admin = supabaseAdmin();
+
+  let ventasQ = admin
+    .from("ventas")
+    .select("barbero_id,total,creado_en,venta_items(tipo,ref_id,cantidad,precio_unitario,comision_pct)")
+    .is("anulada_en", null)
+    .gte("creado_en", desde.toISOString())
+    .lt("creado_en", hasta.toISOString());
+  let gastosQ = admin.from("gastos").select("categoria,monto,fecha").gte("fecha", mes.desdeYmd).lte("fecha", mes.hastaYmd);
+  let productosQ = admin.from("productos").select("id,nombre,sede_id,precio,stock,activo,foto_url");
+  if (sede) {
+    ventasQ = ventasQ.eq("sede_id", sede);
+    gastosQ = gastosQ.eq("sede_id", sede);
+    productosQ = productosQ.eq("sede_id", sede);
+  }
+  const [ventasRes, gastosRes, productosRes, contratosRes, costosRes] = await Promise.all([
+    ventasQ,
+    gastosQ,
+    productosQ,
+    admin.from("barberos").select("id,tipo_contrato"),
+    admin.from("producto_costo").select("producto_id,costo"),
+  ]);
+  for (const [que, res] of [
+    ["ventas", ventasRes],
+    ["gastos", gastosRes],
+    ["productos", productosRes],
+    ["contratos", contratosRes],
+    ["costos", costosRes],
+  ] as const) {
+    if (res.error) throw new Error(`Reporte del mes: no se pudieron leer los ${que} (${res.error.message})`);
+  }
+
+  const productos = (productosRes.data ?? []) as Record<string, unknown>[];
+  // El kardex desde el día 1 hasta HOY (no hasta fin de mes): con lo que se movió
+  // después se reconstruye cómo cerró un mes pasado.
+  const movRes = productos.length
+    ? await admin
+        .from("stock_movimientos")
+        .select("producto_id,cantidad,motivo,creado_en")
+        .in("producto_id", productos.map((p) => p.id as string))
+        .gte("creado_en", desde.toISOString())
+    : { data: [], error: null };
+  if (movRes.error) throw new Error(`Reporte del mes: no se pudo leer el kardex (${movRes.error.message})`);
+
+  const deArriendo = new Set(
+    ((contratosRes.data ?? []) as { id: string; tipo_contrato: string | null }[])
+      .filter((b) => b.tipo_contrato === "arriendo")
+      .map((b) => b.id),
+  );
+  const ymd = (iso: unknown) => bogotaYmd(new Date(iso as string));
+  const ventas = (ventasRes.data ?? []) as Record<string, unknown>[];
+
+  const reporte = armarReporte(mes, {
+    ventas: ventas.map((v) => ({
+      ymd: ymd(v.creado_en),
+      total: (v.total as number) ?? 0,
+      comision: comisionDeItems((v.venta_items ?? []) as ItemComision[]),
+      deArriendo: deArriendo.has(v.barbero_id as string),
+    })),
+    gastos: ((gastosRes.data ?? []) as { categoria: string | null; monto: number; fecha: string }[]).map((g) => ({
+      ymd: g.fecha,
+      categoria: g.categoria ?? "",
+      monto: g.monto ?? 0,
+    })),
+    movimientos: ((movRes.data ?? []) as { producto_id: string; cantidad: number; motivo: string; creado_en: string }[]).map(
+      (m) => ({ productoId: m.producto_id, ymd: ymd(m.creado_en), cantidad: m.cantidad, motivo: m.motivo }),
+    ),
+    vendidos: ventas.flatMap((v) =>
+      ((v.venta_items ?? []) as { tipo: string; ref_id: string | null; cantidad: number; precio_unitario: number }[])
+        .filter((i) => i.tipo === "producto" && i.ref_id)
+        .map((i) => ({
+          productoId: i.ref_id as string,
+          ymd: ymd(v.creado_en),
+          cantidad: i.cantidad ?? 1,
+          precioUnitario: i.precio_unitario ?? 0,
+        })),
+    ),
+    productos: productos.map((p) => ({
+      id: p.id as string,
+      nombre: (p.nombre as string) ?? "",
+      sedeId: p.sede_id as string,
+      precio: (p.precio as number) ?? 0,
+      stock: (p.stock as number) ?? 0,
+      activo: (p.activo as boolean) ?? true,
+      fotoUrl: (p.foto_url as string | null) ?? null,
+    })),
+    costos: Object.fromEntries(
+      ((costosRes.data ?? []) as { producto_id: string; costo: number }[]).map((c) => [c.producto_id, c.costo]),
+    ),
+  });
+  return { mes, reporte };
 }
 
 // ---------- Lo que el barbero ve de su propia plata (0074) ----------

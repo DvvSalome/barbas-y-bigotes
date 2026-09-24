@@ -12,27 +12,8 @@ import { ElegirBarbero } from "@/components/staff/Elegir";
 import { MedioLogo } from "@/components/staff/MedioLogo";
 import { CheckoutForm } from "@/components/barbero/AgendaList";
 import { MediosPago } from "@/components/admin/MediosPago";
-import {
-  TagIcon,
-  PercentIcon,
-  CashIcon,
-  WalletIcon,
-  PlusIcon,
-  BoxIcon,
-  DropIcon,
-  KeyIcon,
-  BoltIcon,
-  WifiIcon,
-  LandmarkIcon,
-  BuildingIcon,
-  MegaphoneIcon,
-  RepeatIcon,
-  ReceiptIcon,
-  PaperIcon,
-  CupIcon,
-  WrenchIcon,
-  SprayIcon,
-} from "@/components/icons";
+import { TagIcon, PercentIcon, CashIcon, WalletIcon, PlusIcon } from "@/components/icons";
+import { iconoDeGasto } from "@/components/admin/iconos-gasto";
 import { cop } from "@/lib/format";
 import type { Sede, Barbero } from "@/lib/data/types";
 import type { MedioPago } from "@/lib/data/queries";
@@ -76,25 +57,8 @@ const CATS_CUENTA = [
   "Suscripciones",
 ];
 
-// El icono de cada categoría: se reconoce antes de leer. Monocromos a propósito
-// (el color en este panel significa algo: rojo es acción, ámbar es aviso), y el
-// elegido se INVIERTE, el mismo gesto que los chips y el segmentado de la casa.
-const ICONO_CAT: Record<string, (p: { className?: string }) => React.ReactElement> = {
-  Insumos: BoxIcon,
-  Aseo: SprayIcon,
-  Papelería: PaperIcon,
-  Servicios: ReceiptIcon,
-  Comida: CupIcon,
-  Arreglos: WrenchIcon,
-  Arriendo: KeyIcon,
-  Luz: BoltIcon,
-  Agua: DropIcon,
-  "Internet y teléfono": WifiIcon,
-  Impuestos: LandmarkIcon,
-  Administración: BuildingIcon,
-  Publicidad: MegaphoneIcon,
-  Suscripciones: RepeatIcon,
-};
+// El icono de cada categoría vive en iconos-gasto.ts (lo usa también el reporte
+// del mes). El elegido se INVIERTE, el mismo gesto que los chips y el segmentado.
 
 type PropsCobro = Omit<React.ComponentProps<typeof CheckoutForm>, "reserva" | "onDone" | "elegirBarbero">;
 
@@ -200,7 +164,7 @@ function Mosaico({
   return (
     <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
       {opciones.map((c) => {
-        const Icono = ICONO_CAT[c] ?? TagIcon;
+        const Icono = iconoDeGasto(c);
         const activo = !otra && valor === c;
         return (
           <button key={c} type="button" aria-pressed={activo} onClick={() => onElegir(c)} className={tile(activo)}>

@@ -10,6 +10,7 @@ import {
   GearIcon,
   HomeIcon,
   PercentIcon,
+  ReceiptIcon,
   ScissorsIcon,
   StarIcon,
   TagIcon,
@@ -75,6 +76,7 @@ export const HOJAS: readonly {
   { href: "/admin/liquidacion", label: "Liquidación semanal", sub: "Lo que hay que pagarle al equipo", grupo: "Equipo", icono: WalletIcon, tinte: "plata" },
   { href: "/admin/horarios", label: "Horario del negocio", sub: "Horas de atención, feriados y ausencias", grupo: "El local", icono: ClockIcon, tinte: "local" },
   { href: "/admin/metricas", label: "Métricas del negocio", sub: "Ventas, clientes y tendencia", grupo: "Informes", icono: ChartIcon, tinte: "plata" },
+  { href: "/admin/reportes", label: "Reporte del mes", sub: "Como el Excel: día por día e inventario", grupo: "Informes", icono: ReceiptIcon, tinte: "plata" },
   { href: "/admin/cupones", label: "Cupones", sub: "Descuentos con código", grupo: "Marketing", icono: TicketIcon, tinte: "marca" },
   { href: "/admin/tarjeta", label: "Tarjeta de cortes", sub: "Cada cuántos cortes va uno gratis", grupo: "Marketing", icono: StarIcon, tinte: "marca" },
   { href: "/admin/avisos", label: "Avisos al cliente", sub: "Recordatorios y «te toca corte»", grupo: "Marketing", icono: BellIcon, tinte: "marca" },
@@ -112,6 +114,7 @@ const SECCIONES_CON_SEDE = [
   "/admin",
   "/admin/agenda",
   "/admin/metricas",
+  "/admin/reportes",
   "/admin/precios",
   "/admin/clientes",
   "/admin/liquidacion",
@@ -135,6 +138,12 @@ export const HERMANAS: readonly { hijos: readonly { href: string; label: string 
     hijos: [
       { href: "/admin/precios", label: "Servicios y precios" },
       { href: "/admin/inventario", label: "Productos y stock" },
+    ],
+  },
+  {
+    hijos: [
+      { href: "/admin/metricas", label: "Métricas" },
+      { href: "/admin/reportes", label: "Reporte del mes" },
     ],
   },
 ];

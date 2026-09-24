@@ -33,7 +33,8 @@ const movida = mensajeCitaMovida({
 });
 assert.ok(movida.startsWith("Hola Juan!"), "saluda por el primer nombre, no por los cuatro");
 assert.ok(movida.includes("sáb 16 de ago a las 3:30 pm") && movida.includes("Meyer"), "dice cuándo y con quién");
-assert.ok(movida.includes("respondé"), "deja la puerta abierta a que conteste");
+// Tuteo, no voseo: el barrido 15c7a45 cambió el mensaje ("responde") y este check se quedó en "respondé".
+assert.ok(movida.includes("responde"), "deja la puerta abierta a que conteste");
 
 assert.ok(
   mensajeCitaMovida({ cliente: null, cuando: "hoy", barbero: "Jhon", sede: "Plaza" }).startsWith("¡Hola!"),
