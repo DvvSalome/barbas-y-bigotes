@@ -1411,6 +1411,98 @@ export async function getDisponibilidad(input: {
 }
 
 // Walk-in registrado por el barbero (con sesión).
+/**
+ * Qué cliente es, según lo que el mostrador eligió en el selector:
+ *  - un id  → el cliente que YA existe (se buscó por nombre o teléfono);
+ *  - null con nombre y teléfono vacíos → CLIENTE DE PASO: no se crea nada.
+ *  - lo demás → se crea o se encuentra por teléfono, como siempre.
+ *
+ * El caso de paso es el que importa: `upsert_cliente` sin nombre ni teléfono
+ * crea un cliente llamado "Cliente" CADA VEZ, y para esquivarlo los barberos
+ * inventaban uno ("BARBAS Y BIGOTES" con teléfono 000000000, "INCOGNITO"…) y
+ * todos los anónimos se juntaban en un cliente falso con visitas ajenas.
+ */
+async function clienteDelMostrador(
+  sb: SupabaseClient,
+  clienteId: string | null | undefined,
+  nombre: string,
+  telefono: string,
+  fidelizar: boolean,
+): Promise<{ ok: true; ref: string | null } | { ok: false; error: string }> {
+  if (clienteId) {
+    // El id llega del navegador: se confirma que existe y que no pidió la baja.
+    const { data } = await supabaseAdmin()
+      .from("clientes")
+      .select("id")
+      .eq("id", clienteId)
+      .is("baja_en", null)
+      .maybeSingle();
+    if (!data) return { ok: false, error: "Ese cliente ya no está en la base. Búscalo otra vez." };
+    return { ok: true, ref: clienteId };
+  }
+  if (!nombre.trim() && !telefono.trim()) return { ok: true, ref: null };
+  return { ok: true, ref: await upsertClienteId(sb, nombre, telefono, "", "walkin", fidelizar) };
+}
+
+export type ClienteSugerido = {
+  id: string;
+  nombre: string;
+  /** Solo los 4 últimos dígitos: alcanzan para distinguir a dos "Juan" y el
+   *  número completo no tiene por qué estar en la pantalla del mostrador. */
+  telFinal: string | null;
+  visitas: number;
+  /** Última venta, ISO. null = nunca pagó nada (reservó y no vino, por ejemplo). */
+  ultima: string | null;
+};
+
+/**
+ * El buscador de clientes del mostrador (walk-in y cobro sin cita): lo pidió el
+ * administrador, "si escribe el nombre que salga clientes ya registrados".
+ * Por nombre o por teléfono, seis como máximo, los que más vienen primero.
+ */
+export async function buscarClientesMostrador(q: string): Promise<ClienteSugerido[]> {
+  const sb = await supabaseServerAuth();
+  if (await requireStaff(sb)) return [];
+  const texto = (q ?? "").trim().slice(0, 60);
+  if (texto.length < 2) return [];
+  const digitos = texto.replace(/\D/g, "");
+  // Coma y paréntesis rompen la sintaxis del filtro `or` de PostgREST.
+  const limpio = texto.replace(/[,()*%]/g, " ").trim();
+  const admin = supabaseAdmin();
+  const filtros = [`nombre.ilike.%${limpio}%`];
+  if (digitos.length >= 3) filtros.push(`telefono.ilike.%${digitos}%`);
+  const { data: cands } = await admin
+    .from("clientes")
+    .select("id,nombre,telefono")
+    .is("baja_en", null)
+    .or(filtros.join(","))
+    .limit(25);
+  const lista = (cands ?? []) as { id: string; nombre: string; telefono: string | null }[];
+  if (!lista.length) return [];
+  const { data: vs } = await admin
+    .from("ventas")
+    .select("cliente_ref,creado_en")
+    .in("cliente_ref", lista.map((c) => c.id))
+    .is("anulada_en", null);
+  const uso = new Map<string, { n: number; ultima: string }>();
+  for (const v of (vs ?? []) as { cliente_ref: string; creado_en: string }[]) {
+    const u = uso.get(v.cliente_ref) ?? { n: 0, ultima: "" };
+    u.n += 1;
+    if (v.creado_en > u.ultima) u.ultima = v.creado_en;
+    uso.set(v.cliente_ref, u);
+  }
+  return lista
+    .map((c) => ({
+      id: c.id,
+      nombre: c.nombre,
+      telFinal: c.telefono && c.telefono.replace(/\D/g, "").length >= 4 ? c.telefono.replace(/\D/g, "").slice(-4) : null,
+      visitas: uso.get(c.id)?.n ?? 0,
+      ultima: uso.get(c.id)?.ultima || null,
+    }))
+    .sort((a, b) => b.visitas - a.visitas || (b.ultima ?? "").localeCompare(a.ultima ?? ""))
+    .slice(0, 6);
+}
+
 export async function registrarWalkin(input: {
   sede: string;
   barberoId: string;
@@ -1418,6 +1510,8 @@ export async function registrarWalkin(input: {
   clienteNombre: string;
   telefono: string;
   fidelizar?: boolean;
+  /** Cliente que ya existe, elegido del buscador. Manda sobre nombre y teléfono. */
+  clienteId?: string | null;
 }): Promise<ActionResult> {
   const sb = await supabaseServerAuth();
   const staff = await getStaffContext();
@@ -1464,7 +1558,9 @@ export async function registrarWalkin(input: {
   if (enSilla && enSilla.length) {
     return { ok: false, error: "Ese barbero tiene un cliente en la silla ahora. Cierra esa atención antes de registrar otra." };
   }
-  const clienteRef = await upsertClienteId(sb, input.clienteNombre, input.telefono, "", "walkin", input.fidelizar ?? true);
+  const cli = await clienteDelMostrador(sb, input.clienteId, input.clienteNombre, input.telefono, input.fidelizar ?? true);
+  if (!cli.ok) return { ok: false, error: cli.error };
+  const clienteRef = cli.ref;
   const now = new Date();
   let dur = 30;
   if (input.servicioId) {
@@ -2121,7 +2217,22 @@ export async function completarReserva(input: {
     if (!(await staffPuedeOperarSede(staff, sedeEfectiva)))
       return { ok: false, error: "Esa venta es de otra sede." };
     servicioEfectivo = input.servicioId;
-    clienteEfectivo = input.clienteRef;
+    // Antes el formulario mandaba SIEMPRE null aquí y la venta rápida quedaba
+    // suelta (solo un nombre de texto): no sumaba al historial ni a la tarjeta
+    // del cliente. Ahora el mostrador puede elegirlo del buscador — y como el id
+    // llega del navegador, se confirma que exista; si no, cualquiera podría
+    // cargarle una venta (y sus puntos) a otro cliente.
+    clienteEfectivo = null;
+    if (input.clienteRef) {
+      const { data: c } = await supabaseAdmin()
+        .from("clientes")
+        .select("id")
+        .eq("id", input.clienteRef)
+        .is("baja_en", null)
+        .maybeSingle();
+      if (!c) return { ok: false, error: "Ese cliente ya no está en la base. Búscalo otra vez." };
+      clienteEfectivo = input.clienteRef;
+    }
   }
 
   // Medio de pago: validación autoritativa contra la tabla administrable

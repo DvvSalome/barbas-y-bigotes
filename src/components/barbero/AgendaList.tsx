@@ -24,12 +24,14 @@ import { ProductoThumb } from "@/components/staff/ProductoThumb";
 import { MedioLogo } from "@/components/staff/MedioLogo";
 import { Recepcion } from "@/components/barbero/Recepcion";
 import { AgendarCitaForm } from "@/components/barbero/AgendarCitaForm";
-import { ElegirBarbero, ElegirServicio } from "@/components/staff/Elegir";
+import { ElegirBarbero, ElegirServicio, ElegirCliente, type ClienteElegido } from "@/components/staff/Elegir";
+import { Switch } from "@/components/admin/Switch";
+import { Segmentado } from "@/components/ui/Segmentado";
 import type { Sede, SedeId, Barbero, Servicio, Producto } from "@/lib/data/types";
 import type { AgendaItem, MedioPago, PrecioServicioStaff, HorarioSemanal, DiaEspecial } from "@/lib/data/queries";
 import { Hoja as HojaInferior } from "@/components/ui/Hoja";
 import { NavInferior } from "@/components/staff/NavInferior";
-import { CashIcon, PlusIcon, CalendarIcon, ClockIcon, UsersIcon, WalletIcon } from "@/components/icons";
+import { CashIcon, PlusIcon, CalendarIcon, ClockIcon, UsersIcon, WalletIcon, SearchIcon, ChevronDownIcon } from "@/components/icons";
 
 const fld = "w-full rounded-lg border border-line bg-bg px-3 py-2 text-ink focus:border-accent focus:outline-none";
 
@@ -651,8 +653,8 @@ function WalkinForm({
   // venta y la comisión a la sede equivocada.
   const [sede, setSede] = useState(sedeFija ?? sedes[0]?.id ?? "");
   const [barberoId, setBarberoId] = useState(barberoInicial ?? "");
-  const [nombre, setNombre] = useState("");
-  const [tel, setTel] = useState("");
+  // El cliente sale del selector: uno que ya existe, uno nuevo, o de paso.
+  const [cliente, setCliente] = useState<ClienteElegido>({ tipo: "nuevo", nombre: "", telefono: "" });
   const [servicioId, setServicioId] = useState("");
   const [fidelizar, setFidelizar] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -669,16 +671,24 @@ function WalkinForm({
     }
     setErr(null);
     setSaving(true);
-    const res = await registrarWalkin({ sede, barberoId, servicioId, clienteNombre: nombre, telefono: tel, fidelizar });
+    const nombreCli = cliente.tipo === "paso" ? "" : cliente.nombre.trim();
+    const res = await registrarWalkin({
+      sede,
+      barberoId,
+      servicioId,
+      clienteNombre: nombreCli,
+      telefono: cliente.tipo === "nuevo" ? cliente.telefono : "",
+      clienteId: cliente.tipo === "existente" ? cliente.id : null,
+      fidelizar,
+    });
     setSaving(false);
     if (res.ok) {
       if (res.encolado) {
         const hasta = res.esperaHasta ? ` (~${hora(res.esperaHasta)})` : "";
         // El aviso vive en el padre (sobrevive a este reseteo) y la hoja queda
         // abierta: se limpia el form para anotar al siguiente cliente.
-        onEncolado(`El barbero está ocupado. ${nombre.trim() || "El cliente"} quedó en la lista de espera${hasta}.`);
-        setNombre("");
-        setTel("");
+        onEncolado(`El barbero está ocupado. ${nombreCli || "El cliente"} quedó en la lista de espera${hasta}.`);
+        setCliente({ tipo: "nuevo", nombre: "", telefono: "" });
         setServicioId("");
         setBarberoId("");
         return;
@@ -690,7 +700,8 @@ function WalkinForm({
   }
 
   return (
-    <form onSubmit={submit} className="grid gap-3 rounded-2xl border border-line bg-panel p-5 sm:grid-cols-2">
+    // Sin marco propio: vive en la hoja "Cliente sin reserva", que ya es la tarjeta.
+    <form onSubmit={submit} className="grid gap-3 pb-2 sm:grid-cols-2">
       {sedeFija ? (
         // El barbero opera SU sede: elegirla en cada walk-in es un paso de más
         // y una oportunidad de mandar la venta al local equivocado.
@@ -714,12 +725,13 @@ function WalkinForm({
         onChange={setBarberoId}
         placeholder="¿Quién lo atiende?"
       />
-      <input value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Nombre del cliente" className={fld} />
-      <input value={tel} onChange={(e) => setTel(e.target.value)} placeholder="Teléfono" inputMode="tel" className={fld} />
+      <div className="sm:col-span-2">
+        <ElegirCliente valor={cliente} onCambio={setCliente} />
+      </div>
       {/* Lo que más se vende, a un toque y con el precio de ESTA sede. Antes
           "Corte" era la opción 41 de 47: varios barridos de rueda con el
           cliente parado enfrente, varias veces al día. */}
-      <div className="flex flex-wrap gap-2 sm:col-span-2">
+      <div className="grid grid-cols-2 gap-2 sm:col-span-2">
         {FRECUENTES.map((id) => {
           const sv = servicios.find((x) => x.id === id);
           if (!sv) return null;
@@ -729,13 +741,18 @@ function WalkinForm({
             <button
               key={id}
               type="button"
+              aria-pressed={activo}
               onClick={() => setServicioId(activo ? "" : id)}
-              className={`min-h-11 rounded-xl border px-3 text-[13px] font-semibold transition ${
-                activo ? "border-accent bg-accent/15 text-ink" : "border-line text-muted hover:text-ink"
+              className={`flex min-h-[60px] flex-col items-start justify-center rounded-xl border px-3.5 py-2 text-left transition ${
+                activo ? "border-accent bg-accent/15" : "border-line hover:border-ink/25"
               }`}
             >
-              {sv.nombre.split(" (")[0]}
-              {precio != null && <span className="ml-1.5 tabular-nums text-muted">{cop(precio)}</span>}
+              <span className="text-[13.5px] font-semibold leading-tight text-ink">{sv.nombre.split(" (")[0]}</span>
+              {precio != null && (
+                <span className={`mt-0.5 text-[12.5px] font-semibold tabular-nums ${activo ? "text-accent-soft" : "text-muted"}`}>
+                  {cop(precio)}
+                </span>
+              )}
             </button>
           );
         })}
@@ -754,10 +771,15 @@ function WalkinForm({
           placeholder="Buscar servicio…"
         />
       </div>
-      <label className="flex items-center gap-2 text-sm text-muted sm:col-span-2">
-        <input type="checkbox" checked={fidelizar} onChange={(e) => setFidelizar(e.target.checked)} className="accent-accent" />
-        Inscribir en fidelización (gana puntos por la visita)
-      </label>
+      {cliente.tipo === "nuevo" && cliente.nombre.trim().length >= 2 && (
+        <div className="flex items-center justify-between gap-3 sm:col-span-2">
+          <span className="min-w-0 text-[13px] text-ink">
+            Inscribir en la tarjeta de cortes
+            <span className="block text-[12px] text-muted">Gana su sello por esta visita</span>
+          </span>
+          <Switch checked={fidelizar} onChange={setFidelizar} label="Inscribir al cliente en la tarjeta de cortes" />
+        </div>
+      )}
       {avisoEspera && (
         <div className="rounded-lg border border-ok/40 bg-ok/10 px-3 py-2 text-sm text-ok sm:col-span-2">
           {avisoEspera}
@@ -918,7 +940,11 @@ export function CheckoutForm({
   const refLineas = useRef<HTMLDivElement | null>(null);
   const [sede, setSede] = useState(reserva?.sede ?? sedes[0]?.id ?? "");
   const [barberoId, setBarberoId] = useState(""); // venta rápida: el admin puede cobrar por otro
-  const [nombre, setNombre] = useState(""); // venta rápida: nombre del cliente (opcional)
+  // Venta rápida: el cliente sale del selector. Elegido de la base, la venta
+  // queda LIGADA a él (historial y tarjeta); antes era solo un nombre de texto.
+  const [cliente, setCliente] = useState<ClienteElegido>({ tipo: "nuevo", nombre: "", telefono: "" });
+  // Buscar servicio o producto en vez de abrir categorías.
+  const [busca, setBusca] = useState("");
   const [extras, setExtras] = useState<string[]>([]);
   // Cobro a medida (0062): servicio cambiado y precios editados por línea.
   // Vacío = todo como está en el catálogo, que es el 95% de los cobros.
@@ -985,6 +1011,10 @@ export function CheckoutForm({
   const sedeId = sede as SedeId;
   const serviciosSede = servicios.filter((s) => s.precios[sedeId] != null);
   const productosSede = productos.filter((p) => p.sede === sedeId);
+  // Sin tildes ni mayúsculas: "depilacion" encuentra "Depilación", "coca" la Coca-Cola.
+  const norm = (t: string) => t.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  const q = norm(busca.trim());
+  const productosVisibles = q ? productosSede.filter((p) => norm(p.nombre).includes(q)) : productosSede;
   const barberosSede = barberos.filter((b) => b.sede === sedeId);
   // Servicio FIJO de la reserva: se resuelve nombre+precio desde preciosServicios
   // (TODOS los servicios, activos e inactivos) para que el total en vivo coincida
@@ -1156,8 +1186,8 @@ export function CheckoutForm({
       reservaId: reserva?.id ?? null,
       sede,
       barberoId: reserva ? reserva.barberoId : barberoId || null,
-      clienteRef: reserva?.clienteRef ?? null,
-      clienteNombre: rapida ? nombre : undefined,
+      clienteRef: reserva ? (reserva.clienteRef ?? null) : cliente.tipo === "existente" ? cliente.id : null,
+      clienteNombre: rapida ? (cliente.tipo === "paso" ? "" : cliente.nombre) : undefined,
       servicioId: reserva?.servicioId ?? null,
       servicioIdOverride: servicioOverride ?? undefined,
       serviciosExtra: extras,
@@ -1281,19 +1311,35 @@ export function CheckoutForm({
   // grandes y barra de cobro sticky con el total vivo. La lógica de cobro
   // (calcularCobro + completarReserva) es exactamente la misma de antes.
   return (
-    <div className={`${rapida ? "" : "mt-3 "}rounded-2xl border border-line bg-bg`}>
+    // Sin marco propio: sus tres sitios lo abren dentro de una hoja que ya es
+    // la tarjeta. Con los dos marcos, a 390 px se perdían 34 px de ancho por
+    // lado — justo lo que le faltaba a los nombres largos de los servicios.
+    <div className={rapida ? "" : "mt-3"}>
       {/* Sin título ni X propios: los TRES sitios que abren este formulario lo
           meten en una hoja que ya trae título y cerrar. Se veía "Cobrar sin
           cita" y debajo "Venta rápida (sin cita)" con otra X. */}
 
-      <div className="flex flex-col gap-5 p-4">
+      <div className="flex flex-col gap-5 pb-4">
         {rapida && (
           <div className="grid gap-3 sm:grid-cols-2">
-            <select value={sede} onChange={(e) => cambiarSede(e.target.value)} className={fld}>
-              {sedes.map((s) => (
-                <option key={s.id} value={s.id}>{s.nombre}</option>
-              ))}
-            </select>
+            {/* Con dos sedes son dos botones con el nombre a la vista: un
+                desplegable escondía en cuál iba a quedar la venta. */}
+            {sedes.length <= 3 ? (
+              <div className="sm:col-span-2">
+                <Segmentado
+                  etiqueta="Sede de la venta"
+                  opciones={sedes.map((x) => ({ valor: x.id, texto: x.nombre }))}
+                  valor={sede}
+                  onCambio={(v) => cambiarSede(v)}
+                />
+              </div>
+            ) : (
+              <select value={sede} onChange={(e) => cambiarSede(e.target.value)} className={fld}>
+                {sedes.map((x) => (
+                  <option key={x.id} value={x.id}>{x.nombre}</option>
+                ))}
+              </select>
+            )}
             {/* Se elige el barbero cuando el operador no tiene uno propio: el
                 admin, y el MOSTRADOR DE SEDE (login primario del 0044). Sin esto
                 la venta rápida del mostrador de sede se grababa con barbero_id
@@ -1313,12 +1359,9 @@ export function CheckoutForm({
                 extra={{ id: "local", etiqueta: "El local (sin comisión)" }}
               />
             )}
-            <input
-              value={nombre}
-              onChange={(e) => setNombre(e.target.value)}
-              placeholder="Nombre del cliente (opcional)"
-              className={`${fld} sm:col-span-2`}
-            />
+            <div className="sm:col-span-2">
+              <ElegirCliente valor={cliente} onCambio={setCliente} pedirTelefono={false} />
+            </div>
           </div>
         )}
 
@@ -1381,65 +1424,155 @@ export function CheckoutForm({
 
         <div>
           <div className={sLabel}>{rapida ? "Servicios" : "¿Se sumó algo en la silla?"}</div>
-          {extrasPorCategoria.length === 0 ? (
-            <p className="text-sm text-muted">Sin servicios con precio en esta sede.</p>
+          {/* Buscar en vez de abrir categorías: lo pidió el dueño ("filtro de
+              búsqueda en las bebidas y en los cortes, para no estar filtrando con
+              esos desplegables"). Un solo campo filtra servicios Y productos: la
+              gaseosa y el corte se buscan en el mismo lugar. */}
+          <div className="relative mb-3">
+            <SearchIcon className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
+            <input
+              value={busca}
+              onChange={(e) => setBusca(e.target.value)}
+              placeholder="Buscar corte, servicio o bebida…"
+              aria-label="Buscar servicio o producto"
+              autoComplete="off"
+              className="min-h-12 w-full rounded-xl border border-line bg-bg pl-10 pr-11 text-[15px] text-ink placeholder:text-muted focus:border-ink/60 focus:outline-none"
+            />
+            {busca && (
+              <button
+                type="button"
+                onClick={() => setBusca("")}
+                aria-label="Borrar la búsqueda"
+                className="absolute right-0.5 top-1/2 grid h-11 w-11 -translate-y-1/2 place-items-center text-[18px] text-muted transition hover:text-ink"
+              >
+                ×
+              </button>
+            )}
+          </div>
+
+          {q ? (
+            (() => {
+              const hallados = serviciosSede.filter((x) => x.id !== servicioFijo?.id && norm(x.nombre).includes(q));
+              return hallados.length ? (
+                <div className="flex flex-wrap gap-2">
+                  {hallados.map((x) => {
+                    const activo = extras.includes(x.id);
+                    return (
+                      <button
+                        key={x.id}
+                        type="button"
+                        aria-pressed={activo}
+                        onClick={() => toggleExtra(x.id)}
+                        className={`min-h-11 max-w-full rounded-full border px-3.5 py-2 text-left text-[13px] font-semibold transition ${
+                          activo ? "border-accent bg-accent/15 text-ink" : "border-line text-ink/80 hover:border-ink/25"
+                        }`}
+                      >
+                        {x.nombre}
+                        <span className={`ml-1.5 font-medium tabular-nums ${activo ? "text-accent-soft" : "text-muted"}`}>
+                          +{cop(x.precios[sedeId] ?? 0)}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="text-[13px] text-muted">Ningún servicio con “{busca.trim()}”.</p>
+              );
+            })()
           ) : (
-            // Antes esto era UNA grilla plana con los ~45 servicios de la sede.
-            // Nombres de hasta 130 caracteres, chips de ancho desparejo y filas
-            // rotas: un muro que nadie lee con un cliente en la silla. Los
-            // servicios ya traen `categoria`, así que se agrupan y se abre una a
-            // la vez. Arranca todo cerrado porque el caso normal es no sumar nada.
-            <div className="space-y-1.5">
-              {extrasPorCategoria.map(({ cat, label, items }) => {
-                const elegidos = items.filter((s) => extras.includes(s.id)).length;
-                const abierta = catAbierta === cat;
-                return (
-                  <div key={cat} className="overflow-hidden rounded-xl border border-line">
-                    <button
-                      type="button"
-                      aria-expanded={abierta}
-                      onClick={() => setCatAbierta(abierta ? null : cat)}
-                      className="flex w-full items-center justify-between gap-3 bg-panel px-3.5 py-2.5 text-left transition hover:bg-elevated"
-                    >
-                      <span className="text-[13px] font-semibold text-ink">
-                        {label}
-                        {elegidos > 0 && (
-                          <span className="ml-2 rounded-full bg-accent/15 px-2 py-0.5 text-[11px] font-bold text-accent-soft">
-                            {elegidos}
-                          </span>
-                        )}
-                      </span>
-                      <span className="text-xs text-muted">
-                        {items.length} · {abierta ? "▲" : "▼"}
-                      </span>
-                    </button>
-                    {abierta && (
-                      <div className="flex flex-wrap gap-2 border-t border-line bg-bg p-3">
-                        {items.map((s) => {
-                          const activo = extras.includes(s.id);
-                          return (
-                            <button
-                              key={s.id}
-                              type="button"
-                              aria-pressed={activo}
-                              onClick={() => toggleExtra(s.id)}
-                              className={`min-h-10 max-w-full rounded-full border px-3.5 py-2 text-left text-[13px] font-semibold transition ${
-                                activo ? "border-accent bg-accent/15 text-ink" : "border-line text-ink/80 hover:border-ink/25"
-                              }`}
-                            >
-                              {s.nombre}
-                              <span className={`ml-1.5 font-medium tabular-nums ${activo ? "text-accent-soft" : "text-muted"}`}>
-                                +{cop(s.precios[sedeId] ?? 0)}
-                              </span>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
+            <>
+              {/* En la venta rápida lo que más se cobra va a un toque: son los
+                  mismos cuatro del walk-in, y cubren casi todo lo que entra sin
+                  cita. El resto, por categoría o con el buscador de arriba. */}
+              {rapida && (() => {
+                const top = FRECUENTES.map((id) => serviciosSede.find((x) => x.id === id)).filter(
+                  (x): x is (typeof serviciosSede)[number] => !!x && x.id !== servicioFijo?.id,
                 );
-              })}
-            </div>
+                return top.length ? (
+                  <div className="mb-2.5 grid grid-cols-2 gap-2">
+                    {top.map((x) => {
+                      const activo = extras.includes(x.id);
+                      return (
+                        <button
+                          key={x.id}
+                          type="button"
+                          aria-pressed={activo}
+                          onClick={() => toggleExtra(x.id)}
+                          className={`flex min-h-[60px] flex-col items-start justify-center rounded-xl border px-3.5 py-2 text-left transition ${
+                            activo ? "border-accent bg-accent/15" : "border-line hover:border-ink/25"
+                          }`}
+                        >
+                          <span className="text-[13.5px] font-semibold leading-tight text-ink">{x.nombre.split(" (")[0]}</span>
+                          <span className={`mt-0.5 text-[12.5px] font-semibold tabular-nums ${activo ? "text-accent-soft" : "text-muted"}`}>
+                            {cop(x.precios[sedeId] ?? 0)}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : null;
+              })()}
+              {extrasPorCategoria.length === 0 ? (
+                <p className="text-sm text-muted">Sin servicios con precio en esta sede.</p>
+              ) : (
+                // Antes esto era UNA grilla plana con los ~45 servicios de la sede.
+                // Nombres de hasta 130 caracteres, chips de ancho desparejo y filas
+                // rotas: un muro que nadie lee con un cliente en la silla. Los
+                // servicios ya traen `categoria`, así que se agrupan y se abre una a
+                // la vez. Arranca todo cerrado porque el caso normal es no sumar nada.
+                <div className="space-y-1.5">
+                  {extrasPorCategoria.map(({ cat, label, items }) => {
+                    const elegidos = items.filter((s) => extras.includes(s.id)).length;
+                    const abierta = catAbierta === cat;
+                    return (
+                      <div key={cat} className="overflow-hidden rounded-xl border border-line">
+                        <button
+                          type="button"
+                          aria-expanded={abierta}
+                          onClick={() => setCatAbierta(abierta ? null : cat)}
+                          className="flex w-full items-center justify-between gap-3 bg-panel px-3.5 py-2.5 text-left transition hover:bg-elevated"
+                        >
+                          <span className="text-[13px] font-semibold text-ink">
+                            {label}
+                            {elegidos > 0 && (
+                              <span className="ml-2 rounded-full bg-accent/15 px-2 py-0.5 text-[11px] font-bold text-accent-soft">
+                                {elegidos}
+                              </span>
+                            )}
+                          </span>
+                          <span className="text-xs text-muted">
+                            {items.length} · {abierta ? "▲" : "▼"}
+                          </span>
+                        </button>
+                        {abierta && (
+                          <div className="flex flex-wrap gap-2 border-t border-line bg-bg p-3">
+                            {items.map((s) => {
+                              const activo = extras.includes(s.id);
+                              return (
+                                <button
+                                  key={s.id}
+                                  type="button"
+                                  aria-pressed={activo}
+                                  onClick={() => toggleExtra(s.id)}
+                                  className={`min-h-10 max-w-full rounded-full border px-3.5 py-2 text-left text-[13px] font-semibold transition ${
+                                    activo ? "border-accent bg-accent/15 text-ink" : "border-line text-ink/80 hover:border-ink/25"
+                                  }`}
+                                >
+                                  {s.nombre}
+                                  <span className={`ml-1.5 font-medium tabular-nums ${activo ? "text-accent-soft" : "text-muted"}`}>
+                                    +{cop(s.precios[sedeId] ?? 0)}
+                                  </span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </>
           )}
 
           {/* Lo elegido, con su precio tocable. Sin esto la venta rápida (el
@@ -1464,11 +1597,13 @@ export function CheckoutForm({
 
         <div>
           <div className={sLabel}>Consumos · stock real de la sede</div>
-          {productosSede.length === 0 ? (
-            <p className="text-sm text-muted">Sin productos en esta sede.</p>
+          {productosVisibles.length === 0 ? (
+            <p className="text-sm text-muted">
+              {q ? `Ninguna bebida ni producto con “${busca.trim()}”.` : "Sin productos en esta sede."}
+            </p>
           ) : (
             <div>
-              {productosSede.map((p) => {
+              {productosVisibles.map((p) => {
                 const q = prodQty[p.id] ?? 0;
                 const resta = p.stock - q;
                 const agotado = p.stock <= 0;
@@ -1530,60 +1665,6 @@ export function CheckoutForm({
               })}
             </div>
           )}
-        </div>
-
-        <div>
-          <div className={sLabel}>Propina</div>
-          <div className="flex flex-wrap items-center gap-2">
-            {PROPINA_CHIPS.map((p) => {
-              const activo = !propinaOtra && propina === p;
-              return (
-                <button
-                  type="button"
-                  key={p}
-                  aria-pressed={activo}
-                  onClick={() => {
-                    setPropinaOtra(false);
-                    setPropina(activo ? 0 : p);
-                  }}
-                  className={`min-h-10 rounded-full border px-3.5 py-2 text-[13px] font-semibold tabular-nums transition ${
-                    activo ? "border-accent bg-accent/15 text-ink" : "border-line text-ink/80 hover:border-ink/25"
-                  }`}
-                >
-                  {cop(p)}
-                </button>
-              );
-            })}
-            <button
-              type="button"
-              aria-pressed={propinaOtra}
-              onClick={() => {
-                if (propinaOtra) {
-                  setPropinaOtra(false);
-                  setPropina(0);
-                } else {
-                  setPropinaOtra(true);
-                  setPropina(0);
-                }
-              }}
-              className={`min-h-10 rounded-full border px-3.5 py-2 text-[13px] font-semibold transition ${
-                propinaOtra ? "border-accent bg-accent/15 text-ink" : "border-line text-ink/80 hover:border-ink/25"
-              }`}
-            >
-              Otra…
-            </button>
-            {propinaOtra && (
-              <input
-                type="number"
-                min={0}
-                autoFocus
-                value={propina || ""}
-                onChange={(e) => setPropina(Math.max(0, Math.floor(Number(e.target.value) || 0)))}
-                placeholder="Monto"
-                className="w-28 rounded-full border border-line bg-bg px-3.5 py-2 text-sm text-ink tabular-nums placeholder:text-muted focus:border-accent focus:outline-none"
-              />
-            )}
-          </div>
         </div>
 
         <div>
@@ -1702,68 +1783,151 @@ export function CheckoutForm({
           </div>
         )}
 
-        {/* Con qué dejó la PROPINA. En Colombia es normal pagar el corte por Nequi y
-            dejar la propina en la mano (o al revés): si no se registra dónde cayó esa
-            plata, el cierre la espera en el medio de la venta y el cajón no cuadra. */}
-        {propina > 0 && medio && (
-          <div>
-            <div className={sLabel}>¿Con qué dejó la propina?</div>
-            <div className="flex flex-wrap gap-2">
-              {medios.map((m) => {
-                const act = (propinaMedio ?? medio) === m.slug;
-                return (
-                  <button
-                    key={m.slug}
-                    type="button"
-                    aria-pressed={act}
-                    onClick={() => setPropinaMedio(m.slug === medio ? null : m.slug)}
-                    className={`min-h-11 rounded-xl border px-3.5 text-xs font-bold transition ${
-                      act ? "border-accent bg-accent/15 text-ink" : "border-line text-ink/80 hover:border-ink/25"
-                    }`}
-                  >
-                    {m.nombre}
-                  </button>
-                );
-              })}
-            </div>
-            {(propinaMedio ?? medio) === "efectivo" && medio !== "efectivo" && (
-              <p className="mt-1.5 text-[12px] text-muted">Esa propina entra al cajón.</p>
-            )}
-          </div>
-        )}
-
         <div>
-          <div className={sLabel}>Nota (opcional)</div>
-          <textarea
-            value={nota}
-            onChange={(e) => setNota(e.target.value)}
-            rows={2}
-            placeholder="Ej: pidió el degradado más alto la próxima"
-            className="w-full rounded-xl border border-line bg-elevated px-3.5 py-2.5 text-sm text-ink placeholder:text-muted focus:border-accent focus:outline-none"
-          />
-        </div>
-
-        <div>
-          <div className={sLabel}>Cupón (opcional)</div>
-          <div className="flex gap-2">
-            <input
-              value={cupon}
-              onChange={(e) => { setCupon(e.target.value.toUpperCase()); setCuponInfo(null); }}
-              placeholder="Código"
-              className="min-w-0 flex-1 rounded-xl border border-line bg-elevated px-3.5 py-2.5 text-sm uppercase text-ink placeholder:text-muted focus:border-accent focus:outline-none"
-            />
+          <div className={sLabel}>Propina</div>
+          <div className="flex flex-wrap items-center gap-2">
+            {PROPINA_CHIPS.map((p) => {
+              const activo = !propinaOtra && propina === p;
+              return (
+                <button
+                  type="button"
+                  key={p}
+                  aria-pressed={activo}
+                  onClick={() => {
+                    setPropinaOtra(false);
+                    setPropina(activo ? 0 : p);
+                  }}
+                  className={`min-h-10 rounded-full border px-3.5 py-2 text-[13px] font-semibold tabular-nums transition ${
+                    activo ? "border-accent bg-accent/15 text-ink" : "border-line text-ink/80 hover:border-ink/25"
+                  }`}
+                >
+                  {cop(p)}
+                </button>
+              );
+            })}
             <button
               type="button"
-              onClick={chequearCupon}
-              className="rounded-xl border border-line px-4 text-xs font-semibold text-muted transition hover:text-ink"
+              aria-pressed={propinaOtra}
+              onClick={() => {
+                if (propinaOtra) {
+                  setPropinaOtra(false);
+                  setPropina(0);
+                } else {
+                  setPropinaOtra(true);
+                  setPropina(0);
+                }
+              }}
+              className={`min-h-10 rounded-full border px-3.5 py-2 text-[13px] font-semibold transition ${
+                propinaOtra ? "border-accent bg-accent/15 text-ink" : "border-line text-ink/80 hover:border-ink/25"
+              }`}
             >
-              Validar
+              Otra…
             </button>
+            {propinaOtra && (
+              <input
+                type="number"
+                min={0}
+                autoFocus
+                value={propina || ""}
+                onChange={(e) => setPropina(Math.max(0, Math.floor(Number(e.target.value) || 0)))}
+                placeholder="Monto"
+                className="w-28 rounded-full border border-line bg-bg px-3.5 py-2 text-sm text-ink tabular-nums placeholder:text-muted focus:border-accent focus:outline-none"
+              />
+            )}
           </div>
-          {cuponInfo && (
-            <div className={`mt-1.5 text-xs ${cuponInfo.ok ? "text-ok" : "text-accent-soft"}`}>{cuponInfo.msg}</div>
+          {/* Con qué dejó la propina, AHÍ MISMO. Antes esta pregunta aparecía tres
+              bloques más abajo, después del pago dividido, y el barbero ya había
+              pasado de largo (lo señaló el dueño). Como "¿Cómo pagó?" ahora va
+              antes, "igual que el pago" ya dice con qué. */}
+          {propina > 0 && medios.length > 1 && (
+            <div className="mt-3 rounded-xl border border-line bg-elevated/40 p-3">
+              <div className="mb-2 text-[12.5px] font-semibold text-ink">¿Con qué dejó la propina?</div>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  aria-pressed={!propinaMedio || propinaMedio === medio}
+                  onClick={() => setPropinaMedio(null)}
+                  className={`inline-flex min-h-11 items-center gap-2 rounded-xl border px-3 text-[12.5px] font-semibold transition ${
+                    !propinaMedio || propinaMedio === medio
+                      ? "border-accent bg-accent/15 text-ink"
+                      : "border-line text-ink/80 hover:border-ink/25"
+                  }`}
+                >
+                  Igual que el pago
+                  {medio && <span className="text-muted">· {medios.find((m) => m.slug === medio)?.nombre ?? medio}</span>}
+                </button>
+                {medios
+                  .filter((m) => m.slug !== medio)
+                  .map((m) => {
+                    const act = propinaMedio === m.slug;
+                    return (
+                      <button
+                        key={m.slug}
+                        type="button"
+                        aria-pressed={act}
+                        onClick={() => setPropinaMedio(m.slug)}
+                        className={`inline-flex min-h-11 items-center gap-2 rounded-xl border px-2.5 text-[12.5px] font-semibold transition ${
+                          act ? "border-accent bg-accent/15 text-ink" : "border-line text-ink/80 hover:border-ink/25"
+                        }`}
+                      >
+                        <MedioLogo slug={m.slug} nombre={m.nombre} size={22} />
+                        {m.nombre}
+                      </button>
+                    );
+                  })}
+              </div>
+              {(propinaMedio ?? medio) === "efectivo" && medio !== "efectivo" && (
+                <p className="mt-2 text-[12px] text-muted">Esa propina entra al cajón.</p>
+              )}
+            </div>
           )}
         </div>
+
+        {/* Nota y cupón se usan una vez cada muchos cobros: plegados no le ocupan
+            la pantalla al que cobra con el cliente enfrente. Se abren solos si
+            ya tienen algo escrito. */}
+        <details className="group rounded-xl border border-line" open={!!(nota || cupon)}>
+          <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 px-3.5 [&::-webkit-details-marker]:hidden">
+            <span className="text-[13.5px] font-semibold text-ink">
+              Nota o cupón <span className="font-normal text-muted">· opcional</span>
+            </span>
+            <ChevronDownIcon className="h-4 w-4 shrink-0 text-muted transition group-open:rotate-180" />
+          </summary>
+          <div className="space-y-4 border-t border-line/60 p-3.5">
+            <div>
+              <div className={sLabel}>Nota (opcional)</div>
+              <textarea
+                value={nota}
+                onChange={(e) => setNota(e.target.value)}
+                rows={2}
+                placeholder="Ej: pidió el degradado más alto la próxima"
+                className="w-full rounded-xl border border-line bg-elevated px-3.5 py-2.5 text-sm text-ink placeholder:text-muted focus:border-accent focus:outline-none"
+              />
+            </div>
+
+            <div>
+              <div className={sLabel}>Cupón (opcional)</div>
+              <div className="flex gap-2">
+                <input
+                  value={cupon}
+                  onChange={(e) => { setCupon(e.target.value.toUpperCase()); setCuponInfo(null); }}
+                  placeholder="Código"
+                  className="min-w-0 flex-1 rounded-xl border border-line bg-elevated px-3.5 py-2.5 text-sm uppercase text-ink placeholder:text-muted focus:border-accent focus:outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={chequearCupon}
+                  className="rounded-xl border border-line px-4 text-xs font-semibold text-muted transition hover:text-ink"
+                >
+                  Validar
+                </button>
+              </div>
+              {cuponInfo && (
+                <div className={`mt-1.5 text-xs ${cuponInfo.ok ? "text-ok" : "text-accent-soft"}`}>{cuponInfo.msg}</div>
+              )}
+            </div>
+          </div>
+        </details>
       </div>
 
       {/* Tarjeta de cortes: aviso del canje automático (se aplica solo, el server
@@ -1787,7 +1951,7 @@ export function CheckoutForm({
       )}
 
       {/* Barra de cobro: pegada abajo mientras el form está a la vista (mobile-first). */}
-      <div className="sticky bottom-0 rounded-b-2xl border-t border-line bg-bg/95 px-4 py-3 backdrop-blur-md">
+      <div className="sticky bottom-0 -mx-4 border-t border-line bg-bg/95 px-4 py-3 backdrop-blur-md sm:-mx-6 sm:px-6">
         {err && (
           <div className="mb-2.5 rounded-lg border border-accent/40 bg-accent/10 px-3 py-2 text-sm text-accent-soft">{err}</div>
         )}

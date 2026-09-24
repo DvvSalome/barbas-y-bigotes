@@ -3,6 +3,7 @@
 import { useMemo, useRef, useState, useEffect } from "react";
 import Image from "next/image";
 import { cop } from "@/lib/format";
+import { buscarClientesMostrador, type ClienteSugerido } from "@/lib/actions";
 
 // Selectores del staff. Un <select> nativo no busca ni muestra fotos: con 45
 // servicios el barbero tenía que scrollear la lista entera de pie y con el
@@ -271,6 +272,212 @@ export function ElegirServicio({
             </button>
           ))}
         </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Qué cliente es, tal como sale del selector:
+ *  - "paso": no da nombre. NO se guarda nada en la base de clientes.
+ *  - "existente": ya estaba registrado; se eligió de lo que se buscó.
+ *  - "nuevo": se escribe el nombre (y el teléfono, si lo da) y se crea.
+ */
+export type ClienteElegido =
+  | { tipo: "paso" }
+  | { tipo: "existente"; id: string; nombre: string; telFinal: string | null }
+  | { tipo: "nuevo"; nombre: string; telefono: string };
+
+type Sugerido = ClienteSugerido & { hace: string };
+
+/** "hoy", "ayer", "hace 5 días", "hace 2 meses". Se calcula al LLEGAR la
+ *  respuesta, no al dibujar: la hora actual en el render es impura. */
+function haceCuanto(iso: string | null, ahora: number): string {
+  if (!iso) return "";
+  const dias = Math.floor((ahora - new Date(iso).getTime()) / 86_400_000);
+  if (dias <= 0) return "hoy";
+  if (dias === 1) return "ayer";
+  if (dias < 45) return `hace ${dias} días`;
+  const meses = Math.round(dias / 30);
+  return `hace ${meses} ${meses === 1 ? "mes" : "meses"}`;
+}
+
+/**
+ * El cliente del mostrador, pedido por el administrador: "selector fácil para
+ * clientes que no ponen nombre, y si escribe el nombre que salgan los clientes
+ * ya registrados".
+ *
+ * Dos cosas que arregla:
+ *  1. El que no da nombre tiene su botón, "Cliente de paso", y no crea nada. Sin
+ *     él los barberos inventaban uno ("BARBAS Y BIGOTES" con 000000000,
+ *     "INCOGNITO"…) y la base de clientes se llenaba de gente que no existe.
+ *  2. Al escribir aparecen los que YA están, con sus 4 últimos dígitos y cuándo
+ *     vinieron. Elegido uno, la venta queda ligada a SU historial y a su tarjeta
+ *     de cortes; escrito a mano, "Juan" se volvía un Juan nuevo cada vez.
+ */
+export function ElegirCliente({
+  valor,
+  onCambio,
+  pedirTelefono = true,
+}: {
+  valor: ClienteElegido;
+  onCambio: (c: ClienteElegido) => void;
+  /** El walk-in pide teléfono al cliente nuevo; el cobro rápido no hace falta. */
+  pedirTelefono?: boolean;
+}) {
+  const [sugeridos, setSugeridos] = useState<Sugerido[]>([]);
+  const [buscando, setBuscando] = useState(false);
+  const [abierto, setAbierto] = useState(false);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pedido = useRef(0);
+  const caja = useCerrarAfuera(abierto, () => setAbierto(false));
+
+  const texto = valor.tipo === "nuevo" ? valor.nombre : "";
+  const tel = valor.tipo === "nuevo" ? valor.telefono : "";
+
+  function escribir(t: string) {
+    onCambio({ tipo: "nuevo", nombre: t, telefono: tel });
+    if (timer.current) clearTimeout(timer.current);
+    if (t.trim().length < 2) {
+      setSugeridos([]);
+      setAbierto(false);
+      return;
+    }
+    const n = ++pedido.current;
+    setBuscando(true);
+    // 250 ms: se busca cuando la persona para de teclear, no en cada letra.
+    timer.current = setTimeout(async () => {
+      const r = await buscarClientesMostrador(t).catch(() => [] as ClienteSugerido[]);
+      if (n !== pedido.current) return; // llegó tarde: ya se escribió otra cosa
+      const ahora = Date.now();
+      setSugeridos(r.map((c) => ({ ...c, hace: haceCuanto(c.ultima, ahora) })));
+      setBuscando(false);
+      setAbierto(true);
+    }, 250);
+  }
+
+  // ── Ya elegido: una tarjeta con "Cambiar" ────────────────────────────────
+  if (valor.tipo === "paso" || valor.tipo === "existente") {
+    return (
+      <div className="flex min-h-14 items-center gap-3 rounded-xl border border-ink/40 bg-elevated px-3.5 py-2.5">
+        <span
+          aria-hidden
+          className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-ink font-bold text-bg"
+        >
+          {valor.tipo === "paso" ? "?" : iniciales(valor.nombre)}
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-[14px] font-semibold text-ink">
+            {valor.tipo === "paso" ? "Cliente de paso" : valor.nombre}
+          </span>
+          <span className="block truncate text-[12px] text-muted">
+            {valor.tipo === "paso"
+              ? "No dio nombre: no se guarda en la base de clientes"
+              : `Cliente registrado${valor.telFinal ? ` · ···${valor.telFinal}` : ""} · la visita suma a su historial`}
+          </span>
+        </span>
+        <button
+          type="button"
+          onClick={() => {
+            onCambio({ tipo: "nuevo", nombre: "", telefono: "" });
+            setSugeridos([]);
+          }}
+          className="inline-flex min-h-11 shrink-0 items-center px-2 text-[13px] font-semibold text-muted underline decoration-line underline-offset-4 transition hover:text-ink"
+        >
+          Cambiar
+        </button>
+      </div>
+    );
+  }
+
+  // ── Buscando o escribiendo uno nuevo ─────────────────────────────────────
+  const exacto = sugeridos.some((c) => c.nombre.trim().toLowerCase() === texto.trim().toLowerCase());
+  return (
+    <div ref={caja} className="relative space-y-2">
+      <div className="flex gap-2">
+        <input
+          value={texto}
+          onChange={(e) => escribir(e.target.value)}
+          onFocus={() => sugeridos.length && setAbierto(true)}
+          placeholder="Nombre o teléfono"
+          aria-label="Nombre o teléfono del cliente"
+          autoComplete="off"
+          className="min-h-12 min-w-0 flex-1 rounded-xl border border-line bg-bg px-3.5 text-[15px] text-ink placeholder:text-muted focus:border-ink/60 focus:outline-none"
+        />
+        <button
+          type="button"
+          onClick={() => {
+            if (timer.current) clearTimeout(timer.current);
+            pedido.current++;
+            setAbierto(false);
+            onCambio({ tipo: "paso" });
+          }}
+          className="inline-flex min-h-12 shrink-0 items-center rounded-xl border border-line px-3.5 text-[13px] font-semibold text-ink transition hover:border-ink/40"
+        >
+          De paso
+        </button>
+      </div>
+
+      {abierto && (texto.trim().length >= 2) && (
+        <div className={`${PANEL} mt-0`} role="listbox">
+          {sugeridos.map((c) => (
+            <button
+              key={c.id}
+              type="button"
+              role="option"
+              aria-selected={false}
+              onClick={() => {
+                setAbierto(false);
+                onCambio({ tipo: "existente", id: c.id, nombre: c.nombre, telFinal: c.telFinal });
+              }}
+              className="flex min-h-14 w-full items-center gap-3 border-b border-line/60 px-3 py-2 text-left transition hover:bg-elevated"
+            >
+              <span
+                aria-hidden
+                className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-elevated text-[13px] font-bold text-ink"
+              >
+                {iniciales(c.nombre)}
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-[14px] font-semibold text-ink">{c.nombre}</span>
+                <span className="block truncate text-[12px] text-muted">
+                  {[
+                    c.telFinal ? `···${c.telFinal}` : null,
+                    c.visitas ? `${c.visitas} ${c.visitas === 1 ? "visita" : "visitas"}` : "sin visitas",
+                    c.hace || null,
+                  ]
+                    .filter(Boolean)
+                    .join(" · ")}
+                </span>
+              </span>
+            </button>
+          ))}
+          {!buscando && sugeridos.length === 0 && (
+            <p className="px-3 py-3 text-[12.5px] text-muted">Nadie registrado con “{texto.trim()}”.</p>
+          )}
+          {!exacto && (
+            <button
+              type="button"
+              onClick={() => setAbierto(false)}
+              className="flex min-h-12 w-full items-center gap-2 px-3 text-left text-[13px] font-semibold text-accent-soft transition hover:bg-elevated"
+            >
+              + Cliente nuevo: “{texto.trim()}”
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* El teléfono SOLO para el cliente nuevo: al que ya existe no hay que
+          volvérselo a pedir, y el de paso no deja datos. */}
+      {pedirTelefono && texto.trim().length >= 2 && !abierto && (
+        <input
+          value={tel}
+          onChange={(e) => onCambio({ tipo: "nuevo", nombre: texto, telefono: e.target.value })}
+          placeholder="Teléfono (opcional)"
+          aria-label="Teléfono del cliente nuevo"
+          inputMode="tel"
+          className="min-h-12 w-full rounded-xl border border-line bg-bg px-3.5 text-[15px] text-ink placeholder:text-muted focus:border-ink/60 focus:outline-none"
+        />
       )}
     </div>
   );
