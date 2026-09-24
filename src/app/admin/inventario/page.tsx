@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { getProductos, getSedes } from "@/lib/data/queries";
+import { getProductos, getSedes, getCostosProductos } from "@/lib/data/queries";
 import { InventarioPanel } from "@/components/admin/InventarioPanel";
 import { SectionHeader } from "@/components/admin/SectionHeader";
 
@@ -11,7 +11,7 @@ export default async function InventarioPage({
   searchParams: Promise<{ [k: string]: string | string[] | undefined }>;
 }) {
   const sp = await searchParams;
-  const [productos, sedes] = await Promise.all([getProductos(), getSedes()]);
+  const [productos, sedes, costos] = await Promise.all([getProductos(), getSedes(), getCostosProductos()]);
   // El ?sede= del selector del topbar, validado contra las sedes reales (mismo
   // patrón que Clientes). Sin sede = las dos, agrupadas.
   const sedeActiva = sedes.find((s) => s.id === (typeof sp.sede === "string" ? sp.sede : undefined))?.id ?? null;
@@ -28,7 +28,7 @@ export default async function InventarioPage({
             : "Lo que se vende en las dos sedes: cuánto queda, cuánto cuesta y qué se está acabando. Elige una sede arriba para ver solo esa."
         }
       />
-      <InventarioPanel productos={productos} sedes={sedes} sedeActiva={sedeActiva} />
+      <InventarioPanel productos={productos} sedes={sedes} sedeActiva={sedeActiva} costos={costos} />
     </div>
   );
 }

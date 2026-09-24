@@ -341,6 +341,34 @@ export async function actualizarComisionProducto(id: string, pct: number): Promi
   return { ok: true };
 }
 
+// Lo que le cuesta al local un producto (0077). null = quitarlo (vuelve a "sin
+// costo" y el producto deja de sumar a la ganancia y a la plata invertida, en vez
+// de sumar con un costo inventado). Va con service role porque la tabla está
+// cerrada a todo el que tenga sesión; el gate de admin va primero.
+export async function actualizarCostoProducto(productoId: string, costo: number | null): Promise<ActionResult> {
+  const sb = await supabaseServerAuth();
+  const denied = await requireAdmin(sb);
+  if (denied) return { ok: false, error: denied };
+  const admin = supabaseAdmin();
+  if (costo === null) {
+    const { error } = await admin.from("producto_costo").delete().eq("producto_id", productoId);
+    if (error) return { ok: false, error: errorPublico("actualizarCostoProducto", error) };
+  } else {
+    const n = sanearCop(costo);
+    if (n === null || n < 0) return { ok: false, error: "El costo tiene que ser un número entero de pesos, 0 o más." };
+    const { error } = await admin
+      .from("producto_costo")
+      .upsert({ producto_id: productoId, costo: n, actualizado_en: new Date().toISOString() });
+    if (error) {
+      if (error.code === "42P01" || error.code === "PGRST205")
+        return { ok: false, error: "Falta aplicar la migración 0077 en Supabase." };
+      return { ok: false, error: errorPublico("actualizarCostoProducto", error) };
+    }
+  }
+  revalidatePath("/admin/inventario");
+  return { ok: true };
+}
+
 // El número bajo el cual salta el aviso de "se está acabando". Solo se podía
 // poner al CREAR el producto: si el dueño ponía 5 y resultaba que se le acababa
 // cada semana, no había manera de subirlo a 12 sin borrar el producto y volverlo
@@ -2745,6 +2773,10 @@ export async function registrarGasto(input: {
   descripcion: string;
   /** Con qué se pagó (0067): descuenta del cajón SOLO si fue efectivo. */
   medio?: string;
+  /** Día al que corresponde, YYYY-MM-DD. Las cuentas del mes se pagan un día y se
+   *  anotan otro: sin esto el arriendo de septiembre anotado el 1 de octubre caía
+   *  en octubre. Vacío = hoy. Moverla es SOLO del admin (ver abajo). */
+  fecha?: string;
 }): Promise<ActionResult> {
   const sb = await supabaseServerAuth();
   // Staff, no solo admin: la botella de agua la compra quien está en el local, y
@@ -2764,11 +2796,25 @@ export async function registrarGasto(input: {
     return { ok: false, error: "El monto tiene que ser un número entero de pesos, mayor a cero." };
   const medio = await medioValidoOError(sb, input.medio);
   if ("error" in medio) return { ok: false, error: medio.error };
+  // Fecha distinta de hoy: solo el admin, nunca a futuro y hasta dos meses atrás.
+  // El mostrador no mueve fechas: un gasto en efectivo metido en un día ya
+  // cerrado le cambiaría el cuadre a ese día sin que nadie lo notara.
+  const hoy = bogotaYmd();
+  let fecha: string | null = null;
+  if (input.fecha && input.fecha !== hoy) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(input.fecha)) return { ok: false, error: "La fecha no es válida." };
+    if (await requireAdmin(sb)) return { ok: false, error: "Solo el administrador anota gastos de otro día." };
+    if (input.fecha > hoy) return { ok: false, error: "No se puede anotar un gasto con fecha de un día que no ha llegado." };
+    const limite = new Date(Date.now() - 62 * 86_400_000).toLocaleDateString("en-CA", { timeZone: "America/Bogota" });
+    if (input.fecha < limite) return { ok: false, error: "Esa fecha es de hace más de dos meses." };
+    fecha = input.fecha;
+  }
   const fila = {
     sede_id: input.sede,
     categoria: (input.categoria ?? "").trim().slice(0, 40) || "Otro",
     monto,
     descripcion: input.descripcion || null,
+    ...(fecha ? { fecha } : {}),
   };
   // La RLS de gastos es admin-only (admin_all_gastos): el mostrador y el barbero
   // recibían 42501 y veían "no se pudo completar" (5-sep). El gate de arriba ya

@@ -4,16 +4,36 @@ import { botonClases } from "@/components/ui/Boton";
 import { PencilIcon, CheckIcon } from "@/components/icons";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { actualizarPrecioProducto } from "@/lib/actions";
+import { actualizarPrecioProducto, type ActionResult } from "@/lib/actions";
 import { sanearCop } from "@/lib/admin-reglas";
 import { cop } from "@/lib/format";
 
 // Precio con edición inline: tap sobre el monto → input numérico → Enter o ✓
 // guarda. Sin modal ni pantalla aparte; se edita donde se lee.
-export function PrecioEditable({ productoId, precio }: { productoId: string; precio: number }) {
+export function PrecioEditable({
+  productoId,
+  precio,
+  onGuardar,
+  minimo = 1,
+  vacio = "Poner",
+  que = "precio",
+}: {
+  productoId: string;
+  /** null = todavía no tiene valor (el costo de un producto viejo). */
+  precio: number | null;
+  /** Otra acción de guardado. Sin esto guarda el PRECIO DE VENTA; el costo pasa la suya. */
+  onGuardar?: (n: number) => Promise<ActionResult>;
+  /** El precio de venta no puede ser $0; el costo sí (una muestra regalada). */
+  minimo?: number;
+  /** Lo que se lee mientras no hay valor. */
+  vacio?: string;
+  /** Qué valor es, para el lector de pantalla: con precio y costo en la misma
+   *  hoja, dos botones llamados "editar el precio" no se distinguen. */
+  que?: string;
+}) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
-  const [val, setVal] = useState(String(precio));
+  const [val, setVal] = useState(precio === null ? "" : String(precio));
   const [saving, setSaving] = useState(false);
   // Mensaje de error (null = sin error). Antes era un booleano + un title de
   // hover invisible en el celular; ahora el motivo se muestra inline.
@@ -24,9 +44,13 @@ export function PrecioEditable({ productoId, precio }: { productoId: string; pre
     // un decimal se truncaba en silencio. sanearCop rechaza vacío, negativo,
     // decimal y no-numérico; además exigimos > 0 (un producto no vale $0).
     const n = sanearCop(val);
-    if (n === null || n <= 0) {
-      setVal(String(precio));
-      setError("Pon un precio en pesos, mayor a $0, sin decimales.");
+    if (n === null || n < minimo) {
+      setVal(precio === null ? "" : String(precio));
+      setError(
+        minimo > 0
+          ? "Pon un precio en pesos, mayor a $0, sin decimales."
+          : "Pon un valor en pesos, sin decimales ni negativos.",
+      );
       return;
     }
     setError(null);
@@ -35,7 +59,7 @@ export function PrecioEditable({ productoId, precio }: { productoId: string; pre
       return;
     }
     setSaving(true);
-    const res = await actualizarPrecioProducto(productoId, n);
+    const res = await (onGuardar ? onGuardar(n) : actualizarPrecioProducto(productoId, n));
     setSaving(false);
     if (res.ok) {
       setEditing(false);
@@ -52,14 +76,14 @@ export function PrecioEditable({ productoId, precio }: { productoId: string; pre
       <button
         type="button"
         onClick={() => {
-          setVal(String(precio));
+          setVal(precio === null ? "" : String(precio));
           setError(null);
           setEditing(true);
         }}
-        aria-label="Tocar para editar el precio"
+        aria-label={`Tocar para editar el ${que}`}
         className="inline-flex min-h-11 items-center gap-1 tabular-nums underline decoration-dotted decoration-line underline-offset-4 transition hover:decoration-accent"
       >
-        {cop(precio)}
+        {precio === null ? <span className="text-muted">{vacio}</span> : cop(precio)}
         {/* Lápiz SIEMPRE visible: en el celular no hay hover, así que si estaba
             oculto el dueño no sabía que el precio se toca para cambiarlo. */}
         <PencilIcon className="h-3.5 w-3.5 shrink-0 text-muted" />
@@ -72,7 +96,7 @@ export function PrecioEditable({ productoId, precio }: { productoId: string; pre
       <span className="inline-flex flex-wrap items-center gap-1.5">
         <input
           type="number"
-          min={1}
+          min={minimo}
           step={1}
           autoFocus
           value={val}
@@ -93,7 +117,7 @@ export function PrecioEditable({ productoId, precio }: { productoId: string; pre
           type="button"
           onClick={guardar}
           disabled={saving}
-          aria-label="Guardar precio"
+          aria-label={`Guardar ${que}`}
           className={botonClases("primario")}
         >
           <CheckIcon className="h-4 w-4" />

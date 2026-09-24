@@ -3,7 +3,7 @@
 import { botonClases } from "@/components/ui/Boton";
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { addProducto, subirFotoProducto } from "@/lib/actions";
+import { addProducto, subirFotoProducto, actualizarCostoProducto } from "@/lib/actions";
 import { sanearCop, sanearCantidad, sanearNombre, sanearComisionPct } from "@/lib/admin-reglas";
 import { achicarFoto } from "@/lib/imagen-cliente";
 import { CamIcon } from "@/components/icons";
@@ -34,6 +34,7 @@ export function AddProductForm({
   const [stock, setStock] = useState("");
   const [stockMin, setStockMin] = useState("");
   const [comision, setComision] = useState("");
+  const [costo, setCosto] = useState("");
   const [foto, setFoto] = useState<File | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
@@ -63,6 +64,14 @@ export function AddProductForm({
       setErr("El stock y el mínimo tienen que ser números enteros, cero o más.");
       return;
     }
+    // Costo opcional (0077): vacío = sin costo, NO $0. Un costo en cero haría
+    // creer que todo el precio es ganancia.
+    const costoNum = costo.trim() === "" ? null : sanearCop(costo);
+    if (costo.trim() !== "" && costoNum === null) {
+      setSaving(false);
+      setErr("El costo tiene que ser un número entero de pesos, sin decimales ni negativos.");
+      return;
+    }
     // Vacío = 0 (sin comisión), que es el default del negocio para productos.
     const comisionNum = comision.trim() === "" ? 0 : sanearComisionPct(comision);
     if (comisionNum === null) {
@@ -79,9 +88,16 @@ export function AddProductForm({
       stockMinimo: minNum,
       comisionPct: comisionNum,
     });
+    // El costo va a su tabla cerrada (0077), así que es un segundo paso. Si
+    // falla, el producto ya existe: se avisa y se pone desde su hoja.
+    let costoErr: string | null = null;
+    if (res.ok && res.id && costoNum !== null) {
+      const cres = await actualizarCostoProducto(res.id, costoNum).catch(() => null);
+      if (!cres?.ok) costoErr = "Producto creado, pero el costo no se guardó. Ponlo desde su hoja.";
+    }
     // Foto opcional: el producto ya quedó creado; si la foto falla, se avisa
     // pero no se revierte nada (se puede subir después desde la lista).
-    let fotoErr: string | null = null;
+    let fotoErr: string | null = costoErr;
     if (res.ok && foto && res.id) {
       try {
         const fd = new FormData();
@@ -100,6 +116,7 @@ export function AddProductForm({
       setStock("");
       setStockMin("");
       setComision("");
+      setCosto("");
       setFoto(null);
       if (fotoErr) setErr(fotoErr); // queda abierto para que se vea el aviso
       else onListo?.();
@@ -131,6 +148,11 @@ export function AddProductForm({
         <span className={lbl}>Precio de venta</span>
         <input required type="number" min={0} step={1} value={precio} onChange={(e) => setPrecio(e.target.value)} placeholder="25000" className={`${input} w-full`} />
         <span className={ayuda}>Lo que paga el cliente, en pesos.</span>
+      </label>
+      <label className="sm:col-span-3">
+        <span className={lbl}>Le cuesta al local</span>
+        <input type="number" inputMode="numeric" min={0} step={1} value={costo} onChange={(e) => setCosto(e.target.value)} placeholder="Opcional" className={`${input} w-full`} />
+        <span className={ayuda}>Lo que pagas por cada uno. Con esto se ve cuánto le ganas.</span>
       </label>
       <label className="sm:col-span-3">
         <span className={lbl}>Comisión del barbero</span>

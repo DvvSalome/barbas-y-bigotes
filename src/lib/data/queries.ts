@@ -164,6 +164,25 @@ export async function getEmailsBarberos(): Promise<Record<string, string>> {
   );
 }
 
+// Lo que le cuesta al local cada producto (producto_costo, 0077). Tabla cerrada:
+// `productos` la lee el público y el margen no es dato público. Mismo candado que
+// los correos de arriba: service role SOLO tras confirmar que quien pide es admin.
+// Antes de aplicar 0077 la tabla no existe: {} y el inventario vive igual, sin
+// ganancia ni plata invertida.
+export async function getCostosProductos(): Promise<Record<string, number>> {
+  const auth = await supabaseServerAuth();
+  const {
+    data: { user },
+  } = await auth.auth.getUser();
+  if (!user) return {};
+  const { data: prof } = await auth.from("profiles").select("rol").eq("auth_id", user.id).maybeSingle();
+  if ((prof as { rol?: string } | null)?.rol !== "admin") return {};
+  const { data } = await supabaseAdmin().from("producto_costo").select("producto_id,costo");
+  return Object.fromEntries(
+    ((data ?? []) as { producto_id: string; costo: number }[]).map((r) => [r.producto_id, r.costo]),
+  );
+}
+
 export type BarberoConContrato = Barbero & { tipoContrato: TipoContrato };
 
 // Barberos CON su contrato (comisión/arriendo). Datos confidenciales: las 3 columnas

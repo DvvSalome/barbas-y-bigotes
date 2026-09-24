@@ -8,6 +8,7 @@ import { chipFiltroClases } from "@/components/ui/Chip";
 import { Campo, CampoSelect } from "@/components/ui/Campo";
 import { Hoja, PieHoja, primarioDeHoja } from "@/components/ui/Hoja";
 import { Grupo, Fila } from "@/components/ui/ListaAgrupada";
+import { Segmentado } from "@/components/ui/Segmentado";
 import { ElegirBarbero } from "@/components/staff/Elegir";
 import { CheckoutForm } from "@/components/barbero/AgendaList";
 import { MediosPago } from "@/components/admin/MediosPago";
@@ -39,6 +40,21 @@ import type { MedioPago } from "@/lib/data/queries";
 // ("papeleria"/"Papelería"/"aseo") y la lista quedaba inagrupable.
 // Exportada: el mostrador registra gastos con las MISMAS categorías (GastoRapido).
 export const CATS_GASTO = ["Insumos", "Aseo", "Papelería", "Servicios", "Comida", "Arreglos"];
+
+// Las cuentas del mes, sacadas del Excel del dueño (CONCEPTO GASTO de septiembre:
+// ARRIENDO, RECIBO LUZ, RECIBO AGUA, PAGO IMPUESTO, ADMINISTRACIÓN, PUBLICIDAD,
+// CLARO, y "ALEGRA, CANVA, YOU, NUBE, OFFI"). Solo en el panel: el mostrador no
+// paga el arriendo.
+const CATS_CUENTA = [
+  "Arriendo",
+  "Luz",
+  "Agua",
+  "Internet y teléfono",
+  "Impuestos",
+  "Administración",
+  "Publicidad",
+  "Suscripciones",
+];
 
 type PropsCobro = Omit<React.ComponentProps<typeof CheckoutForm>, "reserva" | "onDone" | "elegirBarbero">;
 
@@ -79,8 +95,8 @@ export function CuadreForms({
           onClick={() => setAbierta("gasto")}
           icono={<TagIcon />}
           tinte="plata"
-          titulo="Gasto del día"
-          subtitulo="Insumos, aseo, arreglos… sale del cuadre"
+          titulo="Gastos"
+          subtitulo="Caja menor, o cuentas del mes: arriendo, luz, agua"
         />
         <Fila
           onClick={() => setAbierta("adelanto")}
@@ -153,6 +169,21 @@ function HojaGasto({
   const [medio, setMedio] = useState("efectivo");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  // "Del día" (caja menor) o "Cuenta del mes" (arriendo, luz, agua…). Cambia las
+  // categorías, el medio por defecto y deja escoger el día en que se pagó.
+  const [tipo, setTipo] = useState<"dia" | "mes">("dia");
+  const hoy = new Date().toLocaleDateString("en-CA", { timeZone: "America/Bogota" });
+  const [fecha, setFecha] = useState(hoy);
+
+  function cambiarTipo(t: "dia" | "mes") {
+    setTipo(t);
+    setCat("");
+    setFecha(hoy);
+    // Las cuentas del mes casi nunca salen del cajón: arriendo y servicios se
+    // pagan por transferencia. Arrancar en efectivo las descontaría del cuadre.
+    if (t === "mes" && medios.some((m) => m.slug === "transferencia")) setMedio("transferencia");
+    if (t === "dia") setMedio("efectivo");
+  }
 
   // El monto tiene que ser un entero en pesos > 0: vacío o negativo guardaba un
   // gasto de $0 (o restaba plata) sin avisar. Se valida ACÁ para que el botón
@@ -167,7 +198,14 @@ function HojaGasto({
     }
     setError("");
     setSaving(true);
-    const res = await registrarGasto({ sede, categoria: cat || "Otro", monto: n, descripcion: desc, medio });
+    const res = await registrarGasto({
+      sede,
+      categoria: cat || "Otro",
+      monto: n,
+      descripcion: desc,
+      medio,
+      fecha: tipo === "mes" ? fecha : undefined,
+    });
     setSaving(false);
     if (!res.ok) {
       setError(res.error ?? "No se pudo guardar el gasto.");
@@ -179,7 +217,7 @@ function HojaGasto({
 
   return (
     <Hoja
-      titulo="Gasto del día"
+      titulo={tipo === "mes" ? "Cuenta del mes" : "Gasto del día"}
       onCerrar={onCerrar}
       ancho="max-w-lg"
       pie={
@@ -191,6 +229,15 @@ function HojaGasto({
       }
     >
       <div className="space-y-4 pb-2">
+        <Segmentado
+          etiqueta="Tipo de gasto"
+          opciones={[
+            { valor: "dia", texto: "Del día" },
+            { valor: "mes", texto: "Cuenta del mes" },
+          ]}
+          valor={tipo}
+          onCambio={cambiarTipo}
+        />
         <CampoSelect
           id="gasto-sede"
           etiqueta="¿En qué sede?"
@@ -205,8 +252,12 @@ function HojaGasto({
         </CampoSelect>
 
         <div>
-          <p className="eyebrow mb-2">En qué se fue</p>
-          <Chips opciones={CATS_GASTO.map((c) => ({ k: c, t: c }))} valor={cat} onElegir={(c) => setCat(cat === c ? "" : c)} />
+          <p className="eyebrow mb-2">{tipo === "mes" ? "Qué cuenta" : "En qué se fue"}</p>
+          <Chips
+            opciones={(tipo === "mes" ? CATS_CUENTA : CATS_GASTO).map((c) => ({ k: c, t: c }))}
+            valor={cat}
+            onElegir={(c) => setCat(cat === c ? "" : c)}
+          />
           <Campo
             id="gasto-cat"
             etiqueta="Otra categoría"
@@ -233,6 +284,20 @@ function HojaGasto({
           error={error || undefined}
         />
         <Campo id="gasto-desc" etiqueta="Descripción (opcional)" value={desc} onChange={(e) => setDesc(e.target.value)} />
+
+        {/* Solo en las cuentas del mes: el recibo de la luz se paga el 20 y a
+            veces se anota el 2 del mes siguiente. Sin fecha caería en otro mes. */}
+        {tipo === "mes" && (
+          <Campo
+            id="gasto-fecha"
+            etiqueta="¿Qué día se pagó?"
+            type="date"
+            value={fecha}
+            max={hoy}
+            onChange={(e) => setFecha(e.target.value || hoy)}
+            ayuda="Cuenta para el mes de esa fecha, no el de hoy."
+          />
+        )}
 
         {/* Con qué se pagó (0067): solo el efectivo descuenta del cajón. */}
         {medios.length > 0 && (

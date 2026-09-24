@@ -9,6 +9,7 @@ import { PrecioEditable } from "@/components/admin/PrecioEditable";
 import { ComisionEditable } from "@/components/admin/ComisionEditable";
 import { UpsellToggle } from "@/components/admin/UpsellToggle";
 import { StockControl } from "@/components/admin/StockControl";
+import { actualizarCostoProducto } from "@/lib/actions";
 import { AddProductForm } from "@/components/admin/AddProductForm";
 import { FotoProducto } from "@/components/staff/FotoProducto";
 import { ProductoThumb } from "@/components/staff/ProductoThumb";
@@ -34,11 +35,16 @@ export function InventarioPanel({
   productos,
   sedes,
   sedeActiva,
+  costos = {},
 }: {
   productos: Producto[];
   sedes: Sede[];
   /** null = las dos sedes, agrupadas. */
   sedeActiva: string | null;
+  /** Lo que le cuesta al local cada producto (0077). Viaja APARTE del producto
+   *  porque `Producto` también lo leen pantallas públicas y el margen no es
+   *  dato público. Sin costo = no suma a ganancia ni a plata invertida. */
+  costos?: Record<string, number>;
 }) {
   const [altaAbierta, setAltaAbierta] = useState(false);
   // Se guarda el ID, NO el producto: cada acción de la hoja hace router.refresh()
@@ -51,11 +57,17 @@ export function InventarioPanel({
     const lista = productos
       .filter((p) => p.sede === s.id)
       .sort((a, b) => Number(b.stock <= b.stockMinimo) - Number(a.stock <= a.stockMinimo));
+    const conCosto = lista.filter((p) => costos[p.id] !== undefined);
     return {
       sede: s,
       lista,
       bajos: lista.filter((p) => p.stock <= p.stockMinimo),
       valor: lista.reduce((a, p) => a + p.precio * p.stock, 0),
+      // La "PLATA INVERTIDA" del Excel del dueño: lo que costó lo que hay en la
+      // estantería. Solo suma lo que tiene costo cargado — mejor un total corto
+      // y cierto que uno completo con costos inventados.
+      invertido: conCosto.reduce((a, p) => a + costos[p.id] * p.stock, 0),
+      conCosto: conCosto.length,
     };
   });
   const total = grupos.reduce((a, g) => a + g.lista.length, 0);
@@ -82,6 +94,13 @@ export function InventarioPanel({
             <span className="text-[13px] font-bold uppercase tracking-[0.12em] text-accent-soft">{g.sede.nombre}</span>
             <span className="text-[12.5px] text-muted tabular-nums">
               {g.lista.length} {g.lista.length === 1 ? "producto" : "productos"} · {cop(g.valor)} en bodega
+              {g.conCosto > 0 && (
+                <>
+                  {" · "}
+                  <b className="font-semibold text-ink">{cop(g.invertido)}</b> invertidos
+                  {g.conCosto < g.lista.length && ` (${g.lista.length - g.conCosto} sin costo)`}
+                </>
+              )}
             </span>
           </h2>
 
@@ -110,7 +129,7 @@ export function InventarioPanel({
         </section>
       ))}
 
-      {abierto && <HojaProducto p={abierto} onCerrar={() => setAbiertoId(null)} />}
+      {abierto && <HojaProducto p={abierto} costo={costos[abierto.id] ?? null} onCerrar={() => setAbiertoId(null)} />}
 
       {altaAbierta && (
         <Hoja titulo="Nuevo producto" onCerrar={() => setAltaAbierta(false)}>
@@ -168,8 +187,11 @@ function FilaProducto({ p, onAbrir }: { p: Producto; onAbrir: () => void }) {
   Cada control guarda solo (ya lo hacían en la tarjeta): por eso la hoja no
   lleva pie con "Guardar" — no habría nada que guardar y el botón mentiría.
 */
-function HojaProducto({ p, onCerrar }: { p: Producto; onCerrar: () => void }) {
+function HojaProducto({ p, costo, onCerrar }: { p: Producto; costo: number | null; onCerrar: () => void }) {
   const bajo = p.stock <= p.stockMinimo;
+  // Las tres columnas del Excel del dueño que salen del costo.
+  const ganancia = costo === null ? null : p.precio - costo;
+  const margen = costo === null || p.precio === 0 ? null : Math.round(((p.precio - costo) / p.precio) * 100);
   return (
     <Hoja titulo={p.nombre} onCerrar={onCerrar} ancho="max-w-lg">
       <div className="flex items-center gap-4 pb-1">
@@ -195,11 +217,60 @@ function HojaProducto({ p, onCerrar }: { p: Producto; onCerrar: () => void }) {
         )}
       </Bloque>
 
-      <Bloque titulo="Cuánto cuesta">
-        <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1.5">
-          <span className="font-display text-[22px] font-extrabold tabular-nums text-ink">
-            <PrecioEditable productoId={p.id} precio={p.precio} />
-          </span>
+      <Bloque titulo="Plata">
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <p className="text-[12px] text-muted">Se vende a</p>
+            <span className="font-display text-[22px] font-extrabold tabular-nums text-ink">
+              <PrecioEditable productoId={p.id} precio={p.precio} />
+            </span>
+          </div>
+          <div>
+            <p className="text-[12px] text-muted">Le cuesta al local</p>
+            <span className="font-display text-[22px] font-extrabold tabular-nums text-ink">
+              <PrecioEditable
+                productoId={p.id}
+                precio={costo}
+                minimo={0}
+                vacio="Poner costo"
+                que="costo"
+                onGuardar={(n) => actualizarCostoProducto(p.id, n)}
+              />
+            </span>
+          </div>
+        </div>
+
+        {/* Lo que el dueño saca a mano en el Excel (GANANCIA y PLATA INVERTIDA),
+            hecho acá. Sin costo no se inventa: se dice que falta. */}
+        {ganancia === null ? (
+          <p className="mt-3 text-[12.5px] text-muted">
+            Pon el costo para ver cuánto le ganas a cada unidad y cuánta plata tienes metida en este producto.
+          </p>
+        ) : (
+          <div className="mt-3 grid grid-cols-2 gap-3 rounded-xl border border-line bg-panel px-3.5 py-3">
+            <div>
+              <p className="text-[12px] text-muted">Ganas por unidad</p>
+              <p className={`font-display text-[17px] font-bold tabular-nums ${ganancia < 0 ? "text-warn" : "text-ok"}`}>
+                {cop(ganancia)}
+                {margen !== null && <span className="ml-1.5 text-[12.5px] font-semibold text-muted">{margen}%</span>}
+              </p>
+            </div>
+            <div>
+              <p className="text-[12px] text-muted">Plata invertida</p>
+              <p className="font-display text-[17px] font-bold tabular-nums text-ink">{cop((costo ?? 0) * p.stock)}</p>
+              <p className="text-[12px] text-muted">
+                {p.stock} × {cop(costo ?? 0)}
+              </p>
+            </div>
+            {ganancia < 0 && (
+              <p className="col-span-2 text-[12.5px] font-semibold text-warn">
+                Se está vendiendo por debajo de lo que cuesta.
+              </p>
+            )}
+          </div>
+        )}
+
+        <div className="mt-3">
           <ComisionEditable productoId={p.id} pct={p.comisionPct} />
         </div>
       </Bloque>
