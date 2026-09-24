@@ -667,6 +667,11 @@ export function BookingWizard({
   const diaCerrado = slots.length > 0 && slots.every((t) => pasadoSet.has(t));
   // Cuántos turnos ya tomó el barbero hoy (prueba social del encabezado).
   const tomadosHoy = slots.filter((t) => ocupadoSet.has(t)).length;
+  // Lo que se dibuja en la grilla. OJO: todo lo de arriba se calcula sobre
+  // `slots` completo a propósito — "el día ya cerró", "próximo libre" y el
+  // contador de turnos tomados dejan de ser ciertos si se miran sólo las horas
+  // que quedan.
+  const visibles = slots.filter((t) => !pasadoSet.has(t));
 
   // Estado en vivo de un barbero para el chip del paso 3.
   function estadoBarbero(bId: string): { tipo: "libre" | "silla" | "cerrado"; label: string } {
@@ -1610,12 +1615,19 @@ export function BookingWizard({
                     )}
                     {(
                       [
-                        // NADA se oculta: la agenda del día se muestra completa. Los
-                        // turnos tomados van tachados con tijera (prueba social: el
-                        // cliente ve que al barbero le están reservando) y los que ya
-                        // pasaron quedan atenuados. El próximo libre destaca.
-                        ["Mañana", slots.filter((t) => t < 720)],
-                        ["Tarde", slots.filter((t) => t >= 720)],
+                        // Lo que ya pasó NO se dibuja. Antes se dejaba atenuado "por
+                        // completitud", y a las 4 de la tarde eso son catorce casillas
+                        // muertas que el cliente tiene que scrollear para llegar a la
+                        // primera que puede tocar. Nadie puede reservar las 9:00 de hoy.
+                        //
+                        // Lo que sí se queda es lo TOMADO que aún no pasó: tachado con
+                        // tijera, porque es la señal de que al barbero le están
+                        // reservando. La prueba social de la mañana no se pierde: vive
+                        // en el "N turnos ya tomados" de la leyenda de arriba, que
+                        // cuenta el día entero. Y si el día ya cerró completo, sinCupos
+                        // se lleva la grilla y sale "Este día ya cerró".
+                        ["Mañana", visibles.filter((t) => t < 720)],
+                        ["Tarde", visibles.filter((t) => t >= 720)],
                       ] as const
                     ).map(([label, lista]) =>
                       lista.length ? (
@@ -1623,22 +1635,16 @@ export function BookingWizard({
                           <div className="mb-2 text-[11px] font-bold uppercase tracking-[0.14em] text-muted">{label}</div>
                           <div className="grid grid-cols-3 gap-2 md:grid-cols-[repeat(auto-fill,minmax(110px,1fr))]">
                             {lista.map((t) => {
-                              const ocupado = ocupadoSet.has(t);
-                              const pasado = pasadoSet.has(t);
-                              const deshab = ocupado || pasado;
+                              // Aquí ya no llega ninguna hora pasada: `visibles` las
+                              // sacó. Lo único deshabilitado es lo que alguien tomó.
+                              const tomado = ocupadoSet.has(t);
                               const activo = slot === t;
-                              // "Tomado" = reservado por alguien. Se muestra tachado con
-                              // tijera aunque ya haya pasado: es la prueba de que el
-                              // barbero tuvo turnos ese día.
-                              const tomado = ocupado;
                               const esProximo = t === proximoLibre && !activo;
                               return (
                                 <button
                                   key={t}
-                                  disabled={deshab}
-                                  aria-label={
-                                    tomado ? `${fmtTime(t)}, turno tomado` : pasado ? `${fmtTime(t)}, ya pasó` : fmtTime(t)
-                                  }
+                                  disabled={tomado}
+                                  aria-label={tomado ? `${fmtTime(t)}, turno tomado` : fmtTime(t)}
                                   onClick={() => {
                                     setSlot(t);
                                     setErrorMsg(null);
@@ -1659,16 +1665,14 @@ export function BookingWizard({
                                             textDecorationColor: "rgba(232,103,92,.7)",
                                             textDecorationThickness: "2px",
                                           }
-                                        : pasado
-                                          ? { background: "transparent", border: "1px solid rgba(242,237,228,.05)", color: "rgba(156,149,138,.32)" }
-                                          : esProximo
-                                            ? {
-                                                background: "linear-gradient(180deg,#2a231d,#171412)",
-                                                border: "1px solid rgba(232,103,92,.55)",
-                                                color: "#f2ede4",
-                                                boxShadow: "0 0 0 3px rgba(210,63,52,.12)",
-                                              }
-                                            : { background: "linear-gradient(180deg,#211d19,#151311)", border: "1px solid rgba(242,237,228,.1)", color: "#f2ede4" }
+                                        : esProximo
+                                          ? {
+                                              background: "linear-gradient(180deg,#2a231d,#171412)",
+                                              border: "1px solid rgba(232,103,92,.55)",
+                                              color: "#f2ede4",
+                                              boxShadow: "0 0 0 3px rgba(210,63,52,.12)",
+                                            }
+                                          : { background: "linear-gradient(180deg,#211d19,#151311)", border: "1px solid rgba(242,237,228,.1)", color: "#f2ede4" }
                                   }
                                 >
                                   {fmtTime(t)}
