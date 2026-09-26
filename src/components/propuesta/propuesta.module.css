@@ -1,134 +1,180 @@
 /*
-  «Se prende el local»: la propuesta de landing (26-sep).
+  «La pared del local»: la propuesta de landing (26-sep, segunda vuelta).
 
-  Lo memorable es UNA cosa: el techo de hexágonos de luz de las dos sedes, que
-  se enciende. En el celular es la foto real que pasa de penumbra a luz; en
-  escritorio y en el cierre, el mismo racimo dibujado en tubos. Todo lo demás
-  queda quieto a propósito.
+  Lo memorable es UNA cosa: la pared de fotos reales del negocio (los cortes, los
+  barberos, las sillas bajo el techo de luces, la fachada de noche) que corre
+  despacio en columnas detrás del titular. Arranca en blanco y negro y se
+  enciende a color al pasar por encima, la misma regla de las fotos de los
+  barberos en todo el sitio; en pantallas sin puntero, las fotos se encienden
+  solas por turnos. En escritorio la pared está inclinada en 3D y sigue apenas
+  al puntero (GSAP). Todo lo demás queda quieto a propósito.
 
-  Sin JavaScript o con "reducir movimiento" no hay penumbra ni tubos apagados:
+  Sin JavaScript o con "reducir movimiento" no hay nada apagado ni escondido:
   el head del sitio pone .js-reveal SOLO cuando hay JS y se permite movimiento,
-  así que todo lo que arranca apagado cuelga de esa clase.
+  así que todo lo que arranca oculto cuelga de esa clase.
 */
 
-/* ── La foto que se enciende (hero del celular) ─────────────────────────── */
-.foto {
+/* ── La pared ─────────────────────────────────────────────────────────────── */
+.escena {
+  position: absolute;
+  inset: 0;
   overflow: hidden;
-  background: #151311;
+  perspective: 1400px;
+  background: #0c0b0a;
 }
+/* Paralaje suave con el scroll, nativo (animation-timeline). Donde no existe,
+   la pared simplemente no se mueve al hacer scroll. */
+@supports (animation-timeline: scroll()) {
+  .escena {
+    animation: paralaje linear both;
+    animation-timeline: scroll(root);
+    animation-range: 0 100vh;
+  }
+}
+@keyframes paralaje {
+  to {
+    transform: translateY(22%);
+  }
+}
+.pared {
+  --rx: 0deg;
+  --ry: 0deg;
+  position: absolute;
+  inset: -16% -8%;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  column-gap: 10px;
+  align-items: start;
+  transform: rotateX(calc(4deg + var(--rx))) rotateY(calc(-6deg + var(--ry))) rotateZ(-3deg) scale(1.08);
+  transform-style: preserve-3d;
+}
+@media (min-width: 1024px) {
+  .pared {
+    inset: -18% -6% -18% 12%;
+    grid-template-columns: repeat(5, 1fr);
+    column-gap: 14px;
+    transform: rotateX(calc(8deg + var(--rx))) rotateY(calc(-14deg + var(--ry))) rotateZ(4deg) scale(1.06);
+  }
+}
+.columna {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  animation: deriva var(--dur, 80s) linear infinite;
+  animation-delay: var(--desfase, 0s);
+  will-change: transform;
+}
+.columna:nth-child(even) {
+  animation-direction: reverse;
+}
+/* En celular solo caben dos columnas; las otras dos ni se bajan (display:none
+   antes de que el <img> entre al documento pintado → sin request). */
+@media (max-width: 1023px) {
+  .columna:nth-child(n + 3) {
+    display: none;
+  }
+}
+@keyframes deriva {
+  to {
+    transform: translateY(-50%);
+  }
+}
+.foto {
+  position: relative;
+  margin: 0 0 10px;
+  aspect-ratio: 3 / 4;
+  overflow: hidden;
+  border-radius: 10px;
+  background: #151311;
+  box-shadow: inset 0 0 0 1px rgba(242, 237, 228, 0.06);
+}
+@media (min-width: 1024px) {
+  .foto {
+    margin-bottom: 14px;
+    border-radius: 12px;
+  }
+}
+.foto img {
+  object-fit: cover;
+  filter: grayscale(1) brightness(0.78) contrast(1.06);
+  transition: filter 0.6s ease;
+}
+/* Se van encendiendo solas, una a la vez, por turnos: la pared está viva
+   aunque nadie la toque. */
+.foto img {
+  animation: respira 17s ease-in-out infinite;
+  animation-delay: calc(var(--i, 0) * -1.55s);
+}
+/* Con puntero, además se enciende la que tocas. */
+@media (hover: hover) {
+  .foto:hover img {
+    animation: none;
+    filter: grayscale(0) brightness(1) contrast(1);
+  }
+}
+@keyframes respira {
+  0%,
+  76%,
+  100% {
+    filter: grayscale(1) brightness(0.78) contrast(1.06);
+  }
+  83%,
+  91% {
+    filter: grayscale(0) brightness(1) contrast(1);
+  }
+}
+/* Al cargar, la pared se prende foto por foto (solo con JS y movimiento). */
+:global(.js-reveal) .foto {
+  opacity: 0;
+  animation: prende 0.55s ease-out forwards;
+  animation-delay: calc(var(--i, 0) * 45ms + 0.1s);
+}
+@keyframes prende {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+/* El velo que deja leer el texto: en celular oscurece hacia abajo (el texto va
+   abajo), en escritorio hacia la izquierda (el texto va a la izquierda). */
 .velo {
   position: absolute;
   inset: 0;
-  background: #0c0b0a;
-  opacity: 0;
   pointer-events: none;
+  background: linear-gradient(180deg, rgba(12, 11, 10, 0.42) 0%, rgba(12, 11, 10, 0.1) 28%, rgba(12, 11, 10, 0.62) 50%, rgba(12, 11, 10, 0.95) 70%, #0c0b0a 100%);
 }
-:global(.js-reveal) .velo {
-  opacity: 0.78;
+@media (min-width: 1024px) {
+  .velo {
+    background:
+      linear-gradient(90deg, #0c0b0a 0%, rgba(12, 11, 10, 0.96) 26%, rgba(12, 11, 10, 0.55) 50%, rgba(12, 11, 10, 0.08) 78%, rgba(12, 11, 10, 0.25) 100%),
+      linear-gradient(180deg, rgba(12, 11, 10, 0.55) 0%, transparent 22%, transparent 70%, #0c0b0a 100%);
+  }
 }
-:global(.js-reveal) [data-lista] .velo {
-  /* Dos destellos y se queda prendido: como los tubos cuando abren el local.
-     Menos de 3 por segundo (WCAG 2.3.1). */
-  animation: velo 1.1s linear 0.15s both;
+
+/* ── El texto del hero sube al cargar (solo con JS y movimiento) ────────── */
+:global(.js-reveal) .sube {
+  animation: sube 0.75s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation-delay: var(--t, 0s);
 }
-@keyframes velo {
-  0%,
-  11% {
-    opacity: 0.78;
-  }
-  38% {
-    opacity: 0.2;
-  }
-  44% {
-    opacity: 0.7;
-  }
-  58% {
-    opacity: 0.05;
-  }
-  63% {
-    opacity: 0.45;
-  }
-  80%,
-  100% {
+@keyframes sube {
+  from {
     opacity: 0;
+    transform: translateY(18px);
   }
 }
 
-/* ── El panal de tubos ───────────────────────────────────────────────────── */
-.panal {
-  display: block;
-  width: 100%;
-  height: auto;
-  overflow: visible;
+/* ── Fotos que arrancan en gris y se encienden al pasar por encima ──────── */
+.gris img {
+  filter: grayscale(1) brightness(0.92);
+  transition: filter 0.7s ease, transform 0.6s ease;
 }
-.nucleo {
-  stroke: #fbf8f1;
-  stroke-width: 2.4;
-  stroke-linecap: round;
-}
-.halo {
-  stroke: #fff4df;
-  stroke-width: 11;
-  stroke-linecap: round;
-  opacity: 0.2;
-}
-/* Apagado mientras no se prende (solo con JS y movimiento permitido). */
-:global(.js-reveal) .panal[data-apagable] .tubo {
-  opacity: 0.1;
-}
-:global(.js-reveal) .panal[data-apagable][data-encendido] .tubo {
-  animation: tubo 0.7s linear both;
-  animation-delay: calc(var(--i) * 45ms);
-}
-:global(.js-reveal) .panal[data-apagable][data-encendido] .tubo[data-parpadea] {
-  animation-name: parpadeo;
-}
-/* GSAP (escritorio) toma el control: sin esto la animación de CSS le pelearía. */
-:global(.js-reveal) .panal[data-gsap] .tubo {
-  animation: none !important;
-}
-@keyframes tubo {
-  0% {
-    opacity: 0.1;
-  }
-  45%,
-  100% {
-    opacity: 1;
-  }
-}
-@keyframes parpadeo {
-  0% {
-    opacity: 0.1;
-  }
-  30% {
-    opacity: 0.95;
-  }
-  40% {
-    opacity: 0.18;
-  }
-  55% {
-    opacity: 1;
-  }
-  63% {
-    opacity: 0.45;
-  }
-  78%,
-  100% {
-    opacity: 1;
-  }
-}
-
-/* El brillo que sigue al puntero en escritorio (lo mueve GSAP con --gx/--gy). */
-.resplandor {
-  position: absolute;
-  inset: -10%;
-  pointer-events: none;
-  background: radial-gradient(
-    38% 42% at var(--gx, 55%) var(--gy, 45%),
-    rgba(255, 246, 228, 0.16),
-    rgba(255, 246, 228, 0.05) 45%,
-    transparent 70%
-  );
+.gris:hover img,
+.gris:focus-within img {
+  filter: none;
 }
 
 /* ── La carta: la sede se elige sin JS (radios + :has) ──────────────────── */
@@ -165,13 +211,27 @@
   scroll-snap-align: start;
 }
 
+/* ── La barra de reserva del celular: aparece cuando el CTA del hero se fue ── */
+.barra {
+  transform: translateY(110%);
+  transition: transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.barra[data-visible] {
+  transform: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .velo,
-  .tubo {
+  .escena,
+  .columna,
+  .foto,
+  .foto img,
+  .sube {
     animation: none !important;
+  }
+  .foto {
     opacity: 1;
   }
-  .velo {
-    opacity: 0;
+  .barra {
+    transition: none;
   }
 }

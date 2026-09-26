@@ -1,22 +1,22 @@
 import Link from "next/link";
-import Image, { getImageProps } from "next/image";
+import Image from "next/image";
 import { cop } from "@/lib/format";
 import { CANCELACION_MIN_HORAS } from "@/lib/slots";
 import { categorias } from "@/lib/data/seed";
 import type { Barbero, Sede, Servicio } from "@/lib/data/types";
-import { FotoEncendida, PanalAlVer } from "@/components/propuesta/Encendido";
+import { Inclinable } from "@/components/propuesta/Islas";
 import css from "./propuesta.module.css";
 
 /*
-  Las secciones de la propuesta «Se prende el local». Server components: todo
+  Las secciones de la propuesta «La pared del local». Server components: todo
   el contenido va en el HTML (buscadores, IA y quien entra sin JS). Las únicas
-  islas son el encendido de la foto y del panal (Encendido.tsx).
+  islas son la inclinación de la pared y la barra del celular (Islas.tsx).
 
   Regla de copy: cada bloque termina en un atajo real a /reservar con lo que ya
   se sabe (sede, servicio o barbero), no en un "saber más".
 */
 
-const WHATSAPP = `https://wa.me/573006734799?text=${encodeURIComponent("Hola, quiero reservar una cita en Barbas & Bigotes.")}`;
+export const WHATSAPP = `https://wa.me/573006734799?text=${encodeURIComponent("Hola, quiero reservar una cita en Barbas & Bigotes.")}`;
 const CTA =
   "inline-flex min-h-[52px] items-center justify-center rounded-full bg-[linear-gradient(180deg,var(--cta-1),var(--cta-2))] px-7 font-display text-[17px] font-bold uppercase tracking-[0.06em] text-on-accent shadow-[0_14px_30px_-12px_rgba(173,47,36,0.8)] transition hover:brightness-110 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-soft";
 const H2 = "font-display text-[40px] font-extrabold uppercase leading-[0.92] tracking-tight text-ink sm:text-[56px]";
@@ -48,50 +48,123 @@ function BotonWhatsApp({ grande = false }: { grande?: boolean }) {
   );
 }
 
-/* ── 1. Hero: el local se prende ──────────────────────────────────────────── */
-export function Hero({ barberos }: { barberos: Barbero[] }) {
-  const { props: img } = getImageProps({
-    alt: "El techo de hexágonos de luz del local de Barbas & Bigotes",
-    sizes: "100vw",
-    src: "/sedes/plaza-de-la-paz-interior.jpg",
-    width: 1600,
-    height: 1200,
-    quality: 70,
-    fetchPriority: "high",
-    loading: "eager",
-  });
+const CORTES = [
+  "Corte corto con degradado, visto de perfil",
+  "Degradado alto con la parte de arriba corta",
+  "Degradado en la nuca, visto de espaldas bajo el techo de luces",
+  "Degradado bajo con el pelo peinado hacia atrás",
+  "Degradado con twists arriba y barba perfilada",
+  "Diseño de líneas en el degradado, con barba",
+  "Degradado bajo con textura arriba, visto de espaldas",
+];
 
+/* ── 1. Hero: la pared del local ─────────────────────────────────────────── */
+type FotoPared = { src: string; alt: string; pos?: string };
+
+// Los cortes de la tira de abajo, en el mismo orden (los alt viven en CORTES).
+const LOCAL: FotoPared[] = [
+  { src: "/sedes/plaza-de-la-paz-interior.jpg", alt: "Las sillas bajo el techo de luces de Plaza de la Paz", pos: "52% 45%" },
+  { src: "/sedes/plaza-de-la-paz-frente.jpg", alt: "La entrada de Plaza de la Paz de noche, con el letrero prendido", pos: "50% 42%" },
+  { src: "/sedes/parque-venezuela-interior.jpg", alt: "El local de Parque Venezuela", pos: "42% 55%" },
+  { src: "/sedes/parque-venezuela-frente.jpg", alt: "La vitrina de Parque Venezuela, de día", pos: "50% 45%" },
+];
+
+/**
+ * La pared: cortes, caras y local intercalados, repartidos en 5 columnas (en
+ * celular el CSS muestra 2). Cada columna lleva sus fotos dos veces para que el
+ * bucle sea continuo: la animación corre exactamente la mitad de la altura.
+ */
+function armarPared(barberos: Barbero[]): FotoPared[][] {
+  const cortes: FotoPared[] = CORTES.map((alt, i) => ({ src: `/cortes/corte-${i + 1}.jpg`, alt }));
+  const caras: FotoPared[] = barberos.filter((b) => b.fotoUrl).map((b) => ({ src: b.fotoUrl!, alt: `${b.nombre}, barbero`, pos: "50% 20%" }));
+  const mezcla: FotoPared[] = [];
+  const colas = [cortes, caras, LOCAL];
+  // corte, cara, corte, local, corte, cara… hasta vaciar las tres colas.
+  const orden = [0, 1, 0, 2];
+  let k = 0;
+  while (colas.some((c) => c.length)) {
+    const cola = colas[orden[k % orden.length]];
+    if (cola.length) mezcla.push(cola.shift()!);
+    k++;
+  }
+  const columnas: FotoPared[][] = [[], [], [], [], []];
+  mezcla.forEach((foto, i) => columnas[i % 5].push(foto));
+  return columnas;
+}
+
+const DURACIONES = ["78s", "96s", "86s", "104s", "90s"];
+
+function Pared({ barberos }: { barberos: Barbero[] }) {
+  const columnas = armarPared(barberos);
+  let n = 0;
   return (
-    <section className="relative isolate overflow-hidden lg:min-h-[calc(100svh-72px)]">
-      {/* Celular: una banda con el techo real, que se prende. En escritorio el
-          techo es el de tubos (a la derecha, con GSAP) y esta foto ni se baja. */}
-      <FotoEncendida img={img} className="relative h-[40svh] min-h-[250px] max-h-[360px] [&_img]:object-[50%_12%] lg:hidden" />
-      <div aria-hidden className="pointer-events-none absolute inset-x-0 top-[calc(40svh-120px)] h-[120px] bg-gradient-to-b from-transparent to-bg lg:hidden" />
+    <div className={css.escena} aria-hidden>
+      <Inclinable className={css.pared}>
+        {columnas.map((fotos, c) => (
+          <ul key={c} className={css.columna} style={{ "--dur": DURACIONES[c], "--desfase": `${-c * 23}s` } as React.CSSProperties}>
+            {[...fotos, ...fotos].map((f, i) => (
+              <li key={i} className={css.foto} style={{ "--i": n++ } as React.CSSProperties}>
+                <Image
+                  src={f.src}
+                  alt=""
+                  fill
+                  sizes="(max-width: 1023px) 54vw, 21vw"
+                  quality={55}
+                  // Las columnas 3 a 5 van display:none en celular: con lazy no se
+                  // bajan (un <img> eager se descarga aunque esté escondido).
+                  loading={c < 2 ? "eager" : "lazy"}
+                  fetchPriority={c < 2 && i < 2 ? "high" : "auto"}
+                  style={f.pos ? { objectPosition: f.pos } : undefined}
+                />
+              </li>
+            ))}
+          </ul>
+        ))}
+      </Inclinable>
+      <div className={css.velo} />
+    </div>
+  );
+}
 
-      <div className="relative mx-auto max-w-6xl px-5 pb-10 lg:flex lg:min-h-[calc(100svh-72px)] lg:flex-col lg:justify-center lg:pb-16">
-        <div className="-mt-10 max-w-xl lg:mt-0">
+export function Hero({ barberos }: { barberos: Barbero[] }) {
+  return (
+    <section className="relative isolate overflow-hidden">
+      <Pared barberos={barberos} />
+
+      {/* pointer-events-none en la caja: así el puntero llega a las fotos de la
+          pared que quedan a la derecha del texto (la caja mide todo el ancho).
+          El texto arranca a media pantalla; en teléfonos bajitos (640 px) sube lo
+          justo para que el botón quede dentro del primer pantallazo. */}
+      <div className="pointer-events-none relative mx-auto max-w-6xl px-5 pb-10 pt-[min(50svh,100svh_-_380px)] lg:flex lg:min-h-[calc(100svh-84px)] lg:flex-col lg:justify-center lg:pb-16 lg:pt-0">
+        <div className="pointer-events-auto max-w-xl">
           <h1>
-            <span className="block text-[15px] font-semibold tracking-[0.02em] text-ink/80">Barbas &amp; Bigotes Barbershop</span>
-            <span className="mt-2 block font-display text-[clamp(44px,12.5vw,58px)] font-extrabold uppercase leading-[0.9] tracking-tight text-ink lg:text-[92px]">
+            <span className={`${css.sube} block text-[15px] font-semibold tracking-[0.02em] text-ink/80`} style={{ "--t": "0.15s" } as React.CSSProperties}>
+              Barbas &amp; Bigotes Barbershop
+            </span>
+            <span
+              className={`${css.sube} mt-2 block font-display text-[clamp(44px,12.5vw,58px)] font-extrabold uppercase leading-[0.9] tracking-tight text-ink lg:text-[92px]`}
+              style={{ "--t": "0.25s" } as React.CSSProperties}
+            >
               Aparta tu silla sin hacer fila
             </span>
           </h1>
-          <p className="mt-4 max-w-[34ch] text-[16px] leading-relaxed text-ink/85 lg:text-[19px]">
+          <p className={`${css.sube} mt-4 max-w-[34ch] text-[16px] leading-relaxed text-ink/85 lg:text-[19px]`} style={{ "--t": "0.4s" } as React.CSSProperties}>
             Es nuestra app de reservas: escoges sede, barbero y hora, y te confirmamos al instante.
           </p>
-          <div className="mt-6 flex items-center gap-3">
+          <div data-cta className={`${css.sube} mt-6 flex items-center gap-3`} style={{ "--t": "0.5s" } as React.CSSProperties}>
             <Link href="/reservar?desde=hero" className={`${CTA} flex-1 lg:flex-none`}>
               Reservar mi cita
             </Link>
             <BotonWhatsApp />
           </div>
-          <p className="mt-3 text-[13px] leading-snug text-muted">
+          <p className={`${css.sube} mt-3 text-[13px] leading-snug text-muted`} style={{ "--t": "0.6s" } as React.CSSProperties}>
             Reservar es gratis y pagas en el local. Si te sale algo, cancelas hasta {CANCELACION_MIN_HORAS} horas antes.
           </p>
         </div>
 
-        {/* Las caras: en una barbería se vuelve por el barbero, no por el local. */}
-        <div className="mt-8">
+        {/* Las caras: en una barbería se vuelve por el barbero, no por el local.
+            Arrancan en gris y se encienden al pasar por encima (regla del sitio). */}
+        <div className={`${css.sube} pointer-events-auto mt-8 max-w-xl`} style={{ "--t": "0.75s" } as React.CSSProperties}>
           <p className="text-[13px] font-semibold text-ink">Reserva directo con tu barbero</p>
           <ul className="mt-3 flex flex-wrap gap-2.5">
             {barberos.map((b) => (
@@ -99,7 +172,7 @@ export function Hero({ barberos }: { barberos: Barbero[] }) {
                 <Link
                   href={`/reservar?barbero=${b.id}&sede=${b.sede}&desde=hero-cara`}
                   aria-label={`Reservar con ${b.nombre}`}
-                  className="group flex flex-col items-center gap-1.5"
+                  className={`${css.gris} group flex flex-col items-center gap-1.5`}
                 >
                   <span className="relative block h-14 w-14 overflow-hidden rounded-full ring-2 ring-line transition group-hover:ring-ink/60 lg:h-16 lg:w-16">
                     {b.fotoUrl ? (
@@ -221,11 +294,12 @@ export function Elenco({ barberos, sedes }: { barberos: Barbero[]; sedes: Sede[]
           {barberos.length} barberos en {sedes.length} sedes. Cada uno tiene su mano: reserva directo con el tuyo.
         </p>
       </div>
-      {/* Celular: se desliza de lado y se asoma el siguiente. Escritorio: grilla. */}
+      {/* Celular: se desliza de lado y se asoma el siguiente. Escritorio: grilla.
+          Las fotos arrancan en gris y se encienden al pasar por encima. */}
       <ul className={`${css.pelicula} mt-8 flex gap-4 overflow-x-auto px-5 pb-2 lg:mx-auto lg:grid lg:max-w-6xl lg:grid-cols-3 lg:overflow-visible`}>
         {barberos.map((b) => (
           <li key={b.id} className={`${css.fotograma} w-[76vw] max-w-[320px] shrink-0 lg:w-auto lg:max-w-none`}>
-            <article className="group relative overflow-hidden rounded-[22px] border border-line bg-panel">
+            <article className={`${css.gris} group relative overflow-hidden rounded-[22px] border border-line bg-panel`}>
               <div className="relative aspect-[3/4]">
                 {b.fotoUrl ? (
                   <Image
@@ -233,7 +307,7 @@ export function Elenco({ barberos, sedes }: { barberos: Barbero[]; sedes: Sede[]
                     alt={`${b.nombre}, barbero de ${sedeDe(b.sede)}`}
                     fill
                     sizes="(max-width:1023px) 76vw, 360px"
-                    className="object-cover object-top transition duration-500 group-hover:scale-[1.04]"
+                    className="object-cover object-top group-hover:scale-[1.04]"
                   />
                 ) : null}
                 <div aria-hidden className="absolute inset-0 bg-[linear-gradient(180deg,transparent_45%,rgba(12,11,10,0.94)_100%)]" />
@@ -262,15 +336,6 @@ export function Elenco({ barberos, sedes }: { barberos: Barbero[]; sedes: Sede[]
 }
 
 /* ── 4. Así salen de la silla ─────────────────────────────────────────────── */
-const CORTES = [
-  "Corte corto con degradado, visto de perfil",
-  "Degradado alto con la parte de arriba corta",
-  "Degradado en la nuca, visto de espaldas bajo el techo de luces",
-  "Degradado bajo con el pelo peinado hacia atrás",
-  "Degradado con twists arriba y barba perfilada",
-  "Diseño de líneas en el degradado, con barba",
-  "Degradado bajo con textura arriba, visto de espaldas",
-];
 
 export function TiraCortes() {
   return (
@@ -369,12 +434,20 @@ export function ComoFunciona() {
   );
 }
 
-/* ── 6. El cierre: el techo se vuelve a prender ──────────────────────────── */
+/* ── 6. El cierre: la puerta del local, de noche ─────────────────────────── */
 export function Cierre() {
   return (
     <section className="relative overflow-hidden py-24">
       <div className="mx-auto grid max-w-6xl items-center gap-10 px-5 lg:grid-cols-[1.1fr_1fr]">
-        <PanalAlVer className="mx-auto w-full max-w-[520px] lg:order-2" />
+        <div className="relative mx-auto aspect-[4/3] w-full max-w-[520px] overflow-hidden rounded-[22px] bg-panel lg:order-2 lg:aspect-[4/5]">
+          <Image
+            src="/sedes/plaza-de-la-paz-frente.jpg"
+            alt="La entrada de la sede Plaza de la Paz de noche, con el letrero y el poste de barbero prendidos"
+            fill
+            sizes="(max-width: 1023px) 92vw, 520px"
+            className="object-cover object-[50%_38%]"
+          />
+        </div>
         <div>
           <h2 className="font-display text-[48px] font-extrabold uppercase leading-[0.9] tracking-tight text-ink sm:text-[72px]">
             Tu próxima silla está a un toque
@@ -382,7 +455,7 @@ export function Cierre() {
           <p className="mt-4 max-w-[36ch] text-[16px] leading-relaxed text-ink/80">
             Escoge la hora que te sirve y llega directo a sentarte. Si tienes una duda, escríbenos.
           </p>
-          <div className="mt-7 flex flex-wrap items-center gap-3">
+          <div data-cta className="mt-7 flex flex-wrap items-center gap-3">
             <Link href="/reservar?desde=cierre" className={CTA}>
               Reservar mi cita
             </Link>
