@@ -4,7 +4,7 @@ import { cop } from "@/lib/format";
 import { CANCELACION_MIN_HORAS } from "@/lib/slots";
 import { categorias } from "@/lib/data/seed";
 import type { Barbero, Sede, Servicio } from "@/lib/data/types";
-import { Inclinable } from "@/components/propuesta/Islas";
+import { Inclinable, WhatsAppIcono } from "@/components/propuesta/Islas";
 import css from "./propuesta.module.css";
 
 /*
@@ -14,22 +14,18 @@ import css from "./propuesta.module.css";
 
   Regla de copy: cada bloque termina en un atajo real a /reservar con lo que ya
   se sabe (sede, servicio o barbero), no en un "saber más".
+
+  Todo botón de la página sale del mismo sistema (css.btn + primario/fantasma):
+  el dueño pidió botones "mil veces mejor", y la forma de que se vean así es que
+  sean UNO en toda la página.
 */
 
 export const WHATSAPP = `https://wa.me/573006734799?text=${encodeURIComponent("Hola, quiero reservar una cita en Barbas & Bigotes.")}`;
-const CTA =
-  "inline-flex min-h-[52px] items-center justify-center rounded-full bg-[linear-gradient(180deg,var(--cta-1),var(--cta-2))] px-7 font-display text-[17px] font-bold uppercase tracking-[0.06em] text-on-accent shadow-[0_14px_30px_-12px_rgba(173,47,36,0.8)] transition hover:brightness-110 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-soft";
+const PRIMARIO = `${css.btn} ${css.primario}`;
+const FANTASMA = `${css.btn} ${css.fantasma}`;
 const H2 = "font-display text-[40px] font-extrabold uppercase leading-[0.92] tracking-tight text-ink sm:text-[56px]";
 const nombreCorto = (n: string) => n.split(" (")[0];
 const detalle = (n: string) => n.match(/\(([^)]+)\)/)?.[1] ?? "";
-
-function WhatsAppIcono({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" className={className} aria-hidden fill="currentColor">
-      <path d="M17.47 14.38c-.3-.15-1.76-.87-2.03-.97-.27-.1-.47-.15-.67.15-.2.3-.77.97-.94 1.17-.17.2-.35.22-.64.07-.3-.15-1.25-.46-2.39-1.47-.88-.79-1.48-1.76-1.65-2.06-.17-.3-.02-.46.13-.61.13-.13.3-.35.45-.52.15-.17.2-.3.3-.5.1-.2.05-.37-.02-.52-.08-.15-.67-1.62-.92-2.22-.24-.58-.49-.5-.67-.51h-.57c-.2 0-.52.07-.79.37-.27.3-1.04 1.02-1.04 2.48s1.07 2.88 1.21 3.08c.15.2 2.1 3.2 5.08 4.49.71.31 1.26.49 1.69.63.71.23 1.36.2 1.87.12.57-.09 1.76-.72 2-1.41.25-.7.25-1.29.17-1.41-.07-.13-.27-.2-.57-.35zM12.04 21.5h-.01a9.43 9.43 0 0 1-4.8-1.32l-.35-.2-3.57.93.95-3.48-.22-.36a9.43 9.43 0 0 1-1.45-5.03c0-5.21 4.24-9.45 9.46-9.45 2.52 0 4.9.99 6.68 2.77a9.4 9.4 0 0 1 2.77 6.69c0 5.21-4.24 9.45-9.46 9.45zm8.05-17.5A11.33 11.33 0 0 0 12.04.66C5.77.66.66 5.77.66 12.04c0 2 .52 3.96 1.52 5.69L.57 23.6l6.01-1.58a11.37 11.37 0 0 0 5.45 1.39h.01c6.27 0 11.38-5.11 11.38-11.38 0-3.04-1.18-5.9-3.33-8.03z" />
-    </svg>
-  );
-}
 
 function BotonWhatsApp({ grande = false }: { grande?: boolean }) {
   return (
@@ -38,16 +34,16 @@ function BotonWhatsApp({ grande = false }: { grande?: boolean }) {
       target="_blank"
       rel="noopener noreferrer"
       aria-label="Escribir por WhatsApp"
-      className={`inline-flex shrink-0 items-center justify-center gap-2 rounded-full border border-line text-ink transition hover:border-ink/40 ${
-        grande ? "min-h-[52px] px-6 text-[15px] font-semibold" : "h-[52px] w-[52px]"
-      }`}
+      className={`${FANTASMA} ${grande ? "" : css.redondo}`}
     >
-      <WhatsAppIcono className="h-6 w-6 text-[#25d366]" />
+      <WhatsAppIcono className="text-[#25d366]" />
       {grande && "Escríbenos"}
     </a>
   );
 }
 
+/* ── 1. Hero: la pared del local ─────────────────────────────────────────── */
+// Los cortes de la tira de abajo; el índice es el número del archivo.
 const CORTES = [
   "Corte corto con degradado, visto de perfil",
   "Degradado alto con la parte de arriba corta",
@@ -58,38 +54,42 @@ const CORTES = [
   "Degradado bajo con textura arriba, visto de espaldas",
 ];
 
-/* ── 1. Hero: la pared del local ─────────────────────────────────────────── */
-type FotoPared = { src: string; alt: string; pos?: string };
+// La pared es decorativa (aria-hidden): las fotos no llevan alt.
+type FotoPared = { src: string; pos?: string };
 
-// Los cortes de la tira de abajo, en el mismo orden (los alt viven en CORTES).
 const LOCAL: FotoPared[] = [
-  { src: "/sedes/plaza-de-la-paz-interior.jpg", alt: "Las sillas bajo el techo de luces de Plaza de la Paz", pos: "52% 45%" },
-  { src: "/sedes/plaza-de-la-paz-frente.jpg", alt: "La entrada de Plaza de la Paz de noche, con el letrero prendido", pos: "50% 42%" },
-  { src: "/sedes/parque-venezuela-interior.jpg", alt: "El local de Parque Venezuela", pos: "42% 55%" },
-  { src: "/sedes/parque-venezuela-frente.jpg", alt: "La vitrina de Parque Venezuela, de día", pos: "50% 45%" },
+  { src: "/sedes/plaza-de-la-paz-interior.jpg", pos: "52% 45%" }, // sillas bajo el techo de hexágonos
+  { src: "/sedes/plaza-de-la-paz-frente.jpg", pos: "50% 42%" }, // la entrada de noche, letrero prendido
+  { src: "/sedes/parque-venezuela-interior.jpg", pos: "42% 55%" },
+  { src: "/sedes/parque-venezuela-frente.jpg", pos: "50% 45%" }, // la vitrina de día
 ];
 
 /**
- * La pared: cortes, caras y local intercalados, repartidos en 5 columnas (en
- * celular el CSS muestra 2). Cada columna lleva sus fotos dos veces para que el
- * bucle sea continuo: la animación corre exactamente la mitad de la altura.
+ * La pared: cortes, caras y local repartidos en 5 columnas con una receta fija.
+ * Las dos primeras son las únicas que ve el celular, y por eso llevan el techo
+ * de hexágonos y la fachada de noche: sin eso, en el celular la pared eran puros
+ * retratos y el dueño ya dijo que "no muestra la barbería". Cada columna lleva
+ * sus fotos dos veces para que el bucle sea continuo (la animación corre exacto
+ * la mitad de la altura).
  */
+type Tipo = "corte" | "cara" | "local";
+const RECETA: Tipo[][] = [
+  ["corte", "local", "cara", "corte"],
+  ["cara", "corte", "local", "cara"],
+  ["corte", "cara", "local"],
+  ["cara", "corte", "local"],
+  ["corte", "cara", "corte"],
+];
+
 function armarPared(barberos: Barbero[]): FotoPared[][] {
-  const cortes: FotoPared[] = CORTES.map((alt, i) => ({ src: `/cortes/corte-${i + 1}.jpg`, alt }));
-  const caras: FotoPared[] = barberos.filter((b) => b.fotoUrl).map((b) => ({ src: b.fotoUrl!, alt: `${b.nombre}, barbero`, pos: "50% 20%" }));
-  const mezcla: FotoPared[] = [];
-  const colas = [cortes, caras, LOCAL];
-  // corte, cara, corte, local, corte, cara… hasta vaciar las tres colas.
-  const orden = [0, 1, 0, 2];
-  let k = 0;
-  while (colas.some((c) => c.length)) {
-    const cola = colas[orden[k % orden.length]];
-    if (cola.length) mezcla.push(cola.shift()!);
-    k++;
-  }
-  const columnas: FotoPared[][] = [[], [], [], [], []];
-  mezcla.forEach((foto, i) => columnas[i % 5].push(foto));
-  return columnas;
+  const colas: Record<Tipo, FotoPared[]> = {
+    corte: CORTES.map((_, i) => ({ src: `/cortes/corte-${i + 1}.jpg` })),
+    cara: barberos.filter((b) => b.fotoUrl).map((b) => ({ src: b.fotoUrl!, pos: "50% 20%" })),
+    local: [...LOCAL],
+  };
+  // Si falta de un tipo (un barbero sin foto), se rellena con lo que haya.
+  const saca = (t: Tipo) => colas[t].shift() ?? colas.corte.shift() ?? colas.cara.shift() ?? colas.local.shift();
+  return RECETA.map((fila) => fila.map(saca).filter((f): f is FotoPared => !!f));
 }
 
 const DURACIONES = ["78s", "96s", "86s", "104s", "90s"];
@@ -126,7 +126,13 @@ function Pared({ barberos }: { barberos: Barbero[] }) {
   );
 }
 
-export function Hero({ barberos }: { barberos: Barbero[] }) {
+export function Hero({ barberos, servicios }: { barberos: Barbero[]; servicios: Servicio[] }) {
+  // "Pagas en el local" abre la pregunta "¿cuánto?": se responde ahí mismo con
+  // el corte más barato de las dos sedes.
+  const corte = servicios.find((s) => s.id === "corte");
+  const preciosCorte = corte ? Object.values(corte.precios).filter((p): p is number => p != null) : [];
+  const desde = preciosCorte.length ? Math.min(...preciosCorte) : null;
+
   return (
     <section className="relative isolate overflow-hidden">
       <Pared barberos={barberos} />
@@ -134,8 +140,9 @@ export function Hero({ barberos }: { barberos: Barbero[] }) {
       {/* pointer-events-none en la caja: así el puntero llega a las fotos de la
           pared que quedan a la derecha del texto (la caja mide todo el ancho).
           El texto arranca a media pantalla; en teléfonos bajitos (640 px) sube lo
-          justo para que el botón quede dentro del primer pantallazo. */}
-      <div className="pointer-events-none relative mx-auto max-w-6xl px-5 pb-10 pt-[min(50svh,100svh_-_380px)] lg:flex lg:min-h-[calc(100svh-84px)] lg:flex-col lg:justify-center lg:pb-16 lg:pt-0">
+          justo para que el botón quede dentro del primer pantallazo. En escritorio
+          la cabecera (76 px) va por encima de la pared. */}
+      <div className="pointer-events-none relative mx-auto max-w-6xl px-5 pb-10 pt-[min(50svh,100svh_-_380px)] lg:flex lg:min-h-[100svh] lg:flex-col lg:justify-center lg:pb-16 lg:pt-[76px]">
         <div className="pointer-events-auto max-w-xl">
           <h1>
             <span className={`${css.sube} block text-[15px] font-semibold tracking-[0.02em] text-ink/80`} style={{ "--t": "0.15s" } as React.CSSProperties}>
@@ -152,12 +159,17 @@ export function Hero({ barberos }: { barberos: Barbero[] }) {
             Es nuestra app de reservas: escoges sede, barbero y hora, y te confirmamos al instante.
           </p>
           <div data-cta className={`${css.sube} mt-6 flex items-center gap-3`} style={{ "--t": "0.5s" } as React.CSSProperties}>
-            <Link href="/reservar?desde=hero" className={`${CTA} flex-1 lg:flex-none`}>
+            <Link href="/reservar?desde=hero" className={`${PRIMARIO} flex-1 lg:flex-none`}>
               Reservar mi cita
             </Link>
             <BotonWhatsApp />
           </div>
           <p className={`${css.sube} mt-3 text-[13px] leading-snug text-muted`} style={{ "--t": "0.6s" } as React.CSSProperties}>
+            {desde != null && (
+              <>
+                Corte desde <b className="font-semibold text-ink/90">{cop(desde)}</b>.{" "}
+              </>
+            )}
             Reservar es gratis y pagas en el local. Si te sale algo, cancelas hasta {CANCELACION_MIN_HORAS} horas antes.
           </p>
         </div>
@@ -201,7 +213,7 @@ export function LaCarta({ servicios, sedes }: { servicios: Servicio[]; sedes: Se
     .map(([c, etiqueta]) => ({ etiqueta, items: servicios.filter((s) => s.categoria === c) }))
     .filter((g) => g.items.length);
   return (
-    <section id="precios" className={`${css.carta} mx-auto max-w-6xl px-5 py-20 lg:grid lg:grid-cols-[1fr_1.3fr] lg:gap-16`}>
+    <section id="precios" className={`${css.carta} mx-auto max-w-6xl scroll-mt-20 px-5 py-20 lg:grid lg:grid-cols-[1fr_1.3fr] lg:gap-16`}>
       <div>
         <h2 className={H2}>Lo que cuesta</h2>
         <p className="mt-4 max-w-[36ch] text-[16px] leading-relaxed text-ink/80">
@@ -228,7 +240,9 @@ export function LaCarta({ servicios, sedes }: { servicios: Servicio[]; sedes: Se
                 <li key={sv.id}>
                   <Link
                     href={`/reservar?sede=${s.id}&servicio=${sv.id}&desde=carta`}
-                    aria-label={`Reservar ${nombreCorto(sv.nombre)} en ${s.nombre}, ${cop(sv.precios[s.id] ?? 0)}`}
+                    // El nombre accesible repite TODO lo visible (nombre, detalle,
+                    // minutos, precio) y solo agrega la acción (WCAG 2.5.3).
+                    aria-label={`${nombreCorto(sv.nombre)}${detalle(sv.nombre) ? `, ${detalle(sv.nombre)}` : ""}, ${sv.duracionMin} min, ${cop(sv.precios[s.id] ?? 0)}. Reservar en ${s.nombre}`}
                     className="group flex items-end gap-3 py-4"
                   >
                     <span className="min-w-0">
@@ -287,47 +301,39 @@ export function LaCarta({ servicios, sedes }: { servicios: Servicio[]; sedes: Se
 export function Elenco({ barberos, sedes }: { barberos: Barbero[]; sedes: Sede[] }) {
   const sedeDe = (id: string) => sedes.find((s) => s.id === id)?.nombre ?? "";
   return (
-    <section id="barberos" className="py-20">
+    <section id="barberos" className="scroll-mt-20 py-20">
       <div className="mx-auto max-w-6xl px-5">
         <h2 className={H2}>Escoge quién te corta</h2>
         <p className="mt-4 max-w-[40ch] text-[16px] leading-relaxed text-ink/80">
           {barberos.length} barberos en {sedes.length} sedes. Cada uno tiene su mano: reserva directo con el tuyo.
         </p>
       </div>
-      {/* Celular: se desliza de lado y se asoma el siguiente. Escritorio: grilla.
-          Las fotos arrancan en gris y se encienden al pasar por encima. */}
-      <ul className={`${css.pelicula} mt-8 flex gap-4 overflow-x-auto px-5 pb-2 lg:mx-auto lg:grid lg:max-w-6xl lg:grid-cols-3 lg:overflow-visible`}>
+      {/* Cada barbero es UNA pieza: la foto entera es el enlace (antes solo lo era
+          el botoncito de abajo). Celular: tira que se desliza. Escritorio con
+          puntero: la tira de seis que se abre por donde pasas; sin puntero
+          (iPad): grilla. Arrancan en gris y se encienden a color al pasar por
+          encima, y el elenco entero cuenta como CTA para la barra del celular. */}
+      <ul data-cta className={`${css.elenco} mt-8 lg:mx-auto lg:max-w-6xl`}>
         {barberos.map((b) => (
-          <li key={b.id} className={`${css.fotograma} w-[76vw] max-w-[320px] shrink-0 lg:w-auto lg:max-w-none`}>
-            <article className={`${css.gris} group relative overflow-hidden rounded-[22px] border border-line bg-panel`}>
-              <div className="relative aspect-[3/4]">
-                {b.fotoUrl ? (
-                  <Image
-                    src={b.fotoUrl}
-                    alt={`${b.nombre}, barbero de ${sedeDe(b.sede)}`}
-                    fill
-                    sizes="(max-width:1023px) 76vw, 360px"
-                    className="object-cover object-top group-hover:scale-[1.04]"
-                  />
-                ) : null}
-                <div aria-hidden className="absolute inset-0 bg-[linear-gradient(180deg,transparent_45%,rgba(12,11,10,0.94)_100%)]" />
-                <div className="absolute inset-x-0 bottom-0 p-5">
-                  <h3 className="font-display text-[46px] font-extrabold uppercase leading-[0.85] text-ink">{b.nombre.split(" ")[0]}</h3>
-                  <p className="mt-2 text-[14px] text-ink/85">{sedeDe(b.sede)}</p>
+          <li key={b.id}>
+            <Link href={`/reservar?barbero=${b.id}&sede=${b.sede}&desde=elenco`} className={css.pieza}>
+              {b.fotoUrl ? (
+                <Image src={b.fotoUrl} alt="" fill sizes="(max-width: 1023px) 76vw, 40vw" quality={70} />
+              ) : (
+                <span className="grid h-full w-full place-items-center bg-elevated font-display text-6xl font-bold text-muted">{b.nombre[0]}</span>
+              )}
+              <span aria-hidden className={css.sombra} />
+              <span className={css.ficha}>
+                <span className={css.nombre}>{b.nombre.split(" ")[0]}</span>
+                <span className={css.detalle}>
+                  <span className="block text-[14px] text-ink/85">{sedeDe(b.sede)}</span>
                   {b.especialidades.length > 0 && (
-                    <p className="mt-0.5 text-[13px] text-muted">{b.especialidades.slice(0, 3).join(", ")}</p>
+                    <span className="block text-[13px] text-muted">{b.especialidades.slice(0, 3).join(", ")}</span>
                   )}
-                </div>
-              </div>
-              <div className="p-4 pt-3">
-                <Link
-                  href={`/reservar?barbero=${b.id}&sede=${b.sede}&desde=elenco`}
-                  className="flex min-h-12 items-center justify-center rounded-full border border-line text-[14px] font-semibold text-ink transition hover:border-accent hover:bg-accent/10"
-                >
-                  Reservar con {b.nombre.split(" ")[0]}
-                </Link>
-              </div>
-            </article>
+                  <span className={`${PRIMARIO} ${css.chico} mt-3 justify-self-start`}>Reservar con {b.nombre.split(" ")[0]}</span>
+                </span>
+              </span>
+            </Link>
           </li>
         ))}
       </ul>
@@ -336,7 +342,6 @@ export function Elenco({ barberos, sedes }: { barberos: Barbero[]; sedes: Sede[]
 }
 
 /* ── 4. Así salen de la silla ─────────────────────────────────────────────── */
-
 export function TiraCortes() {
   return (
     <section className="py-20">
@@ -363,10 +368,10 @@ export function TiraCortes() {
           </li>
         ))}
         <li className={`${css.fotograma} w-[64vw] max-w-[300px] shrink-0 sm:w-[300px]`}>
-          <div className="flex aspect-[4/5] flex-col justify-end rounded-[18px] border border-line bg-panel p-6">
+          <div data-cta className="flex aspect-[4/5] flex-col justify-end rounded-[18px] border border-line bg-panel p-6">
             <p className="font-display text-[34px] font-extrabold uppercase leading-[0.9] text-ink">¿Te gustó uno?</p>
             <p className="mt-3 text-[15px] leading-relaxed text-ink/80">Guárdalo y muéstraselo a tu barbero cuando te sientes.</p>
-            <Link href="/reservar?servicio=corte&desde=galeria" className={`${CTA} mt-6`}>
+            <Link href="/reservar?servicio=corte&desde=galeria" className={`${PRIMARIO} mt-6`}>
               Reservar corte
             </Link>
           </div>
@@ -385,7 +390,7 @@ const PASOS = [
 
 export function ComoFunciona() {
   return (
-    <section id="la-app" className="mx-auto max-w-6xl px-5 py-20">
+    <section id="la-app" className="mx-auto max-w-6xl scroll-mt-20 px-5 py-20">
       <div className="max-w-2xl">
         <h2 className={H2}>Así funciona la app</h2>
         <p className="mt-5 text-[16px] leading-relaxed text-ink/85">
@@ -422,11 +427,11 @@ export function ComoFunciona() {
         </Link>
         .
       </p>
-      <div className="mt-6 flex flex-wrap gap-3">
-        <Link href="/reservar?desde=app" className={CTA}>
+      <div data-cta className="mt-6 flex flex-wrap gap-3">
+        <Link href="/reservar?desde=app" className={PRIMARIO}>
           Reservar mi cita
         </Link>
-        <Link href="/cuenta" className="inline-flex min-h-[52px] items-center rounded-full border border-line px-6 text-[15px] font-semibold text-ink transition hover:border-ink/40">
+        <Link href="/cuenta" className={FANTASMA}>
           Entrar a mi cuenta
         </Link>
       </div>
@@ -456,7 +461,7 @@ export function Cierre() {
             Escoge la hora que te sirve y llega directo a sentarte. Si tienes una duda, escríbenos.
           </p>
           <div data-cta className="mt-7 flex flex-wrap items-center gap-3">
-            <Link href="/reservar?desde=cierre" className={CTA}>
+            <Link href="/reservar?desde=cierre" className={PRIMARIO}>
               Reservar mi cita
             </Link>
             <BotonWhatsApp grande />

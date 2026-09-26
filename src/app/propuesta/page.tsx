@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
-import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
+import { HeaderPropuesta } from "@/components/propuesta/HeaderPropuesta";
 import { Ubicacion } from "@/components/home/Ubicacion";
 import { Faq } from "@/components/home/Faq";
 import { Hero, LaCarta, Elenco, TiraCortes, ComoFunciona, Cierre, WHATSAPP } from "@/components/propuesta/Secciones";
@@ -22,10 +22,10 @@ export default async function Propuesta() {
   const [sedes, barberos, servicios] = await Promise.all([getSedes(), getBarberos(), getServicios()]);
   return (
     <>
-      <SiteHeader />
+      <HeaderPropuesta />
       <BarraReserva whatsapp={WHATSAPP} />
       <main>
-        <Hero barberos={barberos} />
+        <Hero barberos={barberos} servicios={servicios} />
         <LaCarta servicios={servicios} sedes={sedes} />
         <Elenco barberos={barberos} sedes={sedes} />
         <TiraCortes />

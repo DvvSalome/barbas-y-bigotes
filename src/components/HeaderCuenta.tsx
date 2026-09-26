@@ -14,10 +14,23 @@ import { supabaseBrowser } from "@/lib/supabase/client";
 
 const pill =
   "relative rounded-full border border-[rgba(242,237,228,0.16)] text-xs text-ink transition before:absolute before:-inset-2 before:content-['']";
+// La versión grande (landing /propuesta): 44 px de alto, vidrio, y un ícono de
+// persona para que se entienda de un vistazo aunque el texto no quepa.
+const pillGrande =
+  "relative inline-flex min-h-11 items-center gap-2 rounded-full border border-[rgba(242,237,228,0.22)] bg-[rgba(21,19,17,0.55)] text-[14px] font-semibold text-ink backdrop-blur-[12px] transition hover:border-[rgba(242,237,228,0.5)] hover:bg-[rgba(242,237,228,0.09)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[3px] focus-visible:outline-accent-soft";
 
 type Sesion = { nombre: string; foto: string | null };
 
-export function HeaderCuenta() {
+function PersonaIcono() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5 shrink-0" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <circle cx="12" cy="8" r="4" />
+      <path d="M4 21c0-4 3.6-6.5 8-6.5s8 2.5 8 6.5" />
+    </svg>
+  );
+}
+
+export function HeaderCuenta({ grande = false }: { grande?: boolean }) {
   const router = useRouter();
   // undefined = todavía no sabemos; null = deslogueado; objeto = logueado.
   const [sesion, setSesion] = useState<Sesion | null | undefined>(undefined);
@@ -74,7 +87,12 @@ export function HeaderCuenta() {
 
   // Cargando o deslogueado → "Entrar" (evita el salto de mostrar el chip antes de saber).
   if (!sesion) {
-    return (
+    return grande ? (
+      <Link href="/cuenta" aria-label="Entrar a mi cuenta" className={`${pillGrande} px-4`}>
+        <PersonaIcono />
+        <span className="max-[379px]:hidden">Entrar</span>
+      </Link>
+    ) : (
       <Link href="/cuenta" className={`${pill} px-3.5 py-[7px]`}>
         Entrar
       </Link>
@@ -88,9 +106,9 @@ export function HeaderCuenta() {
         onClick={() => setMenu((v) => !v)}
         aria-haspopup="menu"
         aria-expanded={menu}
-        className={`${pill} flex items-center gap-2 py-1 pl-1 pr-2.5`}
+        className={grande ? `${pillGrande} py-1 pl-1 pr-3` : `${pill} flex items-center gap-2 py-1 pl-1 pr-2.5`}
       >
-        <span className="grid h-7 w-7 shrink-0 place-items-center overflow-hidden rounded-full bg-elevated text-[11px] font-bold text-muted">
+        <span className={`grid shrink-0 place-items-center overflow-hidden rounded-full bg-elevated text-[11px] font-bold text-muted ${grande ? "h-9 w-9" : "h-7 w-7"}`}>
           {sesion.foto ? (
             // eslint-disable-next-line @next/next/no-img-element -- avatar remoto de Google; <img> evita configurar el dominio en next/image
             <img src={sesion.foto} alt="" referrerPolicy="no-referrer" className="h-full w-full object-cover" />
