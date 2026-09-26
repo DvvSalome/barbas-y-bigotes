@@ -6,15 +6,20 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { crearCombo } from "@/lib/actions";
 import { cop } from "@/lib/format";
+import { normNombre } from "@/lib/admin-reglas";
 import { SearchIcon, CheckIcon, ScissorsIcon } from "@/components/icons";
-import type { Categoria, SedeId, Servicio } from "@/lib/data/types";
+import { Segmentado } from "@/components/ui/Segmentado";
+import type { Categoria, Sede, Servicio } from "@/lib/data/types";
 
 // Armador de combos (proto §7.1). Las partes se eligen de la MISMA forma que se
 // leen los precios arriba: buscador + grupos por categoría (antes era una nube
 // plana de ~30 chips mezclados). Nombre/duración/precio se autocompletan al
 // tocar partes, pero SOLO mientras el dueño no los haya editado a mano: lo
 // escrito no se pisa (antes agregar una parte borraba el nombre puesto).
-// El combo se crea SOLO en la sede activa (decisión del dueño).
+//
+// 26-sep (pedido del administrador): el combo se arma para UNA sede o para LAS
+// DOS, con su precio en cada una. Antes solo funcionaba con una sede elegida
+// arriba, y para tenerlo en las dos había que armarlo dos veces.
 
 const BEBIDA = 5000; // proto §7.1: "Incluye bebida · +$5.000"
 const PISO = 5000; // piso de precio del combo (proto §7.3)
@@ -25,11 +30,6 @@ const inputCls =
 const shortName = (n: string) => n.split("(")[0].trim();
 const capitalizar = (s: string) => (s ? s[0].toUpperCase() + s.slice(1) : s);
 const sugeridoDe = (suelto: number) => Math.max(PISO, Math.round((suelto * 0.9) / 1000) * 1000);
-const norm = (s: string) =>
-  s
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "");
 
 function BotonMasMenos({ onClick, disabled, label, children }: { onClick: () => void; disabled?: boolean; label: string; children: React.ReactNode }) {
   return (
@@ -46,63 +46,79 @@ function BotonMasMenos({ onClick, disabled, label, children }: { onClick: () => 
 }
 
 export function ComboBuilder({
-  partesDisponibles,
-  sedeActiva,
-  sedeNombre,
+  servicios,
+  sedes,
+  sedeInicial,
   etiquetas,
 }: {
-  partesDisponibles: Servicio[];
-  sedeActiva: SedeId;
-  sedeNombre: string;
+  /** Los servicios sueltos y activos: las partes posibles. */
+  servicios: Servicio[];
+  sedes: Sede[];
+  /** La sede elegida arriba, o "todas". */
+  sedeInicial: string;
   etiquetas: Record<Categoria, string>;
 }) {
   const router = useRouter();
+  const [donde, setDonde] = useState(sedeInicial);
   const [partes, setPartes] = useState<Set<string>>(new Set());
   const [conBebida, setConBebida] = useState(false);
   const [q, setQ] = useState("");
   const [nombre, setNombre] = useState("");
   const [duracion, setDuracion] = useState(0);
-  const [precio, setPrecio] = useState(PISO);
+  // Un precio por sede: una misma parte cuesta distinto en cada una.
+  const [precios, setPrecios] = useState<Record<string, number>>({});
   // Qué editó el dueño a mano: esos campos dejan de autocompletarse.
-  const [manual, setManual] = useState({ nombre: false, duracion: false, precio: false });
+  const [manual, setManual] = useState<{ nombre: boolean; duracion: boolean; precio: Record<string, boolean> }>({
+    nombre: false,
+    duracion: false,
+    precio: {},
+  });
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
-  const [ok, setOk] = useState(false);
+  const [ok, setOk] = useState<string | null>(null);
+
+  const elegidas = useMemo(() => (donde === "todas" ? sedes : sedes.filter((s) => s.id === donde)), [donde, sedes]);
+  // Solo lo que se hace en TODAS las sedes del combo: si no, en una se vendería
+  // algo que ahí no se hace (el servidor lo vuelve a revisar).
+  const partesDisponibles = useMemo(
+    () => servicios.filter((p) => elegidas.every((s) => p.precios[s.id] != null)),
+    [servicios, elegidas],
+  );
+  const noEnTodas = servicios.length - partesDisponibles.length;
 
   // Partes agrupadas por categoría (el orden de `etiquetas`), con el buscador
   // filtrando en TODO el catálogo — mismo criterio que la lista de arriba.
   const grupos = useMemo(() => {
-    const t = norm(q.trim());
-    const visibles = t ? partesDisponibles.filter((p) => norm(p.nombre).includes(t)) : partesDisponibles;
+    const t = normNombre(q);
+    const visibles = t ? partesDisponibles.filter((p) => normNombre(p.nombre).includes(t)) : partesDisponibles;
     return (Object.keys(etiquetas) as Categoria[])
       .map((c) => ({ cat: c, items: visibles.filter((p) => p.categoria === c) }))
       .filter((g) => g.items.length > 0);
   }, [partesDisponibles, q, etiquetas]);
 
   // Selección en el orden de la lista (estable, no depende del orden de tap).
-  const seleccion = useMemo(
-    () => partesDisponibles.filter((p) => partes.has(p.id)),
-    [partesDisponibles, partes],
-  );
-  const sumaPartes = seleccion.reduce((a, p) => a + (p.precios[sedeActiva] ?? 0), 0);
-  const suelto = sumaPartes + (conBebida ? BEBIDA : 0);
+  const seleccion = partesDisponibles.filter((p) => partes.has(p.id));
+  const sueltoEn = (sedeId: Sede["id"], sel = seleccion, bebida = conBebida) =>
+    sel.reduce((a, p) => a + (p.precios[sedeId] ?? 0), 0) + (bebida ? BEBIDA : 0);
   const durSugerida = seleccion.reduce((a, p) => a + p.duracionMin, 0);
-  const sugerido = sugeridoDe(suelto);
 
-  // Al tocar partes/bebida se re-sugieren SOLO los campos aún en automático.
-  function aplicar(nuevas: Set<string>, bebida: boolean) {
-    setOk(false);
+  // Al tocar partes, bebida o sedes se re-sugieren SOLO los campos aún en automático.
+  function aplicar(nuevas: Set<string>, bebida: boolean, sedesCombo = elegidas) {
+    setOk(null);
     setPartes(nuevas);
     setConBebida(bebida);
-    const sel = partesDisponibles.filter((p) => nuevas.has(p.id));
-    const suma = sel.reduce((a, p) => a + (p.precios[sedeActiva] ?? 0), 0) + (bebida ? BEBIDA : 0);
+    const sel = servicios.filter((p) => nuevas.has(p.id));
     if (!manual.nombre) {
       const nombres = sel.map((p) => shortName(p.nombre));
       if (bebida) nombres.push("bebida");
       setNombre(capitalizar(nombres.join(" + ")));
     }
     if (!manual.duracion) setDuracion(sel.reduce((a, p) => a + p.duracionMin, 0));
-    if (!manual.precio) setPrecio(sugeridoDe(suma));
+    setPrecios((prev) =>
+      Object.fromEntries(
+        sedesCombo.map((s) => [s.id, manual.precio[s.id] ? (prev[s.id] ?? PISO) : sugeridoDe(sueltoEn(s.id, sel, bebida))]),
+      ),
+    );
   }
 
   function togglePart(id: string) {
@@ -112,22 +128,38 @@ export function ComboBuilder({
     aplicar(n, conBebida);
   }
 
-  const cantidad = partes.size;
+  function cambiarDonde(v: string) {
+    setDonde(v);
+    const nuevas = v === "todas" ? sedes : sedes.filter((s) => s.id === v);
+    // Lo elegido que no se hace en las sedes nuevas se suelta, a la vista.
+    const quedan = new Set([...partes].filter((id) => {
+      const p = servicios.find((x) => x.id === id);
+      return !!p && nuevas.every((s) => p.precios[s.id] != null);
+    }));
+    aplicar(quedan, conBebida, nuevas);
+  }
+
+  const cantidad = seleccion.length;
+  const preciosOk = elegidas.every((s) => (precios[s.id] ?? 0) > 0);
   const valido =
-    (cantidad >= 2 || (cantidad >= 1 && conBebida)) && nombre.trim() !== "" && precio > 0 && duracion > 0;
+    (cantidad >= 2 || (cantidad >= 1 && conBebida)) &&
+    nombre.trim() !== "" &&
+    !(!conBebida && /bebida/i.test(nombre)) &&
+    preciosOk &&
+    duracion > 0;
+  const dondeTexto = elegidas.length > 1 ? "las dos sedes" : (elegidas[0]?.nombre ?? "");
 
   async function submit() {
     if (!valido || saving) return;
     setErr(null);
-    setOk(false);
+    setOk(null);
     setSaving(true);
     const res = await crearCombo({
-      sede: sedeActiva,
-      partes: [...partes],
+      partes: seleccion.map((p) => p.id),
       conBebida,
       nombre: nombre.trim(),
       duracionMin: duracion,
-      precio,
+      precios: Object.fromEntries(elegidas.map((s) => [s.id, precios[s.id]])),
     });
     setSaving(false);
     if (res.ok) {
@@ -135,10 +167,10 @@ export function ComboBuilder({
       setConBebida(false);
       setNombre("");
       setDuracion(0);
-      setPrecio(PISO);
-      setManual({ nombre: false, duracion: false, precio: false });
+      setPrecios({});
+      setManual({ nombre: false, duracion: false, precio: {} });
       setQ("");
-      setOk(true);
+      setOk(`Combo creado en ${dondeTexto} ✓${res.aviso ? ` ${res.aviso}` : ""} Ya aparece en el catálogo.`);
       router.refresh();
     } else {
       setErr(res.error ?? "No se pudo crear el combo.");
@@ -147,12 +179,27 @@ export function ComboBuilder({
 
   return (
     <div className="rounded-2xl border border-accent/30 bg-accent/5 p-4 sm:p-5">
-      <div className="eyebrow">
-        Arma el combo · toca lo que incluye
-      </div>
-      <p className="mt-1 text-xs text-muted">
-        Se crea en <span className="font-semibold text-ink">{sedeNombre}</span> · queda disponible solo en esta sede.
-      </p>
+      <div className="eyebrow">Arma el combo · toca lo que incluye</div>
+
+      {sedes.length > 1 && (
+        <div className="mt-3">
+          <p className="mb-1.5 text-[12.5px] font-semibold text-ink">¿Para qué sede?</p>
+          <Segmentado
+            etiqueta="Sedes del combo"
+            valor={donde}
+            onCambio={cambiarDonde}
+            opciones={[
+              ...sedes.map((s) => ({ valor: s.id, texto: s.nombre.split(" ")[0] })),
+              { valor: "todas", texto: "Las dos" },
+            ]}
+          />
+          {elegidas.length > 1 && noEnTodas > 0 && (
+            <p className="mt-1.5 text-[12px] text-muted">
+              {noEnTodas} {noEnTodas === 1 ? "servicio no se hace" : "servicios no se hacen"} en las dos sedes y no salen acá.
+            </p>
+          )}
+        </div>
+      )}
 
       {/* Buscador de partes: mismo gesto que la lista de precios de arriba */}
       <div className="relative mt-3 max-w-md">
@@ -171,18 +218,19 @@ export function ComboBuilder({
           y precios" / el wizard): las píldoras de texto pelado se sentían de
           hoja de cálculo. Sin foto subida → placeholder neutro con tijera. */}
       {grupos.length === 0 && (
-        <p className="mt-3 text-sm text-muted">Nada coincide con “{q}”. Prueba con otro nombre.</p>
+        <p className="mt-3 text-sm text-muted">
+          {q ? `Nada coincide con “${q}”. Prueba con otro nombre.` : "No hay servicios que se hagan en esa sede."}
+        </p>
       )}
       {grupos.map((g) => (
         <div key={g.cat} className="mt-4">
-          <div className="mb-2 text-[12px] font-bold uppercase tracking-[0.12em] text-muted">
-            {etiquetas[g.cat]}
-          </div>
-          {/* 2 columnas fijas: el armador ahora vive en un panel angosto a la
-              derecha (escritorio) o a lo ancho (móvil); 2 siempre caben bien. */}
+          <div className="mb-2 text-[12px] font-bold uppercase tracking-[0.12em] text-muted">{etiquetas[g.cat]}</div>
+          {/* 2 columnas fijas: el armador vive en un panel angosto a la derecha
+              (escritorio) o a lo ancho (móvil); 2 siempre caben bien. */}
           <div className="grid grid-cols-2 gap-2">
             {g.items.map((p) => {
               const on = partes.has(p.id);
+              const preciosParte = [...new Set(elegidas.map((s) => p.precios[s.id] ?? 0))];
               return (
                 <button
                   key={p.id}
@@ -208,14 +256,13 @@ export function ComboBuilder({
                     )}
                   </span>
                   <span className="block px-2.5 py-2">
-                    <span className="block truncate text-[12.5px] font-semibold leading-tight text-ink">
-                      {shortName(p.nombre)}
-                    </span>
+                    <span className="block truncate text-[12.5px] font-semibold leading-tight text-ink">{shortName(p.nombre)}</span>
                     <span className="mt-0.5 flex items-baseline justify-between gap-1">
-                      <span className="text-[12px] font-bold tabular-nums text-accent-soft">
-                        +{cop(p.precios[sedeActiva] ?? 0)}
+                      {/* Con las dos sedes y precios distintos, los dos: "+$35.000 · $30.000". */}
+                      <span className="truncate text-[12px] font-bold tabular-nums text-accent-soft">
+                        +{preciosParte.map((x) => cop(x)).join(" · ")}
                       </span>
-                      <span className="text-[12px] text-muted">{p.duracionMin} min</span>
+                      <span className="shrink-0 text-[12px] text-muted">{p.duracionMin} min</span>
                     </span>
                   </span>
                 </button>
@@ -252,7 +299,7 @@ export function ComboBuilder({
                 type="button"
                 onClick={() => togglePart(p.id)}
                 title={`Quitar ${shortName(p.nombre)}`}
-                className="inline-flex min-h-[40px] items-center gap-2 rounded-full border border-accent/50 bg-accent/10 py-1 pl-1 pr-3 text-xs font-semibold text-ink transition hover:bg-accent/20"
+                className="inline-flex min-h-11 items-center gap-2 rounded-full border border-accent/50 bg-accent/10 py-1 pl-1 pr-3 text-xs font-semibold text-ink transition hover:bg-accent/20"
               >
                 <span className="relative h-8 w-8 shrink-0 overflow-hidden rounded-full">
                   {p.fotoUrl ? (
@@ -275,106 +322,132 @@ export function ComboBuilder({
       {cantidad >= 1 && (
         <div className="mt-3 border-t border-line pt-3">
           <div className="text-[12.5px] font-bold text-ink">{nombre || "Combo"}</div>
-          <p className="mt-0.5 text-xs text-muted">
-            Por separado costaría <span className="tabular-nums text-ink">{cop(suelto)}</span> · {durSugerida} min ·
-            combo sugerido <span className="font-bold tabular-nums text-ok">{cop(sugerido)}</span> (10% menos)
-          </p>
+          {elegidas.map((s) => (
+            <p key={s.id} className="mt-0.5 text-xs text-muted">
+              {elegidas.length > 1 ? `${s.nombre}: ` : ""}por separado costaría{" "}
+              <span className="tabular-nums text-ink">{cop(sueltoEn(s.id))}</span> · combo sugerido{" "}
+              <span className="font-bold tabular-nums text-ok">{cop(sugeridoDe(sueltoEn(s.id)))}</span> (10% menos)
+            </p>
+          ))}
+          <p className="mt-0.5 text-xs text-muted">{durSugerida} min sumando las partes</p>
         </div>
       )}
 
       {/* Editables */}
       <div className="mt-3 grid gap-3">
         <label className="block">
-          <span className="mb-1 block eyebrow">
-            Nombre del combo
-          </span>
+          <span className="mb-1 block eyebrow">Nombre del combo</span>
           <input
             value={nombre}
             onChange={(e) => {
               setNombre(e.target.value);
               // Vaciarlo devuelve el campo al modo automático.
               setManual((m) => ({ ...m, nombre: e.target.value.trim() !== "" }));
-              setOk(false);
+              setOk(null);
             }}
             placeholder="Nombre del combo"
             className={inputCls}
           />
+          {conBebida && nombre.trim() !== "" && !/bebida/i.test(nombre) && (
+            <span className="mt-1 block text-[12px] text-muted">Se guarda con “+ bebida” al final: así al reservar no se cobra aparte.</span>
+          )}
+          {!conBebida && /bebida/i.test(nombre) && (
+            <span className="mt-1 block text-[12px] text-warn">
+              El nombre dice “bebida” pero el combo no la incluye: al reservar saldría gratis. Quita la palabra o marca la bebida.
+            </span>
+          )}
         </label>
         <div className="flex flex-wrap items-end gap-4">
           <div>
-            <span className="mb-1 block eyebrow">
-              Duración (min)
-            </span>
+            <span className="mb-1 block eyebrow">Duración (min)</span>
             <div className="inline-flex items-center rounded-full border border-line bg-elevated" role="group" aria-label="duración">
-              <BotonMasMenos label="Bajar duración" disabled={duracion <= 5} onClick={() => { setDuracion(Math.max(5, duracion - 5)); setManual((m) => ({ ...m, duracion: true })); }}>
-                −
-              </BotonMasMenos>
-              <span className="min-w-[64px] text-center font-display text-[17px] font-extrabold tabular-nums text-ink">
-                {duracion}
-              </span>
-              <BotonMasMenos label="Subir duración" onClick={() => { setDuracion(duracion + 5); setManual((m) => ({ ...m, duracion: true })); }}>
-                +
-              </BotonMasMenos>
-            </div>
-          </div>
-          <div>
-            <span className="mb-1 block eyebrow">
-              Precio (COP) — toca el número para escribirlo
-            </span>
-            <div className="inline-flex items-center rounded-full border border-line bg-elevated" role="group" aria-label="precio">
-              <BotonMasMenos label="Bajar precio" disabled={precio <= PISO} onClick={() => { setPrecio(Math.max(PISO, precio - 1000)); setManual((m) => ({ ...m, precio: true })); }}>
-                −
-              </BotonMasMenos>
-              <input
-                type="number"
-                min={PISO}
-                step={500}
-                value={precio}
-                onChange={(e) => {
-                  setPrecio(Number(e.target.value) || 0);
-                  setManual((m) => ({ ...m, precio: true }));
-                }}
-                aria-label="Precio del combo en pesos"
-                className="w-[92px] border-0 bg-transparent text-center font-display text-[17px] font-extrabold tabular-nums text-ink focus:outline-none"
-              />
-              <BotonMasMenos label="Subir precio" onClick={() => { setPrecio(precio + 1000); setManual((m) => ({ ...m, precio: true })); }}>
-                +
-              </BotonMasMenos>
-            </div>
-            {manual.precio && precio !== sugerido && cantidad >= 1 && (
-              <button
-                type="button"
+              <BotonMasMenos
+                label="Bajar duración"
+                disabled={duracion <= 5}
                 onClick={() => {
-                  setPrecio(sugerido);
-                  setManual((m) => ({ ...m, precio: false }));
+                  setDuracion(Math.max(5, duracion - 5));
+                  setManual((m) => ({ ...m, duracion: true }));
                 }}
-                className="mt-1.5 block text-[12px] font-semibold text-accent-soft transition hover:text-accent"
               >
-                Usar el sugerido ({cop(sugerido)})
-              </button>
-            )}
+                −
+              </BotonMasMenos>
+              <span className="min-w-[64px] text-center font-display text-[17px] font-extrabold tabular-nums text-ink">{duracion}</span>
+              <BotonMasMenos
+                label="Subir duración"
+                onClick={() => {
+                  setDuracion(duracion + 5);
+                  setManual((m) => ({ ...m, duracion: true }));
+                }}
+              >
+                +
+              </BotonMasMenos>
+            </div>
           </div>
+          {elegidas.map((s) => {
+            const precio = precios[s.id] ?? PISO;
+            const sugerido = sugeridoDe(sueltoEn(s.id));
+            const marcar = () => setManual((m) => ({ ...m, precio: { ...m.precio, [s.id]: true } }));
+            return (
+              <div key={s.id}>
+                <span className="mb-1 block eyebrow">
+                  {elegidas.length > 1 ? `Precio en ${s.nombre.split(" ")[0]}` : "Precio (COP) — toca el número para escribirlo"}
+                </span>
+                <div className="inline-flex items-center rounded-full border border-line bg-elevated" role="group" aria-label={`precio en ${s.nombre}`}>
+                  <BotonMasMenos
+                    label={`Bajar precio en ${s.nombre}`}
+                    disabled={precio <= PISO}
+                    onClick={() => {
+                      setPrecios((p) => ({ ...p, [s.id]: Math.max(PISO, precio - 1000) }));
+                      marcar();
+                    }}
+                  >
+                    −
+                  </BotonMasMenos>
+                  <input
+                    type="number"
+                    min={PISO}
+                    step={500}
+                    value={precio}
+                    onChange={(e) => {
+                      setPrecios((p) => ({ ...p, [s.id]: Number(e.target.value) || 0 }));
+                      marcar();
+                    }}
+                    aria-label={`Precio del combo en ${s.nombre}, en pesos`}
+                    className="h-11 w-[92px] border-0 bg-transparent text-center font-display text-[17px] font-extrabold tabular-nums text-ink focus:outline-none"
+                  />
+                  <BotonMasMenos
+                    label={`Subir precio en ${s.nombre}`}
+                    onClick={() => {
+                      setPrecios((p) => ({ ...p, [s.id]: precio + 1000 }));
+                      marcar();
+                    }}
+                  >
+                    +
+                  </BotonMasMenos>
+                </div>
+                {manual.precio[s.id] && precio !== sugerido && cantidad >= 1 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPrecios((p) => ({ ...p, [s.id]: sugerido }));
+                      setManual((m) => ({ ...m, precio: { ...m.precio, [s.id]: false } }));
+                    }}
+                    className="mt-1.5 block min-h-11 text-[12px] font-semibold text-accent-soft transition hover:text-accent"
+                  >
+                    Usar el sugerido ({cop(sugerido)})
+                  </button>
+                )}
+              </div>
+            );
+          })}
         </div>
       </div>
 
-      {err && (
-        <div className="mt-3 rounded-lg border border-accent/40 bg-accent/10 px-3 py-2 text-sm text-accent-soft">
-          {err}
-        </div>
-      )}
-      {ok && (
-        <div className="mt-3 rounded-lg border border-ok/40 bg-ok/10 px-3 py-2 text-sm text-ok">
-          Combo creado en {sedeNombre} ✓ — ya aparece en el catálogo de arriba.
-        </div>
-      )}
+      {err && <div className="mt-3 rounded-lg border border-accent/40 bg-accent/10 px-3 py-2 text-sm text-accent-soft">{err}</div>}
+      {ok && <div className="mt-3 rounded-lg border border-ok/40 bg-ok/10 px-3 py-2 text-sm text-ok">{ok}</div>}
 
-      <button
-        type="button"
-        disabled={!valido || saving}
-        onClick={submit}
-        className={botonClases("primario", "md", "mt-4 w-full")}
-      >
-        {saving ? "Creando…" : "Crear combo"}
+      <button type="button" disabled={!valido || saving} onClick={submit} className={botonClases("primario", "md", "mt-4 w-full")}>
+        {saving ? "Creando…" : elegidas.length > 1 ? "Crear combo en las dos sedes" : "Crear combo"}
       </button>
       {!valido && (
         <p className="mt-2 text-center text-[12px] text-muted">
@@ -383,7 +456,7 @@ export function ComboBuilder({
             : cantidad === 1 && !conBebida
               ? "Falta 1: agrega otro servicio o la bebida."
               : nombre.trim() === ""
-                ? "Ponele nombre al combo."
+                ? "Ponle nombre al combo."
                 : "Revisa que el precio y la duración sean mayores a cero."}
         </p>
       )}

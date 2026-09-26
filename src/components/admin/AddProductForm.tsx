@@ -3,10 +3,11 @@
 import { botonClases } from "@/components/ui/Boton";
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { addProducto, subirFotoProducto, actualizarCostoProducto } from "@/lib/actions";
+import { addProducto, subirFotoProducto } from "@/lib/actions";
 import { sanearCop, sanearCantidad, sanearNombre, sanearComisionPct } from "@/lib/admin-reglas";
 import { achicarFoto } from "@/lib/imagen-cliente";
 import { CamIcon } from "@/components/icons";
+import { Segmentado } from "@/components/ui/Segmentado";
 import type { Sede } from "@/lib/data/types";
 
 const input =
@@ -20,7 +21,8 @@ export function AddProductForm({
   onListo,
 }: {
   sedes: Sede[];
-  /** Sede de la pestaña abierta: el producto se crea donde el dueño está mirando. */
+  /** Sede de la pestaña abierta: el producto se crea donde el dueño está mirando.
+   *  "todas" = en las dos sedes a la vez (pedido del administrador, 26-sep). */
   sedeInicial?: string;
   /** Lo llama el panel para cerrarse cuando el alta salió bien. */
   onListo?: () => void;
@@ -31,7 +33,8 @@ export function AddProductForm({
   const [nombre, setNombre] = useState("");
   const [sede, setSede] = useState(sedeInicial ?? sedes[0]?.id ?? "");
   const [precio, setPrecio] = useState("");
-  const [stock, setStock] = useState("");
+  // Lo que hay AHORA en cada sede: con "Las dos", cada una cuenta lo suyo.
+  const [stocks, setStocks] = useState<Record<string, string>>({});
   const [stockMin, setStockMin] = useState("");
   const [comision, setComision] = useState("");
   const [costo, setCosto] = useState("");
@@ -47,8 +50,12 @@ export function AddProductForm({
     // precio vacío entraba como producto gratis. La barrera real igual está en
     // la action (la tabla productos no tiene CHECKs).
     const precioNum = sanearCop(precio);
-    const stockNum = sanearCantidad(stock);
-    const minNum = sanearCantidad(stockMin);
+    const elegidas = sede === "todas" ? sedes.map((x) => x.id) : [sede];
+    const stockPorSede = elegidas.map((id) => ({ sede: id, stock: sanearCantidad(stocks[id] ?? "") }));
+    const stockMal = stockPorSede.some((x) => x.stock === null);
+    // Vacío = 0 (sin aviso), como la comisión: antes un aviso en blanco frenaba el
+    // alta con un error que hablaba del stock, y no se sabía qué faltaba.
+    const minNum = stockMin.trim() === "" ? 0 : sanearCantidad(stockMin);
     if (!sanearNombre(nombre)) {
       setSaving(false);
       setErr("Pon el nombre del producto.");
@@ -59,9 +66,15 @@ export function AddProductForm({
       setErr("El precio tiene que ser un número entero de pesos, sin decimales ni negativos.");
       return;
     }
-    if (stockNum === null || minNum === null) {
+    if (stockMal || minNum === null) {
       setSaving(false);
-      setErr("El stock y el mínimo tienen que ser números enteros, cero o más.");
+      setErr(
+        !stockMal
+          ? "El aviso tiene que ser un número entero, cero o más."
+          : elegidas.length > 1
+            ? "Pon cuántas hay en cada sede (0 si no hay): números enteros."
+            : "Pon cuántas hay ahora: un número entero, cero o más.",
+      );
       return;
     }
     // Costo opcional (0077): vacío = sin costo, NO $0. Un costo en cero haría
@@ -82,29 +95,29 @@ export function AddProductForm({
 
     const res = await addProducto({
       nombre,
-      sede,
+      sedes: stockPorSede.map((x) => ({ sede: x.sede, stock: x.stock as number })),
       precio: precioNum,
-      stock: stockNum,
       stockMinimo: minNum,
       comisionPct: comisionNum,
+      // En el mismo viaje: antes era un segundo llamado que podía fallar solo.
+      costo: costoNum,
     });
-    // El costo va a su tabla cerrada (0077), así que es un segundo paso. Si
-    // falla, el producto ya existe: se avisa y se pone desde su hoja.
-    let costoErr: string | null = null;
-    if (res.ok && res.id && costoNum !== null) {
-      const cres = await actualizarCostoProducto(res.id, costoNum).catch(() => null);
-      if (!cres?.ok) costoErr = "Producto creado, pero el costo no se guardó. Ponlo desde su hoja.";
-    }
     // Foto opcional: el producto ya quedó creado; si la foto falla, se avisa
-    // pero no se revierte nada (se puede subir después desde la lista).
-    let fotoErr: string | null = costoErr;
-    if (res.ok && foto && res.id) {
+    // pero no se revierte nada (se puede subir después desde la lista). Una
+    // copia por sede: cada fila tiene su archivo, así cambiar la foto de una no
+    // le borra la de la otra.
+    let fotoErr: string | null = res.ok ? (res.aviso ?? null) : null;
+    const creados = res.ids ?? (res.id ? [res.id] : []);
+    if (res.ok && foto && creados.length) {
       try {
-        const fd = new FormData();
-        fd.set("productoId", res.id);
-        fd.set("foto", await achicarFoto(foto)); // fotos de celular: 2-5MB → ~100KB
-        const fres = await subirFotoProducto(fd);
-        if (!fres.ok) fotoErr = `Producto creado, pero la foto no se subió: ${fres.error}`;
+        const chica = await achicarFoto(foto); // fotos de celular: 2-5MB → ~100KB
+        for (const id of creados) {
+          const fd = new FormData();
+          fd.set("productoId", id);
+          fd.set("foto", chica);
+          const fres = await subirFotoProducto(fd);
+          if (!fres.ok) fotoErr = `Producto creado, pero la foto no se subió: ${fres.error}`;
+        }
       } catch {
         fotoErr = "Producto creado, pero la foto no se subió. Prueba subirla desde la lista.";
       }
@@ -113,7 +126,7 @@ export function AddProductForm({
     if (res.ok) {
       setNombre("");
       setPrecio("");
-      setStock("");
+      setStocks({});
       setStockMin("");
       setComision("");
       setCosto("");
@@ -135,14 +148,24 @@ export function AddProductForm({
         <span className={lbl}>Nombre del producto</span>
         <input required value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Ej: Cera mate fijación fuerte" className={`${input} w-full`} />
       </label>
-      <label className="sm:col-span-3">
+      <div className="sm:col-span-3">
         <span className={lbl}>¿En qué sede se vende?</span>
-        <select value={sede} onChange={(e) => setSede(e.target.value as typeof sede)} className={`${input} w-full`}>
-          {sedes.map((s) => (
-            <option key={s.id} value={s.id}>{s.nombre}</option>
-          ))}
-        </select>
-      </label>
+        {/* Botones y no un desplegable: con "Las dos" a la vista, crear lo mismo
+            en las dos sedes es un toque, no crear dos veces. Nombre corto
+            ("Parque", "Plaza") para que las tres opciones quepan en un celular. */}
+        <Segmentado
+          etiqueta="Sede del producto"
+          valor={sede}
+          onCambio={setSede}
+          opciones={[
+            ...sedes.map((x) => ({ valor: x.id, texto: x.nombre.split(" ")[0] })),
+            ...(sedes.length > 1 ? [{ valor: "todas", texto: "Las dos" }] : []),
+          ]}
+        />
+        {sede === "todas" && (
+          <span className={ayuda}>Se crea uno en cada sede, con el mismo precio. Después el stock de cada una es aparte.</span>
+        )}
+      </div>
 
       <label className="sm:col-span-3">
         <span className={lbl}>Precio de venta</span>
@@ -160,11 +183,23 @@ export function AddProductForm({
         <span className={ayuda}>Qué % se lleva por venderlo. Vacío = no lleva nada.</span>
       </label>
 
-      <label className="sm:col-span-3">
-        <span className={lbl}>¿Cuántas hay ahora?</span>
-        <input required type="number" min={0} step={1} value={stock} onChange={(e) => setStock(e.target.value)} placeholder="12" className={`${input} w-full`} />
-        <span className={ayuda}>Las unidades que tienes hoy en la sede.</span>
-      </label>
+      {(sede === "todas" ? sedes : sedes.filter((x) => x.id === sede)).map((x) => (
+        <label key={x.id} className="sm:col-span-3">
+          <span className={lbl}>{sede === "todas" ? `¿Cuántas hay en ${x.nombre}?` : "¿Cuántas hay ahora?"}</span>
+          <input
+            required
+            type="number"
+            inputMode="numeric"
+            min={0}
+            step={1}
+            value={stocks[x.id] ?? ""}
+            onChange={(e) => setStocks((prev) => ({ ...prev, [x.id]: e.target.value }))}
+            placeholder="12"
+            className={`${input} w-full`}
+          />
+          <span className={ayuda}>Las unidades que tienes hoy en la sede.</span>
+        </label>
+      ))}
       <label className="sm:col-span-3">
         <span className={lbl}>Avisarme cuando queden</span>
         <input type="number" min={0} step={1} value={stockMin} onChange={(e) => setStockMin(e.target.value)} placeholder="5" className={`${input} w-full`} />

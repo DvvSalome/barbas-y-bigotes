@@ -6,6 +6,7 @@ import type { SedeId } from "@/lib/data/types";
 import { SectionHeader } from "@/components/admin/SectionHeader";
 import { ComboBuilder } from "@/components/admin/ComboBuilder";
 import { PreciosLista } from "@/components/admin/PreciosLista";
+import { NuevoServicio } from "@/components/admin/NuevoServicio";
 
 export const metadata: Metadata = { title: "Servicios y precios · Admin" };
 
@@ -16,17 +17,17 @@ export default async function PreciosPage({
 }) {
   const [servicios, sedes] = await Promise.all([getServiciosCatalogoAdmin(), getSedes()]);
 
-  // Sede activa desde el selector existente (?sede=). Sin param = "Ambas sedes":
-  // el armador de combos necesita UNA sede (el combo se crea en la sede activa).
+  // Sede activa desde el selector de arriba (?sede=): es con la que arrancan el
+  // armador de combos y el "Nuevo servicio". Sin sede = las dos (se pueden
+  // crear para las dos a la vez; antes el armador exigía elegir una).
   const sp = await searchParams;
   const sedeParam = typeof sp.sede === "string" ? sp.sede : undefined;
   const sedeActiva = (sedes.find((s) => s.id === sedeParam)?.id ?? null) as SedeId | null;
-  const sedeNombre = sedes.find((s) => s.id === sedeActiva)?.nombre ?? "";
+  const sedeInicial = sedeActiva ?? "todas";
 
-  // Partes elegibles: servicios NO combo, activos y priceados en la sede activa.
-  const partesDisponibles = sedeActiva
-    ? servicios.filter((s) => !s.esCombo && s.activo !== false && s.precios[sedeActiva] != null)
-    : [];
+  // Partes posibles de un combo: servicios sueltos y activos (el armador filtra
+  // según las sedes que se elijan).
+  const partesPosibles = servicios.filter((s) => !s.esCombo && s.activo !== false);
 
   // Pulso del catálogo para el encabezado: qué hay y qué falta por vestir.
   const activos = servicios.filter((s) => s.activo !== false);
@@ -57,9 +58,12 @@ export default async function PreciosPage({
         ))}
       </div>
 
-      <p className="mt-3 text-[13px] text-muted">
-        Toca cualquier precio para cambiarlo; la foto y la descripción son las que ve el cliente al reservar.
-      </p>
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+        <p className="text-[13px] text-muted">
+          Toca el nombre, la duración o el precio para cambiarlo; la foto y la descripción son las que ve el cliente al reservar.
+        </p>
+        <NuevoServicio sedes={sedes} sedeInicial={sedeInicial} etiquetas={categorias} />
+      </div>
 
       {/* DOS PANELES en escritorio: la lista a la izquierda y el armador FIJO a
           la derecha (sticky con su propio scroll) — se arma el combo viendo el
@@ -75,19 +79,7 @@ export default async function PreciosPage({
           <h2 className="mb-3 inline-flex items-center rounded-full border border-accent/30 bg-accent/5 px-4 py-1.5 font-display text-lg">
             Armador de combos
           </h2>
-          {sedeActiva ? (
-            <ComboBuilder
-              partesDisponibles={partesDisponibles}
-              sedeActiva={sedeActiva}
-              sedeNombre={sedeNombre}
-              etiquetas={categorias}
-            />
-          ) : (
-            <div className="rounded-2xl border border-warn/40 bg-warn/10 px-4 py-3 text-sm text-warn">
-              Elige una sede arriba (Parque Venezuela o Plaza de la Paz) para armar un combo. El combo queda
-              disponible solo en esa sede.
-            </div>
-          )}
+          <ComboBuilder servicios={partesPosibles} sedes={sedes} sedeInicial={sedeInicial} etiquetas={categorias} />
         </aside>
       </div>
     </div>

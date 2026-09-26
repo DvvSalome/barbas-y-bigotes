@@ -73,9 +73,9 @@ export function PrecioSedeEditable({
             Sin precio
           </span>
         )}
-        <span aria-hidden className="text-[12px] text-muted opacity-0 transition group-hover:opacity-100">
-          <PencilIcon className="h-3.5 w-3.5 text-muted" />
-        </span>
+        {/* Lápiz SIEMPRE visible: en el iPad no hay hover, y escondido el
+            administrador no sabía que el precio se toca para cambiarlo. */}
+        <PencilIcon className="h-3.5 w-3.5 shrink-0 text-muted" />
       </button>
     );
   }
@@ -99,7 +99,7 @@ export function PrecioSedeEditable({
           }}
           aria-invalid={!!error}
           aria-label={`Precio en ${etiqueta}`}
-          className={`w-24 rounded-lg border bg-bg px-2 py-1 text-sm text-ink tabular-nums focus:outline-none ${
+          className={`min-h-11 w-24 rounded-lg border bg-bg px-2 py-1 text-sm text-ink tabular-nums focus:outline-none ${
             error ? "border-accent" : "border-accent/60"
           }`}
         />
@@ -119,7 +119,7 @@ export function PrecioSedeEditable({
             setError(null);
           }}
           aria-label="Cancelar"
-          className="grid h-7 w-7 place-items-center rounded-full border border-line text-xs text-muted transition hover:text-ink"
+          className="grid h-11 w-11 place-items-center rounded-full border border-line text-sm text-muted transition hover:text-ink"
         >
           ×
         </button>

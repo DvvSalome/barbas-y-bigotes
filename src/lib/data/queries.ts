@@ -40,7 +40,11 @@ export async function getServicios(): Promise<Servicio[]> {
     .select(
       "id,nombre,categoria,duracion_min,es_combo,desde,foto_url,descripcion,cuenta_corte,servicio_sede(sede_id,precio)",
     )
-    .eq("activo", true);
+    .eq("activo", true)
+    // Sin ORDER BY cada edición (un renombre, una foto) movía la fila de lugar en
+    // la reserva y en el cobro. Por categoría y nombre: estable y fácil de leer.
+    .order("categoria")
+    .order("nombre");
   return (data ?? []).map((s: Record<string, unknown>) => {
     const precios = {} as Record<SedeId, number>;
     for (const p of (s.servicio_sede as { sede_id: string; precio: number }[]) ?? []) {
@@ -71,7 +75,8 @@ export async function getServiciosCatalogoAdmin(): Promise<Servicio[]> {
     .select(
       "id,nombre,categoria,duracion_min,es_combo,desde,activo,foto_url,descripcion,cuenta_corte,servicio_sede(sede_id,precio)",
     )
-    .order("categoria");
+    .order("categoria")
+    .order("nombre");
   return (data ?? []).map((s: Record<string, unknown>) => {
     const precios = {} as Record<SedeId, number>;
     for (const p of (s.servicio_sede as { sede_id: string; precio: number }[]) ?? []) {
@@ -219,12 +224,19 @@ export async function getBarberosContrato(): Promise<BarberoConContrato[]> {
   });
 }
 
-export async function getProductos(): Promise<Producto[]> {
+// Solo los que SE VENDEN: un producto retirado del catálogo (activo=false) no
+// aparece en el cobro, en el consumo del equipo ni en la estantería. Sus ventas
+// y su kardex siguen en los reportes, que leen la tabla por su cuenta.
+// Por nombre dentro de cada sede: sin ORDER BY la lista salía en el orden en que
+// la base guardó las filas, y cada edición podía moverla.
+export async function getProductos(activos = true): Promise<Producto[]> {
   const sb = supabaseServer();
   const res = await sb
     .from("productos")
     .select("id,nombre,sede_id,precio,stock,stock_minimo,comision_pct,foto_url,en_upsell")
-    .order("sede_id");
+    .eq("activo", activos)
+    .order("sede_id")
+    .order("nombre");
   let rows: Record<string, unknown>[] | null = res.data;
   if (res.error) {
     // Compat pre-0019/0028: si foto_url o en_upsell todavía no existen, el POS no se cae.
@@ -232,7 +244,9 @@ export async function getProductos(): Promise<Producto[]> {
       await sb
         .from("productos")
         .select("id,nombre,sede_id,precio,stock,stock_minimo,comision_pct")
+        .eq("activo", activos)
         .order("sede_id")
+        .order("nombre")
     ).data;
   }
   return (rows ?? []).map((p: Record<string, unknown>) => ({
@@ -761,31 +775,6 @@ export async function getHistorialCliente(clienteRef: string) {
       i.cantidad > 1 ? `${i.descripcion} ×${i.cantidad}` : i.descripcion,
     ),
   }));
-}
-
-export async function getResumen() {
-  const sb = await supabaseServerAuth();
-  const { desde } = bogotaDayRange();
-  const mesInicio = `${bogotaYmd().slice(0, 8)}01`; // primer día del mes civil en Bogotá
-  const [ventasRes, prodsRes, adelRes] = await Promise.all([
-    sb.from("ventas").select("total,medio,pagos").is("anulada_en", null).gte("creado_en", desde.toISOString()),
-    sb.from("productos").select("stock,stock_minimo"),
-    sb.from("adelantos").select("monto").gte("fecha", mesInicio),
-  ]);
-  const vs = (ventasRes.data ?? []) as { total: number; medio: string; pagos?: unknown }[];
-  // Ingresos = TODOS los medios; efectivo/datáfono se desglosan y el resto va en "otros".
-  const ingresosHoy = vs.reduce((a, v) => a + v.total, 0);
-  // Por MEDIO REPARTIDO, no por el medio principal: en un cobro mixto (0060) el
-  // filtro por v.medio cargaba los 35 mil enteros al efectivo aunque 15 hubieran
-  // entrado por Nequi.
-  const efectivo = totalDeMedio(vs, "efectivo");
-  const datafono = totalDeMedio(vs, "datafono");
-  const otros = ingresosHoy - efectivo - datafono;
-  const bajoMinimo = ((prodsRes.data ?? []) as { stock: number; stock_minimo: number }[]).filter(
-    (p) => p.stock <= p.stock_minimo,
-  ).length;
-  const adelantosMes = ((adelRes.data ?? []) as { monto: number }[]).reduce((a, x) => a + x.monto, 0);
-  return { ingresosHoy, efectivo, datafono, otros, citasHoy: vs.length, bajoMinimo, adelantosMes };
 }
 
 export type CuadreSede = {
@@ -1939,7 +1928,7 @@ export async function paraHacer(sede?: SedeId | null): Promise<ParaHacer> {
   const hoy = bogotaYmd();
   const limite = bogotaYmd(new Date(Date.now() + 2 * 86_400_000));
 
-  let pq = sb.from("productos").select("id,nombre,stock,stock_minimo,sede_id");
+  let pq = sb.from("productos").select("id,nombre,stock,stock_minimo,sede_id").eq("activo", true);
   if (sede) pq = pq.eq("sede_id", sede);
   let rq = sb
     .from("resenas_servicio")
@@ -2803,6 +2792,24 @@ export async function getLiquidacion(
 // ---------- Reporte del mes (el Excel del dueño) ----------
 
 /**
+ * Todas las filas de una consulta, de a 1.000. PostgREST devuelve como mucho
+ * 1.000 filas por pedido y NO avisa que cortó: una suma sobre la primera página
+ * es un número que miente sin error. `pagina` arma la consulta con su .range().
+ */
+async function todasLasFilas<T>(
+  pagina: (desde: number, hasta: number) => PromiseLike<{ data: unknown[] | null; error: { message: string } | null }>,
+): Promise<{ data: T[]; error: { message: string } | null }> {
+  const TAM = 1000;
+  const filas: T[] = [];
+  for (let desde = 0; ; desde += TAM) {
+    const { data, error } = await pagina(desde, desde + TAM - 1);
+    if (error) return { data: filas, error };
+    filas.push(...((data ?? []) as T[]));
+    if (!data || data.length < TAM) return { data: filas, error: null };
+  }
+}
+
+/**
  * El mes como lo lleva el dueño en su Excel: consolidado día por día + inventario.
  * La cuenta vive en `lib/reporte.ts` (probada con scripts/check-reporte.ts); acá
  * solo se lee y se pasa cada fila a su día de Bogotá.
@@ -2830,22 +2837,28 @@ export async function getReporteMes(
   const hasta = bogotaDayRangeDeFecha(mes.hastaYmd).hasta;
   const admin = supabaseAdmin();
 
-  let ventasQ = admin
-    .from("ventas")
-    .select("barbero_id,total,creado_en,venta_items(tipo,ref_id,cantidad,precio_unitario,comision_pct)")
-    .is("anulada_en", null)
-    .gte("creado_en", desde.toISOString())
-    .lt("creado_en", hasta.toISOString());
-  let gastosQ = admin.from("gastos").select("categoria,monto,fecha").gte("fecha", mes.desdeYmd).lte("fecha", mes.hastaYmd);
+  // De a páginas: un mes real de las dos sedes pasa de 1.000 cobros, y PostgREST
+  // corta ahí SIN avisar — el reporte habría perdido ingresos en silencio.
+  const ventasQ = (a: number, b: number) => {
+    let q = admin
+      .from("ventas")
+      .select("id,barbero_id,total,creado_en,venta_items(tipo,ref_id,cantidad,precio_unitario,comision_pct)")
+      .is("anulada_en", null)
+      .gte("creado_en", desde.toISOString())
+      .lt("creado_en", hasta.toISOString());
+    if (sede) q = q.eq("sede_id", sede);
+    return q.order("id").range(a, b);
+  };
+  const gastosQ = (a: number, b: number) => {
+    let q = admin.from("gastos").select("id,categoria,monto,fecha").gte("fecha", mes.desdeYmd).lte("fecha", mes.hastaYmd);
+    if (sede) q = q.eq("sede_id", sede);
+    return q.order("id").range(a, b);
+  };
   let productosQ = admin.from("productos").select("id,nombre,sede_id,precio,stock,activo,foto_url");
-  if (sede) {
-    ventasQ = ventasQ.eq("sede_id", sede);
-    gastosQ = gastosQ.eq("sede_id", sede);
-    productosQ = productosQ.eq("sede_id", sede);
-  }
+  if (sede) productosQ = productosQ.eq("sede_id", sede);
   const [ventasRes, gastosRes, productosRes, contratosRes, costosRes] = await Promise.all([
-    ventasQ,
-    gastosQ,
+    todasLasFilas<Record<string, unknown>>(ventasQ),
+    todasLasFilas<{ categoria: string | null; monto: number; fecha: string }>(gastosQ),
     productosQ,
     admin.from("barberos").select("id,tipo_contrato"),
     admin.from("producto_costo").select("producto_id,costo"),
@@ -2864,11 +2877,16 @@ export async function getReporteMes(
   // El kardex desde el día 1 hasta HOY (no hasta fin de mes): con lo que se movió
   // después se reconstruye cómo cerró un mes pasado.
   const movRes = productos.length
-    ? await admin
-        .from("stock_movimientos")
-        .select("producto_id,cantidad,motivo,creado_en")
-        .in("producto_id", productos.map((p) => p.id as string))
-        .gte("creado_en", desde.toISOString())
+    ? await todasLasFilas<{ producto_id: string; cantidad: number; motivo: string; nota: string | null; creado_en: string }>(
+        (a, b) =>
+          admin
+            .from("stock_movimientos")
+            .select("id,producto_id,cantidad,motivo,nota,creado_en")
+            .in("producto_id", productos.map((p) => p.id as string))
+            .gte("creado_en", desde.toISOString())
+            .order("id")
+            .range(a, b),
+      )
     : { data: [], error: null };
   if (movRes.error) throw new Error(`Reporte del mes: no se pudo leer el kardex (${movRes.error.message})`);
 
@@ -2892,9 +2910,9 @@ export async function getReporteMes(
       categoria: g.categoria ?? "",
       monto: g.monto ?? 0,
     })),
-    movimientos: ((movRes.data ?? []) as { producto_id: string; cantidad: number; motivo: string; creado_en: string }[]).map(
-      (m) => ({ productoId: m.producto_id, ymd: ymd(m.creado_en), cantidad: m.cantidad, motivo: m.motivo }),
-    ),
+    movimientos: (
+      (movRes.data ?? []) as { producto_id: string; cantidad: number; motivo: string; nota: string | null; creado_en: string }[]
+    ).map((m) => ({ productoId: m.producto_id, ymd: ymd(m.creado_en), cantidad: m.cantidad, motivo: m.motivo, nota: m.nota })),
     vendidos: ventas.flatMap((v) =>
       ((v.venta_items ?? []) as { tipo: string; ref_id: string | null; cantidad: number; precio_unitario: number }[])
         .filter((i) => i.tipo === "producto" && i.ref_id)

@@ -110,7 +110,7 @@ export function sanearEspecialidades(entrada: unknown): SaneoEspecialidades {
 // ---------- Combos ----------
 
 /** id kebab a partir del nombre (sin acentos, solo [a-z0-9-]). */
-export function slugCombo(nombre: string): string {
+export function slugCombo(nombre: string, respaldo = "combo"): string {
   const base = (nombre ?? "")
     .toLowerCase()
     .replace(/[áàä]/g, "a")
@@ -123,7 +123,7 @@ export function slugCombo(nombre: string): string {
     .replace(/^-+|-+$/g, "")
     .slice(0, 60)
     .replace(/-+$/g, "");
-  return base || "combo";
+  return base || respaldo;
 }
 
 /** Primer id libre: base, base-2, base-3… */
@@ -153,6 +153,83 @@ export function sanearDuracionMin(v: unknown): number | null {
   const n = Math.round(Number(v));
   if (!Number.isFinite(n) || n < 5 || n > DURACION_MAX_MIN) return null;
   return n;
+}
+
+// ---------- Catálogo: nombres, categorías y borrado ----------
+
+/**
+ * Para COMPARAR nombres: sin tildes, en minúsculas y con los espacios
+ * colapsados. "Águila " y "aguila" son el mismo producto para quien los lee en
+ * el mostrador (el buscador del cobro normaliza igual).
+ */
+export function normNombre(s: string): string {
+  return (s ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, " ");
+}
+
+/**
+ * ¿Ya hay OTRO con ese nombre? `otros` son los que compiten (los productos
+ * activos de la misma sede, o los servicios activos); `excluir`, los ids que se
+ * están renombrando, que no chocan consigo mismos.
+ */
+export function nombreRepetido(nombre: string, otros: { id: string; nombre: string }[], excluir: string[] = []): boolean {
+  const n = normNombre(nombre);
+  return otros.some((o) => !excluir.includes(o.id) && normNombre(o.nombre) === n);
+}
+
+/** Hay servicios de 127 caracteres ("Deluxe full: corte + limpieza gold + …"). */
+export const NOMBRE_SERVICIO_MAX = 140;
+
+/**
+ * Nombre de servicio: recorta y colapsa espacios, pero NO corta. sanearNombre
+ * corta en 80 en silencio, y corregir una letra de un "Deluxe" lo habría
+ * guardado mocho. Más largo que el tope = null: que la pantalla lo diga.
+ */
+export function sanearNombreServicio(valor: unknown): string | null {
+  const s = (typeof valor === "string" ? valor : "").trim().replace(/\s+/g, " ");
+  if (!s || s.length > NOMBRE_SERVICIO_MAX) return null;
+  return s;
+}
+
+/**
+ * Las categorías que entienden el sitio y el mostrador. La columna no tiene
+ * CHECK: una categoría inventada deja el servicio invisible en la reserva, en
+ * el panel y en el cobro, sin ningún error. Igual a `categorias` de seed.ts
+ * (check-admin lo compara).
+ */
+export const CATEGORIAS_SERVICIO = ["cortes", "barba", "cejas-disenos", "faciales", "capilar", "depilacion", "combos"] as const;
+export const esCategoriaServicio = (c: unknown): c is (typeof CATEGORIAS_SERVICIO)[number] =>
+  typeof c === "string" && (CATEGORIAS_SERVICIO as readonly string[]).includes(c);
+
+/**
+ * ¿Se puede BORRAR de verdad un producto, o solo retirarlo?
+ *
+ * Borrarlo se lleva en cascada su kardex (stock_movimientos), y de ese kardex
+ * salen el inventario y el pedido de productos del reporte del mes: borrar uno
+ * con historia reescribiría meses ya cerrados. Así que solo se borra lo que es
+ * un error de carga: nunca se vendió (ni en una venta anulada), el equipo nunca
+ * lo consumió, y todo su kardex es de ESTE mes y sin ventas ni consumos — el
+ * "Inventario inicial" y un "Corregir" del mismo error sí se permiten.
+ */
+export function borrableDelTodo(x: {
+  ventas: number;
+  consumos: number;
+  movimientos: { motivo: string; ymd: string; nota?: string | null }[];
+  /** "YYYY-MM-01" del mes en curso, en Bogotá. */
+  desdeMesYmd: string;
+}): boolean {
+  if (x.ventas > 0 || x.consumos > 0) return false;
+  // Una "entrada" de verdad (llegó un pedido) ya está en el pedido del reporte, y
+  // una merma es una pérdida anotada: borrarlas en cascada cambiaría el mes.
+  return x.movimientos.every(
+    (m) =>
+      m.ymd >= x.desdeMesYmd &&
+      ((m.motivo === "entrada" && m.nota === "Inventario inicial") || m.motivo === "ajuste"),
+  );
 }
 
 // ---------- Fotos de producto ----------

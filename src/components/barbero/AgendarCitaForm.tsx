@@ -73,7 +73,11 @@ export function AgendarCitaForm({
   const serviciosSede = useMemo(() => servicios.filter((s) => s.precios[sede as SedeId] != null), [servicios, sede]);
 
   const [barberoId, setBarberoId] = useState(barberoInicial ?? barberos[0]?.id ?? "");
-  const [servicioId, setServicioId] = useState(serviciosSede[0]?.id ?? "");
+  // Arranca en el corte (lo que se agenda casi siempre), no en el primero de la
+  // lista, que dependía del orden de la tabla.
+  const [servicioId, setServicioId] = useState(
+    serviciosSede.find((s) => s.id === "corte")?.id ?? serviciosSede[0]?.id ?? "",
+  );
   const [day, setDay] = useState<Date | null>(null);
   const [slot, setSlot] = useState<number | null>(slotInicial ?? null);
   const [nombre, setNombre] = useState("");

@@ -17,6 +17,7 @@ export function PrecioEditable({
   minimo = 1,
   vacio = "Poner",
   que = "precio",
+  tambien,
 }: {
   productoId: string;
   /** null = todavía no tiene valor (el costo de un producto viejo). */
@@ -30,11 +31,15 @@ export function PrecioEditable({
   /** Qué valor es, para el lector de pantalla: con precio y costo en la misma
    *  hoja, dos botones llamados "editar el precio" no se distinguen. */
   que?: string;
+  /** El mismo producto en la otra sede: casilla "Cambiar también en…" (solo
+   *  para el precio de venta, que es el que el dueño quiere igual en las dos). */
+  tambien?: { ids: string[]; texto: string };
 }) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
   const [val, setVal] = useState(precio === null ? "" : String(precio));
   const [saving, setSaving] = useState(false);
+  const [conTambien, setConTambien] = useState(true);
   // Mensaje de error (null = sin error). Antes era un booleano + un title de
   // hover invisible en el celular; ahora el motivo se muestra inline.
   const [error, setError] = useState<string | null>(null);
@@ -54,12 +59,14 @@ export function PrecioEditable({
       return;
     }
     setError(null);
-    if (n === precio) {
+    if (n === precio && !(tambien && conTambien)) {
       setEditing(false);
       return;
     }
     setSaving(true);
-    const res = await (onGuardar ? onGuardar(n) : actualizarPrecioProducto(productoId, n));
+    const res = await (onGuardar
+      ? onGuardar(n)
+      : actualizarPrecioProducto(productoId, n, tambien && conTambien ? tambien.ids : []));
     setSaving(false);
     if (res.ok) {
       setEditing(false);
@@ -78,6 +85,7 @@ export function PrecioEditable({
         onClick={() => {
           setVal(precio === null ? "" : String(precio));
           setError(null);
+          setConTambien(true);
           setEditing(true);
         }}
         aria-label={`Tocar para editar el ${que}`}
@@ -106,7 +114,10 @@ export function PrecioEditable({
           }}
           onKeyDown={(e) => {
             if (e.key === "Enter") guardar();
-            if (e.key === "Escape") setEditing(false);
+            if (e.key === "Escape") {
+              e.stopPropagation(); // la Hoja también escucha Escape y se cerraba entera
+              setEditing(false);
+            }
           }}
           aria-invalid={!!error}
           className={`min-h-11 w-24 rounded-lg border bg-bg px-2 text-sm text-ink tabular-nums focus:outline-none ${
@@ -134,6 +145,17 @@ export function PrecioEditable({
           ×
         </button>
       </span>
+      {tambien && (
+        <label className="flex min-h-11 cursor-pointer items-center gap-2.5 font-sans text-[13px] font-normal text-ink">
+          <input
+            type="checkbox"
+            checked={conTambien}
+            onChange={(e) => setConTambien(e.target.checked)}
+            className="h-5 w-5 shrink-0 accent-[var(--color-accent)]"
+          />
+          {tambien.texto}
+        </label>
+      )}
       {error && <span className="text-[12.5px] leading-tight text-accent-soft">{error}</span>}
     </span>
   );

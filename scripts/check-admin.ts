@@ -24,7 +24,15 @@ import {
   esDomingo,
   calcularDestino,
   LADO_MAX_FOTO,
+  normNombre,
+  nombreRepetido,
+  sanearNombreServicio,
+  NOMBRE_SERVICIO_MAX,
+  CATEGORIAS_SERVICIO,
+  esCategoriaServicio,
+  borrableDelTodo,
 } from "../src/lib/admin-reglas.ts";
+import { categorias } from "../src/lib/data/seed.ts";
 
 // ---------- (a) Dinero: addProducto no validaba NADA y productos no tiene CHECK ----------
 // Un precio negativo se guardaba tal cual y el cobro lo lee de la base: un
@@ -154,4 +162,68 @@ assert.ok(pano.alto >= 1, "el lado corto nunca queda en 0");
 assert.deepEqual(calcularDestino(0, 0).hayQueAchicar, false, "medidas inválidas no explotan");
 assert.deepEqual(calcularDestino(NaN, 100).ancho, 1, "NaN cae a un tamaño seguro");
 
-console.log("check-admin OK — reglas del back-office (dinero, comisión, especialidades, combos, fotos, fechas, redimensionado)");
+// ---------- (k) Catálogo: nombres repetidos, servicios largos y borrado seguro ----------
+// El administrador pidió renombrar y crear. Un "Águila" nuevo al lado de un
+// "Aguila" viejo son dos filas que en el mostrador se ven iguales.
+assert.equal(normNombre("  Águila   Negra "), "aguila negra", "sin tildes, minúsculas, espacios colapsados");
+const activos = [
+  { id: "a", nombre: "Aguila" },
+  { id: "b", nombre: "Gaseosa" },
+];
+assert.equal(nombreRepetido("ÁGUILA", activos), true, "choca aunque cambien tildes y mayúsculas");
+assert.equal(nombreRepetido("Aguila", activos, ["a"]), false, "renombrarse a sí mismo (otra mayúscula) no choca");
+assert.equal(nombreRepetido("Club Colombia", activos), false, "un nombre nuevo pasa");
+
+// Hay servicios de 127 caracteres: cortar en 80 al renombrar los dejaba mochos.
+const deluxe = "Deluxe full: corte + limpieza gold + depilación nariz/oreja + bozo y barba + cejas + pigmento + hidratación + masaje + bebida";
+assert.equal(sanearNombreServicio(deluxe), deluxe, "un nombre largo real NO se corta");
+assert.equal(sanearNombreServicio("x".repeat(NOMBRE_SERVICIO_MAX + 1)), null, "más del tope se rechaza, no se corta");
+assert.equal(sanearNombreServicio("  Corte   y cejas "), "Corte y cejas", "recorta y colapsa");
+assert.equal(sanearNombreServicio("   "), null, "vacío no es nombre");
+
+// La categoría no tiene CHECK en la base: una inventada deja el servicio invisible.
+assert.deepEqual([...CATEGORIAS_SERVICIO].sort(), Object.keys(categorias).sort(), "las categorías son las mismas que entiende el sitio");
+assert.equal(esCategoriaServicio("cortes"), true);
+assert.equal(esCategoriaServicio("Cortes"), false, "con mayúscula no es la misma");
+assert.equal(esCategoriaServicio("otros"), false);
+
+// Borrar un producto se lleva su kardex en cascada (y con él, el reporte del mes).
+const mes = "2026-09-01";
+assert.equal(borrableDelTodo({ ventas: 0, consumos: 0, movimientos: [], desdeMesYmd: mes }), true, "recién creado, sin stock: se borra");
+assert.equal(
+  borrableDelTodo({
+    ventas: 0,
+    consumos: 0,
+    movimientos: [
+      { motivo: "entrada", ymd: "2026-09-20", nota: "Inventario inicial" },
+      { motivo: "ajuste", ymd: "2026-09-20" },
+    ],
+    desdeMesYmd: mes,
+  }),
+  true,
+  "inventario inicial + corrección del mismo error, este mes: se borra",
+);
+assert.equal(
+  borrableDelTodo({ ventas: 0, consumos: 0, movimientos: [{ motivo: "entrada", ymd: "2026-09-05", nota: null }], desdeMesYmd: mes }),
+  false,
+  "un pedido que llegó este mes ya está en el reporte: se retira, no se borra",
+);
+assert.equal(
+  borrableDelTodo({ ventas: 0, consumos: 0, movimientos: [{ motivo: "merma", ymd: "2026-09-05" }], desdeMesYmd: mes }),
+  false,
+  "una merma anotada es historia: se retira",
+);
+assert.equal(
+  borrableDelTodo({ ventas: 0, consumos: 0, movimientos: [{ motivo: "entrada", ymd: "2026-08-30", nota: "Inventario inicial" }], desdeMesYmd: mes }),
+  false,
+  "si entró el mes pasado, ya está en un reporte cerrado: se retira",
+);
+assert.equal(
+  borrableDelTodo({ ventas: 0, consumos: 0, movimientos: [{ motivo: "venta", ymd: "2026-09-21" }], desdeMesYmd: mes }),
+  false,
+  "si se vendió (aunque se haya anulado), se retira",
+);
+assert.equal(borrableDelTodo({ ventas: 1, consumos: 0, movimientos: [], desdeMesYmd: mes }), false, "con ventas no se borra");
+assert.equal(borrableDelTodo({ ventas: 0, consumos: 2, movimientos: [], desdeMesYmd: mes }), false, "con consumos del equipo no se borra");
+
+console.log("check-admin OK — reglas del back-office (dinero, comisión, especialidades, combos, fotos, fechas, redimensionado, catálogo)");

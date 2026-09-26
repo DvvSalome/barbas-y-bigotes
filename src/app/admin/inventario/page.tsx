@@ -11,7 +11,12 @@ export default async function InventarioPage({
   searchParams: Promise<{ [k: string]: string | string[] | undefined }>;
 }) {
   const sp = await searchParams;
-  const [productos, sedes, costos] = await Promise.all([getProductos(), getSedes(), getCostosProductos()]);
+  const [productos, retirados, sedes, costos] = await Promise.all([
+    getProductos(),
+    getProductos(false),
+    getSedes(),
+    getCostosProductos(),
+  ]);
   // El ?sede= del selector del topbar, validado contra las sedes reales (mismo
   // patrón que Clientes). Sin sede = las dos, agrupadas.
   const sedeActiva = sedes.find((s) => s.id === (typeof sp.sede === "string" ? sp.sede : undefined))?.id ?? null;
@@ -28,7 +33,7 @@ export default async function InventarioPage({
             : "Lo que se vende en las dos sedes: cuánto queda, cuánto cuesta y qué se está acabando. Elige una sede arriba para ver solo esa."
         }
       />
-      <InventarioPanel productos={productos} sedes={sedes} sedeActiva={sedeActiva} costos={costos} />
+      <InventarioPanel productos={productos} retirados={retirados} sedes={sedes} sedeActiva={sedeActiva} costos={costos} />
     </div>
   );
 }

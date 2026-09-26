@@ -1,15 +1,28 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { cop } from "@/lib/format";
-import { ChevronRightIcon } from "@/components/icons";
+import { normNombre } from "@/lib/admin-reglas";
+import { ChevronRightIcon, TrashIcon } from "@/components/icons";
 import { Grupo } from "@/components/ui/ListaAgrupada";
-import { Hoja } from "@/components/ui/Hoja";
+import { Hoja, PieHoja } from "@/components/ui/Hoja";
+import { Plegable } from "@/components/ui/Plegable";
+import { Segmentado } from "@/components/ui/Segmentado";
+import { Boton, botonClases } from "@/components/ui/Boton";
 import { PrecioEditable } from "@/components/admin/PrecioEditable";
+import { NombreEditable } from "@/components/admin/NombreEditable";
 import { ComisionEditable } from "@/components/admin/ComisionEditable";
 import { UpsellToggle } from "@/components/admin/UpsellToggle";
 import { StockControl } from "@/components/admin/StockControl";
-import { actualizarCostoProducto } from "@/lib/actions";
+import {
+  actualizarCostoProducto,
+  eliminarProducto,
+  renombrarProducto,
+  resumenEliminarProducto,
+  setProductoActivo,
+  type ResumenEliminarProducto,
+} from "@/lib/actions";
 import { AddProductForm } from "@/components/admin/AddProductForm";
 import { FotoProducto } from "@/components/staff/FotoProducto";
 import { ProductoThumb } from "@/components/staff/ProductoThumb";
@@ -30,14 +43,20 @@ import type { Producto, Sede } from "@/lib/data/types";
   pasa quince veces por cada vez que se edita.
 
   La sede la manda el selector de ARRIBA (?sede=), igual que en Clientes.
+
+  26-sep, pedidos del administrador: cambiar el nombre, eliminar (desde la hoja y
+  desde la lista) y crear un producto para las dos sedes a la vez.
 */
 export function InventarioPanel({
   productos,
+  retirados = [],
   sedes,
   sedeActiva,
   costos = {},
 }: {
   productos: Producto[];
+  /** Los que se quitaron del catálogo: no se venden, pero se pueden volver a vender. */
+  retirados?: Producto[];
   sedes: Sede[];
   /** null = las dos sedes, agrupadas. */
   sedeActiva: string | null;
@@ -46,11 +65,23 @@ export function InventarioPanel({
    *  dato público. Sin costo = no suma a ganancia ni a plata invertida. */
   costos?: Record<string, number>;
 }) {
+  const router = useRouter();
   const [altaAbierta, setAltaAbierta] = useState(false);
   // Se guarda el ID, NO el producto: cada acción de la hoja hace router.refresh()
   // y el objeto que hubiéramos copiado al estado quedaría con el stock viejo.
   const [abiertoId, setAbiertoId] = useState<string | null>(null);
+  const [eliminarId, setEliminarId] = useState<string | null>(null);
+  // El resultado de eliminar vive ACÁ y no en la hoja: la hoja se desmonta
+  // cuando el producto sale de la lista, y el mensaje se perdía con ella.
+  const [resultado, setResultado] = useState<{ texto: string; deshacerId?: string; reponer?: number } | null>(null);
+  const [deshaciendo, setDeshaciendo] = useState(false);
   const abierto = productos.find((p) => p.id === abiertoId) ?? null;
+  const aEliminar = productos.find((p) => p.id === eliminarId) ?? null;
+  const nombreSede = (id: string) => sedes.find((s) => s.id === id)?.nombre ?? id;
+
+  // El mismo producto en la otra sede: mismo nombre (sin tildes ni mayúsculas).
+  const gemeloDe = (p: Producto) =>
+    productos.find((q) => q.id !== p.id && q.sede !== p.sede && normNombre(q.nombre) === normNombre(p.nombre)) ?? null;
 
   const grupos = (sedeActiva ? sedes.filter((s) => s.id === sedeActiva) : sedes).map((s) => {
     // Lo que hay que reponer va primero: si no, había que cazarlo leyendo todo.
@@ -71,6 +102,22 @@ export function InventarioPanel({
     };
   });
   const total = grupos.reduce((a, g) => a + g.lista.length, 0);
+  const retiradosVisibles = retirados.filter((p) => !sedeActiva || p.sede === sedeActiva);
+
+  function pedirEliminar(id: string) {
+    // Nunca dos hojas abiertas: la del producto se cierra antes de preguntar.
+    setAbiertoId(null);
+    setResultado(null);
+    setEliminarId(id);
+  }
+
+  async function deshacer(id: string, reponer = 0) {
+    setDeshaciendo(true);
+    const res = await setProductoActivo(id, true, reponer);
+    setDeshaciendo(false);
+    setResultado(res.ok ? null : { texto: res.error ?? "No se pudo deshacer." });
+    if (res.ok) router.refresh();
+  }
 
   return (
     <div className="mt-5">
@@ -87,6 +134,35 @@ export function InventarioPanel({
           + Nuevo producto
         </button>
       </div>
+
+      {resultado && (
+        <div
+          role="status"
+          className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-line bg-panel px-4 py-2.5 text-[13px] text-ink"
+        >
+          <span>{resultado.texto}</span>
+          <span className="flex gap-1">
+            {resultado.deshacerId && (
+              <button
+                type="button"
+                disabled={deshaciendo}
+                onClick={() => deshacer(resultado.deshacerId!, resultado.reponer)}
+                className="min-h-11 rounded-full px-3 font-semibold text-accent-soft transition hover:text-ink disabled:opacity-50"
+              >
+                {deshaciendo ? "Deshaciendo…" : "Deshacer"}
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => setResultado(null)}
+              aria-label="Cerrar aviso"
+              className="grid h-11 w-11 place-items-center rounded-full text-muted transition hover:text-ink"
+            >
+              ×
+            </button>
+          </span>
+        </div>
+      )}
 
       {grupos.map((g) => (
         <section key={g.sede.id} className="mt-6" aria-label={g.sede.nombre}>
@@ -122,20 +198,60 @@ export function InventarioPanel({
           ) : (
             <Grupo>
               {g.lista.map((p) => (
-                <FilaProducto key={p.id} p={p} onAbrir={() => setAbiertoId(p.id)} />
+                <FilaProducto key={p.id} p={p} onAbrir={() => setAbiertoId(p.id)} onEliminar={() => pedirEliminar(p.id)} />
               ))}
             </Grupo>
           )}
         </section>
       ))}
 
-      {abierto && <HojaProducto p={abierto} costo={costos[abierto.id] ?? null} onCerrar={() => setAbiertoId(null)} />}
+      {retiradosVisibles.length > 0 && (
+        <Plegable
+          className="mt-8"
+          titulo={`Retirados (${retiradosVisibles.length})`}
+          subtitulo="Ya no se venden; sus ventas siguen en los reportes"
+        >
+          <Grupo>
+            {retiradosVisibles.map((p) => (
+              <FilaRetirado key={p.id} p={p} sede={sedeActiva ? null : nombreSede(p.sede)} onError={(t) => setResultado({ texto: t })} />
+            ))}
+          </Grupo>
+        </Plegable>
+      )}
+
+      {abierto && (
+        <HojaProducto
+          p={abierto}
+          costo={costos[abierto.id] ?? null}
+          gemelo={gemeloDe(abierto)}
+          nombreSede={nombreSede}
+          onEliminar={() => pedirEliminar(abierto.id)}
+          onCerrar={() => setAbiertoId(null)}
+        />
+      )}
+
+      {aEliminar && (
+        <ConfirmarEliminar
+          p={aEliminar}
+          onCerrar={() => setEliminarId(null)}
+          onListo={(modo, baja) => {
+            setEliminarId(null);
+            setResultado(
+              modo === "borrado"
+                ? { texto: `“${aEliminar.nombre}” se borró.` }
+                : { texto: `“${aEliminar.nombre}” pasó a Retirados.`, deshacerId: aEliminar.id, reponer: baja },
+            );
+            router.refresh();
+          }}
+        />
+      )}
 
       {altaAbierta && (
         <Hoja titulo="Nuevo producto" onCerrar={() => setAltaAbierta(false)}>
           <AddProductForm
             sedes={sedes}
-            sedeInicial={sedeActiva ?? sedes[0]?.id}
+            // Sin sede elegida arriba, en las dos: "se venden muchas cosas iguales".
+            sedeInicial={sedeActiva ?? "todas"}
             onListo={() => setAltaAbierta(false)}
           />
         </Hoja>
@@ -144,38 +260,82 @@ export function InventarioPanel({
   );
 }
 
-/** Una fila de 72 px: la foto, el nombre, el precio y lo que queda. Nada que editar. */
-function FilaProducto({ p, onAbrir }: { p: Producto; onAbrir: () => void }) {
+/** Una fila de 72 px: la foto, el nombre, el precio y lo que queda; y la papelera. */
+function FilaProducto({ p, onAbrir, onEliminar }: { p: Producto; onAbrir: () => void; onEliminar: () => void }) {
   const bajo = p.stock <= p.stockMinimo;
   return (
-    <button
-      type="button"
-      onClick={onAbrir}
-      aria-label={`${p.nombre}, ${p.stock} en bodega`}
-      className="flex min-h-[72px] w-full items-center gap-3 px-4 py-2.5 text-left transition hover:bg-elevated/60"
-    >
+    // Dos botones hermanos y no uno dentro de otro: un <button> no puede llevar
+    // otro adentro, y la papelera tiene que poderse tocar sin abrir la hoja.
+    <div className="flex items-center transition hover:bg-elevated/60">
+      <button
+        type="button"
+        onClick={onAbrir}
+        aria-label={`${p.nombre}, ${p.stock} en bodega`}
+        className="flex min-h-[72px] min-w-0 flex-1 items-center gap-3 py-2.5 pl-4 pr-1 text-left"
+      >
+        <ProductoThumb nombre={p.nombre} fotoUrl={p.fotoUrl} size={44} />
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-[15px] font-semibold text-ink">{p.nombre}</span>
+          {/* Cuando se está acabando, la comisión se cae de la línea: a 390 px las
+              tres cosas no caben y lo que se truncaba era justo el aviso. */}
+          <span className={`mt-0.5 block truncate text-[13px] ${bajo ? "font-semibold text-warn" : "text-muted"}`}>
+            {bajo ? `Se está acabando · ${cop(p.precio)}` : cop(p.precio)}
+            {!bajo && p.comisionPct > 0 ? ` · ${p.comisionPct}% al barbero` : ""}
+          </span>
+        </span>
+        {/* El número solo: en una columna de quince, "12" al lado de una foto de
+            producto no se lee como otra cosa que lo que queda. El ámbar es el que
+            hace el trabajo — dice cuál hay que reponer sin leer nada. */}
+        <span
+          className={`shrink-0 rounded-full px-2.5 py-1 text-[13px] font-bold tabular-nums ${
+            bajo ? "bg-warn/15 text-warn" : "bg-elevated text-ink"
+          }`}
+        >
+          {p.stock}
+        </span>
+        <ChevronRightIcon className="h-4 w-4 shrink-0 text-muted" />
+      </button>
+      <button
+        type="button"
+        onClick={onEliminar}
+        aria-label={`Eliminar ${p.nombre}`}
+        className="mr-2 grid h-11 w-11 shrink-0 place-items-center rounded-full text-muted transition hover:bg-warn/10 hover:text-warn"
+      >
+        <TrashIcon className="h-[18px] w-[18px]" />
+      </button>
+    </div>
+  );
+}
+
+function FilaRetirado({ p, sede, onError }: { p: Producto; sede: string | null; onError: (t: string) => void }) {
+  const router = useRouter();
+  const [busy, setBusy] = useState(false);
+  return (
+    <div className="flex min-h-[72px] items-center gap-3 px-4 py-2.5">
       <ProductoThumb nombre={p.nombre} fotoUrl={p.fotoUrl} size={44} />
       <span className="min-w-0 flex-1">
-        <span className="block truncate text-[15px] font-semibold text-ink">{p.nombre}</span>
-        {/* Cuando se está acabando, la comisión se cae de la línea: a 390 px las
-            tres cosas no caben y lo que se truncaba era justo el aviso. */}
-        <span className={`mt-0.5 block truncate text-[13px] ${bajo ? "font-semibold text-warn" : "text-muted"}`}>
-          {bajo ? `Se está acabando · ${cop(p.precio)}` : cop(p.precio)}
-          {!bajo && p.comisionPct > 0 ? ` · ${p.comisionPct}% al barbero` : ""}
+        <span className="block truncate text-[15px] font-semibold text-muted">{p.nombre}</span>
+        <span className="mt-0.5 block truncate text-[13px] text-muted">
+          {cop(p.precio)}
+          {sede ? ` · ${sede}` : ""}
+          {p.stock > 0 ? ` · quedan ${p.stock}` : ""}
         </span>
       </span>
-      {/* El número solo: en una columna de quince, "12" al lado de una foto de
-          producto no se lee como otra cosa que lo que queda. El ámbar es el que
-          hace el trabajo — dice cuál hay que reponer sin leer nada. */}
-      <span
-        className={`shrink-0 rounded-full px-2.5 py-1 text-[13px] font-bold tabular-nums ${
-          bajo ? "bg-warn/15 text-warn" : "bg-elevated text-ink"
-        }`}
+      <button
+        type="button"
+        disabled={busy}
+        onClick={async () => {
+          setBusy(true);
+          const res = await setProductoActivo(p.id, true);
+          setBusy(false);
+          if (res.ok) router.refresh();
+          else onError(res.error ?? "No se pudo volver a vender.");
+        }}
+        className={botonClases("secundario", "md")}
       >
-        {p.stock}
-      </span>
-      <ChevronRightIcon className="h-4 w-4 shrink-0 text-muted" />
-    </button>
+        {busy ? "…" : "Volver a vender"}
+      </button>
+    </div>
   );
 }
 
@@ -187,13 +347,40 @@ function FilaProducto({ p, onAbrir }: { p: Producto; onAbrir: () => void }) {
   Cada control guarda solo (ya lo hacían en la tarjeta): por eso la hoja no
   lleva pie con "Guardar" — no habría nada que guardar y el botón mentiría.
 */
-function HojaProducto({ p, costo, onCerrar }: { p: Producto; costo: number | null; onCerrar: () => void }) {
+function HojaProducto({
+  p,
+  costo,
+  gemelo,
+  nombreSede,
+  onEliminar,
+  onCerrar,
+}: {
+  p: Producto;
+  costo: number | null;
+  gemelo: Producto | null;
+  nombreSede: (id: string) => string;
+  onEliminar: () => void;
+  onCerrar: () => void;
+}) {
   const bajo = p.stock <= p.stockMinimo;
   // Las tres columnas del Excel del dueño que salen del costo.
   const ganancia = costo === null ? null : p.precio - costo;
   const margen = costo === null || p.precio === 0 ? null : Math.round(((p.precio - costo) / p.precio) * 100);
+  const otraSede = gemelo ? nombreSede(gemelo.sede) : "";
   return (
     <Hoja titulo={p.nombre} onCerrar={onCerrar} ancho="max-w-lg">
+      <div className="pb-3">
+        <p className="text-[12px] text-muted">Nombre · {nombreSede(p.sede)}</p>
+        <NombreEditable
+          nombre={p.nombre}
+          max={80}
+          que="nombre del producto"
+          className="text-[16px] font-semibold text-ink"
+          gemelo={gemelo ? { texto: `Cambiar también en ${otraSede}` } : undefined}
+          onGuardar={(nombre, conGemelo) => renombrarProducto(conGemelo && gemelo ? [p.id, gemelo.id] : [p.id], nombre)}
+        />
+      </div>
+
       <div className="flex items-center gap-4 pb-1">
         <FotoProducto productoId={p.id} nombre={p.nombre} fotoUrl={p.fotoUrl} size={64} />
         <div className="min-w-0">
@@ -222,8 +409,15 @@ function HojaProducto({ p, costo, onCerrar }: { p: Producto; costo: number | nul
           <div>
             <p className="text-[12px] text-muted">Se vende a</p>
             <span className="font-display text-[22px] font-extrabold tabular-nums text-ink">
-              <PrecioEditable productoId={p.id} precio={p.precio} />
+              <PrecioEditable
+                productoId={p.id}
+                precio={p.precio}
+                tambien={gemelo ? { ids: [gemelo.id], texto: `También en ${otraSede}` } : undefined}
+              />
             </span>
+            {gemelo && gemelo.precio !== p.precio && (
+              <p className="text-[12px] text-muted">En {otraSede} está a {cop(gemelo.precio)}</p>
+            )}
           </div>
           <div>
             <p className="text-[12px] text-muted">Le cuesta al local</p>
@@ -284,6 +478,120 @@ function HojaProducto({ p, costo, onCerrar }: { p: Producto; costo: number | nul
           <UpsellToggle productoId={p.id} enUpsell={p.enUpsell} />
         </div>
       </Bloque>
+
+      <Bloque titulo="Quitar del catálogo">
+        <Boton variante="peligro" onClick={onEliminar}>
+          <TrashIcon className="h-4 w-4" /> Eliminar producto
+        </Boton>
+        <p className="mt-2 pb-2 text-[12px] text-muted">
+          Si nunca se vendió, se borra. Si ya tiene ventas, deja de venderse y sus ventas quedan en los reportes.
+        </p>
+      </Bloque>
+    </Hoja>
+  );
+}
+
+/*
+  Eliminar, en su propia hoja (nunca encima de la del producto). Primero pregunta
+  al servidor qué pasaría —borrar o retirar— y lo dice con palabras; el servidor
+  lo vuelve a calcular al confirmar.
+*/
+function ConfirmarEliminar({
+  p,
+  onCerrar,
+  onListo,
+}: {
+  p: Producto;
+  onCerrar: () => void;
+  onListo: (modo: "borrado" | "retirado", baja: number) => void;
+}) {
+  const [resumen, setResumen] = useState<ResumenEliminarProducto | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [unidades, setUnidades] = useState<"siguen" | "no-estan">("siguen");
+
+  useEffect(() => {
+    let vivo = true;
+    resumenEliminarProducto(p.id)
+      .then((r) => {
+        if (!vivo) return;
+        if (r.ok && r.resumen) setResumen(r.resumen);
+        else setErr(r.error ?? "No se pudo revisar el producto.");
+      })
+      .catch(() => vivo && setErr("No se pudo revisar el producto. Revisa la conexión."));
+    return () => {
+      vivo = false;
+    };
+  }, [p.id]);
+
+  async function confirmar() {
+    setBusy(true);
+    setErr(null);
+    const res = await eliminarProducto(p.id, { darDeBaja: unidades === "no-estan" });
+    setBusy(false);
+    if (res.ok && res.modo) onListo(res.modo, res.baja ?? 0);
+    else setErr(res.error ?? "No se pudo eliminar.");
+  }
+
+  const historia = resumen
+    ? [
+        resumen.ventas ? `${resumen.ventas} ${resumen.ventas === 1 ? "venta" : "ventas"}` : null,
+        resumen.consumos ? `${resumen.consumos} ${resumen.consumos === 1 ? "consumo del equipo" : "consumos del equipo"}` : null,
+      ]
+        .filter(Boolean)
+        .join(" y ")
+    : "";
+
+  return (
+    <Hoja
+      titulo="Eliminar producto"
+      onCerrar={onCerrar}
+      ancho="max-w-lg"
+      pie={
+        <PieHoja onCancelar={onCerrar}>
+          <Boton variante="peligro" disabled={!resumen || busy} onClick={confirmar}>
+            {busy ? "Un momento…" : resumen?.borrable ? "Borrar" : "Quitar de la venta"}
+          </Boton>
+        </PieHoja>
+      }
+    >
+      <div className="space-y-3 pb-4 text-[14px] leading-relaxed text-ink">
+        {!resumen && !err && <p className="text-muted">Revisando si “{p.nombre}” ya se vendió…</p>}
+        {resumen?.borrable && (
+          <p>
+            <b>“{p.nombre}”</b> nunca se vendió. Se borra del todo, con su foto.
+          </p>
+        )}
+        {resumen && !resumen.borrable && (
+          <>
+            <p>
+              <b>“{p.nombre}”</b> ya tiene historia{historia ? ` (${historia})` : ""}, así que no se borra: deja de salir en el
+              cobro, en el consumo del equipo y en esta lista. Sus ventas siguen en los reportes, y queda en{" "}
+              <b>Retirados</b> por si vuelve.
+            </p>
+            {resumen.stock > 0 && (
+              <div>
+                <p className="mb-2 text-[13px] text-muted">
+                  ¿Y {resumen.stock === 1 ? "la unidad que queda" : `las ${resumen.stock} que quedan`}?
+                </p>
+                <Segmentado
+                  etiqueta="Las unidades que quedan"
+                  valor={unidades}
+                  onCambio={setUnidades}
+                  opciones={[
+                    { valor: "siguen", texto: "Siguen guardadas" },
+                    { valor: "no-estan", texto: "Ya no están" },
+                  ]}
+                />
+                {unidades === "no-estan" && (
+                  <p className="mt-2 text-[12.5px] text-muted">Salen del inventario como merma.</p>
+                )}
+              </div>
+            )}
+          </>
+        )}
+        {err && <p className="text-[13px] text-accent-soft">{err}</p>}
+      </div>
     </Hoja>
   );
 }

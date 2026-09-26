@@ -76,7 +76,10 @@ export type VentaReporte = {
 };
 export type GastoReporte = { ymd: string; categoria: string; monto: number };
 /** Una fila del kardex (stock_movimientos). Positivo entra, negativo sale. */
-export type MovimientoReporte = { productoId: string; ymd: string; cantidad: number; motivo: string };
+export type MovimientoReporte = { productoId: string; ymd: string; cantidad: number; motivo: string; nota?: string | null };
+
+/** La nota con la que addProducto anota el stock con el que se CREA un producto. */
+export const NOTA_INVENTARIO_INICIAL = "Inventario inicial";
 /** Un producto vendido en una venta NO anulada (venta_items). */
 export type VendidoReporte = { productoId: string; ymd: string; cantidad: number; precioUnitario: number };
 export type ProductoReporte = {
@@ -185,6 +188,10 @@ export function armarReporte(
   let pedidoSinCosto = 0;
   for (const mv of e.movimientos) {
     if (mv.motivo !== "entrada" || mv.cantidad <= 0) continue;
+    // Lo que ya había en la estantería al cargar el producto a la app no es
+    // mercancía comprada ese día: cargar los ~25 productos que faltan hundiría el
+    // "queda" de un solo día. Sigue contando en "entró" del inventario.
+    if (mv.nota === NOTA_INVENTARIO_INICIAL) continue;
     const d = dias.get(mv.ymd);
     if (!d) continue;
     const costo = e.costos[mv.productoId];

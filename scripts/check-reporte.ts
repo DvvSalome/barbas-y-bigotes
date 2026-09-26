@@ -145,4 +145,21 @@ assert.equal(hoy.inventario[0].quedan, 15);
 assert.equal(hoy.inventario[0].inicial, 11);
 assert.equal(hoy.dias.length, 24);
 
+// (f) Crear un producto con lo que ya había en la estantería NO es un pedido de
+//     ese día: cargar los productos que faltan hundiría el "queda" de un día.
+const alta = armarReporte(sep, {
+  ventas: [],
+  gastos: [],
+  movimientos: [
+    { productoId: "nuevo", ymd: "2026-09-20", cantidad: 24, motivo: "entrada", nota: "Inventario inicial" },
+    { productoId: "nuevo", ymd: "2026-09-22", cantidad: 6, motivo: "entrada", nota: null },
+  ],
+  vendidos: [],
+  productos: [{ id: "nuevo", nombre: "Club Colombia", sedeId: "plaza", precio: 7000, stock: 30, activo: true, fotoUrl: null }],
+  costos: { nuevo: 4000 },
+});
+assert.equal(alta.totales.pedido, 6 * 4000, "solo la compra del 22 es pedido; el inventario inicial no");
+assert.equal(alta.inventario[0].entro, 30, "pero las dos cuentan como 'entró', para que el inventario cuadre");
+assert.equal(alta.inventario[0].inicial, 0);
+
 console.log("check-reporte OK — meses, consolidado, comisión, gastos por concepto e inventario cuadran");

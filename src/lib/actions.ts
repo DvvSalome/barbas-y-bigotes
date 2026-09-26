@@ -7,7 +7,6 @@ import {
   sanearCop,
   sanearCantidad,
   sanearComisionPct,
-  sanearNombre,
   sanearEspecialidades,
   sanearPrevioHoras,
   sanearDuracionMin,
@@ -18,6 +17,11 @@ import {
   variantesObsoletas,
   pareceImagen,
   DURACION_MAX_MIN,
+  nombreRepetido,
+  borrableDelTodo,
+  sanearNombreServicio,
+  esCategoriaServicio,
+  NOMBRE_SERVICIO_MAX,
 } from "@/lib/admin-reglas";
 import { type SupabaseClient } from "@supabase/supabase-js";
 import { supabaseServerAuth, supabaseAdmin } from "@/lib/supabase/server";
@@ -47,7 +51,7 @@ import { beneficioProximoCorte, sanearConfigTarjeta, type BeneficioTarjeta } fro
 import { pushACliente, pushABarbero, pushASede } from "@/lib/push";
 import { cop, fechaHoraBogota } from "@/lib/format";
 
-export type ActionResult = { ok: boolean; error?: string; /** Se guardó, pero con salvedades que el admin debe ver (p.ej. especialidades descartadas). */ aviso?: string; id?: string; total?: number; descuento?: number; propina?: number; puntos?: number; encolado?: boolean; esperaHasta?: string | null; tarjeta?: { cortesTotales: number; posicion: number; beneficio: BeneficioTarjeta | null }; resenaUrl?: string | null; /** confirm_token de la reserva recién creada: credencial para deshacerla desde la confirmación del wizard. */ token?: string | null };
+export type ActionResult = { ok: boolean; error?: string; /** Se guardó, pero con salvedades que el admin debe ver (p.ej. especialidades descartadas). */ aviso?: string; id?: string; total?: number; descuento?: number; propina?: number; puntos?: number; encolado?: boolean; esperaHasta?: string | null; tarjeta?: { cortesTotales: number; posicion: number; beneficio: BeneficioTarjeta | null }; resenaUrl?: string | null; /** confirm_token de la reserva recién creada: credencial para deshacerla desde la confirmación del wizard. */ token?: string | null; /** Lo que se creó cuando es más de uno (un producto en las dos sedes). */ ids?: string[]; /** Qué hizo "Eliminar": borrar de verdad o retirar del catálogo. */ modo?: "borrado" | "retirado"; /** Unidades que "Eliminar" sacó como merma. */ baja?: number };
 
 // --- Autorización (defensa en profundidad; la RLS es la barrera real) ---
 // Las server actions corren con la sesión del usuario, pero igual revalidamos el
@@ -173,13 +177,66 @@ async function upsertClienteId(
   return (data as string | null) ?? null;
 }
 
+// Nombre visible de un producto. Tope de 80: más largo no cabe en el cobro. Más
+// largo se RECHAZA en vez de cortar en silencio (sanearNombre corta).
+function nombreProducto(v: unknown): { ok: true; nombre: string } | { ok: false; error: string } {
+  const limpio = (typeof v === "string" ? v : "").trim().replace(/\s+/g, " ");
+  if (!limpio) return { ok: false, error: "Pon el nombre del producto." };
+  if (limpio.length > 80) return { ok: false, error: "El nombre puede tener hasta 80 caracteres." };
+  return { ok: true, nombre: limpio };
+}
+
+/**
+ * ¿Ese nombre ya lo tiene otro producto ACTIVO de la misma sede? Devuelve el
+ * mensaje de error o null. El mismo nombre en las dos sedes es lo normal (son
+ * dos filas); dentro de una sede, dos "Agua" en el cobro no se distinguen.
+ */
+async function choqueNombreProducto(
+  sb: SupabaseClient,
+  nombre: string,
+  sedeIds: string[],
+  excluir: string[] = [],
+): Promise<string | null> {
+  const [{ data: activos }, { data: sedes }] = await Promise.all([
+    sb.from("productos").select("id,nombre,sede_id").eq("activo", true).in("sede_id", sedeIds),
+    sb.from("sedes").select("id,nombre").in("id", sedeIds),
+  ]);
+  for (const sede of sedeIds) {
+    const otros = ((activos ?? []) as { id: string; nombre: string; sede_id: string }[]).filter((p) => p.sede_id === sede);
+    if (nombreRepetido(nombre, otros, excluir)) {
+      const donde = ((sedes ?? []) as { id: string; nombre: string }[]).find((x) => x.id === sede)?.nombre ?? sede;
+      return `Ya hay un “${nombre}” en ${donde}.`;
+    }
+  }
+  return null;
+}
+
+const revalidarProductos = () => {
+  for (const p of ["/admin/inventario", "/admin", "/barbero", "/admin/cuadre", "/reservar", "/admin/reportes", "/admin/liquidacion"])
+    revalidatePath(p);
+};
+
+/**
+ * Crea un producto en UNA o en VARIAS sedes (pedido del administrador, 26-sep:
+ * "se venden muchas cosas iguales al mismo precio"). Cada sede es su propia fila
+ * —con su stock, su foto y su kardex—, pero se crean en un solo INSERT: o se
+ * crean todas o ninguna.
+ *
+ * Acepta también la forma vieja `{ sede, stock }`: un iPad con la página de antes
+ * abierta sigue pudiendo crear mientras se recarga.
+ */
 export async function addProducto(input: {
   nombre: string;
-  sede: string;
+  sedes?: { sede: string; stock: number }[];
+  /** @deprecated forma vieja, una sola sede. */
+  sede?: string;
+  /** @deprecated forma vieja, una sola sede. */
+  stock?: number;
   precio: number;
-  stock: number;
   stockMinimo: number;
   comisionPct: number;
+  /** Lo que le cuesta al local (0077). null/ausente = sin costo. */
+  costo?: number | null;
 }): Promise<ActionResult> {
   const sb = await supabaseServerAuth();
   const denied = await requireAdmin(sb);
@@ -189,48 +246,254 @@ export async function addProducto(input: {
   // ella entraba un precio negativo o una comisión del 250% tal cual, y el cobro
   // los lee de la base (completarReserva). Reglas en admin-reglas.ts (probadas
   // en scripts/check-admin.ts).
-  const nombre = sanearNombre(input.nombre);
-  if (!nombre) return { ok: false, error: "Pon el nombre del producto." };
+  const nom = nombreProducto(input.nombre);
+  if (!nom.ok) return { ok: false, error: nom.error };
+  const nombre = nom.nombre;
   const precio = sanearCop(input.precio);
   if (precio === null) return { ok: false, error: "El precio tiene que ser un número entero de pesos, sin decimales." };
-  const stock = sanearCantidad(input.stock);
-  if (stock === null) return { ok: false, error: "El stock tiene que ser un número entero, cero o más." };
   const stockMinimo = sanearCantidad(input.stockMinimo);
   if (stockMinimo === null) return { ok: false, error: "El mínimo tiene que ser un número entero, cero o más." };
   const comisionPct = sanearComisionPct(input.comisionPct);
   if (comisionPct === null) return { ok: false, error: "La comisión tiene que estar entre 0 y 100." };
+  const conCosto = input.costo !== null && input.costo !== undefined;
+  const costo = conCosto ? sanearCop(input.costo) : null;
+  if (conCosto && costo === null) return { ok: false, error: "El costo tiene que ser un número entero de pesos, sin decimales." };
 
-  const { data: sedeRow } = await sb.from("sedes").select("id").eq("id", input.sede).maybeSingle();
-  if (!sedeRow) return { ok: false, error: "Sede inválida." };
+  const pedidas = Array.isArray(input.sedes) ? input.sedes : input.sede ? [{ sede: input.sede, stock: input.stock ?? 0 }] : [];
+  if (!pedidas.length) return { ok: false, error: "Elige en qué sede se vende." };
+  if (pedidas.length > 5) return { ok: false, error: "Demasiadas sedes." };
+  if (new Set(pedidas.map((x) => x.sede)).size !== pedidas.length) return { ok: false, error: "Hay una sede repetida." };
+  const filas: { sede: string; stock: number }[] = [];
+  for (const x of pedidas) {
+    const stock = sanearCantidad(x.stock);
+    if (stock === null) return { ok: false, error: "El stock tiene que ser un número entero, cero o más." };
+    filas.push({ sede: String(x.sede), stock });
+  }
+  const sedeIds = filas.map((x) => x.sede);
+  const { data: sedesRows } = await sb.from("sedes").select("id").in("id", sedeIds);
+  if ((sedesRows ?? []).length !== sedeIds.length) return { ok: false, error: "Sede inválida." };
+
+  const choque = await choqueNombreProducto(sb, nombre, sedeIds);
+  if (choque) return { ok: false, error: choque };
 
   const { data, error } = await sb
     .from("productos")
-    .insert({
-      nombre,
-      sede_id: input.sede,
-      precio,
-      stock,
-      stock_minimo: stockMinimo,
-      comision_pct: comisionPct,
-    })
-    .select("id")
-    .single();
+    .insert(
+      filas.map((x) => ({
+        nombre,
+        sede_id: x.sede,
+        precio,
+        stock: x.stock,
+        stock_minimo: stockMinimo,
+        comision_pct: comisionPct,
+      })),
+    )
+    .select("id,sede_id");
   if (error) return { ok: false, error: errorPublico("addProducto", error) };
-  const productoId = (data as { id: string }).id;
+  const creados = (data ?? []) as { id: string; sede_id: string }[];
+  if (creados.length !== filas.length) return { ok: false, error: "No se pudo crear. Vuelve a entrar como administrador." };
+  // En el orden en que se pidieron, para que la foto y el stock caigan donde van.
+  const ids = sedeIds.map((sede) => creados.find((c) => c.sede_id === sede)?.id).filter((x): x is string => !!x);
+
+  const admin = supabaseAdmin();
   // Kardex: registrar el stock inicial como 'entrada'. Sin esto el historial del
   // producto arranca sin punto de partida y no cuadra (las ventas ya las anota
   // decrement_stock, y los ajustes ingresar_stock). service_role porque
   // stock_movimientos es RLS restringida; el gate real es requireAdmin de arriba.
-  // Best-effort: no tumba la creación del producto.
-  if (stock > 0) {
-    const { error: movErr } = await supabaseAdmin()
-      .from("stock_movimientos")
-      .insert({ producto_id: productoId, cantidad: stock, motivo: "entrada", nota: "Inventario inicial" });
+  // Best-effort: no tumba la creación del producto. La nota "Inventario inicial"
+  // la usa el reporte del mes para NO contarlo como pedido de ese día.
+  const iniciales = filas
+    .map((x) => ({ producto_id: creados.find((c) => c.sede_id === x.sede)?.id, cantidad: x.stock }))
+    .filter((x) => x.producto_id && x.cantidad > 0)
+    .map((x) => ({ ...x, motivo: "entrada", nota: "Inventario inicial" }));
+  if (iniciales.length) {
+    const { error: movErr } = await admin.from("stock_movimientos").insert(iniciales);
     if (movErr) errorPublico("addProducto movimiento inicial", movErr);
   }
-  revalidatePath("/admin/inventario");
-  // El id permite encadenar la foto opcional (subirFotoProducto) tras crear.
-  return { ok: true, id: productoId };
+
+  // El costo va a su tabla cerrada (0077): en el mismo viaje, no en uno aparte
+  // desde el navegador. Si falla, el producto ya existe y se avisa.
+  let aviso: string | undefined;
+  if (costo !== null) {
+    const { error: cErr } = await admin
+      .from("producto_costo")
+      .upsert(ids.map((id) => ({ producto_id: id, costo, actualizado_en: new Date().toISOString() })));
+    if (cErr) {
+      errorPublico("addProducto costo", cErr);
+      aviso = "El producto se creó, pero el costo no se guardó. Ponlo desde su hoja.";
+    }
+  }
+  revalidarProductos();
+  // Los ids permiten encadenar la foto opcional (subirFotoProducto) tras crear.
+  return { ok: true, id: ids[0], ids, aviso };
+}
+
+/**
+ * Cambia el nombre de un producto (pedido del administrador: "no me deja cambiar
+ * el nombre"). Con `ids` de dos sedes renombra el producto y su gemelo de una
+ * vez. Lo ya vendido conserva el nombre del día del cobro (venta_items guarda su
+ * copia); el reporte del mes y la liquidación muestran el nuevo.
+ */
+export async function renombrarProducto(ids: string[], nombreNuevo: string): Promise<ActionResult> {
+  const sb = await supabaseServerAuth();
+  const denied = await requireAdmin(sb);
+  if (denied) return { ok: false, error: denied };
+  const lista = [...new Set((Array.isArray(ids) ? ids : []).filter((x) => typeof x === "string" && x))].slice(0, 5);
+  if (!lista.length) return { ok: false, error: "Falta el producto." };
+  const nom = nombreProducto(nombreNuevo);
+  if (!nom.ok) return { ok: false, error: nom.error };
+
+  const { data: filas } = await sb.from("productos").select("id,sede_id").in("id", lista);
+  const rows = (filas ?? []) as { id: string; sede_id: string }[];
+  if (rows.length !== lista.length) return { ok: false, error: "Ese producto ya no existe. Actualiza la página." };
+  if (new Set(rows.map((r) => r.sede_id)).size !== rows.length)
+    return { ok: false, error: "Solo se renombra un producto por sede a la vez." };
+  const choque = await choqueNombreProducto(sb, nom.nombre, rows.map((r) => r.sede_id), lista);
+  if (choque) return { ok: false, error: choque };
+
+  // .select("id"): con la RLS, un UPDATE que no puede escribir no da error, solo
+  // afecta 0 filas. Sin contar lo que volvió, la pantalla diría "listo" y nada.
+  const { data: upd, error } = await sb.from("productos").update({ nombre: nom.nombre }).in("id", lista).select("id");
+  if (error) return { ok: false, error: errorPublico("renombrarProducto", error) };
+  if ((upd ?? []).length !== lista.length) return { ok: false, error: "No se pudo cambiar el nombre. Vuelve a entrar como administrador." };
+  revalidarProductos();
+  revalidatePath("/admin/metricas");
+  return { ok: true };
+}
+
+export type ResumenEliminarProducto = {
+  nombre: string;
+  ventas: number;
+  consumos: number;
+  stock: number;
+  /** true = se borra del todo; false = se retira del catálogo y su historia queda. */
+  borrable: boolean;
+};
+
+async function leerResumenEliminar(id: string): Promise<ResumenEliminarProducto | null> {
+  const admin = supabaseAdmin();
+  const [prodRes, ventasRes, consRes, movRes] = await Promise.all([
+    admin.from("productos").select("nombre,stock").eq("id", id).maybeSingle(),
+    // Anuladas incluidas: también son historia del producto.
+    admin.from("venta_items").select("id", { count: "exact", head: true }).eq("tipo", "producto").eq("ref_id", id),
+    admin.from("consumos_barbero").select("id", { count: "exact", head: true }).eq("producto_id", id),
+    admin.from("stock_movimientos").select("motivo,nota,creado_en").eq("producto_id", id),
+  ]);
+  const p = prodRes.data as { nombre: string; stock: number } | null;
+  if (!p) return null;
+  // Una lectura que falla NO puede concluir "nunca se vendió": en la duda, se retira.
+  const fallo = !!(ventasRes.error || consRes.error || movRes.error);
+  const ventas = ventasRes.count ?? 0;
+  const consumos = consRes.count ?? 0;
+  const movimientos = ((movRes.data ?? []) as { motivo: string; nota: string | null; creado_en: string }[]).map((m) => ({
+    motivo: m.motivo,
+    nota: m.nota,
+    ymd: bogotaYmd(new Date(m.creado_en)),
+  }));
+  const borrable = !fallo && borrableDelTodo({ ventas, consumos, movimientos, desdeMesYmd: `${bogotaYmd().slice(0, 8)}01` });
+  return { nombre: p.nombre, ventas, consumos, stock: p.stock ?? 0, borrable };
+}
+
+/** Lo que pasaría al eliminar: para que la hoja lo diga ANTES de tocar nada. */
+export async function resumenEliminarProducto(
+  id: string,
+): Promise<{ ok: boolean; error?: string; resumen?: ResumenEliminarProducto }> {
+  const sb = await supabaseServerAuth();
+  const denied = await requireAdmin(sb);
+  if (denied) return { ok: false, error: denied };
+  const resumen = await leerResumenEliminar(id);
+  if (!resumen) return { ok: false, error: "Ese producto ya no existe. Actualiza la página." };
+  return { ok: true, resumen };
+}
+
+/**
+ * "Eliminar" un producto (pedido del administrador: "no me deja eliminar el
+ * campo ya creado").
+ *
+ * Si es un error de carga (nunca se vendió ni se consumió, y todo su kardex es de
+ * este mes) se BORRA de verdad. Si ya tiene historia, se RETIRA: deja de salir en
+ * el cobro, en el consumo del equipo y en la estantería, pero sus ventas y su
+ * kardex siguen en los reportes. Borrarlo se llevaría el kardex en cascada y
+ * reescribiría el inventario de meses cerrados. Se recalcula acá: no se confía
+ * en lo que mostró la pantalla.
+ */
+export async function eliminarProducto(id: string, opciones: { darDeBaja?: boolean } = {}): Promise<ActionResult> {
+  const sb = await supabaseServerAuth();
+  const denied = await requireAdmin(sb);
+  if (denied) return { ok: false, error: denied };
+  const r = await leerResumenEliminar(id);
+  if (!r) return { ok: false, error: "Ese producto ya no existe. Actualiza la página." };
+  const admin = supabaseAdmin();
+
+  if (r.borrable) {
+    const { data: borrados, error } = await sb.from("productos").delete().eq("id", id).select("id");
+    if (!error && (borrados ?? []).length === 1) {
+      // Las 4 variantes posibles de la foto: el bucket es público y el archivo
+      // quedaría servido para siempre.
+      const { error: rmErr } = await admin.storage.from("productos").remove(variantesObsoletas(id, ""));
+      if (rmErr) errorPublico("eliminarProducto foto", rmErr);
+      revalidarProductos();
+      return { ok: true, modo: "borrado" };
+    }
+    // 23503: apareció un consumo entre la lectura y el borrado → se retira.
+    if (error && error.code !== "23503") return { ok: false, error: errorPublico("eliminarProducto", error) };
+    if (!error) return { ok: false, error: "No se pudo borrar. Vuelve a entrar como administrador." };
+  }
+
+  // Las unidades que quedaban: si ya no están, salen del kardex como merma (el
+  // reporte las ve salir, no desaparecer).
+  let baja = 0;
+  if (opciones.darDeBaja && r.stock > 0) {
+    const { error: bajaErr } = await admin.rpc("ingresar_stock", {
+      p_producto_id: id,
+      p_cantidad: -r.stock,
+      p_motivo: "merma",
+      p_nota: "Retirado del catálogo",
+      p_barbero_id: null,
+    });
+    if (bajaErr) return { ok: false, error: errorPublico("eliminarProducto baja", bajaErr) };
+    baja = r.stock;
+  }
+  const { data: upd, error } = await sb.from("productos").update({ activo: false }).eq("id", id).select("id");
+  if (error) return { ok: false, error: errorPublico("eliminarProducto retirar", error) };
+  if ((upd ?? []).length !== 1) return { ok: false, error: "No se pudo retirar. Vuelve a entrar como administrador." };
+  revalidarProductos();
+  // `baja`: para que "Deshacer" devuelva las unidades que se dieron por perdidas.
+  return { ok: true, modo: "retirado", baja };
+}
+
+/**
+ * Vuelve a vender un producto retirado (el "Deshacer" y el "Volver a vender").
+ * `reponer`: las unidades que el retiro sacó como merma ("Ya no están"); al
+ * deshacer vuelven al stock con un ajuste, si no el producto volvía con 0.
+ */
+export async function setProductoActivo(id: string, activo: boolean, reponer = 0): Promise<ActionResult> {
+  const sb = await supabaseServerAuth();
+  const denied = await requireAdmin(sb);
+  if (denied) return { ok: false, error: denied };
+  const { data: p } = await sb.from("productos").select("nombre,sede_id").eq("id", id).maybeSingle();
+  const prod = p as { nombre: string; sede_id: string } | null;
+  if (!prod) return { ok: false, error: "Ese producto ya no existe. Actualiza la página." };
+  if (activo) {
+    const choque = await choqueNombreProducto(sb, prod.nombre, [prod.sede_id], [id]);
+    if (choque) return { ok: false, error: `${choque} Cámbiale el nombre a uno de los dos antes.` };
+  }
+  const { data: upd, error } = await sb.from("productos").update({ activo }).eq("id", id).select("id");
+  if (error) return { ok: false, error: errorPublico("setProductoActivo", error) };
+  if ((upd ?? []).length !== 1) return { ok: false, error: "No se pudo guardar. Vuelve a entrar como administrador." };
+  const unidades = sanearCantidad(reponer);
+  if (activo && unidades && unidades > 0) {
+    const { error: repErr } = await supabaseAdmin().rpc("ingresar_stock", {
+      p_producto_id: id,
+      p_cantidad: unidades,
+      p_motivo: "ajuste",
+      p_nota: "Deshacer retiro",
+      p_barbero_id: null,
+    });
+    if (repErr) return { ok: false, error: errorPublico("setProductoActivo reponer", repErr, "Volvió a la venta, pero las unidades no se repusieron. Corrígelas desde su hoja.") };
+  }
+  revalidarProductos();
+  return { ok: true };
 }
 
 /**
@@ -266,11 +529,12 @@ export async function registrarConsumoBarbero(input: {
   const admin = supabaseAdmin();
   const { data: prod } = await admin
     .from("productos")
-    .select("id,nombre,precio,sede_id,stock")
+    .select("id,nombre,precio,sede_id,stock,activo")
     .eq("id", input.productoId)
     .maybeSingle();
-  const pr = prod as { nombre: string; precio: number; sede_id: string; stock: number } | null;
+  const pr = prod as { nombre: string; precio: number; sede_id: string; stock: number; activo: boolean } | null;
   if (!pr) return { ok: false, error: "Ese producto no existe." };
+  if (!pr.activo) return { ok: false, error: "Ese producto ya no se vende. Actualiza la página." };
   // El producto tiene que ser del local donde trabaja: si no, se descontaría del
   // stock del otro y la sede equivocada quedaría corta al contar.
   if (!(await staffPuedeOperarSede(staff, pr.sede_id)))
@@ -313,14 +577,19 @@ export async function registrarConsumoBarbero(input: {
 
 // Precio editable desde /admin/inventario. Revalida /reservar porque las
 // bebidas del upsell (en_upsell) muestran este precio en el wizard.
-export async function actualizarPrecioProducto(id: string, precio: number): Promise<ActionResult> {
+// `tambien`: el mismo producto en la otra sede ("se venden muchas cosas iguales
+// al mismo precio"): un solo cambio en vez de ir a buscarlo a la otra sede.
+export async function actualizarPrecioProducto(id: string, precio: number, tambien: string[] = []): Promise<ActionResult> {
   const sb = await supabaseServerAuth();
   const denied = await requireAdmin(sb);
   if (denied) return { ok: false, error: denied };
   const p = sanearCop(precio);
   if (p === null) return { ok: false, error: "El precio tiene que ser un número entero de pesos, sin decimales." };
-  const { error } = await sb.from("productos").update({ precio: p }).eq("id", id);
+  const ids = [...new Set([id, ...(Array.isArray(tambien) ? tambien : []).filter((x) => typeof x === "string" && x)])].slice(0, 5);
+  const { data: upd, error } = await sb.from("productos").update({ precio: p }).in("id", ids).select("id");
   if (error) return { ok: false, error: errorPublico("actualizarPrecioProducto", error) };
+  if ((upd ?? []).length !== ids.length) return { ok: false, error: "No se pudo guardar el precio. Vuelve a entrar como administrador." };
+  revalidatePath("/barbero");
   revalidatePath("/admin/inventario");
   revalidatePath("/reservar");
   return { ok: true };
@@ -943,80 +1212,274 @@ export async function actualizarDuracionServicio(servicioId: string, min: number
   return { ok: true };
 }
 
+// --- Catálogo de servicios: crear, renombrar y combos (pedidos del administrador, 26-sep) ---
+//
+// `servicios` NO tiene política de escritura para el admin (solo lectura
+// pública): todo lo que la escribe va con service role DESPUÉS de requireAdmin.
+// `servicio_sede` sí tiene la suya, pero va por el mismo camino para que el
+// servicio y sus precios se escriban juntos (y se deshagan juntos si algo falla).
+
+const revalidarServicios = () => {
+  // "/" es la única página con caché (ISR): sin esto, la home seguía mostrando el
+  // nombre viejo hasta diez minutos.
+  for (const p of ["/", "/reservar", "/barbero", "/admin/precios", "/admin/agenda", "/admin/cuadre"]) revalidatePath(p);
+};
+
+/** Otro servicio ACTIVO ya se llama así: dos iguales en la reserva no se distinguen. */
+async function choqueNombreServicio(admin: SupabaseClient, nombre: string, excluir: string[] = []): Promise<string | null> {
+  const { data } = await admin.from("servicios").select("id,nombre").eq("activo", true);
+  return nombreRepetido(nombre, (data ?? []) as { id: string; nombre: string }[], excluir)
+    ? `Ya hay un servicio que se llama “${nombre}”.`
+    : null;
+}
+
+/**
+ * Precios por sede de un servicio nuevo: al menos una sede, cada una con un
+ * precio en pesos mayor a 0, y todas sedes que existen.
+ */
+async function preciosPorSede(
+  admin: SupabaseClient,
+  precios: unknown,
+): Promise<{ ok: true; filas: { sede_id: string; precio: number }[] } | { ok: false; error: string }> {
+  const entradas = precios && typeof precios === "object" ? Object.entries(precios as Record<string, unknown>) : [];
+  if (!entradas.length) return { ok: false, error: "Elige en qué sede se hace y ponle precio." };
+  if (entradas.length > 5) return { ok: false, error: "Demasiadas sedes." };
+  const filas: { sede_id: string; precio: number }[] = [];
+  for (const [sede, v] of entradas) {
+    const precio = sanearCop(v);
+    if (precio === null || precio <= 0) return { ok: false, error: "El precio tiene que ser en pesos, sin decimales y mayor a $0." };
+    filas.push({ sede_id: sede, precio });
+  }
+  const { data: sedes } = await admin.from("sedes").select("id").in("id", filas.map((f) => f.sede_id));
+  if ((sedes ?? []).length !== filas.length) return { ok: false, error: "Sede inválida." };
+  return { ok: true, filas };
+}
+
+/**
+ * Inserta el servicio y sus precios. El id es el slug del nombre y NUNCA cambia
+ * después (lo usan las reservas, las ventas, la foto y los accesos rápidos del
+ * mostrador). Se da por tomado también un id que alguna vez se cobró, aunque el
+ * servicio ya no exista: una venta vieja no puede quedar apuntando al nuevo.
+ */
+async function insertarServicio(
+  admin: SupabaseClient,
+  fila: Record<string, unknown> & { nombre: string },
+  precios: { sede_id: string; precio: number }[],
+  respaldo: string,
+): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
+  const base = slugComboRegla(fila.nombre, respaldo);
+  const [{ data: ids }, { data: cobrados }] = await Promise.all([
+    admin.from("servicios").select("id").like("id", `${base}%`),
+    admin.from("venta_items").select("ref_id").eq("tipo", "servicio").like("ref_id", `${base}%`),
+  ]);
+  const tomados = new Set([
+    ...((ids ?? []) as { id: string }[]).map((r) => r.id),
+    ...((cobrados ?? []) as { ref_id: string | null }[]).map((r) => r.ref_id ?? ""),
+  ]);
+  let id = resolverColisionSlug(base, tomados);
+  let { error: insErr } = await admin.from("servicios").insert({ ...fila, id });
+  if (insErr?.code === "23505") {
+    // Otro admin creó el mismo nombre en el mismo segundo: se toma el siguiente.
+    tomados.add(id);
+    id = resolverColisionSlug(base, tomados);
+    ({ error: insErr } = await admin.from("servicios").insert({ ...fila, id }));
+  }
+  if (insErr && /cuenta_corte/i.test(insErr.message ?? "")) {
+    // Base sin 0027 todavía: se crea sin el sello (mismo criterio tolerante de antes).
+    const { cuenta_corte: _sinSello, ...sinSello } = fila;
+    void _sinSello;
+    ({ error: insErr } = await admin.from("servicios").insert({ ...sinSello, id }));
+  }
+  if (insErr) return { ok: false, error: errorPublico("crear servicio", insErr) };
+
+  const { error: ssErr } = await admin
+    .from("servicio_sede")
+    .insert(precios.map((p) => ({ servicio_id: id, sede_id: p.sede_id, precio: p.precio, disponible: true })));
+  if (ssErr) {
+    // No dejar un servicio huérfano (sin precio en ninguna sede).
+    await admin.from("servicios").delete().eq("id", id);
+    return { ok: false, error: errorPublico("crear servicio precios", ssErr) };
+  }
+  return { ok: true, id };
+}
+
+/**
+ * Un servicio nuevo, suelto (pedido del administrador: "no me deja crear nuevos
+ * servicios"; los combos ya tenían su armador). En una sede o en las dos, con su
+ * precio en cada una. Queda activo y se puede reservar al instante; la foto y la
+ * descripción se le ponen después desde la lista, como a cualquier otro.
+ */
+export async function crearServicio(input: {
+  nombre: string;
+  categoria: string;
+  duracionMin: number;
+  /** sede → precio. Una entrada por cada sede donde se hace. */
+  precios: Record<string, number>;
+  desde?: boolean;
+  descripcion?: string;
+}): Promise<ActionResult> {
+  const sb = await supabaseServerAuth();
+  const denied = await requireAdmin(sb);
+  if (denied) return { ok: false, error: denied };
+
+  const nombre = sanearNombreServicio(input.nombre);
+  if (!nombre) return { ok: false, error: `Pon el nombre del servicio (hasta ${NOMBRE_SERVICIO_MAX} caracteres).` };
+  if (!esCategoriaServicio(input.categoria)) return { ok: false, error: "Elige una categoría." };
+  if (input.categoria === "combos") return { ok: false, error: "Los combos se arman en el armador de combos." };
+  const duracion = sanearDuracionMin(input.duracionMin);
+  if (duracion === null) return { ok: false, error: `La duración tiene que estar entre 5 minutos y ${DURACION_MAX_MIN / 60} horas.` };
+  // El sitio decide si un combo trae la bebida incluida mirando si el nombre dice
+  // "bebida": en un servicio suelto esa palabra haría que no se la cobren aparte.
+  if (/bebida/i.test(nombre)) return { ok: false, error: "Un servicio suelto no incluye bebida: eso es un combo (se arma en el armador)." };
+  const descripcion = (input.descripcion ?? "").trim().replace(/\s+/g, " ").slice(0, 200) || null;
+
+  const admin = supabaseAdmin();
+  const precios = await preciosPorSede(admin, input.precios);
+  if (!precios.ok) return { ok: false, error: precios.error };
+  const choque = await choqueNombreServicio(admin, nombre);
+  if (choque) return { ok: false, error: choque };
+
+  const creado = await insertarServicio(
+    admin,
+    {
+      nombre,
+      categoria: input.categoria,
+      es_combo: false,
+      duracion_min: duracion,
+      desde: !!input.desde,
+      activo: true,
+      descripcion,
+      // Solo los cortes suman sello en la tarjeta (el mismo default del catálogo).
+      cuenta_corte: input.categoria === "cortes" ? true : null,
+    },
+    precios.filas,
+    "servicio",
+  );
+  if (!creado.ok) return { ok: false, error: creado.error };
+  revalidarServicios();
+  return { ok: true, id: creado.id };
+}
+
+/**
+ * Cambia el nombre de un servicio (pedido del administrador: "no me deja
+ * modificar los nombres de los servicios ya creados"). El id no se toca. Las
+ * citas muestran el nombre nuevo; lo ya cobrado conserva el del día del cobro.
+ */
+export async function renombrarServicio(id: string, nombreNuevo: string): Promise<ActionResult> {
+  const sb = await supabaseServerAuth();
+  const denied = await requireAdmin(sb);
+  if (denied) return { ok: false, error: denied };
+  const nombre = sanearNombreServicio(nombreNuevo);
+  if (!nombre) return { ok: false, error: `El nombre tiene que tener entre 1 y ${NOMBRE_SERVICIO_MAX} caracteres.` };
+
+  const admin = supabaseAdmin();
+  const { data: actual } = await admin.from("servicios").select("nombre,es_combo").eq("id", id).maybeSingle();
+  const s = actual as { nombre: string; es_combo: boolean } | null;
+  if (!s) return { ok: false, error: "Ese servicio ya no existe. Actualiza la página." };
+  // El sitio sabe que un combo trae la bebida PORQUE EL NOMBRE LO DICE: poner o
+  // quitar la palabra cambia lo que se cobra al reservar (la regala o la cobra dos
+  // veces). Se rechaza en vez de avisar.
+  const antes = /bebida/i.test(s.nombre);
+  const despues = /bebida/i.test(nombre);
+  if (!s.es_combo && despues)
+    return { ok: false, error: "Un servicio suelto no puede decir “bebida”: al reservar la bebida saldría gratis." };
+  if (s.es_combo && antes !== despues)
+    return {
+      ok: false,
+      error: antes
+        ? "Este combo incluye bebida: el nombre tiene que seguir diciendo “bebida”, o al reservar se cobraría aparte."
+        : "Este combo no incluye bebida: si el nombre dice “bebida”, al reservar saldría gratis.",
+    };
+  const choque = await choqueNombreServicio(admin, nombre, [id]);
+  if (choque) return { ok: false, error: choque };
+
+  const { data: upd, error } = await admin.from("servicios").update({ nombre }).eq("id", id).select("id");
+  if (error) return { ok: false, error: errorPublico("renombrarServicio", error) };
+  if ((upd ?? []).length !== 1) return { ok: false, error: "No se pudo cambiar el nombre." };
+  revalidarServicios();
+  return { ok: true };
+}
+
 // --- Armador de combos (F3) ---
 
-// Crea un combo EN LA SEDE ACTIVA del módulo Precios (decisión del dueño): queda
-// priceado/disponible SOLO en esa sede (una fila en servicio_sede). Si el admin
-// lo quiere en la otra sede, lo arma allá también.
+// Crea un combo en UNA sede o en LAS DOS (pedido del administrador, 26-sep: "sería
+// ideal igual que el otro, que se deje crear para ambas sedes"), con su precio en
+// cada una. Antes se armaba solo con una sede elegida arriba y había que armarlo
+// dos veces.
 export async function crearCombo(input: {
-  sede: string;
   partes: string[];
   conBebida: boolean;
   nombre: string;
   duracionMin: number;
-  precio: number;
+  /** sede → precio del combo en esa sede. */
+  precios?: Record<string, number>;
+  /** @deprecated forma vieja (una sede): la página de antes abierta en un iPad. */
+  sede?: string;
+  /** @deprecated forma vieja (una sede). */
+  precio?: number;
 }): Promise<ActionResult> {
   const sb = await supabaseServerAuth();
   const denied = await requireAdmin(sb);
   if (denied) return { ok: false, error: denied };
 
   // Validación (defensa en profundidad: la UI ya deshabilita el CTA).
-  const nombre = (input.nombre ?? "").trim();
-  const partes = Array.isArray(input.partes) ? input.partes.filter((p) => typeof p === "string" && p) : [];
-  const precio = Math.round(Number(input.precio));
-  const duracionMin = Math.round(Number(input.duracionMin));
+  const partes = [...new Set(Array.isArray(input.partes) ? input.partes.filter((p) => typeof p === "string" && p) : [])];
   const conBebida = !!input.conBebida;
   if (!esComboValido(partes, conBebida))
     return { ok: false, error: "Elige al menos 2 partes (o 1 parte más la bebida)." };
-  if (!nombre) return { ok: false, error: "Pon el nombre del combo." };
-  if (!Number.isFinite(precio) || precio <= 0) return { ok: false, error: "Pon un precio válido." };
-  if (!Number.isFinite(duracionMin) || duracionMin <= 0 || duracionMin > DURACION_MAX_MIN)
-    return { ok: false, error: `La duración tiene que estar entre 1 minuto y ${DURACION_MAX_MIN / 60} horas.` };
+  let nombre = sanearNombreServicio(input.nombre);
+  if (!nombre) return { ok: false, error: `Pon el nombre del combo (hasta ${NOMBRE_SERVICIO_MAX} caracteres).` };
+  // El sitio decide si la bebida va incluida mirando si el nombre dice "bebida":
+  // un combo con bebida y nombre propio se la cobraba aparte al cliente.
+  if (!conBebida && /bebida/i.test(nombre))
+    return { ok: false, error: "El nombre dice “bebida” pero el combo no la incluye: al reservar saldría gratis. Quita la palabra o marca la bebida." };
+  if (conBebida && !/bebida/i.test(nombre)) {
+    nombre = `${nombre} + bebida`;
+    if (nombre.length > NOMBRE_SERVICIO_MAX) return { ok: false, error: "El nombre es muy largo para agregarle “+ bebida”." };
+  }
+  const duracionMin = sanearDuracionMin(input.duracionMin);
+  if (duracionMin === null)
+    return { ok: false, error: `La duración tiene que estar entre 5 minutos y ${DURACION_MAX_MIN / 60} horas.` };
 
   const admin = supabaseAdmin();
+  const precios = await preciosPorSede(
+    admin,
+    input.precios ?? (input.sede ? { [input.sede]: input.precio } : undefined),
+  );
+  if (!precios.ok) return { ok: false, error: precios.error };
 
-  const { data: sedeRow } = await admin.from("sedes").select("id").eq("id", input.sede).maybeSingle();
-  if (!sedeRow) return { ok: false, error: "Sede inválida." };
+  // Cada parte tiene que existir, estar activa, no ser otro combo y tener precio
+  // en TODAS las sedes del combo: si no, en una sede se vendería algo que ahí no
+  // se hace.
+  const { data: rowsPartes } = await admin
+    .from("servicios")
+    .select("id,activo,es_combo,servicio_sede(sede_id)")
+    .in("id", partes);
+  const infoPartes = (rowsPartes ?? []) as { id: string; activo: boolean; es_combo: boolean; servicio_sede: { sede_id: string }[] }[];
+  if (infoPartes.length !== partes.length || infoPartes.some((p) => !p.activo || p.es_combo))
+    return { ok: false, error: "Alguna parte ya no está en el catálogo. Actualiza la página." };
+  for (const f of precios.filas) {
+    if (infoPartes.some((p) => !(p.servicio_sede ?? []).some((x) => x.sede_id === f.sede_id)))
+      return { ok: false, error: "Alguna parte no se hace en todas las sedes del combo." };
+  }
+
+  const choque = await choqueNombreServicio(admin, nombre);
+  if (choque) return { ok: false, error: choque };
 
   // cuenta_corte: el combo cuenta para la tarjeta solo si alguna parte es un corte
   // (misma semántica que getCorteIds). Un combo sin corte NO suma sello.
   const corteIds = new Set(await getCorteIds(admin));
   const cuentaCorte = partes.some((p) => corteIds.has(p));
 
-  // id único: slug del nombre, con sufijo -2, -3… si choca.
-  const baseId = slugComboRegla(nombre);
-  const { data: existentes } = await admin.from("servicios").select("id").like("id", `${baseId}%`);
-  const id = resolverColisionSlug(baseId, ((existentes ?? []) as { id: string }[]).map((r) => r.id));
-
-  const row = {
-    id,
-    nombre,
-    categoria: "combos",
-    es_combo: true,
-    duracion_min: duracionMin,
-    activo: true,
-  };
-  // Intenta con cuenta_corte (0027); si la columna aún no existe, reintenta sin ella
-  // (mismo espíritu tolerante que getCorteIds: no explotar si el orden se invierte).
-  let { error: insErr } = await admin.from("servicios").insert({ ...row, cuenta_corte: cuentaCorte });
-  if (insErr && /cuenta_corte/i.test(insErr.message ?? "")) {
-    ({ error: insErr } = await admin.from("servicios").insert(row));
-  }
-  if (insErr) return { ok: false, error: errorPublico("crearCombo servicio", insErr) };
-
-  // Precio/disponibilidad SOLO en la sede activa.
-  const { error: ssErr } = await admin
-    .from("servicio_sede")
-    .insert({ servicio_id: id, sede_id: input.sede, precio, disponible: true });
-  if (ssErr) {
-    // No dejar un servicio huérfano (sin precio en ninguna sede).
-    await admin.from("servicios").delete().eq("id", id);
-    return { ok: false, error: errorPublico("crearCombo servicio_sede", ssErr) };
-  }
-
-  revalidatePath("/admin/precios");
-  revalidatePath("/reservar");
-  return { ok: true, id };
+  const creado = await insertarServicio(
+    admin,
+    { nombre, categoria: "combos", es_combo: true, duracion_min: duracionMin, activo: true, cuenta_corte: cuentaCorte },
+    precios.filas,
+    "combo",
+  );
+  if (!creado.ok) return { ok: false, error: creado.error };
+  revalidarServicios();
+  return { ok: true, id: creado.id, aviso: nombre !== sanearNombreServicio(input.nombre) ? `Quedó como “${nombre}”.` : undefined };
 }
 
 // Desactiva/reactiva un servicio (toggle servicios.activo). Desactivado no aparece
@@ -1026,10 +1489,19 @@ export async function setServicioActivo(id: string, activo: boolean): Promise<Ac
   const denied = await requireAdmin(sb);
   if (denied) return { ok: false, error: denied };
   const admin = supabaseAdmin();
+  if (activo) {
+    // Volver a publicar uno que se llama igual que otro activo dejaría dos
+    // iguales en la reserva.
+    const { data: s } = await admin.from("servicios").select("nombre").eq("id", id).maybeSingle();
+    const nombre = (s as { nombre: string } | null)?.nombre;
+    if (nombre) {
+      const choque = await choqueNombreServicio(admin, nombre, [id]);
+      if (choque) return { ok: false, error: `${choque} Cámbiale el nombre a uno de los dos antes.` };
+    }
+  }
   const { error } = await admin.from("servicios").update({ activo }).eq("id", id);
   if (error) return { ok: false, error: errorPublico("setServicioActivo", error) };
-  revalidatePath("/admin/precios");
-  revalidatePath("/reservar");
+  revalidarServicios();
   return { ok: true };
 }
 
@@ -2389,6 +2861,9 @@ export async function completarReserva(input: {
       .from("productos")
       .select("id,nombre,precio,comision_pct")
       .eq("sede_id", sedeEfectiva)
+      // Retirado del catálogo = ya no se vende, aunque la pantalla del mostrador
+      // lo tuviera cargado de antes (no escucha cambios de productos).
+      .eq("activo", true)
       .in("id", ids);
     for (const sel of input.productos) {
       const cantidad = Math.floor(sel.cantidad);
@@ -2719,7 +3194,7 @@ export async function buscarGlobal(q: string): Promise<BusquedaGlobal> {
       .or(`nombre.ilike.${like},telefono.ilike.${like}`)
       .order("nombre")
       .limit(5),
-    sb.from("productos").select("id,nombre,stock,sede_id").ilike("nombre", like).order("nombre").limit(5),
+    sb.from("productos").select("id,nombre,stock,sede_id").eq("activo", true).ilike("nombre", like).order("nombre").limit(5),
     sb.from("servicios").select("id,nombre,duracion_min").eq("activo", true).ilike("nombre", like).order("nombre").limit(5),
   ]);
   return {

@@ -32,8 +32,11 @@ export function Segmentado<T extends string>({
       {opciones.map((o) => {
         const act = o.valor === valor;
         return (
+          // type="button": dentro de un <form>, un botón sin tipo ENVÍA el
+          // formulario — tocar una sede mandaba el "Nuevo producto" a medio llenar.
           <button
             key={o.valor}
+            type="button"
             role="tab"
             aria-selected={act}
             onClick={() => onCambio(o.valor)}
