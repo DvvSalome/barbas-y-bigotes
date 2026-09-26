@@ -37,8 +37,11 @@ const WA_URL =
 export function SiteFooter({
   conCtaMovil = false,
   compacto = false,
+  sinCtaFinal = false,
 }: {
   conCtaMovil?: boolean;
+  /** La página ya cierra con su propia llamada a reservar (la propuesta de inicio). */
+  sinCtaFinal?: boolean;
   /** Pie del cliente ya logueado: una barra corta en vez del pie completo. */
   compacto?: boolean;
 }) {
@@ -193,7 +196,7 @@ export function SiteFooter({
   return (
     <footer className="mt-3.5 border-t border-[rgba(242,237,228,0.08)] bg-[linear-gradient(180deg,#0a0908,#050403)] md:border-[rgba(242,237,228,0.1)]">
       {/* CTA final (solo desktop, §5). */}
-      <div className="hidden text-center md:block">
+      <div className={sinCtaFinal ? "hidden" : "hidden text-center md:block"}>
           <div className="mx-auto max-w-[900px] px-10 pt-[52px]">
             <h2 className="font-display text-[42px] font-extrabold uppercase leading-tight">
               ¿Listo para tu <span className="text-accent-soft">mejor versión</span>?
