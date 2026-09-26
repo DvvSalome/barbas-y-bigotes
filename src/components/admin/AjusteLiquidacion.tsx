@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ajustarLiquidacion, quitarAjusteLiquidacion } from "@/lib/actions";
 import { botonClases } from "@/components/ui/Boton";
-import { cop } from "@/lib/format";
+import { cop, plataEnCampo, digitosDePlata } from "@/lib/format";
 
 /*
   Sumar o restar plata en la liquidación de la semana de un barbero (0075).
@@ -153,12 +153,10 @@ export function AjusteLiquidacion({
             ))}
           </div>
           <input
-            type="number"
-            min={1}
-            step={1}
+            type="text"
             inputMode="numeric"
-            value={monto}
-            onChange={(e) => setMonto(e.target.value)}
+            value={plataEnCampo(monto)}
+            onChange={(e) => setMonto(digitosDePlata(e.target.value))}
             placeholder="Cuánto (en pesos)"
             className={campo}
           />

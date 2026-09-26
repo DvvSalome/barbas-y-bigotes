@@ -5,7 +5,7 @@ import { botonClases } from "@/components/ui/Boton";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { crearCupon, toggleCupon } from "@/lib/actions";
-import { cop } from "@/lib/format";
+import { cop, plataEnCampo, digitosDePlata } from "@/lib/format";
 import { TicketIcon } from "@/components/icons";
 import type { Cupon } from "@/lib/data/queries";
 
@@ -87,7 +87,7 @@ export function CuponesAdmin({ cupones }: { cupones: Cupon[] }) {
             </button>
           ))}
         </div>
-        <input type="number" value={valor} onChange={(e) => setValor(e.target.value)} placeholder={tipo === "porcentaje" ? "% de descuento (1-100)" : "Monto en COP"} className={fld} />
+        <input type="text" inputMode="numeric" value={tipo === "porcentaje" ? valor : plataEnCampo(valor)} onChange={(e) => setValor(digitosDePlata(e.target.value))} placeholder={tipo === "porcentaje" ? "% de descuento (1-100)" : "Descuento en pesos, ej. $ 5.000"} className={fld} />
         <div className="grid grid-cols-2 gap-2">
           <input type="number" value={usosMax} onChange={(e) => setUsosMax(e.target.value)} placeholder="Usos máx (vacío = ∞)" className={fld} />
           <input type="date" value={venceEn} onChange={(e) => setVenceEn(e.target.value)} className={fld} />

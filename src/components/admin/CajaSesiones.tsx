@@ -5,7 +5,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { abrirCaja, cerrarCaja } from "@/lib/actions";
 import { sfxExito, sfxAlerta } from "@/lib/sfx";
-import { cop, horaBogota, fechaCortaBogota, diasDesde } from "@/lib/format";
+import { cop, horaBogota, fechaCortaBogota, diasDesde, plataEnCampo, digitosDePlata } from "@/lib/format";
 import { CashIcon } from "@/components/icons";
 import type { CajaSesionSede, MedioPago } from "@/lib/data/queries";
 
@@ -209,10 +209,11 @@ function CajaCard({ caja, medios }: { caja: CajaSesionSede; medios: MedioPago[] 
           <div>
             <label className={lbl}>Efectivo contado en la caja</label>
             <input
-              type="number"
-              value={contado}
-              onChange={(e) => setContado(e.target.value)}
-              placeholder="Ej: 350000"
+              type="text"
+              inputMode="numeric"
+              value={plataEnCampo(contado)}
+              onChange={(e) => setContado(digitosDePlata(e.target.value))}
+              placeholder="Ej: $ 350.000"
               className={fld}
             />
             {contado.trim() !== "" && Number.isFinite(Number(contado)) && (
@@ -242,11 +243,11 @@ function CajaCard({ caja, medios }: { caja: CajaSesionSede; medios: MedioPago[] 
         <form onSubmit={abrir} className="mt-4 space-y-2.5">
           <div>
             <label className={lbl}>Meta del día (COP)</label>
-            <input type="number" value={meta} onChange={(e) => setMeta(e.target.value)} placeholder="Ej: 500000" className={fld} />
+            <input type="text" inputMode="numeric" value={plataEnCampo(meta)} onChange={(e) => setMeta(digitosDePlata(e.target.value))} placeholder="Ej: $ 500.000" className={fld} />
           </div>
           <div>
             <label className={lbl}>Vueltos con los que arranca el cajón (opcional)</label>
-            <input type="number" value={apertura} onChange={(e) => setApertura(e.target.value)} placeholder="Ej: 50000" className={fld} />
+            <input type="text" inputMode="numeric" value={plataEnCampo(apertura)} onChange={(e) => setApertura(digitosDePlata(e.target.value))} placeholder="Ej: $ 50.000" className={fld} />
           </div>
           <div className="flex gap-2">
             <button disabled={busy} className={botonClases("primario")}>

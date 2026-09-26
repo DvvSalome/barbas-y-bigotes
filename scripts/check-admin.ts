@@ -33,6 +33,7 @@ import {
   borrableDelTodo,
 } from "../src/lib/admin-reglas.ts";
 import { categorias } from "../src/lib/data/seed.ts";
+import { plataEnCampo, digitosDePlata } from "../src/lib/format.ts";
 
 // ---------- (a) Dinero: addProducto no validaba NADA y productos no tiene CHECK ----------
 // Un precio negativo se guardaba tal cual y el cobro lo lee de la base: un
@@ -225,5 +226,18 @@ assert.equal(
 );
 assert.equal(borrableDelTodo({ ventas: 1, consumos: 0, movimientos: [], desdeMesYmd: mes }), false, "con ventas no se borra");
 assert.equal(borrableDelTodo({ ventas: 0, consumos: 2, movimientos: [], desdeMesYmd: mes }), false, "con consumos del equipo no se borra");
+
+// ---------- (l) Campos de plata: "$ 35.000" mientras se escribe (pedido del barbero) ----------
+// Con el número pelado ("35000") no se sabía si eran 3.500 o 35.000.
+assert.equal(plataEnCampo("35000"), "$ 35.000", "con signo y punto de miles");
+assert.equal(plataEnCampo("1250000"), "$ 1.250.000", "millones con dos puntos");
+assert.equal(plataEnCampo("500"), "$ 500", "sin miles, sin punto");
+assert.equal(plataEnCampo(""), "", "vacío se queda vacío (se ve el placeholder)");
+assert.equal(plataEnCampo(45000), "$ 45.000", "acepta el número directo");
+assert.equal(digitosDePlata("$ 35.000"), "35000", "de vuelta: solo dígitos");
+assert.equal(digitosDePlata("$ 3.5000"), "35000", "si se borra un punto a mano, igual queda el número");
+assert.equal(digitosDePlata("007"), "7", "sin ceros a la izquierda");
+assert.equal(digitosDePlata("$ 0"), "0", "el cero solo se respeta");
+assert.equal(digitosDePlata("12345678901"), "123456789", "tope de 9 dígitos");
 
 console.log("check-admin OK — reglas del back-office (dinero, comisión, especialidades, combos, fotos, fechas, redimensionado, catálogo)");

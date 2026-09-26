@@ -9,6 +9,7 @@ import { achicarFoto } from "@/lib/imagen-cliente";
 import { CamIcon } from "@/components/icons";
 import { Segmentado } from "@/components/ui/Segmentado";
 import type { Sede } from "@/lib/data/types";
+import { plataEnCampo, digitosDePlata } from "@/lib/format";
 
 const input =
   "min-h-11 rounded-lg border border-line bg-bg px-3 py-2 text-ink placeholder:text-muted focus:border-accent focus:outline-none";
@@ -169,12 +170,12 @@ export function AddProductForm({
 
       <label className="sm:col-span-3">
         <span className={lbl}>Precio de venta</span>
-        <input required type="number" min={0} step={1} value={precio} onChange={(e) => setPrecio(e.target.value)} placeholder="25000" className={`${input} w-full`} />
+        <input required type="text" inputMode="numeric" value={plataEnCampo(precio)} onChange={(e) => setPrecio(digitosDePlata(e.target.value))} placeholder="$ 25.000" className={`${input} w-full`} />
         <span className={ayuda}>Lo que paga el cliente, en pesos.</span>
       </label>
       <label className="sm:col-span-3">
         <span className={lbl}>Le cuesta al local</span>
-        <input type="number" inputMode="numeric" min={0} step={1} value={costo} onChange={(e) => setCosto(e.target.value)} placeholder="Opcional" className={`${input} w-full`} />
+        <input type="text" inputMode="numeric" value={plataEnCampo(costo)} onChange={(e) => setCosto(digitosDePlata(e.target.value))} placeholder="Opcional" className={`${input} w-full`} />
         <span className={ayuda}>Lo que pagas por cada uno. Con esto se ve cuánto le ganas.</span>
       </label>
       <label className="sm:col-span-3">

@@ -5,7 +5,7 @@ import { useMemo, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { crearCombo } from "@/lib/actions";
-import { cop } from "@/lib/format";
+import { cop, plataEnCampo, digitosDePlata } from "@/lib/format";
 import { normNombre } from "@/lib/admin-reglas";
 import { SearchIcon, CheckIcon, ScissorsIcon } from "@/components/icons";
 import { Segmentado } from "@/components/ui/Segmentado";
@@ -404,16 +404,15 @@ export function ComboBuilder({
                     −
                   </BotonMasMenos>
                   <input
-                    type="number"
-                    min={PISO}
-                    step={500}
-                    value={precio}
+                    type="text"
+                    inputMode="numeric"
+                    value={plataEnCampo(precio)}
                     onChange={(e) => {
-                      setPrecios((p) => ({ ...p, [s.id]: Number(e.target.value) || 0 }));
+                      setPrecios((p) => ({ ...p, [s.id]: Number(digitosDePlata(e.target.value)) || 0 }));
                       marcar();
                     }}
                     aria-label={`Precio del combo en ${s.nombre}, en pesos`}
-                    className="h-11 w-[92px] border-0 bg-transparent text-center font-display text-[17px] font-extrabold tabular-nums text-ink focus:outline-none"
+                    className="h-11 w-[108px] border-0 bg-transparent text-center font-display text-[17px] font-extrabold tabular-nums text-ink focus:outline-none"
                   />
                   <BotonMasMenos
                     label={`Subir precio en ${s.nombre}`}

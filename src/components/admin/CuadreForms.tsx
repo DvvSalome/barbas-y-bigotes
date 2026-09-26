@@ -14,7 +14,7 @@ import { CheckoutForm } from "@/components/barbero/AgendaList";
 import { MediosPago } from "@/components/admin/MediosPago";
 import { TagIcon, PercentIcon, CashIcon, WalletIcon, PlusIcon } from "@/components/icons";
 import { iconoDeGasto } from "@/components/admin/iconos-gasto";
-import { cop } from "@/lib/format";
+import { cop, plataEnCampo, digitosDePlata } from "@/lib/format";
 import type { Sede, Barbero } from "@/lib/data/types";
 import type { MedioPago } from "@/lib/data/queries";
 
@@ -362,13 +362,11 @@ function HojaGasto({
           id="gasto-monto"
           etiqueta="¿Cuánto?"
           obligatorio
-          type="number"
+          type="text"
           inputMode="numeric"
-          min={1}
-          step={1}
-          value={monto}
+          value={plataEnCampo(monto)}
           onChange={(e) => {
-            setMonto(e.target.value);
+            setMonto(digitosDePlata(e.target.value));
             if (error) setError("");
           }}
           error={error || undefined}
@@ -481,13 +479,11 @@ function HojaAdelanto({
           id="adelanto-monto"
           etiqueta="Monto del adelanto"
           obligatorio
-          type="number"
+          type="text"
           inputMode="numeric"
-          min={1}
-          step={1}
-          value={monto}
+          value={plataEnCampo(monto)}
           onChange={(e) => {
-            setMonto(e.target.value);
+            setMonto(digitosDePlata(e.target.value));
             if (error) setError("");
           }}
           error={error || undefined}

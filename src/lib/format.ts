@@ -5,6 +5,23 @@ export const cop = (n: number) =>
     maximumFractionDigits: 0,
   }).format(n);
 
+/*
+  Los CAMPOS donde se escribe plata (pedido del barbero, 26-sep: "que tenga el
+  signo de pesos y esté separado por puntos, como se usa en Colombia"). Con un
+  campo numérico pelado se leía "35000" y costaba saber si eran 3.500 o 35.000.
+  El campo guarda SOLO los dígitos ("35000") y muestra "$ 35.000" mientras se
+  escribe: el resto del código (sanearCop, Number) sigue recibiendo lo mismo.
+*/
+
+/** "35000" → "$ 35.000" (vacío se queda vacío, para que se vea el placeholder). */
+export const plataEnCampo = (digitos: string | number | null | undefined) => {
+  const d = String(digitos ?? "").replace(/\D/g, "");
+  return d ? `$ ${d.replace(/\B(?=(\d{3})+(?!\d))/g, ".")}` : "";
+};
+
+/** Lo que quedó escrito en un campo de plata, sin "$" ni puntos: solo dígitos (tope de 9). */
+export const digitosDePlata = (texto: string) => texto.replace(/\D/g, "").replace(/^0+(?=\d)/, "").slice(0, 9);
+
 /**
  * Solo la hora ("6:42 am"), SIEMPRE en Bogotá. Para lo que se pinta en el
  * server (Vercel corre en UTC: `new Date(iso).getHours()` ahí da 5 horas de

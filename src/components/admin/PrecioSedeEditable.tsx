@@ -6,7 +6,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { actualizarPrecioServicioSede } from "@/lib/actions";
 import { sanearCop } from "@/lib/admin-reglas";
-import { cop } from "@/lib/format";
+import { cop, plataEnCampo, digitosDePlata } from "@/lib/format";
 
 // Precio de un servicio EN UNA SEDE, editable donde se lee: toque sobre el monto
 // → input → Enter o ✓ guarda. Sin modal ni pantalla aparte.
@@ -84,13 +84,12 @@ export function PrecioSedeEditable({
     <span className="inline-flex flex-col items-end gap-1">
       <span className="inline-flex items-center gap-1">
         <input
-          type="number"
-          min={1}
-          step={1}
+          type="text"
+          inputMode="numeric"
           autoFocus
-          value={val}
+          value={plataEnCampo(val)}
           onChange={(e) => {
-            setVal(e.target.value);
+            setVal(digitosDePlata(e.target.value));
             if (error) setError(null);
           }}
           onKeyDown={(e) => {
@@ -99,7 +98,7 @@ export function PrecioSedeEditable({
           }}
           aria-invalid={!!error}
           aria-label={`Precio en ${etiqueta}`}
-          className={`min-h-11 w-24 rounded-lg border bg-bg px-2 py-1 text-sm text-ink tabular-nums focus:outline-none ${
+          className={`min-h-11 w-28 rounded-lg border bg-bg px-2 py-1 text-sm text-ink tabular-nums focus:outline-none ${
             error ? "border-accent" : "border-accent/60"
           }`}
         />

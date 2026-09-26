@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { registrarGasto } from "@/lib/actions";
 import { sanearCop } from "@/lib/admin-reglas";
 import { CATS_GASTO } from "@/components/admin/CuadreForms";
+import { plataEnCampo, digitosDePlata } from "@/lib/format";
 
 // "Compré una botella de agua para el local": el gasto se anota en el momento y
 // desde el mostrador, no cuando el admin se acuerde en el cuadre. Cae en la misma
@@ -92,12 +93,10 @@ export function GastoRapido({
       </div>
       <div className="grid grid-cols-2 gap-2">
         <input
-          type="number"
+          type="text"
           inputMode="numeric"
-          min={1}
-          step={1}
-          value={monto}
-          onChange={(e) => setMonto(e.target.value)}
+          value={plataEnCampo(monto)}
+          onChange={(e) => setMonto(digitosDePlata(e.target.value))}
           placeholder="Monto en $"
           className="w-full rounded-xl border border-line bg-elevated px-3.5 py-2.5 text-sm text-ink tabular-nums placeholder:text-muted focus:border-accent focus:outline-none"
         />

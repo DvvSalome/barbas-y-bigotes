@@ -6,7 +6,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { actualizarPrecioProducto, type ActionResult } from "@/lib/actions";
 import { sanearCop } from "@/lib/admin-reglas";
-import { cop } from "@/lib/format";
+import { cop, plataEnCampo, digitosDePlata } from "@/lib/format";
 
 // Precio con edición inline: tap sobre el monto → input numérico → Enter o ✓
 // guarda. Sin modal ni pantalla aparte; se edita donde se lee.
@@ -103,13 +103,12 @@ export function PrecioEditable({
     <span className="inline-flex flex-col items-start gap-1">
       <span className="inline-flex flex-wrap items-center gap-1.5">
         <input
-          type="number"
-          min={minimo}
-          step={1}
+          type="text"
+          inputMode="numeric"
           autoFocus
-          value={val}
+          value={plataEnCampo(val)}
           onChange={(e) => {
-            setVal(e.target.value);
+            setVal(digitosDePlata(e.target.value));
             if (error) setError(null);
           }}
           onKeyDown={(e) => {
@@ -120,7 +119,7 @@ export function PrecioEditable({
             }
           }}
           aria-invalid={!!error}
-          className={`min-h-11 w-24 rounded-lg border bg-bg px-2 text-sm text-ink tabular-nums focus:outline-none ${
+          className={`min-h-11 w-28 rounded-lg border bg-bg px-2 text-sm text-ink tabular-nums focus:outline-none ${
             error ? "border-red-500" : "border-accent"
           }`}
         />

@@ -16,7 +16,7 @@ import {
 } from "@/components/icons";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { cop } from "@/lib/format";
+import { cop, plataEnCampo, digitosDePlata } from "@/lib/format";
 import { bogotaYmd } from "@/lib/slots";
 import { linkWhatsApp, telefonoWhatsApp } from "@/lib/whatsapp";
 import {
@@ -713,7 +713,7 @@ function WalletTab({ d }: { d: Detalle }) {
               </button>
             ))}
           </div>
-          <input type="number" value={monto} onChange={(e) => setMonto(e.target.value)} placeholder="Monto" className={fld} />
+          <input type="text" inputMode="numeric" value={plataEnCampo(monto)} onChange={(e) => setMonto(digitosDePlata(e.target.value))} placeholder="Monto" className={fld} />
           <input value={nota} onChange={(e) => setNota(e.target.value)} placeholder="Nota (opcional)" className={fld} />
           <button disabled={busy} className={btn}>{busy ? "Guardando…" : "Registrar movimiento"}</button>
         </form>

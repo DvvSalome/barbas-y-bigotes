@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import { completarReserva } from "@/lib/actions";
 import { recargarSiDeployViejo } from "@/lib/skew";
 import { sanearCop } from "@/lib/admin-reglas";
-import { cop } from "@/lib/format";
+import { cop, plataEnCampo, digitosDePlata } from "@/lib/format";
 import type { PendienteCobro } from "@/lib/data/queries";
 
 // "Pendientes por cobrar" con el cobro AHÍ MISMO: se toca la cita, se elige el
@@ -162,12 +162,10 @@ export function PendientesCobrar({
                     <label className="text-[12px] font-bold uppercase tracking-wide text-muted">
                       Propina (opcional)
                       <input
-                        type="number"
+                        type="text"
                         inputMode="numeric"
-                        min={0}
-                        step={500}
-                        value={propina}
-                        onChange={(e) => setPropina(e.target.value)}
+                        value={plataEnCampo(propina)}
+                        onChange={(e) => setPropina(digitosDePlata(e.target.value))}
                         placeholder="$0"
                         className="mt-1 block w-32 rounded-xl border border-line bg-elevated px-3 py-2 text-[13px] text-ink tabular-nums placeholder:text-muted focus:border-accent focus:outline-none"
                       />

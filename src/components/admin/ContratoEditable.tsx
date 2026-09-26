@@ -6,7 +6,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { actualizarContratoBarbero } from "@/lib/actions";
 import { sanearCop, sanearComisionPct } from "@/lib/admin-reglas";
-import { cop } from "@/lib/format";
+import { cop, plataEnCampo, digitosDePlata } from "@/lib/format";
 import type { TipoContrato } from "@/lib/data/types";
 
 // Contrato del barbero, editable donde se lee. Dos formas excluyentes:
@@ -145,18 +145,17 @@ export function ContratoEditable({
         <label className="flex items-center gap-2 text-[12.5px] text-muted">
           Paga
           <input
-            type="number"
-            min={1}
-            step={1000}
+            type="text"
+            inputMode="numeric"
             autoFocus
-            value={arr}
+            value={plataEnCampo(arr)}
             onChange={(e) => {
-              setArr(e.target.value);
+              setArr(digitosDePlata(e.target.value));
               if (error) setError(null);
             }}
             onKeyDown={(e) => e.key === "Enter" && guardar()}
             aria-label="Arriendo mensual en pesos"
-            placeholder="500000"
+            placeholder="$ 500.000"
             className="w-28 rounded-lg border border-accent/60 bg-bg px-2 py-1 text-sm text-ink tabular-nums focus:outline-none"
           />
           al mes por la silla

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { cerrarCajaSede } from "@/lib/actions";
 import { sanearCop } from "@/lib/admin-reglas";
 import { sfxExito, sfxAlerta } from "@/lib/sfx";
-import { cop, horaBogota, fechaCortaBogota, diasDesde } from "@/lib/format";
+import { cop, horaBogota, fechaCortaBogota, diasDesde, plataEnCampo, digitosDePlata } from "@/lib/format";
 import { Hoja, PieHoja, primarioDeHoja } from "@/components/ui/Hoja";
 import { Campo } from "@/components/ui/Campo";
 import { botonClases } from "@/components/ui/Boton";
@@ -234,12 +234,11 @@ export function HojaCerrarCaja({
         id="efectivo-contado"
         etiqueta="¿Cuánto contaste en efectivo?"
         obligatorio
-        type="number"
+        type="text"
         inputMode="numeric"
-        min={0}
-        value={contado}
+        value={plataEnCampo(contado)}
         onChange={(e) => {
-          setContado(e.target.value);
+          setContado(digitosDePlata(e.target.value));
           setArmado(false);
         }}
         autoFocus

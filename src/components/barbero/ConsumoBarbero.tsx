@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { registrarConsumoBarbero } from "@/lib/actions";
-import { cop } from "@/lib/format";
+import { cop, plataEnCampo, digitosDePlata } from "@/lib/format";
 import { ElegirBarbero, type OpcionBarbero } from "@/components/staff/Elegir";
 
 // "Me tomé algo del local". Lo registra el propio barbero, no el dueño: es la
@@ -166,12 +166,10 @@ export function ConsumoBarbero({
           <label className="text-[12px] text-muted">
             Precio c/u
             <input
-              type="number"
+              type="text"
               inputMode="numeric"
-              min={0}
-              step={100}
-              value={precioTxt ?? (prod ? String(prod.precio) : "")}
-              onChange={(e) => setPrecioTxt(e.target.value)}
+              value={plataEnCampo(precioTxt ?? (prod ? String(prod.precio) : ""))}
+              onChange={(e) => setPrecioTxt(digitosDePlata(e.target.value))}
               placeholder="$"
               disabled={!prod}
               className="ml-2 min-h-11 w-28 rounded-xl border border-line bg-bg px-3 text-sm text-ink tabular-nums focus:border-accent focus:outline-none disabled:opacity-50"

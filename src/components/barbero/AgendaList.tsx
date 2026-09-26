@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { cop } from "@/lib/format";
+import { cop, plataEnCampo, digitosDePlata } from "@/lib/format";
 import {
   registrarWalkin,
   completarReserva,
@@ -876,13 +876,12 @@ function PrecioCobro({
   return (
     <span className="inline-flex shrink-0 items-center gap-1.5">
       <input
-        type="number"
-        min={0}
-        step={1}
+        type="text"
+        inputMode="numeric"
         autoFocus
-        value={val}
+        value={plataEnCampo(val)}
         onChange={(e) => {
-          setVal(e.target.value);
+          setVal(digitosDePlata(e.target.value));
           if (err) setErr(false);
         }}
         onKeyDown={(e) => {
@@ -891,7 +890,7 @@ function PrecioCobro({
         }}
         aria-invalid={err}
         aria-label="Precio cobrado"
-        className={`min-h-11 w-24 rounded-lg border bg-bg px-2 text-sm text-ink tabular-nums focus:outline-none ${
+        className={`min-h-11 w-28 rounded-lg border bg-bg px-2 text-sm text-ink tabular-nums focus:outline-none ${
           err ? "border-red-500" : "border-accent"
         }`}
       />
@@ -1746,16 +1745,14 @@ export function CheckoutForm({
                     ¿Cuánto pagó con {medios.find((m) => m.slug === medio2)?.nombre ?? "ese medio"}?
                   </span>
                   <input
-                    type="number"
+                    type="text"
                     inputMode="numeric"
-                    min={1}
-                    max={Math.max(1, vivo.total - 1)}
-                    value={monto2}
+                    value={plataEnCampo(monto2)}
                     onChange={(e) => {
-                      setMonto2(e.target.value);
+                      setMonto2(digitosDePlata(e.target.value));
                       setErr(null);
                     }}
-                    placeholder={`Ej: ${Math.round(vivo.total / 2)}`}
+                    placeholder={`Ej: ${plataEnCampo(Math.round(vivo.total / 2))}`}
                     className="min-h-11 w-full rounded-xl border border-line bg-bg px-3.5 text-[15px] text-ink tabular-nums placeholder:text-muted focus:border-accent focus:outline-none"
                   />
                 </label>
@@ -1825,11 +1822,11 @@ export function CheckoutForm({
             </button>
             {propinaOtra && (
               <input
-                type="number"
-                min={0}
+                type="text"
+                inputMode="numeric"
                 autoFocus
-                value={propina || ""}
-                onChange={(e) => setPropina(Math.max(0, Math.floor(Number(e.target.value) || 0)))}
+                value={plataEnCampo(propina || "")}
+                onChange={(e) => setPropina(Math.max(0, Math.floor(Number(digitosDePlata(e.target.value)) || 0)))}
                 placeholder="Monto"
                 className="w-28 rounded-full border border-line bg-bg px-3.5 py-2 text-sm text-ink tabular-nums placeholder:text-muted focus:border-accent focus:outline-none"
               />

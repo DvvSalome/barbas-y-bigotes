@@ -9,6 +9,7 @@ import { Campo, CampoArea, CampoSelect } from "@/components/ui/Campo";
 import { Segmentado } from "@/components/ui/Segmentado";
 import { Switch } from "@/components/admin/Switch";
 import type { Sede } from "@/lib/data/types";
+import { plataEnCampo, digitosDePlata } from "@/lib/format";
 
 /*
   "+ Nuevo servicio" (pedido del administrador, 26-sep: "no me deja crear nuevos
@@ -217,12 +218,10 @@ function HojaNuevoServicio({
             id="ns-precio"
             etiqueta={elegidas.length > 1 ? "Precio en las dos" : `Precio en ${elegidas[0]?.nombre ?? ""}`}
             obligatorio
-            type="number"
+            type="text"
             inputMode="numeric"
-            min={1}
-            step={1}
-            value={precio}
-            onChange={(e) => setPrecio(e.target.value)}
+            value={plataEnCampo(precio)}
+            onChange={(e) => setPrecio(digitosDePlata(e.target.value))}
             ayuda="En pesos, sin puntos ni decimales."
           />
         ) : (
@@ -232,12 +231,10 @@ function HojaNuevoServicio({
               id={`ns-precio-${s.id}`}
               etiqueta={`Precio en ${s.nombre}`}
               obligatorio
-              type="number"
+              type="text"
               inputMode="numeric"
-              min={1}
-              step={1}
-              value={porSede[s.id] ?? ""}
-              onChange={(e) => setPorSede((prev) => ({ ...prev, [s.id]: e.target.value }))}
+              value={plataEnCampo(porSede[s.id] ?? "")}
+              onChange={(e) => setPorSede((prev) => ({ ...prev, [s.id]: digitosDePlata(e.target.value) }))}
             />
           ))
         )}
