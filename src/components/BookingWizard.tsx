@@ -966,8 +966,7 @@ export function BookingWizard({
             // eslint-disable-next-line @next/next/no-location-assign-relative-destination
             window.location.href = "/reservar";
           }}
-          className="mt-2 flex min-h-[50px] items-center justify-center rounded-2xl px-8 font-display text-[15px] font-extrabold uppercase tracking-wide text-on-accent"
-          style={{ background: GRAD_CTA }}
+          className="bb-btn bb-btn-primario mt-2"
         >
           Reservar de nuevo
         </button>
@@ -1091,8 +1090,7 @@ export function BookingWizard({
                     limpiarOk();
                     router.push("/cuenta");
                   }}
-                  className="flex min-h-[50px] flex-[1.3] items-center justify-center rounded-2xl font-display text-[15px] font-extrabold uppercase tracking-wide text-on-accent"
-                  style={{ background: GRAD_CTA }}
+                  className="bb-btn bb-btn-primario flex-[1.3]"
                 >
                   Ver mi cuenta
                 </button>
@@ -1101,7 +1099,7 @@ export function BookingWizard({
                     limpiarOk();
                     router.push("/");
                   }}
-                  className="flex flex-1 items-center justify-center rounded-2xl border border-[rgba(242,237,228,0.16)] px-3 text-[13px] text-muted"
+                  className="bb-btn bb-btn-fantasma flex-1"
                 >
                   Volver al inicio
                 </button>
@@ -1112,8 +1110,7 @@ export function BookingWizard({
                   limpiarOk();
                   router.push("/");
                 }}
-                className="flex min-h-[50px] flex-1 items-center justify-center rounded-2xl font-display text-[15px] font-extrabold uppercase tracking-wide text-on-accent"
-                style={{ background: GRAD_CTA }}
+                className="bb-btn bb-btn-primario flex-1"
               >
                 Volver al inicio
               </button>
@@ -2001,12 +1998,7 @@ export function BookingWizard({
             )}
           </div>
         </div>
-        <button
-          onClick={avanzar}
-          disabled={!puedeContinuar || saving}
-          className="shrink-0 rounded-2xl px-6 py-3.5 font-display text-[16px] font-bold uppercase tracking-[0.05em] text-on-accent transition disabled:cursor-not-allowed"
-          style={{ background: GRAD_CTA, boxShadow: "0 12px 26px -10px rgba(210,63,52,.7)", opacity: !puedeContinuar || saving ? 0.4 : 1 }}
-        >
+        <button onClick={avanzar} disabled={!puedeContinuar || saving} className="bb-btn bb-btn-primario shrink-0">
           {step === "datos" ? (saving ? "Confirmando…" : "Confirmar") : "Continuar"}
         </button>
       </footer>

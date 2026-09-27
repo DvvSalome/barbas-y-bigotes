@@ -24,17 +24,11 @@ export default function NotFound() {
           Puede que el enlace esté vencido o mal escrito. Tu próximo corte, eso sí, sigue disponible.
         </p>
         <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
-          <Link
-            href="/"
-            className="rounded-full bg-accent px-7 py-3 text-sm font-semibold uppercase tracking-wide text-on-accent transition hover:bg-accent-soft"
-          >
+          <Link href="/" className="bb-btn bb-btn-primario">
             Volver al inicio
           </Link>
-          <Link
-            href="/reservar"
-            className="rounded-full border border-line px-7 py-3 text-sm text-accent-soft transition hover:border-accent/50"
-          >
-            Reservar cita →
+          <Link href="/reservar?desde=404" className="bb-btn bb-btn-fantasma">
+            Reservar cita
           </Link>
         </div>
       </main>

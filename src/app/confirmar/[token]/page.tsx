@@ -77,10 +77,7 @@ export default async function ConfirmarPage({
                 ? "La cita fue cancelada o ya pasó. Si quieres otro turno, reserva de nuevo cuando quieras."
                 : "El enlace no es válido o ya venció. Si tienes una cita, reserva o revisa tu cuenta."}
             </p>
-            <Link
-              href="/reservar"
-              className="mt-8 rounded-full bg-accent px-7 py-3 text-sm font-semibold uppercase tracking-wide text-on-accent transition hover:bg-accent-soft"
-            >
+            <Link href="/reservar?desde=confirmar" className="bb-btn bb-btn-primario mt-8">
               Reservar un turno
             </Link>
           </>

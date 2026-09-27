@@ -80,10 +80,7 @@ function BarberoCard({ barbero: b, sedeNombre }: { barbero: Barbero; sedeNombre:
           </>
         )}
 
-        <Link
-          href={`/reservar?barbero=${b.id}`}
-          className="mt-4 block rounded-xl bg-accent py-3 text-center text-[11.5px] font-bold uppercase tracking-[0.12em] text-on-accent transition hover:bg-accent-soft"
-        >
+        <Link href={`/reservar?barbero=${b.id}&desde=barberos`} className="bb-btn bb-btn-primario bb-btn-chico mt-4 w-full">
           Reservar con {nombreCorto}
         </Link>
       </div>

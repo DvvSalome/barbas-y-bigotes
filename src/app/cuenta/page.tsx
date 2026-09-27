@@ -506,16 +506,8 @@ async function Portal({ clienteId, nombre, avatarUrl }: { clienteId: string; nom
                     </p>
                   )}
                 </div>
-                {/* Desde md la CABECERA ya tiene su "Reservar" en rojo y es sticky:
-                    este sale, porque el dueño lo vio dos veces en la misma pantalla
-                    y tenía razón. Debajo de md la cabecera no lo muestra, así que
-                    acá sigue siendo el único camino a reservar. */}
-                <Link
-                  href="/reservar"
-                  className="inline-flex min-h-11 shrink-0 items-center rounded-full bg-[linear-gradient(180deg,var(--cta-1),var(--cta-2))] px-5 font-display text-[13px] font-bold uppercase tracking-wide text-on-accent shadow-[0_12px_26px_-10px_rgba(210,63,52,0.7)] transition hover:brightness-105 md:hidden"
-                >
-                  Reservar
-                </Link>
+                {/* Sin botón propio: la cabecera nueva trae "Reservar" en todos los
+                    anchos (el dueño lo vio dos veces en la misma pantalla y tenía razón). */}
               </div>
 
               {/* La tarjeta ilustrada es la RÉPLICA de la física (layout 2A del

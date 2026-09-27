@@ -177,11 +177,8 @@ export default function NosotrosPage() {
                 <div className="p-6">
                   <h3 className="font-display text-2xl font-bold uppercase">{s.nombre}</h3>
                   <p className="mt-2 text-sm leading-relaxed text-muted">{s.direccion}</p>
-                  <Link
-                    href={`/reservar?sede=${s.id}`}
-                    className="mt-5 inline-block rounded-full bg-accent px-5 py-2.5 text-[11px] font-bold uppercase tracking-[0.1em] text-on-accent transition hover:bg-accent-soft"
-                  >
-                    Reservar en esta sede →
+                  <Link href={`/reservar?sede=${s.id}&desde=nosotros`} className="bb-btn bb-btn-primario bb-btn-chico mt-5">
+                    Reservar en esta sede
                   </Link>
                 </div>
               </div>

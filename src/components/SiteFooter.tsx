@@ -204,10 +204,7 @@ export function SiteFooter({
             <p className="mt-2 text-sm text-muted">
               Reserva en menos de un minuto · confirmación directa a tu correo.
             </p>
-            <Link
-              href="/reservar"
-              className="mt-6 inline-block rounded-full bg-[linear-gradient(180deg,var(--accent-soft),var(--accent))] px-10 py-4 font-display text-lg font-bold uppercase text-on-accent shadow-[0_16px_40px_-12px_rgba(210,63,52,0.7)] transition hover:brightness-105"
-            >
+            <Link href="/reservar?desde=pie" className="bb-btn bb-btn-primario mt-6">
               Reservar cita
             </Link>
           <div className="mt-[52px] border-t border-[rgba(242,237,228,0.08)]" />
