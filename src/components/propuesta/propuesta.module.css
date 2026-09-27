@@ -364,12 +364,24 @@
   transform: none;
 }
 
+/* El texto del chip de cupo cambia una vez (servidor → dato vivo): entra suave. */
+.cambio {
+  animation: cambio 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+@keyframes cambio {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .escena,
   .columna,
   .foto,
   .foto img,
-  .sube {
+  .sube,
+  .cambio {
     animation: none !important;
   }
   /* Misma especificidad que la regla que apaga las fotos, si no gana opacity:0. */

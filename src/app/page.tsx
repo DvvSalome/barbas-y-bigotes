@@ -24,7 +24,7 @@ export default async function Home() {
     <>
       <SiteHeader transparente />
       <main>
-        <Hero barberos={barberos} servicios={servicios} />
+        <Hero barberos={barberos} servicios={servicios} sedes={sedes} />
         <LaCarta servicios={servicios} sedes={sedes} />
         <Elenco barberos={barberos} sedes={sedes} />
         <TiraCortes />
@@ -35,7 +35,7 @@ export default async function Home() {
         <div className="pt-[52px]">
           <Faq />
         </div>
-        <Cierre />
+        <Cierre sedes={sedes} />
       </main>
       {/* Después del contenido: así el lector de pantalla no se la encuentra
           antes que el hero. Es fija, la posición en pantalla no cambia. */}

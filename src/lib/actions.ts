@@ -1664,6 +1664,8 @@ export async function createReserva(input: {
   /** Casilla del wizard: "avísame cuando me toque corte y de promos" (0068).
    *  Omitida = no se toca la ficha (p. ej. el asistente IA). */
   aceptaMarketing?: boolean;
+  /** ?desde= de la landing (hero, elenco, barra…): de qué parte de la web salió (0079). */
+  origenWeb?: string;
 }): Promise<ActionResult> {
   const sb = supabaseAdmin();
   // Primero de todo: es una action pública, o sea un POST que cualquiera puede
@@ -1780,24 +1782,35 @@ export async function createReserva(input: {
   // ponytail: si el barbero propone adelanto después, sobrescribe esta nota (raro;
   // igual el barbero cobra la bebida en consumos).
   const nota = (input.nota ?? "").trim().slice(0, 500) || null;
-  const { data: creada, error } = await sb
+  // Record<string, unknown>: la fila puede llevar origen_web, que el tipo del
+  // cliente aún no conoce (columna nueva, sin tipos generados en este repo).
+  const fila: Record<string, unknown> = {
+    sede_id: input.sede,
+    barbero_id: barberoId,
+    servicio_id: input.servicioId,
+    cliente_ref: clienteRef,
+    inicio: inicio.toISOString(),
+    fin: fin.toISOString(),
+    estado: "confirmada",
+    canal: "app",
+    nota,
+  };
+  // De qué parte de la web salió (0079). No es `canal`: ese enum dice por dónde
+  // se creó (app/walkin) y lo cuenta el rate limit.
+  const origenWeb = input.origenWeb && /^[a-z0-9-]{1,60}$/.test(input.origenWeb) ? input.origenWeb : null;
+  // Devolvemos el confirm_token: es la credencial con la que la pantalla de
+  // confirmación del wizard deja DESHACER la reserva recién hecha (por si el
+  // cliente puso un dato mal), sin exigir login.
+  let { data: creada, error } = await sb
     .from("reservas")
-    .insert({
-      sede_id: input.sede,
-      barbero_id: barberoId,
-      servicio_id: input.servicioId,
-      cliente_ref: clienteRef,
-      inicio: inicio.toISOString(),
-      fin: fin.toISOString(),
-      estado: "confirmada",
-      canal: "app",
-      nota,
-    })
-    // Devolvemos el confirm_token: es la credencial con la que la pantalla de
-    // confirmación del wizard deja DESHACER la reserva recién hecha (por si el
-    // cliente puso un dato mal), sin exigir login.
+    .insert(origenWeb ? { ...fila, origen_web: origenWeb } : fila)
     .select("confirm_token")
     .single();
+  if (error && origenWeb && /origen_web/.test(error.message)) {
+    // La migración 0079 todavía no está aplicada: la reserva vale más que la
+    // medición, se guarda sin el origen.
+    ({ data: creada, error } = await sb.from("reservas").insert(fila).select("confirm_token").single());
+  }
   if (error) {
     if (error.code === "23P01") return { ok: false, error: "Ese horario ya fue tomado. Elige otro, por favor." };
     return { ok: false, error: errorPublico("createReserva", error) };

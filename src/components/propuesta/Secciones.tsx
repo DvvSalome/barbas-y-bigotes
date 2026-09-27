@@ -4,7 +4,7 @@ import { cop } from "@/lib/format";
 import { CANCELACION_MIN_HORAS } from "@/lib/slots";
 import { categorias } from "@/lib/data/seed";
 import type { Barbero, Sede, Servicio } from "@/lib/data/types";
-import { Inclinable, WhatsAppIcono } from "@/components/propuesta/Islas";
+import { Inclinable, WhatsAppIcono, ChipCupo, LineaCupo, EnlaceCupo } from "@/components/propuesta/Islas";
 import css from "./propuesta.module.css";
 
 /*
@@ -129,7 +129,8 @@ function Pared({ barberos }: { barberos: Barbero[] }) {
   );
 }
 
-export function Hero({ barberos, servicios }: { barberos: Barbero[]; servicios: Servicio[] }) {
+export function Hero({ barberos, servicios, sedes }: { barberos: Barbero[]; servicios: Servicio[]; sedes: Sede[] }) {
+  const nombres = Object.fromEntries(sedes.map((s) => [s.id, s.nombre.split(" ")[0]]));
   // "Pagas en el local" abre la pregunta "¿cuánto?": se responde ahí mismo con
   // el corte más barato de las dos sedes.
   const corte = servicios.find((s) => s.id === "corte");
@@ -161,7 +162,11 @@ export function Hero({ barberos, servicios }: { barberos: Barbero[]; servicios: 
           <p className={`${css.sube} mt-4 max-w-[34ch] text-[16px] leading-relaxed text-ink/85 lg:text-[19px]`} style={{ "--t": "0.4s" } as React.CSSProperties}>
             Es nuestra app de reservas: escoges sede, barbero y hora, y te confirmamos al instante.
           </p>
-          <div data-cta className={`${css.sube} mt-6 flex items-center gap-3`} style={{ "--t": "0.5s" } as React.CSSProperties}>
+          {/* El cupo de verdad, con enlace directo a esa hora (dato vivo de /api/cupo). */}
+          <div className={`${css.sube} mt-5`} style={{ "--t": "0.45s" } as React.CSSProperties}>
+            <ChipCupo desde="hero-cupo" sedes={nombres} />
+          </div>
+          <div data-cta className={`${css.sube} mt-5 flex items-center gap-3`} style={{ "--t": "0.5s" } as React.CSSProperties}>
             <Link href="/reservar?desde=hero" className={`${PRIMARIO} flex-1 lg:flex-none`}>
               Reservar mi cita
             </Link>
@@ -319,7 +324,7 @@ export function Elenco({ barberos, sedes }: { barberos: Barbero[]; sedes: Sede[]
       <ul data-cta className={`${css.elenco} mt-8 lg:mx-auto lg:max-w-6xl`}>
         {barberos.map((b) => (
           <li key={b.id}>
-            <Link href={`/reservar?barbero=${b.id}&sede=${b.sede}&desde=elenco`} className={css.pieza}>
+            <EnlaceCupo base={`/reservar?barbero=${b.id}&sede=${b.sede}&desde=elenco`} barberoId={b.id} className={css.pieza}>
               {b.fotoUrl ? (
                 <Image src={b.fotoUrl} alt="" fill sizes="(max-width: 1023px) 76vw, 40vw" quality={70} />
               ) : (
@@ -333,10 +338,11 @@ export function Elenco({ barberos, sedes }: { barberos: Barbero[]; sedes: Sede[]
                   {b.especialidades.length > 0 && (
                     <span className="block text-[13px] text-muted">{b.especialidades.slice(0, 3).join(", ")}</span>
                   )}
+                  <LineaCupo barberoId={b.id} />
                   <span className={`${PRIMARIO} bb-btn-chico mt-3 justify-self-start`}>Reservar con {b.nombre.split(" ")[0]}</span>
                 </span>
               </span>
-            </Link>
+            </EnlaceCupo>
           </li>
         ))}
       </ul>
@@ -443,7 +449,8 @@ export function ComoFunciona() {
 }
 
 /* ── 6. El cierre: la puerta del local, de noche ─────────────────────────── */
-export function Cierre() {
+export function Cierre({ sedes }: { sedes: Sede[] }) {
+  const nombres = Object.fromEntries(sedes.map((s) => [s.id, s.nombre.split(" ")[0]]));
   return (
     <section className="relative overflow-hidden py-24">
       <div className="mx-auto grid max-w-6xl items-center gap-10 px-5 lg:grid-cols-[1.1fr_1fr]">
@@ -463,7 +470,8 @@ export function Cierre() {
           <p className="mt-4 max-w-[36ch] text-[16px] leading-relaxed text-ink/80">
             Escoge la hora que te sirve y llega directo a sentarte. Si tienes una duda, escríbenos.
           </p>
-          <div data-cta className="mt-7 flex flex-wrap items-center gap-3">
+          <ChipCupo desde="cierre-cupo" sedes={nombres} className="mt-5" />
+          <div data-cta className="mt-6 flex flex-wrap items-center gap-3">
             <Link href="/reservar?desde=cierre" className={PRIMARIO}>
               Reservar mi cita
             </Link>

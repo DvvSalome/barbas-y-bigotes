@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { instanteBogota } from "@/lib/slots";
+import { textoCupo, horaParam, type Cupo, type RespuestaCupo } from "@/lib/cupo";
 import css from "./propuesta.module.css";
 
 /*
@@ -102,5 +104,92 @@ export function BarraReserva({ whatsapp }: { whatsapp: string }) {
         Reservar mi cita
       </Link>
     </div>
+  );
+}
+
+/* ── Próximo cupo online ──────────────────────────────────────────────────── */
+// Una sola lectura de /api/cupo por página (promesa de módulo), compartida por el
+// chip del hero, la línea de cada barbero y el chip del cierre.
+let promesaCupo: Promise<RespuestaCupo | null> | null = null;
+const CUPO_FRESCO_MS = 10 * 60_000;
+
+function useCupo(): RespuestaCupo | null | undefined {
+  const [datos, setDatos] = useState<RespuestaCupo | null | undefined>(undefined);
+  useEffect(() => {
+    promesaCupo ??= fetch("/api/cupo")
+      .then((r) => (r.ok ? (r.json() as Promise<RespuestaCupo>) : null))
+      .catch(() => null);
+    let vivo = true;
+    promesaCupo.then((d) => {
+      if (!vivo) return;
+      // El service worker sirve /api/ NetworkFirst: sin red puede llegar viejo, y
+      // un cupo viejo es una promesa rota. Más de 10 min → como si no hubiera.
+      setDatos(d && Date.now() - Date.parse(d.generado) < CUPO_FRESCO_MS ? d : null);
+    });
+    return () => {
+      vivo = false;
+    };
+  }, []);
+  return datos;
+}
+
+const vigente = (c: Cupo | null | undefined): c is Cupo => !!c && instanteBogota(c.fecha, c.minuto).getTime() > Date.now();
+const conCupo = (base: string, c: Cupo) => `${base}&fecha=${c.fecha}&hora=${horaParam(c.minuto)}`;
+
+function RelojIcono() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0 text-accent-soft" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 7v5l3 2" />
+    </svg>
+  );
+}
+
+/**
+ * El chip del hero y del cierre. En el HTML del servidor dice "Mira las horas
+ * libres de hoy" y lleva al wizard; con el dato vivo pasa a "Próximo cupo online:
+ * hoy 3:30 pm · Plaza de la Paz" y el enlace ya lleva barbero, sede, día y hora.
+ * Altura reservada (44 px): el cambio de texto no mueve nada.
+ */
+export function ChipCupo({ desde, sedes, className = "" }: { desde: string; sedes: Record<string, string>; className?: string }) {
+  const datos = useCupo();
+  const mejor = datos?.mejor && vigente(datos.mejor.cupo) ? datos.mejor : null;
+  const href = mejor
+    ? conCupo(`/reservar?barbero=${mejor.barbero}&sede=${mejor.sede}&desde=${desde}`, mejor.cupo)
+    : `/reservar?desde=${desde}`;
+  const texto = mejor && datos ? `Próximo cupo online: ${textoCupo(mejor.cupo, datos.hoy)} · ${sedes[mejor.sede] ?? mejor.sede}` : "Mira las horas libres de hoy";
+  return (
+    <Link
+      href={href}
+      className={`inline-flex min-h-11 max-w-full items-center gap-2 rounded-full border border-line bg-panel/70 px-4 text-[14px] font-semibold text-ink backdrop-blur-[8px] transition hover:border-ink/40 ${className}`}
+    >
+      <RelojIcono />
+      <span key={texto} className={`${css.cambio} truncate`}>
+        {texto}
+      </span>
+    </Link>
+  );
+}
+
+/** La línea viva de cada barbero en el elenco: "Próximo cupo: hoy 3:30 pm". */
+export function LineaCupo({ barberoId }: { barberoId: string }) {
+  const datos = useCupo();
+  const cupo = datos?.barberos.find((b) => b.id === barberoId)?.cupo;
+  const texto = datos && vigente(cupo) ? `Próximo cupo: ${textoCupo(cupo, datos.hoy)}` : "Ver sus horas libres";
+  return (
+    <span key={texto} className={`${css.cambio} block text-[13px] font-semibold text-ink/90`}>
+      {texto}
+    </span>
+  );
+}
+
+/** El enlace de la pieza del barbero: con el dato vivo, lleva también día y hora. */
+export function EnlaceCupo({ base, barberoId, className, children }: { base: string; barberoId: string; className?: string; children: React.ReactNode }) {
+  const datos = useCupo();
+  const cupo = datos?.barberos.find((b) => b.id === barberoId)?.cupo;
+  return (
+    <Link href={vigente(cupo) ? conCupo(base, cupo) : base} className={className}>
+      {children}
+    </Link>
   );
 }

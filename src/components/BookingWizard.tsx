@@ -143,6 +143,9 @@ export function BookingWizard({
   initialBarberoId,
   initialSedeId,
   initialServicioId,
+  initialFecha,
+  initialMinuto,
+  origenWeb,
 }: {
   sedes: Sede[];
   barberos: Barbero[];
@@ -155,6 +158,11 @@ export function BookingWizard({
   initialSedeId?: SedeId;
   /** "Reservar igual que la última vez" (correo te toca corte): el servicio ya viene elegido. */
   initialServicioId?: string;
+  /** Chips de "próximo cupo" de la home: día (YYYY-MM-DD) y minuto del día, ya validados. */
+  initialFecha?: string;
+  initialMinuto?: number;
+  /** ?desde= de la landing: se guarda en la reserva para saber qué parte vende. */
+  origenWeb?: string;
 }) {
   const router = useRouter();
 
@@ -165,8 +173,14 @@ export function BookingWizard({
     initialSedeId ??
     (sedes.find((s) => s.id === "parque-venezuela")?.id ?? sedes[0]?.id ?? null);
 
+  // Preselección del correo "te toca corte" (y de los chips de cupo): solo si el
+  // servicio existe y tiene precio en la sede con la que arranca.
+  const servicioInicial =
+    servicios.find((s) => s.id === initialServicioId && (sedeDefault ? s.precios[sedeDefault] != null : true)) ?? null;
   // Deep-link de sede o barbero → arranca en paso 2 (Servicio) con la sede fija (proto §12).
-  const pasoInicial: Exclude<Step, "ok"> = initialBarbero || initialSedeId ? "servicio" : "sede";
+  // Con barbero, servicio, día y hora (chips de "próximo cupo") → directo a "Día y hora".
+  const deepLinkHorario = !!(initialBarbero && servicioInicial && initialFecha && initialMinuto != null);
+  const pasoInicial: Exclude<Step, "ok"> = deepLinkHorario ? "horario" : initialBarbero || initialSedeId ? "servicio" : "sede";
   const [step, setStep] = useState<Step>(pasoInicial);
   // Deshacer desde la confirmación: el confirm_token que devuelve createReserva es
   // la credencial para cancelar la reserva recién hecha (dato mal cargado).
@@ -175,13 +189,7 @@ export function BookingWizard({
   const [cancelando, setCancelando] = useState(false);
   const [cancelError, setCancelError] = useState<string | null>(null);
   const [sedeId, setSedeId] = useState<SedeId | null>(sedeDefault);
-  // Preselección del correo "te toca corte": solo si el servicio existe y tiene
-  // precio en la sede con la que arranca (si no, el cliente elige como siempre).
-  const [servicio, setServicio] = useState<Servicio | null>(
-    () =>
-      servicios.find((s) => s.id === initialServicioId && (sedeDefault ? s.precios[sedeDefault] != null : true)) ??
-      null,
-  );
+  const [servicio, setServicio] = useState<Servicio | null>(servicioInicial);
   const [servicioFoto, setServicioFoto] = useState<string>("");
   // Arranca en la primera categoría CON servicios de la sede (antes era siempre
   // 'cortes': si la sede no tenía cortes, la grilla quedaba vacía sin aviso).
@@ -196,8 +204,10 @@ export function BookingWizard({
   // tarjeta marcada) de "eligió que le asignemos el primero libre" (la tarjeta
   // Cualquiera marcada). Antes la única pista era una frase del subtítulo.
   const [cualquierBarbero, setCualquierBarbero] = useState(false);
-  const [day, setDay] = useState<Date | null>(null);
-  const [slot, setSlot] = useState<number | null>(null);
+  // Día del deep-link como mediodía LOCAL: new Date("YYYY-MM-DD") sería medianoche
+  // UTC, o sea la víspera a las 7 pm en Bogotá.
+  const [day, setDay] = useState<Date | null>(() => (initialFecha ? new Date(`${initialFecha}T12:00:00`) : null));
+  const [slot, setSlot] = useState<number | null>(initialMinuto ?? null);
   const [nombre, setNombre] = useState("");
   const [email, setEmail] = useState("");
   // Casilla "avísame cuando me toque corte y de promos" (0068). Marcada por
@@ -207,7 +217,8 @@ export function BookingWizard({
   const [bebida, setBebida] = useState<Bebida | null>(null);
   const [bebidaIncluida, setBebidaIncluida] = useState(false); // combo → sin cargo
   const [upsellMode, setUpsellMode] = useState<"extra" | "combo" | null>(null);
-  const [upsellSeen, setUpsellSeen] = useState(false);
+  // Aterrizando en "Día y hora" el upsell de bebida ya no toca (se salta el paso donde se ofrece).
+  const [upsellSeen, setUpsellSeen] = useState(deepLinkHorario);
   // Nudge de Google antes de confirmar como invitado (una vez por flujo): sin
   // cuenta no hay seguimiento (cita en la fila, tarjeta de cortes, recordatorios).
   const [loginNudge, setLoginNudge] = useState(false);
@@ -452,7 +463,8 @@ export function BookingWizard({
       // Snapshot corrupto: seguimos con el flujo normal.
     }
     try {
-      const raw = sessionStorage.getItem(RESUME_KEY);
+      // Con día y hora en la URL manda la URL, no lo que quedó a medias antes.
+      const raw = initialFecha ? null : sessionStorage.getItem(RESUME_KEY);
       if (raw) {
         const s = JSON.parse(raw) as {
           t?: number;
@@ -525,7 +537,7 @@ export function BookingWizard({
     return () => {
       vivo = false;
     };
-  }, [servicios, barberos]);
+  }, [servicios, barberos, initialFecha]);
 
   // Persistimos la reserva a medio armar en CADA cambio (paso + selección), no
   // solo antes del login de Google: así un F5 o el Atrás del navegador no borran
@@ -667,6 +679,17 @@ export function BookingWizard({
   const diaCerrado = slots.length > 0 && slots.every((t) => pasadoSet.has(t));
   // Cuántos turnos ya tomó el barbero hoy (prueba social del encabezado).
   const tomadosHoy = slots.filter((t) => ocupadoSet.has(t)).length;
+  // Deep-link con hora: si esa hora la tomaron mientras el cliente venía de la
+  // home, se marca la más cercana y se le dice (el chip prometió una hora).
+  const deepLinkRef = useRef(initialMinuto != null);
+  useEffect(() => {
+    if (!deepLinkRef.current || step !== "horario" || slot == null || !barbero || !(barbero.id in ocupadosDia)) return;
+    deepLinkRef.current = false;
+    if (!ocupadoSet.has(slot) && !pasadoSet.has(slot) && slots.includes(slot)) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- corrección puntual del deep-link, no una cascada
+    setSlot(proximoLibre);
+    setErrorMsg(proximoLibre != null ? "Esa hora ya la tomaron: te marcamos la más cercana." : "Esa hora ya la tomaron. Elige otra, por favor.");
+  }, [step, slot, barbero, ocupadosDia, ocupadoSet, pasadoSet, slots, proximoLibre]);
   // Lo que se dibuja en la grilla. OJO: todo lo de arriba se calcula sobre
   // `slots` completo a propósito — "el día ya cerró", "próximo libre" y el
   // contador de turnos tomados dejan de ser ciertos si se miran sólo las horas
@@ -898,6 +921,7 @@ export function BookingWizard({
       inicioISO: inicio.toISOString(),
       nota,
       aceptaMarketing: aceptaAvisos,
+      origenWeb,
     }).catch(() => null);
     setSaving(false);
     if (!res) {
