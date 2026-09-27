@@ -32,6 +32,11 @@ const nextConfig: NextConfig = {
   // Permite probar el dev server desde el celular u otro dispositivo en la
   // misma red Wi-Fi (sin esto, Next bloquea el HMR por origen cruzado).
   allowedDevOrigins: ["192.168.40.12"],
+  // /propuesta fue la vitrina de la landing nueva mientras el dueño la aprobaba
+  // (26-sep). Ya es la home: el enlace que quedó en chats sigue llegando.
+  async redirects() {
+    return [{ source: "/propuesta", destination: "/", permanent: true }];
+  },
   // Hardening basico (hallazgo de la auditoria GEO: solo HSTS presente).
   async headers() {
     return [

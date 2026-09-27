@@ -1,81 +1,46 @@
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
-import { MobileStickyCta } from "@/components/MobileStickyCta";
-import { ContactoWidget } from "@/components/ContactoWidget";
-import { HomeHero } from "@/components/home/HomeHero";
-import { HomeStats } from "@/components/home/HomeStats";
-import { HomeDiferencia } from "@/components/home/HomeDiferencia";
-import { HomeServicios } from "@/components/home/HomeServicios";
-import { HomeGaleria } from "@/components/home/HomeGaleria";
-import { HomeSedes } from "@/components/home/HomeSedes";
-import { LiveBarbersStatus } from "@/components/home/LiveBarbersStatus";
-import { HomeApp } from "@/components/home/HomeApp";
-import { Testimonios } from "@/components/home/Testimonios";
 import { Ubicacion } from "@/components/home/Ubicacion";
 import { Faq } from "@/components/home/Faq";
+import { Hero, LaCarta, Elenco, TiraCortes, ComoFunciona, Cierre, WHATSAPP } from "@/components/propuesta/Secciones";
+import { BarraReserva } from "@/components/propuesta/Islas";
 import { getSedes, getBarberos, getServicios } from "@/lib/data/queries";
-import type { Servicio } from "@/lib/data/types";
 
-// Los stats y los precios de "Lo que más piden" salen de la DB: sin revalidate
-// la home quedaría con los datos del build. ISR cada 10 min la mantiene honesta.
+/*
+  La home: la landing «La pared del local» (26-sep), aprobada por el dueño tras
+  tres vueltas en /propuesta (que ahora redirige acá). Los precios, los barberos
+  y los servicios salen de la base: ISR cada 10 min la mantiene honesta. Los
+  metadatos (título, descripción, OG) son los del layout.
+
+  Sin ContactoWidget: la página ya tiene WhatsApp en el hero, en el cierre y en
+  la barra del celular; un globo flotante encima competía con el botón de
+  reservar.
+*/
 export const revalidate = 600;
 
-// "Lo que más piden" (spec §1.4/§2.5): los 5 servicios del prototipo, con su
-// precio real de Parque Venezuela (pv) desde la DB.
-const DESTACADOS_IDS = ["corte", "corte-barba", "corte-cejas", "corte-barba-cejas", "cerquillos"];
-
 export default async function Home() {
-  const [sedes, barberos, servicios] = await Promise.all([
-    getSedes(),
-    getBarberos(),
-    getServicios(),
-  ]);
-
-  const destacados = DESTACADOS_IDS.map((id) => servicios.find((s) => s.id === id)).filter(
-    (s): s is Servicio => Boolean(s),
-  );
-
+  const [sedes, barberos, servicios] = await Promise.all([getSedes(), getBarberos(), getServicios()]);
   return (
     <>
-      <ContactoWidget sobreCtaMovil />
-      <SiteHeader />
-      <MobileStickyCta />
+      <SiteHeader transparente />
       <main>
-        <HomeHero />
-        <HomeStats
-          sedesCount={sedes.length}
-          barberosCount={barberos.length}
-          serviciosCount={servicios.length}
-        />
-        {/* Propósito de la app ARRIBA, justo tras el hero: el verificador de la
-            pantalla de consentimiento OAuth de Google busca el nombre y el
-            propósito de la app en la parte alta de la home. */}
-        <HomeApp />
-        <HomeDiferencia />
-        <HomeServicios servicios={destacados} />
-        <HomeGaleria />
-        <HomeSedes />
-
-        {/* Barberos en vivo: tras elegir sede, "quién está atendiendo ahora".
-            Client component: la data vive fuera del ISR y se refresca sola. */}
-        <LiveBarbersStatus />
-
-        {/* Los testimonios siguen siendo solo-desktop (spec §2.8): alargan la home
-            en móvil sin ayudar a reservar. El contenido queda en el HTML para los
-            crawlers de IA aunque se oculte. */}
-        <div className="hidden md:block">
-          <Testimonios />
-        </div>
-
-        {/* Ubicación y FAQ SÍ van en móvil: la mayoría entra desde el celular y
-            "¿dónde queda?", "¿puedo cancelar?" y "¿atienden sin reserva?" son las
-            preguntas que hoy terminan en WhatsApp mientras alguien corta. */}
+        <Hero barberos={barberos} servicios={servicios} />
+        <LaCarta servicios={servicios} sedes={sedes} />
+        <Elenco barberos={barberos} sedes={sedes} />
+        <TiraCortes />
+        {/* Propósito de la app: el verificador de la pantalla de consentimiento
+            OAuth de Google busca el nombre y el propósito de la app en la home. */}
+        <ComoFunciona />
         <Ubicacion />
         <div className="pt-[52px]">
           <Faq />
         </div>
+        <Cierre />
       </main>
-      <SiteFooter conCtaMovil />
+      {/* Después del contenido: así el lector de pantalla no se la encuentra
+          antes que el hero. Es fija, la posición en pantalla no cambia. */}
+      <BarraReserva whatsapp={WHATSAPP} />
+      <SiteFooter conCtaMovil sinCtaFinal />
     </>
   );
 }

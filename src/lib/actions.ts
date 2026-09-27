@@ -4150,52 +4150,6 @@ export type BarberLiveStatus = {
   terminaA?: string;
 };
 
-export async function getLiveBarberStatuses(): Promise<BarberLiveStatus[]> {
-  const admin = supabaseAdmin();
-  
-  // Fetch active barbers with names, sedes, and photos
-  const { data: bData } = await admin
-    .from("barberos")
-    .select("id, nombre, sede_id, foto_url")
-    .eq("activo", true);
-    
-  if (!bData) return [];
-  
-  const now = new Date();
-  // "Hoy" es el día civil en Bogotá (el server corre en UTC).
-  const { desde, hasta } = bogotaDayRange(now);
-
-  // Fetch reservations for today
-  const { data: rData } = await admin
-    .from("reservas")
-    .select("id, inicio, fin, estado, barbero_id, servicios(nombre)")
-    .not("estado", "in", "(cancelada,no_show)")
-    .gte("inicio", desde.toISOString())
-    .lt("inicio", hasta.toISOString());
-    
-  const result: BarberLiveStatus[] = bData.map((b) => {
-    const activeRes = rData?.find((r) => {
-      if (r.barbero_id !== b.id) return false;
-      const rStart = new Date(r.inicio).getTime();
-      const rFin = new Date(r.fin).getTime();
-      const curTime = now.getTime();
-      return curTime >= rStart && curTime <= rFin && ["confirmada", "en_curso"].includes(r.estado);
-    });
-    
-    return {
-      id: b.id,
-      nombre: b.nombre,
-      sede: b.sede_id === "parque-venezuela" ? "Parque Venezuela" : "Plaza de la Paz",
-      sedeId: b.sede_id,
-      fotoUrl: b.foto_url,
-      status: activeRes ? "ocupado" : "disponible",
-      servicioActual: activeRes ? (activeRes.servicios as { nombre?: string } | null)?.nombre : undefined,
-      terminaA: activeRes ? new Date(activeRes.fin).toLocaleTimeString("es-CO", { timeZone: "America/Bogota", hour: "numeric", minute: "2-digit" }) : undefined,
-    };
-  });
-  
-  return result;
-}
 
 // ---------- Ajustes de avisos automáticos ----------
 /**
