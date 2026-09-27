@@ -109,7 +109,10 @@ function Pared({ barberos }: { barberos: Barbero[] }) {
                   alt=""
                   fill
                   sizes="(max-width: 1023px) 54vw, 21vw"
-                  quality={55}
+                  // 70: la única calidad baja permitida en images.qualities (un 55
+                  // Next lo redondea a 70 en silencio) y la misma del elenco, así las
+                  // variantes de 640w se comparten entre la pared y el elenco.
+                  quality={70}
                   // Las columnas 3 a 5 van display:none en celular: con lazy no se
                   // bajan (un <img> eager se descarga aunque esté escondido).
                   loading={c < 2 ? "eager" : "lazy"}
@@ -145,7 +148,7 @@ export function Hero({ barberos, servicios }: { barberos: Barbero[]; servicios: 
       <div className="pointer-events-none relative mx-auto max-w-6xl px-5 pb-10 pt-[min(50svh,100svh_-_380px)] lg:flex lg:min-h-[100svh] lg:flex-col lg:justify-center lg:pb-16 lg:pt-[76px]">
         <div className="pointer-events-auto max-w-xl">
           <h1>
-            <span className={`${css.sube} block text-[15px] font-semibold tracking-[0.02em] text-ink/80`} style={{ "--t": "0.15s" } as React.CSSProperties}>
+            <span className={`${css.sube} block text-[15px] font-semibold tracking-[0.02em] text-ink`} style={{ "--t": "0.15s" } as React.CSSProperties}>
               Barbas &amp; Bigotes Barbershop
             </span>
             <span

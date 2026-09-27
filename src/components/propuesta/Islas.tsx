@@ -85,19 +85,20 @@ export function BarraReserva({ whatsapp }: { whatsapp: string }) {
     <div
       className={`${css.barra} pointer-events-none fixed inset-x-0 bottom-0 z-30 flex items-center gap-2.5 bg-[linear-gradient(180deg,rgba(12,11,10,0),rgba(12,11,10,0.94)_30%)] px-4 pb-[max(14px,env(safe-area-inset-bottom))] pt-5 md:hidden`}
       data-visible={visible ? "" : undefined}
-      aria-hidden={!visible}
+      // inert: escondida, sale del orden de tabulación y del árbol de accesibilidad
+      // de una vez (y suelta el foco si lo tenía), sin tabIndex a mano.
+      inert={!visible}
     >
       <a
         href={whatsapp}
         target="_blank"
         rel="noopener noreferrer"
         aria-label="Escribir por WhatsApp"
-        tabIndex={visible ? 0 : -1}
         className={`${css.btn} ${css.fantasma} ${css.redondo} pointer-events-auto`}
       >
         <WhatsAppIcono className="text-[#25d366]" />
       </a>
-      <Link href="/reservar?desde=barra" tabIndex={visible ? 0 : -1} className={`${css.btn} ${css.primario} pointer-events-auto flex-1`}>
+      <Link href="/reservar?desde=barra" className={`${css.btn} ${css.primario} pointer-events-auto flex-1`}>
         Reservar mi cita
       </Link>
     </div>

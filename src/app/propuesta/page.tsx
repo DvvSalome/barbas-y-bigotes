@@ -23,7 +23,6 @@ export default async function Propuesta() {
   return (
     <>
       <HeaderPropuesta />
-      <BarraReserva whatsapp={WHATSAPP} />
       <main>
         <Hero barberos={barberos} servicios={servicios} />
         <LaCarta servicios={servicios} sedes={sedes} />
@@ -36,6 +35,9 @@ export default async function Propuesta() {
         </div>
         <Cierre />
       </main>
+      {/* Después del contenido: así el lector de pantalla no se la encuentra
+          antes que el hero. Es fija, la posición en pantalla no cambia. */}
+      <BarraReserva whatsapp={WHATSAPP} />
       <SiteFooter conCtaMovil sinCtaFinal />
     </>
   );
