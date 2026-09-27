@@ -6,61 +6,54 @@ import { usePathname } from "next/navigation";
 import { HeaderCuenta } from "@/components/HeaderCuenta";
 
 /*
-  Header público del prototipo (spec §1.1 móvil, §2.1 desktop):
-  - Móvil: logo lockup 44px + botón de cuenta inteligente (Entrar / avatar+menú).
-  - Desktop: nav sticky con blur, links Barberos / Nosotros + "Reservar" y el mismo
-    botón de cuenta. "Mi cuenta" y "Cerrar sesión" viven ahora en ese botón (HeaderCuenta),
-    no como items sueltos.
-*/
-export function SiteHeader() {
-  const pathname = usePathname();
+  Cabecera del sitio público (rediseño aprobado por el dueño, 26-sep, punto 4:
+  "que los botones de la navbar estén mil veces mejor"). Vidrio fijo arriba;
+  en la home (`transparente`) arranca transparente sobre la pared de fotos y se
+  vuelve vidrio al bajar (CSS ligado al scroll en globals.css, sin JS).
 
-  const links = [
-    { href: "/barberos", label: "Barberos" },
-    { href: "/nosotros", label: "Nosotros" },
-  ];
+  - Escritorio: píldora con las secciones. En la home son anclas de la misma
+    página; en las demás llevan a la home o a su página.
+  - Siempre: "Entrar" (el botón de cuenta inteligente, en grande) y "Reservar".
+    En /reservar el botón sobra: ya estás ahí.
+*/
+export function SiteHeader({ transparente = false }: { transparente?: boolean }) {
+  const pathname = usePathname() ?? "/";
+  const enInicio = pathname === "/" || pathname === "/propuesta";
+  const enReservar = pathname.startsWith("/reservar");
+  const links = enInicio
+    ? [
+        { href: "#precios", label: "Precios" },
+        { href: "#barberos", label: "Barberos" },
+        { href: "#la-app", label: "Cómo funciona" },
+      ]
+    : [
+        { href: "/#precios", label: "Precios" },
+        { href: "/barberos", label: "Barberos" },
+        { href: "/nosotros", label: "Nosotros" },
+      ];
 
   return (
-    <header className="sticky top-0 z-50 border-b border-[rgba(242,237,228,0.1)] bg-bg pt-[env(safe-area-inset-top)] md:border-white/[0.04] md:bg-[rgba(12,11,10,0.55)] md:backdrop-blur-[12px]">
-      <div className="flex items-center justify-between px-[18px] py-2.5 md:px-12 md:py-3">
-        <Link href="/" aria-label="Barbas & Bigotes Barbershop" className="transition hover:opacity-95">
-          <Image
-            src="/brand/logo-lockup.png"
-            alt="Barbas & Bigotes Barbershop"
-            width={1024}
-            height={348}
-            priority
-            className="h-[52px] w-auto md:h-[68px]"
-          />
+    <header className={`bb-cabecera${transparente ? " bb-cabecera-transparente" : ""}`}>
+      <div className="mx-auto flex h-full max-w-6xl items-center justify-between gap-3 px-5">
+        <Link href="/" aria-label="Barbas & Bigotes Barbershop, inicio" className="shrink-0">
+          <Image src="/brand/logo-lockup.png" alt="" width={1024} height={348} preload className="h-11 w-auto lg:h-[54px]" />
         </Link>
 
-        <div className="flex items-center gap-4 md:gap-[26px]">
-          {/* Desktop: nav + Reservar (Barberos / Nosotros; "Mi cuenta" pasó al botón). */}
-          <nav className="hidden items-center gap-[26px] md:flex">
-            {links.map((link) => {
-              const activa = pathname === link.href;
-              return (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  className={`text-[11.5px] font-semibold uppercase tracking-[0.1em] transition-colors ${
-                    activa ? "text-accent-soft" : "text-muted hover:text-accent-soft"
-                  }`}
-                >
-                  {link.label}
-                </Link>
-              );
-            })}
-            <Link
-              href="/reservar"
-              className="rounded-full bg-accent px-[22px] py-[11px] text-[11px] font-bold uppercase tracking-[0.14em] text-on-accent transition hover:bg-accent-soft"
-            >
+        <nav aria-label="Secciones del sitio" className="bb-nav">
+          {links.map((l) => (
+            <Link key={l.href} href={l.href} aria-current={pathname === l.href ? "page" : undefined} className="bb-nav-link">
+              {l.label}
+            </Link>
+          ))}
+        </nav>
+
+        <div className="flex shrink-0 items-center gap-2">
+          <HeaderCuenta grande />
+          {!enReservar && (
+            <Link href="/reservar?desde=cabecera" className="bb-btn bb-btn-primario bb-btn-chico">
               Reservar
             </Link>
-          </nav>
-
-          {/* Botón de cuenta inteligente (móvil y escritorio): Entrar / avatar + menú. */}
-          <HeaderCuenta />
+          )}
         </div>
       </div>
     </header>

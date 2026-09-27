@@ -15,14 +15,14 @@ import css from "./propuesta.module.css";
   Regla de copy: cada bloque termina en un atajo real a /reservar con lo que ya
   se sabe (sede, servicio o barbero), no en un "saber más".
 
-  Todo botón de la página sale del mismo sistema (css.btn + primario/fantasma):
-  el dueño pidió botones "mil veces mejor", y la forma de que se vean así es que
-  sean UNO en toda la página.
+  Todo botón sale del sistema del sitio (bb-btn en globals.css): el dueño pidió
+  botones "mil veces mejor", y la forma de que se vean así es que sean UNO en
+  todo el sitio público.
 */
 
 export const WHATSAPP = `https://wa.me/573006734799?text=${encodeURIComponent("Hola, quiero reservar una cita en Barbas & Bigotes.")}`;
-const PRIMARIO = `${css.btn} ${css.primario}`;
-const FANTASMA = `${css.btn} ${css.fantasma}`;
+const PRIMARIO = "bb-btn bb-btn-primario";
+const FANTASMA = "bb-btn bb-btn-fantasma";
 const H2 = "font-display text-[40px] font-extrabold uppercase leading-[0.92] tracking-tight text-ink sm:text-[56px]";
 const nombreCorto = (n: string) => n.split(" (")[0];
 const detalle = (n: string) => n.match(/\(([^)]+)\)/)?.[1] ?? "";
@@ -34,7 +34,7 @@ function BotonWhatsApp({ grande = false }: { grande?: boolean }) {
       target="_blank"
       rel="noopener noreferrer"
       aria-label="Escribir por WhatsApp"
-      className={`${FANTASMA} ${grande ? "" : css.redondo}`}
+      className={`${FANTASMA} ${grande ? "" : "bb-btn-redondo"}`}
     >
       <WhatsAppIcono className="text-[#25d366]" />
       {grande && "Escríbenos"}
@@ -333,7 +333,7 @@ export function Elenco({ barberos, sedes }: { barberos: Barbero[]; sedes: Sede[]
                   {b.especialidades.length > 0 && (
                     <span className="block text-[13px] text-muted">{b.especialidades.slice(0, 3).join(", ")}</span>
                   )}
-                  <span className={`${PRIMARIO} ${css.chico} mt-3 justify-self-start`}>Reservar con {b.nombre.split(" ")[0]}</span>
+                  <span className={`${PRIMARIO} bb-btn-chico mt-3 justify-self-start`}>Reservar con {b.nombre.split(" ")[0]}</span>
                 </span>
               </span>
             </Link>

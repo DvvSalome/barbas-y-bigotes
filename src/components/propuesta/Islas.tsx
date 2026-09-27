@@ -94,11 +94,11 @@ export function BarraReserva({ whatsapp }: { whatsapp: string }) {
         target="_blank"
         rel="noopener noreferrer"
         aria-label="Escribir por WhatsApp"
-        className={`${css.btn} ${css.fantasma} ${css.redondo} pointer-events-auto`}
+        className="bb-btn bb-btn-fantasma bb-btn-redondo pointer-events-auto"
       >
         <WhatsAppIcono className="text-[#25d366]" />
       </a>
-      <Link href="/reservar?desde=barra" className={`${css.btn} ${css.primario} pointer-events-auto flex-1`}>
+      <Link href="/reservar?desde=barra" className="bb-btn bb-btn-primario pointer-events-auto flex-1">
         Reservar mi cita
       </Link>
     </div>
