@@ -81,4 +81,10 @@ e = estadoDeBarbero({
 });
 assert.equal(e.estado, "en_silla");
 
+// (k) Cubre hoy en la otra sede: acá no se le encuentra... salvo que esté cortando.
+e = estadoDeBarbero({ ...base, reservas: [], cubreOtraSede: true });
+assert.equal(textoEstado(e, fmtTime), "Hoy atiende en la otra sede");
+e = estadoDeBarbero({ ...base, cubreOtraSede: true, reservas: [{ barberoId: "kevin", inicio: en(15 * 60), fin: en(15 * 60 + 30), estado: "en_curso" }] });
+assert.equal(e.estado, "en_silla");
+
 console.log("check-estado: ok");

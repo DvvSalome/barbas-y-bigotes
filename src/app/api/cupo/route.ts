@@ -23,7 +23,7 @@ export async function GET() {
   const hoy = bogotaYmd();
   const ahoraMs = Date.now();
   const hasta = sumarDias(hoy, DIAS_CUPO);
-  const [barR, semR, espR, resR, ausR, corteR] = await Promise.all([
+  const [barR, semR, espR, resR, ausR, corteR, cobR] = await Promise.all([
     sb.from("barberos").select("id,sede_id").eq("activo", true),
     sb.from("sede_horario_semanal").select("sede_id,dow,abierta,abre_min,cierra_min"),
     sb.from("sede_dias_especiales").select("sede_id,fecha,abierta,abre_min,cierra_min").gte("fecha", hoy).lte("fecha", hasta),
@@ -35,6 +35,8 @@ export async function GET() {
       .lt("inicio", `${hasta}T00:00:00-05:00`),
     sb.from("barbero_ausencias").select("barbero_id,fecha,desde_min,hasta_min").gte("fecha", hoy).lte("fecha", hasta),
     sb.from("servicios").select("duracion_min").eq("id", "corte").maybeSingle(),
+    // Días en que cubre en la otra sede (0081): en la suya no hay cupo esos días.
+    sb.from("barbero_cobertura").select("barbero_id,fecha,sede_id").gte("fecha", hoy).lte("fecha", hasta),
   ]);
   const error = barR.error ?? semR.error ?? espR.error ?? resR.error ?? ausR.error;
   if (error) return Response.json({ error: "No se pudo calcular el cupo." }, { status: 503 });
@@ -76,6 +78,10 @@ export async function GET() {
     ausenciasPor.set(clave, lista);
   }
 
+  const cubreFuera = new Set(
+    ((cobR.data ?? []) as { barbero_id: string; fecha: string; sede_id: string }[]).map((c) => `${c.barbero_id}|${c.fecha}`),
+  );
+
   const barberos: CupoBarbero[] = ((barR.data ?? []) as { id: string; sede_id: string }[]).map((b) => ({
     id: b.id,
     sede: b.sede_id,
@@ -86,6 +92,7 @@ export async function GET() {
       semanal: semanalPorSede.get(b.sede_id) ?? [],
       especiales: especialesPorSede.get(b.sede_id) ?? [],
       ocupadosDe: (ymd) => {
+        if (cubreFuera.has(`${b.id}|${ymd}`)) return null;
         const aus = ausenciasPor.get(`${b.id}|${ymd}`) ?? [];
         // Ausencia de día entero: ese día no cuenta.
         if (aus.some((a) => a.desde_min == null)) return null;

@@ -21,6 +21,7 @@ import {
 } from "@/lib/tarjeta";
 import { armarReporte, mesDelReporte, type MesReporte, type Reporte } from "@/lib/reporte";
 import type { Sede, SedeId, Servicio, Barbero, Producto, Categoria, TipoContrato } from "./types";
+import type { Cobertura } from "@/lib/cobertura";
 
 export async function getSedes(): Promise<Sede[]> {
   const sb = supabaseServer();
@@ -610,6 +611,25 @@ export async function getBloqueosDia(barberoIds: string[], fechaYmd: string): Pr
     motivo: (b.motivo as string) ?? null,
     desdeMin: (b.desde_min as number) ?? null,
     hastaMin: (b.hasta_min as number) ?? null,
+  }));
+}
+
+/** Quién cubre en la otra sede esas fechas (0081). Solo staff: la página que lo
+ *  usa (/barbero) ya validó el rol. Sin la tabla (migración sin aplicar), []. */
+export async function getCoberturas(fechas: string[]): Promise<Cobertura[]> {
+  if (!fechas.length) return [];
+  const { data, error } = await supabaseAdmin()
+    .from("barbero_cobertura")
+    .select("barbero_id,fecha,sede_id")
+    .in("fecha", [...new Set(fechas)]);
+  if (error) {
+    console.error("getCoberturas:", error.message);
+    return [];
+  }
+  return ((data ?? []) as { barbero_id: string; fecha: string; sede_id: string }[]).map((c) => ({
+    barberoId: c.barbero_id,
+    fecha: c.fecha,
+    sede: c.sede_id,
   }));
 }
 

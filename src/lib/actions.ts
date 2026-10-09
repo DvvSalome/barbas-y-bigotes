@@ -1716,6 +1716,9 @@ export async function createReserva(input: {
   const barbRow = barb as { sede_id?: string; activo?: boolean } | null;
   if (!barbRow || barbRow.activo === false || barbRow.sede_id !== input.sede)
     return { ok: false, error: "Ese barbero no está disponible en esa sede." };
+  // Ese día puede estar cubriendo en la otra sede (0081): ahí no se le reserva.
+  if ((await sedeDeBarbero(barberoId, bogotaYmd(inicio))) !== input.sede)
+    return { ok: false, error: "Ese día ese barbero atiende en la otra sede. Elige otro barbero u otro día." };
   // El servicio tiene que tener precio en la sede (fila en servicio_sede): un
   // servicio de otra sede o sin precio no debe generar una cita fantasma.
   const { data: ss } = await sb
@@ -1849,12 +1852,26 @@ export async function createReserva(input: {
 export async function getDisponibilidad(input: {
   barberoId: string;
   fechaISO: string;
+  /** La sede desde la que se mira (la web). Si ese día el barbero cubre en otra
+   *  sede (0081), acá cuenta como ausente. Sin sede, no se mira la cobertura. */
+  sede?: string;
 }): Promise<{ inicio: string; fin: string }[]> {
   if (!input.barberoId) return [];
   const sb = supabaseAdmin();
   // El rango es el del día elegido EN BOGOTÁ: el server corre en UTC y con
   // setHours(0,0,0,0) la ventana quedaba corrida 5 horas.
   const { desde, hasta } = bogotaDayRange(new Date(input.fechaISO));
+  if (input.sede) {
+    const { data: cob } = await sb
+      .from("barbero_cobertura")
+      .select("sede_id")
+      .eq("barbero_id", input.barberoId)
+      .eq("fecha", bogotaYmd(new Date(input.fechaISO)))
+      .maybeSingle();
+    const otra = (cob as { sede_id?: string } | null)?.sede_id;
+    if (otra && otra !== input.sede)
+      return [{ inicio: desde.toISOString(), fin: new Date(hasta.getTime() - 60000).toISOString() }];
+  }
   // Ausencia: si el barbero no atiende esa fecha, se bloquea el día completo (todos
   // los slots quedan ocupados → el wizard muestra "sin horarios" y "cualquier
   // barbero" lo excluye porque nunca cuenta como libre). OJO: el fin va 23:59 del
@@ -2034,13 +2051,7 @@ export async function registrarWalkin(input: {
   // pasado de su fin estimado —por eso el EXCLUDE de solape, que usa el fin guardado,
   // no la ve—), no se le puede encimar otro walk-in. El operador cierra la atención
   // actual (cobra) y registra la nueva.
-  const { data: enSilla } = await admin
-    .from("reservas")
-    .select("id")
-    .eq("barbero_id", barberoId)
-    .eq("estado", "en_curso")
-    .limit(1);
-  if (enSilla && enSilla.length) {
+  if (await enSillaHoy(admin, barberoId)) {
     return { ok: false, error: "Ese barbero tiene un cliente en la silla ahora. Cierra esa atención antes de registrar otra." };
   }
   const cli = await clienteDelMostrador(sb, input.clienteId, input.clienteNombre, input.telefono, input.fidelizar ?? true);
@@ -2130,11 +2141,11 @@ export async function agendarCita(input: {
   if (!(await staffPuedeOperarBarbero(staff, input.barberoId)))
     return { ok: false, error: "Ese barbero no es de tu sede." };
 
-  const sede = await sedeDeBarbero(input.barberoId);
-  if (!sede) return { ok: false, error: "No se pudo determinar la sede del barbero." };
-
   const inicio = new Date(input.inicioISO);
   if (isNaN(inicio.getTime())) return { ok: false, error: "Hora inválida." };
+  // La sede del barbero EL DÍA de la cita (puede estar cubriendo en la otra, 0081).
+  const sede = await sedeDeBarbero(input.barberoId, bogotaYmd(inicio));
+  if (!sede) return { ok: false, error: "No se pudo determinar la sede del barbero." };
   // El mostrador también REGISTRA cortes que ya pasaron ("ayer llegó uno y se
   // olvidó anotarlo"): se acepta hasta una semana atrás. Más viejo que eso casi
   // siempre es una fecha mal escrita, no un registro.
@@ -2302,6 +2313,80 @@ export async function bloquearHoras(input: {
   return { ok: true };
 }
 
+// ---------- Cubre HOY en la otra sede (0081) ----------
+// El mostrador de la sede que se quedó corta trae a un barbero de la otra para
+// HOY: desde ese momento aparece en su mostrador y su calendario, se le anotan
+// walk-ins y ventas allí, y se le pueden pasar las citas del que faltó. En su
+// sede de siempre, ese día, no se reserva con él por la web.
+export async function marcarCobertura(input: { barberoId: string; sede: string }): Promise<ActionResult> {
+  const sb = await supabaseServerAuth();
+  const denied = await requireStaff(sb);
+  if (denied) return { ok: false, error: denied };
+  const staff = await getStaffContext();
+  if (!puedeMostrador(staff.rol)) return { ok: false, error: "No autorizado" };
+  if (!(await staffPuedeOperarSede(staff, input.sede))) return { ok: false, error: "Esa sede no es la tuya." };
+
+  const admin = supabaseAdmin();
+  const { data: b } = await admin.from("barberos").select("nombre,sede_id,activo").eq("id", input.barberoId).maybeSingle();
+  const barb = b as { nombre: string; sede_id: string; activo: boolean } | null;
+  if (!barb || !barb.activo) return { ok: false, error: "Ese barbero no existe o ya no está activo." };
+  const hoy = bogotaYmd();
+  if (barb.sede_id === input.sede) return { ok: false, error: "Ese barbero ya es de esta sede." };
+
+  // Si está en la silla en su sede, no se puede ir a mitad de un corte.
+  if (await enSillaHoy(admin, input.barberoId)) return { ok: false, error: `${barb.nombre.split(" ")[0]} está atendiendo a alguien. Espera a que termine.` };
+
+  const { error } = await admin
+    .from("barbero_cobertura")
+    .upsert({ barbero_id: input.barberoId, fecha: hoy, sede_id: input.sede }, { onConflict: "barbero_id,fecha" });
+  if (error) return { ok: false, error: errorPublico("marcarCobertura", error) };
+
+  // Lo que tenía agendado hoy en su sede no se mueve solo: se avisa.
+  const { hasta } = bogotaDayRange();
+  const { count: pendientes } = await admin
+    .from("reservas")
+    .select("id", { count: "exact", head: true })
+    .eq("barbero_id", input.barberoId)
+    .eq("sede_id", barb.sede_id)
+    .in("estado", ["pendiente", "confirmada"])
+    .gte("inicio", new Date().toISOString())
+    .lt("inicio", hasta.toISOString());
+  revalidatePath("/barbero");
+  revalidatePath("/reservar");
+  const nombre = barb.nombre.split(" ")[0];
+  return {
+    ok: true,
+    aviso: pendientes
+      ? `${nombre} tenía ${pendientes === 1 ? "1 cita" : `${pendientes} citas`} hoy en su sede: hay que pasarlas a otro barbero desde el mostrador de allá.`
+      : undefined,
+  };
+}
+
+/** Vuelve a su sede (se quita la cobertura de hoy). Lo puede hacer cualquiera de las dos sedes. */
+export async function quitarCobertura(barberoId: string): Promise<ActionResult> {
+  const sb = await supabaseServerAuth();
+  const denied = await requireStaff(sb);
+  if (denied) return { ok: false, error: denied };
+  const staff = await getStaffContext();
+  if (!puedeMostrador(staff.rol)) return { ok: false, error: "No autorizado" };
+  const admin = supabaseAdmin();
+  const hoy = bogotaYmd();
+  const [{ data: cob }, { data: b }] = await Promise.all([
+    admin.from("barbero_cobertura").select("id,sede_id").eq("barbero_id", barberoId).eq("fecha", hoy).maybeSingle(),
+    admin.from("barberos").select("sede_id").eq("id", barberoId).maybeSingle(),
+  ]);
+  const c = cob as { id: string; sede_id: string } | null;
+  if (!c) return { ok: false, error: "Ese barbero no está cubriendo en otra sede hoy." };
+  const casa = (b as { sede_id?: string } | null)?.sede_id ?? "";
+  if (!(await staffPuedeOperarSede(staff, c.sede_id)) && !(await staffPuedeOperarSede(staff, casa)))
+    return { ok: false, error: "No autorizado" };
+  const { error } = await admin.from("barbero_cobertura").delete().eq("id", c.id);
+  if (error) return { ok: false, error: errorPublico("quitarCobertura", error) };
+  revalidatePath("/barbero");
+  revalidatePath("/reservar");
+  return { ok: true };
+}
+
 // Quitar un bloqueo tocándolo en el calendario. Mismo gate que crearlo.
 export async function quitarBloqueo(id: string): Promise<ActionResult> {
   const sb = await supabaseServerAuth();
@@ -2357,11 +2442,13 @@ export async function moverCita(input: {
 
   const barberoId = input.barberoId ?? r.barbero_id;
   if (!barberoId) return { ok: false, error: "Elige a qué barbero pasa la cita." };
-  if ((await sedeDeBarbero(barberoId)) !== r.sede_id)
-    return { ok: false, error: "Ese barbero no es de la sede de la cita." };
 
   const inicio = new Date(input.inicioISO);
   if (isNaN(inicio.getTime())) return { ok: false, error: "Hora inválida." };
+  // Sede del barbero destino ESE día: el que vino a cubrir de la otra sede sí
+  // puede recibir las citas del que faltó (0081).
+  if ((await sedeDeBarbero(barberoId, bogotaYmd(inicio))) !== r.sede_id)
+    return { ok: false, error: "Ese barbero no está en la sede de la cita ese día." };
   // Mover al pasado se permite (misma semana): es la corrección de "ese corte
   // fue 5:15, no 5:30" cuando se registra la agenda después de hecha.
   if (inicio.getTime() < Date.now() - 7 * 86_400_000)
@@ -2574,19 +2661,41 @@ async function recortarFinAlTerminar(sb: SupabaseClient, reservaId: string) {
   }
 }
 
+// ¿Tiene a alguien en la silla HOY? Solo cuenta lo "en curso" de hoy (Bogotá): una
+// atención vieja que nunca se cerró (había del 27-ago y del 23-sep) bloqueaba para
+// siempre el walk-in y la espera de ese barbero con "tiene un cliente en la silla
+// ahora" (encontrado el 9-oct). Las viejas siguen en "pendientes de cobro".
+async function enSillaHoy(sb: SupabaseClient, barberoId: string): Promise<boolean> {
+  const { desde } = bogotaDayRange();
+  const { data } = await sb
+    .from("reservas")
+    .select("id")
+    .eq("barbero_id", barberoId)
+    .eq("estado", "en_curso")
+    .gte("inicio", desde.toISOString())
+    .limit(1);
+  return !!data && data.length > 0;
+}
+
 // ---------- Modo mostrador: alcance por sede ----------
 // El equipo comparte un solo aparato en el local, así que un barbero opera sobre
 // las citas de TODA SU SEDE (marcar llegada, cobrar), no solo las suyas. El límite
 // duro es la sede: nunca puede tocar la otra. El admin no tiene límite.
 // Se resuelve acá en el server (no aflojando RLS) para que el permiso viva en un
 // solo lugar auditable y las demás rutas sigan con el scope estricto de siempre.
-async function sedeDeBarbero(barberoId: string): Promise<string | null> {
-  const { data } = await supabaseAdmin()
-    .from("barberos")
-    .select("sede_id")
-    .eq("id", barberoId)
-    .maybeSingle();
-  return (data as { sede_id?: string } | null)?.sede_id ?? null;
+//
+// La sede es la DEL DÍA (0081): si ese día el barbero cubre en la otra sede, cuenta
+// como de allá. Así el walk-in, la venta, el consumo, la espera y mover citas lo
+// aceptan en la sede que cubre y lo rechazan en la suya, sin tocar cada acción.
+async function sedeDeBarbero(barberoId: string, fechaYmd: string = bogotaYmd()): Promise<string | null> {
+  const admin = supabaseAdmin();
+  const [{ data }, { data: cob }] = await Promise.all([
+    admin.from("barberos").select("sede_id").eq("id", barberoId).maybeSingle(),
+    admin.from("barbero_cobertura").select("sede_id").eq("barbero_id", barberoId).eq("fecha", fechaYmd).maybeSingle(),
+  ]);
+  const casa = (data as { sede_id?: string } | null)?.sede_id ?? null;
+  if (!casa) return null;
+  return (cob as { sede_id?: string } | null)?.sede_id ?? casa;
 }
 
 /** ¿Este staff puede operar sobre algo de esta sede? */
@@ -4060,8 +4169,7 @@ export async function servirEspera(id: string, barberoElegido?: string): Promise
   }
   // La silla es UNA: si el barbero ya tiene una atención en curso (aunque se haya
   // pasado de su fin estimado), no se le encima otra. Se revierte el claim de la espera.
-  const { data: enSilla } = await sb.from("reservas").select("id").eq("barbero_id", barberoId).eq("estado", "en_curso").limit(1);
-  if (enSilla && enSilla.length) {
+  if (await enSillaHoy(sb, barberoId)) {
     await revertir();
     return { ok: false, error: "Ese barbero tiene un cliente en la silla ahora. Cierra esa atención antes de servir la espera." };
   }

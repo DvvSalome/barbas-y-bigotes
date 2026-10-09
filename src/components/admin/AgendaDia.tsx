@@ -573,10 +573,13 @@ export function AgendaDia({
                             setMoviendo(false);
                             setDetalle(c);
                           }}
+                          // z-[6]: ENCIMA del bloqueo gris (z-[5]). Si un barbero no
+                          // vino, su bloqueo de día entero tapaba sus citas y tocarlas
+                          // abría "Quitar el bloqueo": no había forma de moverlas a otro.
                           className={`absolute overflow-hidden rounded-lg border px-1.5 py-1 text-left text-[12px] leading-tight shadow-sm sm:px-2 ${
                             arrastrando
                               ? "z-30 cursor-grabbing opacity-90 shadow-xl ring-2 ring-accent"
-                              : `transition hover:brightness-110 ${movible ? "lg:cursor-grab" : ""}`
+                              : `z-[6] transition hover:brightness-110 ${movible ? "lg:cursor-grab" : ""}`
                           } ${est.card}`}
                           style={{
                             top: (ini - abre) * PX_MIN + 1,

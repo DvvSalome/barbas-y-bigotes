@@ -23,6 +23,7 @@ import type { Categoria } from "@/lib/data/types";
 import { ProductoThumb } from "@/components/staff/ProductoThumb";
 import { MedioLogo } from "@/components/staff/MedioLogo";
 import { Recepcion } from "@/components/barbero/Recepcion";
+import type { EquipoHoy } from "@/components/barbero/EquipoHoy";
 import { AgendarCitaForm } from "@/components/barbero/AgendarCitaForm";
 import { ElegirBarbero, ElegirServicio, ElegirCliente, type ClienteElegido } from "@/components/staff/Elegir";
 import { Switch } from "@/components/admin/Switch";
@@ -108,6 +109,7 @@ export function AgendaList({
   cierreSlot,
   calendarioSlot,
   esperaCount = 0,
+  equipo,
 }: {
   agenda: AgendaItem[];
   sedes: Sede[];
@@ -144,6 +146,8 @@ export function AgendaList({
   calendarioSlot?: React.ReactNode;
   /** Cuántos esperan ahora: la insignia de la pestaña. */
   esperaCount?: number;
+  /** Equipo de hoy: quién no vino, quién cubre (solo con sede fija). */
+  equipo?: EquipoHoy;
 }) {
   const router = useRouter();
   const search = useSearchParams();
@@ -322,6 +326,7 @@ export function AgendaList({
           setEsperaMsg(null);
           setWalkinOpen(true);
         }}
+        equipo={equipo}
       />
 
       {/* Después: resto de la agenda en filas compactas (tap para acciones) */}

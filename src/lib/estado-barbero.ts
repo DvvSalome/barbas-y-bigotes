@@ -12,7 +12,7 @@
 // es solo una cita EN CURSO (el barbero la marcó como llegada o es un walk-in).
 import { finEfectivo, type VentanaDia } from "./slots.ts";
 
-export type EstadoVivo = "en_silla" | "con_cita" | "pausa" | "libre" | "cerrado" | "ausente";
+export type EstadoVivo = "en_silla" | "con_cita" | "pausa" | "libre" | "cerrado" | "ausente" | "otra_sede";
 
 export type EstadoBarbero = {
   id: string;
@@ -50,6 +50,8 @@ export function estadoDeBarbero(opts: {
   reservas: ReservaHoy[];
   ausencias: AusenciaHoy[];
   ahoraMs: number;
+  /** Hoy cubre en la otra sede (0081). */
+  cubreOtraSede?: boolean;
 }): EstadoBarbero {
   const { id, sede, ventana, ahoraMs } = opts;
   const ahora = minutoBogota(ahoraMs);
@@ -70,6 +72,10 @@ export function estadoDeBarbero(opts: {
     const fin = minutoBogota(Date.parse(finEfectivo(enCurso.estado, enCurso.fin, ahoraMs)));
     return { ...base, estado: "en_silla", hastaMin: fin > ahora ? fin : null };
   }
+
+  // Cubriendo en la otra sede: acá no se le encuentra (si está cortando allá, ya
+  // salió "En silla" arriba, que es lo cierto).
+  if (opts.cubreOtraSede) return { ...base, estado: "otra_sede", hastaMin: null };
 
   if (!ventana.abierta || ahora < ventana.abreMin || ahora >= ventana.cierraMin) {
     return { ...base, estado: "cerrado", hastaMin: null };
@@ -103,6 +109,8 @@ export function textoEstado(e: Pick<EstadoBarbero, "estado" | "hastaMin">, fmt: 
       return "Libre ahora";
     case "ausente":
       return "No atiende hoy";
+    case "otra_sede":
+      return "Hoy atiende en la otra sede";
     default:
       // Fuera del horario: "Libre ahora" engañaría. Corto para que quepa en la tarjeta.
       return "Puedes reservar";
@@ -117,6 +125,7 @@ export const COLOR_ESTADO: Record<EstadoVivo, string> = {
   ausente: "#fbbf24",
   pausa: "#9c958a",
   cerrado: "#9c958a",
+  otra_sede: "#9c958a",
 };
 
 /** "3 cortes hoy" · "1 corte hoy" · null si no lleva ninguno. */

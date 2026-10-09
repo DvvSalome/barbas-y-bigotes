@@ -18,7 +18,7 @@ export async function GET() {
   const sb = supabaseAdmin();
   const hoy = bogotaYmd();
   const ahoraMs = Date.now();
-  const [barR, semR, espR, resR, ausR] = await Promise.all([
+  const [barR, semR, espR, resR, ausR, cobR] = await Promise.all([
     sb.from("barberos").select("id,sede_id").eq("activo", true),
     sb.from("sede_horario_semanal").select("sede_id,dow,abierta,abre_min,cierra_min"),
     sb.from("sede_dias_especiales").select("sede_id,fecha,abierta,abre_min,cierra_min").eq("fecha", hoy),
@@ -29,6 +29,8 @@ export async function GET() {
       .gte("inicio", `${hoy}T00:00:00-05:00`)
       .lt("inicio", new Date(Date.parse(`${hoy}T00:00:00-05:00`) + 86_400_000).toISOString()),
     sb.from("barbero_ausencias").select("barbero_id,desde_min,hasta_min").eq("fecha", hoy),
+    // Quién cubre hoy en la otra sede (0081). Sin la tabla, nadie.
+    sb.from("barbero_cobertura").select("barbero_id,sede_id").eq("fecha", hoy),
   ]);
   const error = barR.error ?? semR.error ?? espR.error ?? resR.error ?? ausR.error;
   if (error) return Response.json({ error: "No se pudo leer el estado." }, { status: 503 });
@@ -57,12 +59,22 @@ export async function GET() {
     hastaMin: a.hasta_min,
   }));
 
+  const cobertura = new Map(((cobR.data ?? []) as { barbero_id: string; sede_id: string }[]).map((c) => [c.barbero_id, c.sede_id]));
+
   const salida: RespuestaEstado = {
     generado: new Date(ahoraMs).toISOString(),
     hoy,
     ahoraMin: minutoBogota(ahoraMs),
     barberos: ((barR.data ?? []) as { id: string; sede_id: string }[]).map((b) =>
-      estadoDeBarbero({ id: b.id, sede: b.sede_id, ventana: ventanaDe(b.sede_id), reservas, ausencias, ahoraMs }),
+      estadoDeBarbero({
+        id: b.id,
+        sede: b.sede_id,
+        ventana: ventanaDe(b.sede_id),
+        reservas,
+        ausencias,
+        ahoraMs,
+        cubreOtraSede: !!cobertura.get(b.id) && cobertura.get(b.id) !== b.sede_id,
+      }),
     ),
   };
   return Response.json(salida, { headers: { "Cache-Control": "no-store" } });

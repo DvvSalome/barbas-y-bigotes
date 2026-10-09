@@ -8,6 +8,7 @@ import { actualizarReserva } from "@/lib/actions";
 import { faltaParaLlegar } from "@/lib/slots";
 import type { Barbero } from "@/lib/data/types";
 import type { AgendaItem, PrecioServicioStaff } from "@/lib/data/queries";
+import { EquipoHoyHoja, type EquipoHoy } from "@/components/barbero/EquipoHoy";
 
 // Vista MOSTRADOR: una sola pantalla compartida en el local, con una columna por
 // barbero. Cualquiera del equipo marca llegadas y abre el cobro sin cambiar de
@@ -60,6 +61,7 @@ export function Recepcion({
   preciosServicios = [],
   onCobrar,
   onWalkin,
+  equipo,
 }: {
   agenda: AgendaItem[];
   barberos: Barbero[];
@@ -77,6 +79,8 @@ export function Recepcion({
   /** Abre el walk-in con ese barbero puesto. El hueco de un barbero libre es
    *  justo donde hace falta anotar al que acaba de entrar. */
   onWalkin?: (barberoId: string) => void;
+  /** Quién vino, quién no y quién cubre desde la otra sede (solo con sede fija). */
+  equipo?: EquipoHoy;
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
@@ -90,6 +94,13 @@ export function Recepcion({
   // recargando la página se destrababa. El refresh del realtime no alcanza:
   // vuelve a renderizar con datos nuevos, pero el estado del cliente no cambia.
   const [ahora, setAhora] = useState(() => Date.now());
+  const [verEquipo, setVerEquipo] = useState(false);
+  // Hoy: los que no vinieron (no salen como "Libres": el walk-in los rechazaría) y
+  // los que vinieron de la otra sede a cubrir (llevan la etiqueta).
+  const ausentes = new Set((equipo?.ausentes ?? []).map((a) => a.id));
+  const visitaDe: Record<string, string> = Object.fromEntries(
+    (equipo?.presentes ?? []).filter((p) => p.visitaDe).map((p) => [p.id, p.visitaDe as string]),
+  );
   useEffect(() => {
     const t = setInterval(() => setAhora(Date.now()), 60_000);
     return () => clearInterval(t);
@@ -156,7 +167,8 @@ export function Recepcion({
   const tieneMovimiento = (id: string) =>
     agenda.some((r) => r.barberoId === id && !DONE.includes(r.estado));
   const conMovimiento = barberos.filter((b) => tieneMovimiento(b.id));
-  const libres = barberos.filter((b) => !tieneMovimiento(b.id));
+  const libres = barberos.filter((b) => !tieneMovimiento(b.id) && !ausentes.has(b.id));
+  const ausentesQuietos = barberos.filter((b) => ausentes.has(b.id) && !tieneMovimiento(b.id));
 
   return (
     <div>
@@ -170,6 +182,25 @@ export function Recepcion({
           <p className="mt-1.5 text-[12.5px] text-muted">
             {hechas} de {totalCitas} atenciones cerradas hoy
           </p>
+          {equipo && (
+            <button
+              type="button"
+              onClick={() => setVerEquipo(true)}
+              className="mt-2.5 inline-flex min-h-11 items-center gap-2 rounded-full border border-line px-4 text-[13px] font-semibold text-ink transition hover:border-accent/45"
+            >
+              Equipo de hoy
+              {equipo.ausentes.length > 0 && (
+                <span className="rounded-full bg-warn/15 px-2 py-0.5 text-[11.5px] font-bold text-warn">
+                  {equipo.ausentes.length === 1 ? "1 no vino" : `${equipo.ausentes.length} no vinieron`}
+                </span>
+              )}
+              {Object.keys(visitaDe).length > 0 && (
+                <span className="rounded-full bg-ok/15 px-2 py-0.5 text-[11.5px] font-bold text-ok">
+                  {Object.keys(visitaDe).length === 1 ? "1 cubriendo" : `${Object.keys(visitaDe).length} cubriendo`}
+                </span>
+              )}
+            </button>
+          )}
           {sinRespuesta > 0 && (
             <p className="mt-1.5 inline-flex items-center gap-1.5 rounded-full bg-warn/12 px-2.5 py-1 text-[12px] font-semibold text-warn">
               <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-warn" />
@@ -227,9 +258,20 @@ export function Recepcion({
                   <div className="truncate font-display text-[21px] font-bold uppercase leading-tight">
                     {b.nombre}
                   </div>
-                  <div className="text-[11.5px] text-muted">
-                    {enSilla ? "Atendiendo ahora" : activas.length ? `${activas.length} por atender` : "Sin citas activas"}
-                  </div>
+                  {ausentes.has(b.id) ? (
+                    <button
+                      type="button"
+                      onClick={() => setVerEquipo(true)}
+                      className="mt-0.5 inline-flex min-h-8 items-center rounded-full bg-warn/15 px-2.5 text-[12px] font-bold text-warn"
+                    >
+                      No vino hoy · pasar sus citas
+                    </button>
+                  ) : (
+                    <div className="text-[11.5px] text-muted">
+                      {enSilla ? "Atendiendo ahora" : activas.length ? `${activas.length} por atender` : "Sin citas activas"}
+                      {visitaDe[b.id] ? ` · vino de ${visitaDe[b.id]}` : ""}
+                    </div>
+                  )}
                 </div>
                 <div className="shrink-0 text-right">
                   <div className="font-display text-[15px] font-bold tabular-nums text-ok">
@@ -438,7 +480,9 @@ export function Recepcion({
                   )}
                   <span className="min-w-0 flex-1 text-left">
                     <span className="block truncate text-[16px] font-bold text-ink">{b.nombre}</span>
-                    <span className="block text-[12.5px] text-ok">Libre</span>
+                    <span className="block text-[12.5px] text-ok">
+                      Libre{visitaDe[b.id] ? <span className="text-muted"> · vino de {visitaDe[b.id]}</span> : null}
+                    </span>
                   </span>
                   {onWalkin && (
                     <span
@@ -470,6 +514,14 @@ export function Recepcion({
           </div>
         </section>
       )}
+
+      {ausentesQuietos.length > 0 && (
+        <p className="mt-3 text-[12.5px] text-muted">
+          No vino hoy: {ausentesQuietos.map((b) => b.nombre.split(" ")[0]).join(", ")}
+        </p>
+      )}
+
+      {verEquipo && equipo && <EquipoHoyHoja equipo={equipo} agenda={agenda} onCerrar={() => setVerEquipo(false)} />}
     </div>
   );
 }

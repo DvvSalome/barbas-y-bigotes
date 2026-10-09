@@ -22,7 +22,10 @@ import {
   getReservasPendientesCobro,
   getAjustesEquipo,
   getMiSemana,
+  getCoberturas,
 } from "@/lib/data/queries";
+import { equipoDelDia, visitasDelDia } from "@/lib/cobertura";
+import type { EquipoHoy } from "@/components/barbero/EquipoHoy";
 import { bogotaYmd, dowDeFecha, proximaCitaDe } from "@/lib/slots";
 import { horaBogota } from "@/lib/format";
 import { MiDia } from "@/components/barbero/MiDia";
@@ -60,7 +63,10 @@ export default async function BarberoPage({
   // transmitir la agenda de las DOS sedes antes de que el layout lo expulse.
   if (!["admin", "barbero", "sede"].includes(staff.rol)) redirect("/cuenta");
   const filtro = staff.rol === "barbero" ? staff.barberoId : null;
-  const [sedes, barberos, servicios, preciosServicios, productos, medios, espera, horarioSemanal, diasEspeciales, pendientesCobro] =
+  // Hoy y el día del calendario (pestaña Agenda: ?fecha=, hoy por defecto).
+  const hoy = bogotaYmd();
+  const fechaCal = /^\d{4}-\d{2}-\d{2}$/.test(sp.fecha ?? "") ? sp.fecha! : hoy;
+  const [sedes, barberosCasa, servicios, preciosServicios, productos, medios, espera, horarioSemanal, diasEspeciales, pendientesCobro, coberturas] =
     await Promise.all([
       getSedes(),
       getBarberos(),
@@ -74,7 +80,14 @@ export default async function BarberoPage({
       getDiasEspeciales(),
       // Cobro exprés del Cierre (corre con la sesión: la RLS ya lo deja en su alcance).
       getReservasPendientesCobro(),
+      // Quién cubre hoy (o el día del calendario) en la otra sede (0081).
+      getCoberturas([hoy, fechaCal]),
     ]);
+  // El equipo de HOY: el que cubre en la otra sede cuenta como de allá (columnas,
+  // walk-in, venta, espera). `barberosCasa` queda con la sede de siempre.
+  const barberos = equipoDelDia(barberosCasa, coberturas, hoy);
+  const visitasHoy = visitasDelDia(barberosCasa, coberturas, hoy);
+  const barberosCal = equipoDelDia(barberosCasa, coberturas, fechaCal);
 
   // La sede que se opera. Un perfil por sede (0044) trae la suya en el perfil;
   // un barbero, la de su ficha. El dueño (admin) no tiene → null = las dos.
@@ -96,8 +109,6 @@ export default async function BarberoPage({
   // Calendario (pestaña Agenda): el día pedido por ?fecha=, hoy por defecto.
   // El DUEÑO (sin sede propia) también lo ve: elige la sede con ?sede= (pills
   // arriba del calendario); por defecto la primera. El calendario es POR sede.
-  const hoy = bogotaYmd();
-  const fechaCal = /^\d{4}-\d{2}-\d{2}$/.test(sp.fecha ?? "") ? sp.fecha! : hoy;
   const sedeCal = sedeBarbero ?? ((sedes.find((s) => s.id === sp.sede)?.id ?? sedes[0]?.id ?? null) as string | null);
   const vistaCal = sp.vista === "semana" ? ("semana" as const) : ("dia" as const);
   const lunesCal = (() => {
@@ -105,13 +116,16 @@ export default async function BarberoPage({
     d.setUTCDate(d.getUTCDate() - ((dowDeFecha(fechaCal) + 6) % 7));
     return d.toISOString().slice(0, 10);
   })();
-  const idsSedeCal = sedeCal ? barberos.filter((b) => b.sede === sedeCal).map((b) => b.id) : [];
-  const [agendaSede, ventasSede, agendaCal, bloqueosCal, agendaSemanaCal] = await Promise.all([
+  const idsSedeCal = sedeCal ? barberosCal.filter((b) => b.sede === sedeCal).map((b) => b.id) : [];
+  const idsSedeHoy = sedeBarbero ? barberos.filter((b) => b.sede === sedeBarbero).map((b) => b.id) : [];
+  const [agendaSede, ventasSede, agendaCal, bloqueosCal, agendaSemanaCal, bloqueosHoy] = await Promise.all([
     getAgendaSedeHoy(sedeBarbero),
     getVentasSedeHoy(sedeBarbero),
     sedeCal ? getAgendaSedeDia(sedeCal, fechaCal) : Promise.resolve(null),
     sedeCal ? getBloqueosDia(idsSedeCal, fechaCal) : Promise.resolve([]),
     sedeCal && vistaCal === "semana" ? getAgendaSedeRango(sedeCal, lunesCal, 7) : Promise.resolve([]),
+    // Los que no vinieron hoy (bloqueo de día entero) para "Equipo de hoy".
+    sedeBarbero ? getBloqueosDia(idsSedeHoy, hoy) : Promise.resolve([]),
   ]);
   // El "cobrado hoy" sale de las mismas ventas que la lista de abajo: un solo
   // viaje, y el número del encabezado siempre cuadra con lo que se ve detallado.
@@ -135,6 +149,31 @@ export default async function BarberoPage({
   // Lo que falta cobrar EN ESTA SEDE: lo usa el hub de Cierre para el badge y
   // para el subtítulo de la fila, y la hoja para la lista.
   const misPendientes = sedeBarbero ? pendientesCobro.filter((p) => p.sede === sedeBarbero) : [];
+
+  // "Equipo de hoy" (9-oct): quién vino, quién no, quién cubre en la otra sede y a
+  // quién se puede traer. Solo con una sede fija (el dueño mirando las dos no).
+  const nombreSede = (id: string) => sedes.find((s) => s.id === id)?.nombre ?? id;
+  const persona = (b: (typeof barberos)[number]) => ({ id: b.id, nombre: b.nombre, fotoUrl: b.fotoUrl ?? null });
+  const noVino = new Map(bloqueosHoy.filter((x) => x.desdeMin == null && x.hastaMin == null).map((x) => [x.barberoId, x.id]));
+  const equipo: EquipoHoy | undefined = sedeBarbero
+    ? {
+        sede: sedeBarbero,
+        sedeNombre: nombreSede(sedeBarbero),
+        hoy,
+        presentes: barberos
+          .filter((b) => b.sede === sedeBarbero && !noVino.has(b.id))
+          .map((b) => ({ ...persona(b), visitaDe: visitasHoy[b.id] ? nombreSede(visitasHoy[b.id]) : null })),
+        ausentes: barberos
+          .filter((b) => b.sede === sedeBarbero && noVino.has(b.id))
+          .map((b) => ({ ...persona(b), bloqueoId: noVino.get(b.id) as string })),
+        fuera: barberosCasa
+          .filter((b) => b.sede === sedeBarbero && visitasHoy[b.id])
+          .map((b) => ({ ...persona(b), sedeNombre: nombreSede(barberos.find((x) => x.id === b.id)?.sede ?? "") })),
+        traibles: barberosCasa
+          .filter((b) => b.sede !== sedeBarbero && !visitasHoy[b.id])
+          .map((b) => ({ ...persona(b), sedeNombre: nombreSede(b.sede) })),
+      }
+    : undefined;
 
   const mostrador = {
     sedeId: sedeBarbero,
@@ -160,6 +199,9 @@ export default async function BarberoPage({
           // debe reaccionar a las citas de todo el equipo, no solo a las propias.
           { table: "reservas", filter: mostrador || !filtro ? undefined : `barbero_id=eq.${filtro}` },
           { table: "lista_espera", filter: filtro ? `barbero_id=eq.${filtro}` : undefined },
+          // Alguien no vino o se fue a cubrir: las DOS sedes se enteran solas.
+          { table: "barbero_ausencias" },
+          { table: "barbero_cobertura" },
         ]}
         dingOnInsertTable="reservas"
       />
@@ -207,6 +249,7 @@ export default async function BarberoPage({
         horarioSemanal={sedeBarbero ? horarioSemanal.filter((h) => h.sede === sedeBarbero) : []}
         diasEspeciales={sedeBarbero ? diasEspeciales.filter((d) => d.sede === sedeBarbero) : []}
         esperaCount={espera.length}
+        equipo={equipo}
         calendarioSlot={
           // Para TODOS los perfiles del mostrador: sede/barbero ven su sede; el
           // DUEÑO (sin sede propia) elige con las pills de arriba (?sede=).
@@ -236,7 +279,7 @@ export default async function BarberoPage({
                 bloqueos={bloqueosCal}
                 vista={vistaCal}
                 agendaSemana={agendaSemanaCal}
-                barberos={barberos.filter((b) => b.sede === sedeCal)}
+                barberos={barberosCal.filter((b) => b.sede === sedeCal)}
                 servicios={servicios}
                 horarioSemanal={horarioSemanal.filter((h) => h.sede === sedeCal)}
                 diasEspeciales={diasEspeciales.filter((d) => d.sede === sedeCal)}

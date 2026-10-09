@@ -614,7 +614,7 @@ export function BookingWizard({
     const fetchAll = () =>
       Promise.all(
         consulta.map((b) =>
-          getDisponibilidad({ barberoId: b.id, fechaISO: day.toISOString() }).then((r) => [b.id, r] as const),
+          getDisponibilidad({ barberoId: b.id, fechaISO: day.toISOString(), sede: sedeId ?? undefined }).then((r) => [b.id, r] as const),
         ),
       ).then((entries) => {
         if (!cancel) setOcupadosDia(Object.fromEntries(entries));
