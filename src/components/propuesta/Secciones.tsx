@@ -4,7 +4,7 @@ import { cop } from "@/lib/format";
 import { CANCELACION_MIN_HORAS } from "@/lib/slots";
 import { categorias } from "@/lib/data/seed";
 import type { Barbero, Sede, Servicio } from "@/lib/data/types";
-import { Inclinable, WhatsAppIcono, ChipCupo, LineaCupo, EnlaceCupo, PuntoVivo } from "@/components/propuesta/Islas";
+import { Inclinable, WhatsAppIcono, ChipCupo, LineaCupo, EnlaceCupo, PuntoVivo, Carrusel, PasosApp } from "@/components/propuesta/Islas";
 import css from "./propuesta.module.css";
 
 /*
@@ -372,82 +372,93 @@ export function TiraCortes() {
           Más trabajos en Instagram
         </a>
       </div>
-      <ul className={`${css.pelicula} mt-8 flex gap-3 overflow-x-auto px-5 pb-2`}>
-        {CORTES.map((alt, i) => (
-          <li key={i} className={`${css.fotograma} w-[64vw] max-w-[300px] shrink-0 sm:w-[300px]`}>
-            <div className="relative aspect-[4/5] overflow-hidden rounded-[18px] bg-panel">
-              <Image src={`/cortes/corte-${i + 1}.jpg`} alt={alt} fill sizes="(max-width:640px) 64vw, 300px" className="object-cover" />
+      <div className="mt-8">
+        <Carrusel etiqueta="Cortes de la barbería">
+          {CORTES.map((alt, i) => (
+            <li key={i} className={`${css.fotograma} w-[64vw] max-w-[340px] shrink-0 sm:w-[300px] lg:w-[340px]`}>
+              <div className="relative aspect-[4/5] overflow-hidden rounded-[18px] bg-panel">
+                <Image src={`/cortes/corte-${i + 1}.jpg`} alt={alt} fill sizes="(max-width:640px) 64vw, 340px" className="object-cover" />
+              </div>
+            </li>
+          ))}
+          <li className={`${css.fotograma} w-[64vw] max-w-[340px] shrink-0 sm:w-[300px] lg:w-[340px]`}>
+            <div data-cta className="flex aspect-[4/5] flex-col justify-end rounded-[18px] border border-line bg-panel p-6">
+              <p className="font-display text-[34px] font-extrabold uppercase leading-[0.9] text-ink">¿Te gustó uno?</p>
+              <p className="mt-3 text-[15px] leading-relaxed text-ink/80">Guárdalo y muéstraselo a tu barbero cuando te sientes.</p>
+              <Link href="/reservar?servicio=corte&desde=galeria" className={`${PRIMARIO} mt-6`}>
+                Reservar corte
+              </Link>
             </div>
           </li>
-        ))}
-        <li className={`${css.fotograma} w-[64vw] max-w-[300px] shrink-0 sm:w-[300px]`}>
-          <div data-cta className="flex aspect-[4/5] flex-col justify-end rounded-[18px] border border-line bg-panel p-6">
-            <p className="font-display text-[34px] font-extrabold uppercase leading-[0.9] text-ink">¿Te gustó uno?</p>
-            <p className="mt-3 text-[15px] leading-relaxed text-ink/80">Guárdalo y muéstraselo a tu barbero cuando te sientes.</p>
-            <Link href="/reservar?servicio=corte&desde=galeria" className={`${PRIMARIO} mt-6`}>
-              Reservar corte
-            </Link>
-          </div>
-        </li>
-      </ul>
+        </Carrusel>
+      </div>
     </section>
   );
 }
 
 /* ── 5. Así funciona la app (lo que pide el verificador de Google) ───────── */
+// Cada paso con el pantallazo real del asistente (public/app, 390 px @2x).
 const PASOS = [
-  { t: "Escoges y apartas", d: "Eliges sede, servicio, barbero y hora. Ves solo las horas que de verdad están libres." },
-  { t: "Te confirmamos", d: "Te llega la confirmación al instante, te recordamos antes de la cita y te avisamos si se libera un cupo antes." },
-  { t: "Llegas y te sientas", d: `Sin fila. Si te sale algo, cancelas o cambias la hora tú mismo hasta ${CANCELACION_MIN_HORAS} horas antes.` },
+  {
+    t: "Escoges tu corte",
+    d: "Sede, barbero y servicio, con el precio y lo que dura a la vista. Ves si tu barbero está libre ahora mismo.",
+    img: "/app/paso-1.jpg",
+    alt: "La carta de servicios de la app, con el barbero ya elegido",
+  },
+  {
+    t: "Apartas la hora",
+    d: "Solo ves las horas que de verdad están libres. Tocas una y confirmas con tus datos.",
+    img: "/app/paso-2.jpg",
+    alt: "El paso de día y hora de la app, con las horas libres del barbero",
+  },
+  {
+    t: "Llegas y te sientas",
+    d: `Te llega la confirmación al instante y un recordatorio antes de la cita. Sin fila. Si te sale algo, cambias o cancelas tú mismo hasta ${CANCELACION_MIN_HORAS} horas antes.`,
+    img: "/app/paso-3.jpg",
+    alt: "La confirmación de la reserva en la app",
+  },
 ];
 
 export function ComoFunciona() {
   return (
     <section id="la-app" className="mx-auto max-w-6xl scroll-mt-20 px-5 py-20">
-      <div className="max-w-2xl">
-        <h2 className={H2}>Así funciona la app</h2>
-        <p className="mt-5 text-[16px] leading-relaxed text-ink/85">
-          Esta aplicación se llama <b className="text-ink">Barbas &amp; Bigotes</b> y es el sistema de reservas de nuestra barbería en
-          Barranquilla, Colombia. Con ella agendas tu cita por internet, miras tu historial de visitas y sigues tu tarjeta de cortes, sin
-          llamar ni esperar en el local. La desarrolla y opera Barbas &amp; Bigotes Barbershop.
-        </p>
-      </div>
-      {/* Un proceso de verdad, en orden: por eso lleva números. El hexágono es la
-          forma del techo del local. */}
-      <ol className="mt-10 grid gap-8 sm:grid-cols-3">
-        {PASOS.map((p, i) => (
-          <li key={p.t}>
-            <span aria-hidden className="relative grid h-14 w-16 place-items-center">
-              <svg viewBox="0 0 64 56" className="absolute inset-0 h-full w-full">
-                <polygon points="16,2 48,2 62,28 48,54 16,54 2,28" fill="none" stroke="#fbf8f1" strokeWidth="2" />
-              </svg>
-              <span className="relative font-display text-[22px] font-bold text-ink">{i + 1}</span>
-            </span>
-            <h3 className="mt-4 font-display text-[26px] font-bold uppercase leading-none text-ink">{p.t}</h3>
-            <p className="mt-2 max-w-[32ch] text-[15px] leading-relaxed text-ink/75">{p.d}</p>
-          </li>
-        ))}
-      </ol>
-      <p className="mt-10 max-w-2xl text-[14px] leading-relaxed text-muted">
-        Entrar con Google es opcional: sirve para guardar tus citas y tu tarjeta de cortes, y solo usamos tu nombre, tu correo y tu foto.
-        Usar la app es gratis. Mira cómo tratamos tu información en la{" "}
-        <Link href="/privacidad" className="text-ink underline underline-offset-4">
-          política de privacidad
-        </Link>{" "}
-        y las reglas de reserva en los{" "}
-        <Link href="/terminos" className="text-ink underline underline-offset-4">
-          términos y condiciones
-        </Link>
-        .
-      </p>
-      <div data-cta className="mt-6 flex flex-wrap gap-3">
-        <Link href="/reservar?desde=app" className={PRIMARIO}>
-          Reservar mi cita
-        </Link>
-        <Link href="/cuenta" className={FANTASMA}>
-          Entrar a mi cuenta
-        </Link>
-      </div>
+      <PasosApp
+        pasos={PASOS}
+        cabeza={
+          <>
+            <h2 className={H2}>Así funciona la app</h2>
+            <p className="mt-5 max-w-[58ch] text-[16px] leading-relaxed text-ink/85">
+              Esta aplicación se llama <b className="text-ink">Barbas &amp; Bigotes</b> y es el sistema de reservas de nuestra barbería en
+              Barranquilla, Colombia. Con ella agendas tu cita por internet, miras tu historial de visitas y sigues tu tarjeta de cortes, sin
+              llamar ni esperar en el local. La desarrolla y opera Barbas &amp; Bigotes Barbershop.
+            </p>
+          </>
+        }
+        pie={
+          <>
+            <div data-cta className="flex flex-wrap gap-3">
+              <Link href="/reservar?desde=app" className={PRIMARIO}>
+                Reservar mi cita
+              </Link>
+              <Link href="/cuenta" className={FANTASMA}>
+                Entrar a mi cuenta
+              </Link>
+            </div>
+            <p className="mt-8 max-w-[62ch] border-t border-line pt-5 text-[13px] leading-relaxed text-muted">
+              Entrar con Google es opcional: sirve para guardar tus citas y tu tarjeta de cortes, y solo usamos tu nombre, tu correo y tu
+              foto. Usar la app es gratis. Mira cómo tratamos tu información en la{" "}
+              <Link href="/privacidad" className="text-ink underline underline-offset-4">
+                política de privacidad
+              </Link>{" "}
+              y las reglas de reserva en los{" "}
+              <Link href="/terminos" className="text-ink underline underline-offset-4">
+                términos y condiciones
+              </Link>
+              .
+            </p>
+          </>
+        }
+      />
     </section>
   );
 }

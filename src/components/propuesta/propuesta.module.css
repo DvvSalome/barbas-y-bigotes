@@ -344,15 +344,261 @@
 }
 
 /* ── Tira de cortes: la película ─────────────────────────────────────────── */
+/* La tira arranca alineada con el título (el contenedor de 72rem) pero corre
+   hasta el borde de la pantalla, y el imán respeta ese mismo margen. */
 .pelicula {
+  --margen: max(20px, calc((100% - 72rem) / 2 + 20px));
+  padding-inline: var(--margen);
+  scroll-padding-inline: var(--margen);
   scroll-snap-type: x mandatory;
   scrollbar-width: none;
+  outline: none;
 }
 .pelicula::-webkit-scrollbar {
   display: none;
 }
+.pelicula:focus-visible {
+  box-shadow: inset 0 0 0 2px var(--accent-soft);
+}
+@media (pointer: fine) {
+  .pelicula {
+    cursor: grab;
+  }
+}
+.pelicula[data-arrastre] {
+  scroll-snap-type: none;
+  cursor: grabbing;
+  user-select: none;
+}
 .fotograma {
   scroll-snap-align: start;
+}
+
+/* Los bordes se oscurecen solo del lado donde hay más fotos. */
+.carrusel {
+  position: relative;
+}
+.carrusel::before,
+.carrusel::after {
+  content: "";
+  position: absolute;
+  z-index: 1;
+  top: 0;
+  bottom: 8px;
+  width: clamp(32px, 9vw, 140px);
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+.carrusel::before {
+  left: 0;
+  background: linear-gradient(90deg, var(--bg), transparent);
+}
+.carrusel::after {
+  right: 0;
+  background: linear-gradient(270deg, var(--bg), transparent);
+}
+.carrusel[data-ini]::before,
+.carrusel[data-fin]::after {
+  opacity: 0;
+}
+/* Flechas: de tableta para arriba (en el celular se desliza con el dedo y la
+   foto siguiente asoma). Dos clases para ganarle al display de .bb-btn. */
+.carrusel .flecha {
+  position: absolute;
+  z-index: 2;
+  top: calc(50% - 4px);
+  translate: 0 -50%;
+  display: none;
+  width: 56px;
+  min-height: 56px;
+  box-shadow: 0 12px 30px -10px rgba(0, 0, 0, 0.8);
+}
+.carrusel .flecha svg {
+  width: 24px;
+  height: 24px;
+}
+.carrusel .flechaIzq {
+  left: clamp(16px, 3vw, 40px);
+}
+.carrusel .flechaDer {
+  right: clamp(16px, 3vw, 40px);
+}
+.carrusel .flecha:disabled {
+  opacity: 0;
+  pointer-events: none;
+}
+@media (min-width: 640px) {
+  .carrusel .flecha {
+    display: inline-flex;
+  }
+}
+
+/* ── Así funciona la app: los pasos y el teléfono ────────────────────────── */
+/* Celular: título → teléfono → pasos → botones (el teléfono pegado a los pasos
+   que lo cambian). Escritorio: el teléfono a la derecha, a lo alto. */
+.pasosApp {
+  display: grid;
+  gap: 36px;
+}
+.areaCabeza {
+  order: -2;
+}
+.telefonoLugar {
+  order: -1;
+}
+@media (min-width: 1024px) {
+  .pasosApp {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "cabeza telefono"
+      "pasos telefono"
+      "pie telefono";
+    column-gap: 96px;
+    row-gap: 32px;
+  }
+  .areaCabeza {
+    grid-area: cabeza;
+  }
+  .areaPasos {
+    grid-area: pasos;
+  }
+  .areaPie {
+    grid-area: pie;
+  }
+  .telefonoLugar {
+    grid-area: telefono;
+    align-self: center;
+  }
+}
+.paso {
+  position: relative;
+  padding-left: 18px;
+  border-left: 2px solid var(--line);
+  color: rgba(242, 237, 228, 0.42);
+  transition: color 0.3s ease;
+}
+.paso[data-activo] {
+  color: var(--ink);
+}
+.paso:not([data-activo]) button:hover {
+  color: rgba(242, 237, 228, 0.75);
+}
+.paso button:focus-visible {
+  outline: 2px solid var(--accent-soft);
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+/* La barrita roja que se llena en el paso activo: cuando termina, pasa al siguiente. */
+.avance {
+  position: absolute;
+  left: -2px;
+  top: 0;
+  width: 2px;
+  height: 100%;
+  background: var(--accent);
+  transform-origin: top;
+  animation: llenar 6s linear forwards;
+}
+.pasosApp[data-pausa] .avance,
+.pasosApp:hover .avance {
+  animation-play-state: paused;
+}
+@keyframes llenar {
+  from {
+    transform: scaleY(0);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}
+/* Sin avance automático (la persona tocó un paso): borde rojo fijo. */
+.paso[data-activo]:not(:has(.avance)) {
+  border-left-color: var(--accent);
+}
+.hex polygon {
+  fill: transparent;
+  stroke: currentColor;
+  transition: fill 0.3s ease, stroke 0.3s ease;
+}
+.paso[data-activo] .hex polygon {
+  fill: var(--accent);
+  stroke: var(--accent);
+}
+.pasoTexto {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.paso[data-activo] .pasoTexto {
+  grid-template-rows: 1fr;
+}
+
+.telefonoLugar {
+  position: relative;
+  display: grid;
+  place-items: center;
+}
+/* Resplandor rojo detrás, como la luz del local. */
+.telefonoLugar::before {
+  content: "";
+  position: absolute;
+  inset: 8% -10%;
+  background: radial-gradient(closest-side, rgba(210, 63, 52, 0.3), transparent);
+  filter: blur(24px);
+  pointer-events: none;
+}
+.telefono {
+  position: relative;
+  width: min(270px, 70vw);
+  padding: 10px;
+  border-radius: 46px;
+  background: #050505;
+  box-shadow:
+    inset 0 0 0 1px rgba(242, 237, 228, 0.16),
+    0 0 0 6px #1b1815,
+    0 0 0 7px rgba(242, 237, 228, 0.12),
+    0 40px 80px -30px rgba(0, 0, 0, 0.9);
+}
+@media (min-width: 1024px) {
+  .telefono {
+    width: 310px;
+  }
+}
+.isla {
+  position: absolute;
+  z-index: 2;
+  top: 18px;
+  left: 50%;
+  width: 28%;
+  height: 22px;
+  translate: -50% 0;
+  border-radius: 999px;
+  background: #000;
+}
+/* La barra de estado (con la isla) va aparte para no tapar el pantallazo. */
+.pantalla {
+  position: relative;
+  aspect-ratio: 390 / 890;
+  overflow: hidden;
+  border-radius: 36px;
+  background: var(--bg);
+}
+.vista {
+  position: absolute;
+  inset: 40px 0 0;
+}
+.captura {
+  object-fit: cover;
+  object-position: top;
+  opacity: 0;
+  transform: scale(1.03);
+  transition:
+    opacity 0.5s ease,
+    transform 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.captura[data-activo] {
+  opacity: 1;
+  transform: none;
 }
 
 /* ── La barra de reserva del celular: aparece cuando ningún CTA está a la vista ── */
@@ -394,7 +640,13 @@
   .nombre,
   .detalle,
   .elenco > li,
-  .barra {
+  .barra,
+  .captura,
+  .pasoTexto {
     transition: none !important;
+  }
+  /* Sin animación no hay avance automático: la barrita queda llena. */
+  .avance {
+    animation: none;
   }
 }

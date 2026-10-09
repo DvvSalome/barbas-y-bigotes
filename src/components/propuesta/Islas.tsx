@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useId, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { instanteBogota, fmtTime } from "@/lib/slots";
 import { textoCupo, horaParam, type Cupo, type RespuestaCupo } from "@/lib/cupo";
 import { textoEstado, textoHechos, COLOR_ESTADO, type RespuestaEstado } from "@/lib/estado-barbero";
@@ -9,8 +10,8 @@ import { supabaseBrowser } from "@/lib/supabase/client";
 import css from "./propuesta.module.css";
 
 /*
-  Las dos únicas islas de JavaScript de la propuesta (más el ícono de WhatsApp,
-  que vive acá para que lo compartan las secciones del servidor y la barra).
+  Las islas de JavaScript de la home (más el ícono de WhatsApp, que vive acá
+  para que lo compartan las secciones del servidor y la barra).
   Todo lo demás es HTML del servidor y CSS.
 */
 
@@ -270,5 +271,205 @@ export function EnlaceCupo({ base, barberoId, className, children }: { base: str
     <Link href={vigente(cupo) ? conCupo(base, cupo) : base} className={className}>
       {children}
     </Link>
+  );
+}
+
+const quietoPedido = () => window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+/**
+ * La tira de cortes. En el celular se desliza con el dedo (nativo); en PC tiene
+ * flechas, se arrastra con el mouse y responde a las flechas del teclado (la
+ * pista es enfocable). Las flechas se apagan en los extremos y la barra de abajo
+ * dice cuánto falta, para que nadie tenga que adivinar que hay más.
+ */
+export function Carrusel({ etiqueta, children }: { etiqueta: string; children: React.ReactNode }) {
+  const pista = useRef<HTMLUListElement>(null);
+  const arrastre = useRef<{ x: number; izq: number; movio: boolean } | null>(null);
+  const tragarClic = useRef(false);
+  const [pos, setPos] = useState({ ini: true, fin: false, p: 0, vista: 1 });
+  const id = useId();
+
+  const medir = () => {
+    const el = pista.current;
+    if (!el) return;
+    const max = el.scrollWidth - el.clientWidth;
+    setPos({ ini: el.scrollLeft < 8, fin: el.scrollLeft > max - 8, p: max > 0 ? el.scrollLeft / max : 0, vista: el.clientWidth / el.scrollWidth });
+  };
+  useEffect(() => {
+    medir();
+    window.addEventListener("resize", medir);
+    return () => window.removeEventListener("resize", medir);
+  }, []);
+
+  const mover = (dir: 1 | -1) => {
+    const el = pista.current;
+    if (el) el.scrollBy({ left: dir * el.clientWidth * 0.8, behavior: quietoPedido() ? "auto" : "smooth" });
+  };
+
+  // Arrastrar con el mouse (el dedo ya lo hace el navegador). Sin imán mientras
+  // se arrastra; al soltar vuelve el imán y la tira cae en una foto.
+  const soltar = () => {
+    const a = arrastre.current;
+    arrastre.current = null;
+    if (!a?.movio) return;
+    delete pista.current?.dataset.arrastre;
+    tragarClic.current = true;
+    setTimeout(() => (tragarClic.current = false), 0);
+  };
+
+  const flecha = (dir: 1 | -1) => (
+    <button
+      type="button"
+      onClick={() => mover(dir)}
+      disabled={dir < 0 ? pos.ini : pos.fin}
+      aria-controls={id}
+      aria-label={dir < 0 ? "Ver los cortes anteriores" : "Ver más cortes"}
+      className={`bb-btn bb-btn-fantasma bb-btn-redondo ${css.flecha} ${dir < 0 ? css.flechaIzq : css.flechaDer}`}
+    >
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+        <path d={dir < 0 ? "M15 5l-7 7 7 7" : "M9 5l7 7-7 7"} />
+      </svg>
+    </button>
+  );
+
+  return (
+    <div role="region" aria-roledescription="carrusel" aria-label={etiqueta}>
+      <div className={css.carrusel} data-ini={pos.ini || undefined} data-fin={pos.fin || undefined}>
+        <ul
+          ref={pista}
+          id={id}
+          tabIndex={0}
+          aria-label={`${etiqueta}: muévete con las flechas`}
+          onScroll={medir}
+          onDragStart={(e) => e.preventDefault()}
+          onPointerDown={(e) => {
+            if (e.pointerType === "mouse" && e.button === 0) arrastre.current = { x: e.clientX, izq: e.currentTarget.scrollLeft, movio: false };
+          }}
+          onPointerMove={(e) => {
+            const a = arrastre.current;
+            if (!a) return;
+            const dx = e.clientX - a.x;
+            if (!a.movio) {
+              if (Math.abs(dx) < 6) return;
+              a.movio = true;
+              e.currentTarget.dataset.arrastre = "";
+              e.currentTarget.setPointerCapture(e.pointerId);
+            }
+            e.currentTarget.scrollLeft = a.izq - dx;
+          }}
+          onPointerUp={soltar}
+          onPointerCancel={soltar}
+          onClickCapture={(e) => {
+            if (tragarClic.current) e.preventDefault();
+          }}
+          className={`${css.pelicula} flex gap-3 overflow-x-auto pb-2`}
+        >
+          {children}
+        </ul>
+        {flecha(-1)}
+        {flecha(1)}
+      </div>
+      <div className="mx-auto mt-5 max-w-6xl px-5" aria-hidden>
+        <div className="relative h-[3px] overflow-hidden rounded-full bg-line">
+          <span
+            className="absolute inset-y-0 rounded-full bg-accent"
+            style={{ width: `${pos.vista * 100}%`, left: `${pos.p * (1 - pos.vista) * 100}%` }}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Así funciona la app: tres pasos y un teléfono con la pantalla real de cada
+ * uno. Avanza solo mientras la sección está a la vista (la barrita del paso
+ * activo es una animación CSS; al terminar, pasa al siguiente). Si la persona
+ * toca un paso, manda ella y deja de avanzar solo. Con movimiento reducido no
+ * hay animación, así que tampoco avanza solo.
+ */
+export function PasosApp({
+  pasos,
+  cabeza,
+  pie,
+}: {
+  pasos: { t: string; d: string; img: string; alt: string }[];
+  cabeza: React.ReactNode;
+  pie: React.ReactNode;
+}) {
+  const [activo, setActivo] = useState(0);
+  const [auto, setAuto] = useState(true);
+  const [visible, setVisible] = useState(false);
+  const caja = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = caja.current;
+    if (!el) return;
+    // A la vista = algo de la sección cruza la franja del medio de la pantalla
+    // (con un umbral de proporción, en el celular la sección es más alta que la
+    // pantalla y nunca llegaba).
+    const io = new IntersectionObserver(([e]) => setVisible(e.isIntersecting), { rootMargin: "-30% 0px -30% 0px" });
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+
+  return (
+    <div ref={caja} className={css.pasosApp} data-pausa={!visible || undefined}>
+      <div className={css.areaCabeza}>{cabeza}</div>
+      {/* Un proceso de verdad, en orden: por eso lleva números. El hexágono es
+          la forma del techo del local. */}
+      <ol className={`${css.areaPasos} grid gap-1`}>
+        {pasos.map((p, i) => (
+          <li key={p.t} className={css.paso} data-activo={i === activo || undefined}>
+            {i === activo && auto && (
+              <span key={i} aria-hidden className={css.avance} onAnimationEnd={() => setActivo((i + 1) % pasos.length)} />
+            )}
+            <button
+              type="button"
+              aria-pressed={i === activo}
+              onClick={() => {
+                setActivo(i);
+                setAuto(false);
+              }}
+              className="flex min-h-14 w-full items-center gap-4 py-2 text-left"
+            >
+              <span aria-hidden className={`${css.hex} relative grid h-12 w-[54px] shrink-0 place-items-center`}>
+                <svg viewBox="0 0 64 56" className="absolute inset-0 h-full w-full">
+                  <polygon points="16,2 48,2 62,28 48,54 16,54 2,28" strokeWidth="2" />
+                </svg>
+                <span className="relative font-display text-[20px] font-bold">{i + 1}</span>
+              </span>
+              <span className="font-display text-[26px] font-bold uppercase leading-none sm:text-[30px]">{p.t}</span>
+            </button>
+            <div className={css.pasoTexto}>
+              <div className="overflow-hidden">
+                <p className="max-w-[44ch] pb-4 pl-[70px] text-[15px] leading-relaxed text-ink/80">{p.d}</p>
+              </div>
+            </div>
+          </li>
+        ))}
+      </ol>
+      <div className={css.areaPie}>{pie}</div>
+
+      <div className={css.telefonoLugar}>
+        <div className={css.telefono}>
+          <span aria-hidden className={css.isla} />
+          <div className={css.pantalla}>
+            <div className={css.vista}>
+              {pasos.map((p, i) => (
+                <Image
+                  key={p.img}
+                  src={p.img}
+                  alt={i === activo ? p.alt : ""}
+                  fill
+                  sizes="(min-width: 1024px) 300px, 250px"
+                  className={css.captura}
+                  data-activo={i === activo || undefined}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
