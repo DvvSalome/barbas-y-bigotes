@@ -1,7 +1,11 @@
 // GET /api/cupo — el próximo cupo online de cada barbero y de cada sede, para
 // los chips de la home. Calculado en el servidor con las mismas reglas que el
-// wizard (src/lib/cupo.ts) y cacheado 60 s: la home es ISR de 10 min, y un cupo
-// de hace 10 minutos ya puede estar tomado.
+// wizard (src/lib/cupo.ts).
+//
+// Dinámica a propósito, con 30 s de caché en el CDN. Era ISR (`revalidate`) y
+// Next le pone stale-while-revalidate de UN AÑO: con poco tráfico, el primer
+// visitante recibía un cálculo de horas atrás, el navegador lo descartaba por
+// viejo y la home mostraba "Ver sus horas libres" sin cupo ni hora (8-oct).
 //
 // Solo expone ids de barbero y sede, fecha y minuto: nada de clientes ni de qué
 // servicio está en curso. Lee con service role porque anónimo no tiene política
@@ -10,7 +14,7 @@ import { supabaseAdmin } from "@/lib/supabase/server";
 import { bogotaYmd, finEfectivo, type HorarioDia, type ExcepcionDia } from "@/lib/slots";
 import { proximoCupo, sumarDias, DIAS_CUPO, type Cupo, type Ocupado, type RespuestaCupo } from "@/lib/cupo";
 
-export const revalidate = 60;
+export const dynamic = "force-dynamic";
 
 type CupoBarbero = RespuestaCupo["barberos"][number];
 
@@ -109,5 +113,12 @@ export async function GET() {
   }
 
   const salida: RespuestaCupo = { generado: new Date(ahoraMs).toISOString(), hoy, duracionMin, barberos, sedes, mejor };
-  return Response.json(salida, { headers: { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300" } });
+  return Response.json(salida, {
+    headers: {
+      // El navegador no guarda; el CDN de Vercel sí, 30 s (y a lo sumo 30 más
+      // mientras recalcula): el dato nunca pasa de un minuto.
+      "Cache-Control": "public, max-age=0, must-revalidate",
+      "CDN-Cache-Control": "public, s-maxage=30, stale-while-revalidate=30",
+    },
+  });
 }

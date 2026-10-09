@@ -113,18 +113,22 @@ export function BarraReserva({ whatsapp }: { whatsapp: string }) {
 let promesaCupo: Promise<RespuestaCupo | null> | null = null;
 const CUPO_FRESCO_MS = 10 * 60_000;
 
+const pedirCupo = (url: string) =>
+  fetch(url)
+    .then((r) => (r.ok ? (r.json() as Promise<RespuestaCupo>) : null))
+    .catch(() => null);
+const fresco = (d: RespuestaCupo | null) => !!d && Date.now() - Date.parse(d.generado) < CUPO_FRESCO_MS;
+
 function useCupo(): RespuestaCupo | null | undefined {
   const [datos, setDatos] = useState<RespuestaCupo | null | undefined>(undefined);
   useEffect(() => {
-    promesaCupo ??= fetch("/api/cupo")
-      .then((r) => (r.ok ? (r.json() as Promise<RespuestaCupo>) : null))
-      .catch(() => null);
+    // Un cupo viejo es una promesa rota: si lo que llega tiene más de 10 min (un
+    // caché intermedio, o el service worker sin red), se pide una vez saltándose
+    // el caché; si tampoco sirve, como si no hubiera.
+    promesaCupo ??= pedirCupo("/api/cupo").then((d) => (fresco(d) ? d : pedirCupo(`/api/cupo?t=${Date.now()}`)));
     let vivo = true;
     promesaCupo.then((d) => {
-      if (!vivo) return;
-      // El service worker sirve /api/ NetworkFirst: sin red puede llegar viejo, y
-      // un cupo viejo es una promesa rota. Más de 10 min → como si no hubiera.
-      setDatos(d && Date.now() - Date.parse(d.generado) < CUPO_FRESCO_MS ? d : null);
+      if (vivo) setDatos(fresco(d) ? d : null);
     });
     return () => {
       vivo = false;

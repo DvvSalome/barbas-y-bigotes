@@ -13,6 +13,12 @@ import type { BebidaUpsell, Ausencia, DiaEspecial, HorarioSemanal } from "@/lib/
 import { cop } from "@/lib/format";
 import { ScissorsIcon, CategoriaIcon, StarIcon } from "@/components/icons";
 import { DOW, MON, STEP, OPEN, CLOSE, fmtTime, slotsDisponibles, horarioEfectivo, instanteBogota, type VentanaDia } from "@/lib/slots";
+import css from "./BookingWizard.module.css";
+
+// "Corte (clásico, degradado, tijera o niño)" → nombre "Corte" y detalle aparte,
+// como en la carta de la home.
+const nombreCorto = (n: string) => n.split(" (")[0];
+const detalleNombre = (n: string) => n.match(/\(([^)]+)\)/)?.[1] ?? "";
 
 // YYYY-MM-DD de un Date por sus componentes LOCALES (mismo criterio con que se
 // rotulan los chips de día); horarioEfectivo lo re-ancla a mediodía UTC para el dow.
@@ -200,6 +206,16 @@ export function BookingWizard({
     return conServicios.includes("cortes") ? "cortes" : (conServicios[0] ?? "cortes");
   });
   const [barbero, setBarbero] = useState<Barbero | null>(initialBarbero);
+  // Llegó con barbero elegido (la tarjeta "Reservar con Jhon" de la home, la de
+  // /barberos, una carita del hero): el paso "Elige tu barbero" se salta. Antes
+  // aparecía con él ya marcado y el cliente tenía que volver a elegirlo, que el
+  // dueño (con razón) llamó contraintuitivo. Deja de saltarse si toca "Cambiar"
+  // o cambia de sede.
+  const [barberoFijo, setBarberoFijo] = useState(!!initialBarbero);
+  const saltaBarbero = barberoFijo && !!barbero;
+  // Servicio que se está eligiendo: el rojo llena la fila y el asistente sigue solo.
+  const [eligiendo, setEligiendo] = useState<string | null>(null);
+  const eligiendoRef = useRef(false);
   // "Cualquier barbero" explícito: distingue "aún no eligió nada" (ninguna
   // tarjeta marcada) de "eligió que le asignemos el primero libre" (la tarjeta
   // Cualquiera marcada). Antes la única pista era una frase del subtítulo.
@@ -375,8 +391,10 @@ export function BookingWizard({
     if (idx > marcaRef.current) {
       // Una entrada POR PASO, aunque el wizard salte varios de golpe (la
       // reanudación tras el login de Google va directo al paso 5): así el Atrás
-      // sigue volviendo de a uno.
+      // sigue volviendo de a uno. El paso del barbero, cuando se salta, no deja
+      // entrada: el Atrás desde "Día y hora" vuelve directo a "Servicio".
       for (let i = marcaRef.current + 1; i <= idx; i++) {
+        if (i < idx && ORDEN[i] === "barbero" && saltaBarbero) continue;
         window.history.pushState({ ...window.history.state, [HIST_MARCA]: i }, "");
       }
     } else {
@@ -386,7 +404,7 @@ export function BookingWizard({
       if (idx < pisoRef.current) pisoRef.current = idx;
     }
     marcaRef.current = idx;
-  }, [step]);
+  }, [step, saltaBarbero]);
 
   // Atrás / Adelante del navegador → un paso del wizard, sin perder lo elegido.
   useEffect(() => {
@@ -742,7 +760,16 @@ export function BookingWizard({
   const emailValido = EMAIL_RE.test(email.trim());
   const datosValidos = sesion ? true : nombre.trim().length > 0 && emailValido;
 
-  const paso = (ORDEN.indexOf(step as Exclude<Step, "ok">) + 1) as number;
+  // Los pasos que de verdad ve el cliente: con el barbero fijo son 4, no 5.
+  const salta = (p: Step) => p === "barbero" && saltaBarbero;
+  const pasosVisibles = ORDEN.filter((p) => !salta(p));
+  const paso = pasosVisibles.indexOf(step) + 1;
+  const totalPasos = pasosVisibles.length;
+  const siguientePaso = (desde: Step): Step => {
+    let i = ORDEN.indexOf(desde) + 1;
+    while (i < ORDEN.length - 1 && salta(ORDEN[i])) i++;
+    return ORDEN[i];
+  };
 
   // Volver un paso. Si esa entrada existe en el historial se vuelve POR ÉL (el
   // paso lo cambia el popstate): así la flecha del header y el Atrás del
@@ -753,8 +780,77 @@ export function BookingWizard({
       router.push("/");
       return;
     }
-    if (idx > pisoRef.current) window.history.back();
-    else setStep(ORDEN[idx - 1]);
+    if (idx > pisoRef.current) {
+      window.history.back();
+      return;
+    }
+    let ant = idx - 1;
+    while (ant > 0 && salta(ORDEN[ant])) ant--;
+    setStep(ORDEN[ant]);
+  }
+
+  // Ir a un paso anterior desde un atajo ("Cambiar"). Si su entrada está en el
+  // historial se vuelve por él (cuántas entradas = pasos no saltados entre los
+  // dos); si no (llegó por enlace directo a ese paso), se reemplaza la actual.
+  function irAPaso(destino: Step) {
+    const actual = ORDEN.indexOf(step as Exclude<Step, "ok">);
+    const meta = ORDEN.indexOf(destino);
+    if (!salta(destino) && meta >= pisoRef.current && meta < actual) {
+      let n = 0;
+      for (let i = meta + 1; i <= actual; i++) if (!salta(ORDEN[i])) n++;
+      if (n > 0) {
+        window.history.go(-n);
+        return;
+      }
+    }
+    setStep(destino);
+  }
+
+  function cambiarBarbero() {
+    irAPaso("barbero");
+    setBarberoFijo(false);
+  }
+
+  // Un toque: elegir el servicio Y seguir. El rojo llena la fila (360 ms) y el
+  // asistente avanza solo — antes eran dos clics (tarjeta + "Continuar"), y en
+  // PC el dueño lo quería más instantáneo. Con "reducir movimiento", sin espera.
+  function elegirServicio(s: Servicio) {
+    if (eligiendoRef.current) return;
+    const mismo = servicio?.id === s.id;
+    if (!mismo) {
+      setServicio(s);
+      setServicioFoto(s.fotoUrl ?? "");
+      setSlot(null);
+      // Reset del upsell: si venías de un combo con bebida incluida y cambias a
+      // otro servicio, no arrastres la bebida (se regalaba gratis).
+      setBebida(null);
+      setBebidaIncluida(false);
+    }
+    const esComboBebida = s.nombre.toLowerCase().includes("bebida");
+    const conUpsell = (!mismo || !upsellSeen) && bebidasSede.length > 0 && (esComboBebida ? COMBO_ON : UPSELL_ON);
+    const saltar = saltaBarbero;
+    const seguir = () => {
+      eligiendoRef.current = false;
+      setEligiendo(null);
+      if (conUpsell) {
+        setUpsellMode(esComboBebida ? "combo" : "extra");
+        setUpsellSeen(true);
+        return;
+      }
+      setStep(saltar ? "horario" : "barbero");
+    };
+    eligiendoRef.current = true;
+    setEligiendo(s.id);
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) seguir();
+    else window.setTimeout(seguir, 360);
+  }
+
+  // Un toque también para el barbero: elegirlo es seguir.
+  function elegirBarbero(b: Barbero | null) {
+    if ((b?.id ?? null) !== (barbero?.id ?? null)) setSlot(null);
+    setBarbero(b);
+    setCualquierBarbero(!b);
+    setStep("horario");
   }
 
   const puedeContinuar =
@@ -784,7 +880,7 @@ export function BookingWizard({
           return;
         }
       }
-      setStep("barbero");
+      setStep(siguientePaso("servicio"));
       return;
     }
     if (step === "datos") {
@@ -797,15 +893,14 @@ export function BookingWizard({
       abrirRevision();
       return;
     }
-    const idx = ORDEN.indexOf(step as Exclude<Step, "ok">);
-    setStep(ORDEN[idx + 1]);
+    setStep(siguientePaso(step));
   }
 
   function elegirBebida(b: Bebida | null) {
     setBebida(b);
     setBebidaIncluida(upsellMode === "combo" && !!b);
     setUpsellMode(null);
-    setStep("barbero");
+    setStep(siguientePaso("servicio"));
   }
 
   // Login con Google desde el paso datos: guarda el snapshot del wizard y va al
@@ -1191,16 +1286,18 @@ export function BookingWizard({
         <div className="min-w-0 flex-1">
           <div className="font-display text-[22px] font-extrabold uppercase leading-none">Reserva tu turno</div>
           <div className="mt-0.5 text-[11.5px] text-muted">
-            Paso {paso} de 5 · {TITULOS[step as Exclude<Step, "ok">]}
+            Paso {paso} de {totalPasos} · {TITULOS[step as Exclude<Step, "ok">]}
           </div>
         </div>
-        <div className="font-display text-[18px] font-extrabold tabular-nums text-accent-soft">{paso}/5</div>
+        <div className="font-display text-[18px] font-extrabold tabular-nums text-accent-soft">
+          {paso}/{totalPasos}
+        </div>
       </header>
 
       {/* Barra de progreso */}
       <div className="shrink-0 px-4 pt-2 md:px-14">
         <div className="h-[3px] w-full overflow-hidden rounded-full bg-[rgba(242,237,228,0.08)]">
-          <div className="h-full rounded-full transition-all duration-300" style={{ width: `${paso * 20}%`, background: "linear-gradient(90deg,#e8675c,#d23f34)" }} />
+          <div className="h-full rounded-full transition-all duration-300" style={{ width: `${(paso / totalPasos) * 100}%`, background: "linear-gradient(90deg,#e8675c,#d23f34)" }} />
         </div>
       </div>
 
@@ -1228,8 +1325,11 @@ export function BookingWizard({
                   <button
                     key={s.id}
                     onClick={() => {
+                      if (s.id !== sedeId) {
+                        setBarbero(null);
+                        setBarberoFijo(false);
+                      }
                       setSedeId(s.id);
-                      setBarbero(null);
                     }}
                     className={`relative h-[130px] w-full overflow-hidden rounded-2xl text-left md:h-[300px] ${info.frente ? "bb-foto-skeleton" : "bg-elevated"}`}
                     style={{ border: `2px solid ${sel ? "#d23f34" : "rgba(242,237,228,.12)"}` }}
@@ -1257,25 +1357,70 @@ export function BookingWizard({
         )}
 
         {/* ---------- Paso 2 · Servicio ---------- */}
+        {/* La carta (8-oct): en escritorio, título + barbero + categorías a la
+            izquierda y los servicios a la derecha; en el celular, apilado, con las
+            categorías en una fila que se desliza. Un toque elige y sigue. */}
         {step === "servicio" && (
-          <div>
-            <h2 className="font-display text-[26px] font-extrabold uppercase leading-none">¿Qué servicio?</h2>
-            {/* Contexto de sede (y barbero si vino elegido). Sin esto, quien entra
-                desde "Reservar con Kevin" en /barberos aterriza acá y la pantalla
-                no nombra ni al barbero ni la sede: no sabe si su eleccion quedó,
-                ni en qué local reserva, y los precios cambian entre sedes.
-                Mismo formato que el subtítulo del paso 3. */}
-            <p className="mt-1.5 text-xs text-muted">
-              {sedeNombre}
-              {barbero ? ` · con ${barbero.nombre}` : ""}
-            </p>
-            <div className="mb-2 mt-5 text-[10px] font-bold uppercase tracking-[0.24em] text-accent-soft">Categorías</div>
+          <div className="lg:grid lg:grid-cols-[300px_minmax(0,1fr)] lg:items-start lg:gap-12">
+            <div className="lg:sticky lg:top-0">
+              <h2 className="font-display text-[26px] font-extrabold uppercase leading-none lg:text-[34px]">¿Qué servicio?</h2>
+              {/* Con quién y dónde reserva. Sin esto, quien entra desde "Reservar
+                  con Kevin" no sabe si su elección quedó, ni en qué local (los
+                  precios cambian entre sedes). Con barbero va su foto a color y el
+                  atajo para cambiarlo, porque el paso del barbero se salta. */}
+              {barbero ? (
+                <div className={css.contexto}>
+                  <span className={css.contextoFoto}>
+                    <Image
+                      src={barbero.fotoUrl || "/barberos/generico.jpg"}
+                      alt=""
+                      fill
+                      sizes="(max-width:1023px) 52px, 84px"
+                      className="object-cover object-top"
+                    />
+                  </span>
+                  <span className="flex min-w-0 flex-1 flex-col justify-center">
+                    <span className="block text-[11.5px] font-semibold text-muted">Reservas con</span>
+                    <span className="block truncate font-display text-[24px] font-extrabold uppercase leading-none text-ink lg:text-[30px]">
+                      {barbero.nombre.split(" ")[0]}
+                    </span>
+                    <span className="mt-1 block truncate text-[12.5px] text-ink/75">{sedeNombre}</span>
+                    {/* En PC va debajo de la sede (al lado se comía el nombre). */}
+                    <button type="button" onClick={cambiarBarbero} className={`${css.cambiar} ${css.cambiarPc}`}>
+                      Cambiar barbero
+                    </button>
+                  </span>
+                  <button type="button" onClick={cambiarBarbero} className={`${css.cambiar} ${css.cambiarMovil}`}>
+                    Cambiar
+                  </button>
+                </div>
+              ) : (
+                <p className="mt-1.5 text-xs text-muted">{sedeNombre}</p>
+              )}
+              {/* Escritorio: las categorías en un riel vertical. */}
+              <div className={css.riel} role="group" aria-label="Categorías">
+                {cats.map((cat) => (
+                  <button
+                    key={cat}
+                    type="button"
+                    aria-pressed={selectedCat === cat}
+                    onClick={() => setSelectedCat(cat)}
+                    className={css.cat}
+                  >
+                    {categorias[cat]}
+                    <span className={css.catN}>{serviciosSede.filter((x) => x.categoria === cat).length}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
             {/* MÓVIL: fila que se desliza. Las 7 categorías en grilla 2x4 medían
                 200px y empujaban los servicios abajo del pliegue: en un iPhone SE
                 no entraba NI UNA card de servicio completa (medido). En fila son
                 ~56px. DESKTOP mantiene la grilla del proto (§6.4), donde entran
                 de sobra. Los chips no cambian de estilo, solo de acomodo. */}
-            <div className="relative">
+            <div className="relative mt-5 lg:hidden">
               <div className="scroll-x-limpio -mx-4 flex snap-x snap-mandatory gap-2 overflow-x-auto px-4 pb-1 md:mx-0 md:grid md:snap-none md:grid-cols-[repeat(auto-fit,minmax(230px,1fr))] md:overflow-visible md:px-0 md:pb-0">
                 {cats.map((cat) => {
                   const activa = selectedCat === cat;
@@ -1305,83 +1450,78 @@ export function BookingWizard({
               />
             </div>
 
-            <div className="mb-3 mt-6 flex items-center justify-between">
-              <span className="text-[10px] font-bold uppercase tracking-[0.24em] text-accent-soft">Servicios disponibles</span>
-              <span className="text-[11px] text-muted">{serviciosCat.length} opciones</span>
-            </div>
+              <div className="mb-3 mt-6 flex items-baseline justify-between lg:mt-1">
+                <h3 className="font-display text-[20px] font-bold uppercase leading-none text-ink">{categorias[selectedCat]}</h3>
+                <span className="text-[12px] text-muted">{serviciosCat.length} opciones</span>
+              </div>
 
-            {/* Vacío explícito: la grilla sin filas parecía una pantalla rota. */}
-            {serviciosCat.length === 0 && (
-              <p className="rounded-xl border border-line bg-panel px-4 py-3 text-sm text-muted">
-                No hay servicios en esta categoría. Mira las otras categorías de arriba.
-              </p>
-            )}
+              {/* Vacío explícito: la lista sin filas parecía una pantalla rota. */}
+              {serviciosCat.length === 0 && (
+                <p className="rounded-xl border border-line bg-panel px-4 py-3 text-sm text-muted">
+                  No hay servicios en esta categoría. Mira las otras categorías.
+                </p>
+              )}
 
-            <div className="grid grid-cols-2 gap-[9px] md:grid-cols-[repeat(auto-fill,minmax(160px,190px))] md:justify-center md:gap-3">
-              {serviciosCat
-                .map((s) => {
-                  const sel = servicio?.id === s.id;
-                  const foto = s.fotoUrl ?? null;
-                  const precio = sedeId ? s.precios[sedeId] : s.precios["parque-venezuela"];
+              <ul className={css.carta}>
+                {serviciosCat.map((sv) => {
+                  const sel = servicio?.id === sv.id;
+                  const precio = sedeId ? sv.precios[sedeId] : sv.precios["parque-venezuela"];
+                  // Qué incluye: lo de entre paréntesis del nombre y la descripción.
+                  const det = [detalleNombre(sv.nombre), sv.descripcion, sv.fotoUrl ? `${sv.duracionMin} min` : null]
+                    .filter(Boolean)
+                    .join(" · ");
                   return (
-                    <button
-                      key={s.id}
-                      onClick={() => {
-                        setServicio(s);
-                        setServicioFoto(foto ?? "");
-                        setSlot(null);
-                        // Reset del upsell: si venías de un combo con bebida incluida y
-                        // cambias a otro servicio, no arrastres la bebida (se regalaba
-                        // gratis) y re-evalúa el upsell con el servicio nuevo.
-                        setBebida(null);
-                        setBebidaIncluida(false);
-                        setUpsellSeen(false);
-                      }}
-                      className="flex flex-col overflow-hidden rounded-xl text-left"
-                      style={{ border: `2px solid ${sel ? "#d23f34" : "rgba(242,237,228,.1)"}` }}
-                    >
-                      <div className={`relative aspect-[4/3] w-full overflow-hidden md:aspect-[3/2] ${foto ? "bb-foto-skeleton" : ""}`}>
-                        {foto ? (
-                          <Image src={foto} alt="" fill sizes="(max-width:768px) 50vw, 240px" className="object-cover" />
+                    <li key={sv.id}>
+                      <button
+                        type="button"
+                        onClick={() => elegirServicio(sv)}
+                        aria-pressed={sel}
+                        data-sel={sel ? "" : undefined}
+                        data-eligiendo={eligiendo === sv.id ? "" : undefined}
+                        className={css.fila}
+                      >
+                        {sv.fotoUrl ? (
+                          <span className={css.thumb}>
+                            <Image src={sv.fotoUrl} alt="" fill sizes="50px" />
+                          </span>
                         ) : (
-                          // Sin foto real no se inventa una: fondo neutro con tijera.
-                          <span className="absolute inset-0 flex items-center justify-center bg-elevated text-muted/50" aria-hidden><CategoriaIcon categoria={s.categoria} className="h-9 w-9" /></span>
+                          <span className={css.dur}>
+                            <span className={css.durN}>{sv.duracionMin}</span>
+                            <span className={css.durU}>min</span>
+                          </span>
                         )}
-                        <span
-                          className="absolute bottom-1.5 left-1.5 flex items-center gap-1 rounded-[5px] px-2 py-0.5 font-display text-[11px] font-extrabold text-white"
-                          style={{ background: "rgba(5,4,3,.85)" }}
-                        >
-                          <RelojIcon />
-                          {durBadge(s.duracionMin)}
+                        <span className="min-w-0">
+                          <span className={css.nombre}>{nombreCorto(sv.nombre)}</span>
+                          {det && <span className={css.detalle}>{det}</span>}
                         </span>
-                        {sel && (
-                          <span className="absolute right-1.5 top-1.5 flex h-[21px] w-[21px] items-center justify-center rounded-full bg-accent text-[11px] font-extrabold text-on-accent">✓</span>
-                        )}
-                      </div>
-                      <div className="px-2.5 pb-1 pt-2.5">
-                        <div className="min-h-[34px] text-[12.5px] font-bold leading-tight text-ink">{s.nombre}</div>
-                        {/* Qué incluye: sin esto el cliente decidía solo con el nombre. */}
-                        {s.descripcion && (
-                          <div className="mt-0.5 text-[10.5px] leading-snug text-muted">{s.descripcion}</div>
-                        )}
-                      </div>
-                      <div className="mt-auto flex items-center justify-between border-t border-[rgba(242,237,228,0.07)] px-2.5 py-2">
-                        <span className="text-[9.5px] font-bold uppercase tracking-[0.12em] text-muted">Precio</span>
                         {/* "desde": el precio abierto no se disfraza de cerrado. */}
-                        <span className="font-display text-[17px] font-extrabold tabular-nums text-accent-soft">
+                        <span className={css.precio}>
                           {precio != null ? (
                             <>
-                              {s.desde && <span className="mr-1 text-[10px] font-bold text-muted">desde</span>}
+                              {sv.desde && <span className={css.desde}>desde</span>}
                               {cop(precio)}
                             </>
                           ) : (
                             "—"
                           )}
                         </span>
-                      </div>
-                    </button>
+                        <svg
+                          viewBox="0 0 24 24"
+                          className={css.flecha}
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2.2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          aria-hidden
+                        >
+                          <path d="M9 6l6 6-6 6" />
+                        </svg>
+                      </button>
+                    </li>
                   );
                 })}
+              </ul>
             </div>
           </div>
         )}
@@ -1397,10 +1537,8 @@ export function BookingWizard({
                     era el subtítulo y Continuar sin elegir funcionaba en silencio.
                     Marcada = barbero null Y el cliente la tocó (cualquierBarbero). */}
                 <button
-                  onClick={() => {
-                    setBarbero(null);
-                    setCualquierBarbero(true);
-                  }}
+                  type="button"
+                  onClick={() => elegirBarbero(null)}
                   className={`relative flex aspect-[3/3.6] flex-col items-center justify-center gap-3 overflow-hidden rounded-[14px] border-2 px-3 text-center transition duration-200 md:hover:-translate-y-1 ${
                     !barbero && cualquierBarbero ? "border-accent" : "border-line md:hover:border-accent/40"
                   }`}
@@ -1440,11 +1578,9 @@ export function BookingWizard({
                   return (
                     <button
                       key={b.id}
-                      onClick={() => {
-                        setBarbero(sel ? null : b);
-                        // Elegir (o soltar) un barbero concreto desmarca "Cualquiera".
-                        setCualquierBarbero(false);
-                      }}
+                      type="button"
+                      // Un toque: elegir al barbero es seguir a "Día y hora".
+                      onClick={() => elegirBarbero(b)}
                       className={`group relative aspect-[3/3.6] overflow-hidden rounded-[14px] border-2 text-left transition duration-200 md:hover:-translate-y-1 ${
                         sel ? "border-accent" : "border-line md:hover:border-accent/40"
                       }`}
@@ -1509,6 +1645,29 @@ export function BookingWizard({
         {step === "horario" && servicio && (
           <div>
             <h2 className="font-display text-[26px] font-extrabold uppercase leading-none">¿Cuándo pasas?</h2>
+            {/* Lo que ya eligió, con atajo a cambiarlo. Llegando por un enlace
+                directo (el cupo de la home) este es el primer paso que ve: sin
+                esto no sabría que el corte ya quedó elegido ni cómo cambiarlo. */}
+            <div className={css.resumen}>
+              <button type="button" onClick={() => irAPaso("servicio")} className={css.chip}>
+                <span className={css.chipIcono} aria-hidden>
+                  <ScissorsIcon className="h-4 w-4" />
+                </span>
+                <span className="truncate">{nombreCorto(servicio.nombre)}</span>
+                <span className={css.chipCambiar}>Cambiar</span>
+              </button>
+              <button type="button" onClick={cambiarBarbero} className={css.chip}>
+                <span className={css.chipIcono} aria-hidden>
+                  {barbero ? (
+                    <Image src={barbero.fotoUrl || "/barberos/generico.jpg"} alt="" fill sizes="32px" className="object-cover object-top" />
+                  ) : (
+                    <ScissorsIcon className="h-4 w-4" />
+                  )}
+                </span>
+                <span className="truncate">{barbero ? `Con ${barbero.nombre.split(" ")[0]}` : "Cualquier barbero"}</span>
+                <span className={css.chipCambiar}>Cambiar</span>
+              </button>
+            </div>
 
             {errorMsg && (
               <div className="mt-4 rounded-xl border border-accent/40 bg-accent/10 px-4 py-3 text-sm text-accent-soft">{errorMsg}</div>
