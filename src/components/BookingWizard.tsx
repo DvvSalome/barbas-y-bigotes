@@ -14,6 +14,7 @@ import { cop } from "@/lib/format";
 import { ScissorsIcon, CategoriaIcon, StarIcon } from "@/components/icons";
 import { DOW, MON, STEP, OPEN, CLOSE, fmtTime, slotsDisponibles, horarioEfectivo, instanteBogota, type VentanaDia } from "@/lib/slots";
 import css from "./BookingWizard.module.css";
+import { textoEstado, textoHechos, COLOR_ESTADO, type EstadoBarbero, type RespuestaEstado } from "@/lib/estado-barbero";
 
 // "Corte (clásico, degradado, tijera o niño)" → nombre "Corte" y detalle aparte,
 // como en la carta de la home.
@@ -253,8 +254,12 @@ export function BookingWizard({
   // cuenta (el server usa el email de la sesión) y el paso datos no pide correo.
   const [sesion, setSesion] = useState<{ nombre: string; email: string; foto: string | null } | null>(null);
   // "Ahora" estable por montaje: evita llamar Date.now() en render (regla de pureza
-  // del React Compiler). El estado en vivo del barbero se refresca con statusHoy.
+  // del React Compiler). El estado en vivo del barbero llega de /api/estado.
   const [ahora] = useState(() => Date.now());
+  // Sube con cada aviso público de "cambió la agenda de esta sede" (0080).
+  const [version, setVersion] = useState(0);
+  // Refresco silencioso de la grilla (sin el esqueleto de carga).
+  const refrescarRef = useRef<() => void>(() => {});
   // El cuerpo scrollea por dentro (<main overflow-y-auto>), no la ventana, y es el
   // MISMO nodo en los 5 pasos: al cambiar de paso conserva el scroll anterior.
   // Avanzando casi no se nota (el paso siguiente suele ser más corto y el navegador
@@ -278,7 +283,9 @@ export function BookingWizard({
   const [ocupadosDia, setOcupadosDia] = useState<Record<string, { inicio: string; fin: string }[]>>({});
   const [cargandoSlots, setCargandoSlots] = useState(false);
   // Ocupación de HOY, por barbero (estado en vivo del paso 3).
-  const [statusHoy, setStatusHoy] = useState<Record<string, { inicio: string; fin: string }[]>>({});
+  // Estado en vivo de cada barbero (de /api/estado): qué hace ahora y cuántos
+  // cortes lleva hoy. Vacío mientras carga.
+  const [estadoVivo, setEstadoVivo] = useState<Record<string, EstadoBarbero>>({});
 
   const sedeBarberos = useMemo(() => barberos.filter((b) => b.sede === sedeId), [barberos, sedeId]);
   const sedeNombre = sedes.find((s) => s.id === sedeId)?.nombre ?? "—";
@@ -341,11 +348,6 @@ export function BookingWizard({
   const ventanaDia = useMemo<VentanaDia>(
     () => (day ? horarioEfectivo(ymdLocal(day), semanalSede, especialesSede) : { abierta: false, abreMin: OPEN, cierraMin: CLOSE }),
     [day, semanalSede, especialesSede],
-  );
-  // Ventana de HOY: para el chip "en vivo" del paso 3 (barbero libre / fuera de horario).
-  const ventanaHoy = useMemo<VentanaDia>(
-    () => horarioEfectivo(ymdLocal(new Date(ahora)), semanalSede, especialesSede),
-    [semanalSede, especialesSede, ahora],
   );
 
   // Turnos ofrecidos: la grilla MÁS el instante en que se desocupa una silla, para
@@ -626,40 +628,65 @@ export function BookingWizard({
       .finally(() => {
         if (!cancel) setCargandoSlots(false);
       });
-    // Realtime: cualquier reserva de esta sede re-consulta la disponibilidad.
-    const sb = supabaseBrowser();
-    const sub = sb
-      .channel(`wizard-${sedeId}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "reservas", filter: `sede_id=eq.${sedeId}` }, () => {
-        fetchAll();
-      })
-      .subscribe();
+    // Tiempo real: lo dispara el aviso público de la sede (efecto de abajo). El
+    // sondeo de 30 s queda de respaldo por si el canal se cae.
+    refrescarRef.current = () => {
+      fetchAll().catch(() => {});
+    };
     const poll = setInterval(fetchAll, 30000);
     return () => {
       cancel = true;
-      sb.removeChannel(sub);
+      refrescarRef.current = () => {};
       clearInterval(poll);
     };
   }, [day, sedeId, barbero, sedeBarberos]);
 
-  // Estado en vivo del paso 3: ocupación de HOY de los barberos de la sede.
+  // Aviso público "cambió la agenda de esta sede" (migración 0080). Antes el
+  // asistente se suscribía a `reservas` directo, pero el público no puede leer
+  // esa tabla (tiene clientes) y Realtime respeta esa regla: nunca le llegaba
+  // nada. Este canal solo trae sede + barbero; la disponibilidad se vuelve a
+  // pedir por el camino de siempre. También al volver a la pestaña.
   useEffect(() => {
-    if (step !== "barbero" || !sedeBarberos.length) return;
+    if (!sedeId) return;
+    const sb = supabaseBrowser();
+    const canal = sb
+      .channel(`disponibilidad:${sedeId}`)
+      .on("broadcast", { event: "cambio" }, () => setVersion((v) => v + 1))
+      .subscribe();
+    const alVolver = () => {
+      if (document.visibilityState === "visible") setVersion((v) => v + 1);
+    };
+    document.addEventListener("visibilitychange", alVolver);
+    return () => {
+      sb.removeChannel(canal);
+      document.removeEventListener("visibilitychange", alVolver);
+    };
+  }, [sedeId]);
+  useEffect(() => {
+    if (version > 0) refrescarRef.current();
+  }, [version]);
+
+  // Estado en vivo del paso 3: ocupación de HOY de los barberos de la sede.
+  // En vivo de verdad: el estado de los barberos se lee de /api/estado al abrir,
+  // cada 30 s y con cada aviso de la sede (0080). Antes se leía una sola vez al
+  // entrar al paso Barbero y con la hora en que se abrió la página, y "En silla"
+  // era "tiene una cita a esta hora" aunque el cliente no hubiera llegado.
+  useEffect(() => {
     let cancel = false;
-    const hoy = new Date();
-    Promise.all(
-      sedeBarberos.map((b) =>
-        getDisponibilidad({ barberoId: b.id, fechaISO: hoy.toISOString() }).then((r) => [b.id, r] as const),
-      ),
-    )
-      .then((entries) => {
-        if (!cancel) setStatusHoy(Object.fromEntries(entries));
-      })
-      .catch(() => {});
+    const traer = () =>
+      fetch("/api/estado", { cache: "no-store" })
+        .then((r) => (r.ok ? (r.json() as Promise<RespuestaEstado>) : null))
+        .then((d) => {
+          if (!cancel && d) setEstadoVivo(Object.fromEntries(d.barberos.map((b) => [b.id, b])));
+        })
+        .catch(() => {});
+    traer();
+    const poll = setInterval(traer, 30000);
     return () => {
       cancel = true;
+      clearInterval(poll);
     };
-  }, [step, sedeBarberos]);
+  }, [version]);
 
   // Slots ocupados por reserva (tachados) y pasados (apagados sin tachar) — proto §6.6.
   const ocupadoSet = useMemo(() => {
@@ -714,36 +741,6 @@ export function BookingWizard({
   // que quedan.
   const visibles = slots.filter((t) => !pasadoSet.has(t));
 
-  // Estado en vivo de un barbero para el chip del paso 3.
-  function estadoBarbero(bId: string): { tipo: "libre" | "silla" | "cerrado"; label: string } {
-    const rangos = statusHoy[bId] ?? [];
-    const now = ahora;
-    const activa = rangos.find((o) => new Date(o.inicio).getTime() <= now && now <= new Date(o.fin).getTime());
-    if (activa) {
-      const i = new Date(activa.inicio);
-      const f = new Date(activa.fin);
-      const desdeMin = i.getHours() * 60 + i.getMinutes();
-      const hastaMin = f.getHours() * 60 + f.getMinutes();
-      // Una AUSENCIA llega como un bloque del día entero (getDisponibilidad
-      // devuelve 00:00–23:59 para tapar todos los slots). Sin distinguirla, el
-      // chip decía "En silla · sale 11:59 pm": el barbero ni siquiera estaba en
-      // la barbería y el sitio lo mostraba atendiendo hasta medianoche.
-      if (desdeMin <= ventanaHoy.abreMin && hastaMin >= ventanaHoy.cierraMin) {
-        return { tipo: "cerrado", label: "No atiende hoy" };
-      }
-      return { tipo: "silla", label: `En silla · sale ${fmtTime(hastaMin)}` };
-    }
-    // Fuera del horario de la barbería (día cerrado, antes de abrir o tras cerrar):
-    // "Libre ahora" (verde) engaña: no está trabajando. Se muestra neutro.
-    const d = new Date(now);
-    const min = d.getHours() * 60 + d.getMinutes();
-    if (!ventanaHoy.abierta || min < ventanaHoy.abreMin || min >= ventanaHoy.cierraMin) {
-      // Corto a propósito: "Disponible para reservar" no cabía en la card móvil
-      // (~161px de ancho) y partía el chip en dos líneas.
-      return { tipo: "cerrado", label: "Puedes reservar" };
-    }
-    return { tipo: "libre", label: "Libre ahora" };
-  }
 
   const precioServicio = servicio && sedeId ? servicio.precios[sedeId] : null;
   // `!= null` (no `!== null`): precios[sedeId] es `undefined` (no null) cuando el
@@ -1385,6 +1382,15 @@ export function BookingWizard({
                       {barbero.nombre.split(" ")[0]}
                     </span>
                     <span className="mt-1 block truncate text-[12.5px] text-ink/75">{sedeNombre}</span>
+                    {/* Lo que está haciendo ahora y cuántos lleva hoy (en vivo). */}
+                    {estadoVivo[barbero.id] && (
+                      <span className="mt-1 flex min-w-0 items-center gap-1.5 text-[12px] font-semibold text-ink">
+                        <span aria-hidden className="h-2 w-2 shrink-0 rounded-full" style={{ background: COLOR_ESTADO[estadoVivo[barbero.id].estado] }} />
+                        <span className="truncate">
+                          {[textoEstado(estadoVivo[barbero.id], fmtTime), textoHechos(estadoVivo[barbero.id].hechos)].filter(Boolean).join(" · ")}
+                        </span>
+                      </span>
+                    )}
                     {/* En PC va debajo de la sede (al lado se comía el nombre). */}
                     <button type="button" onClick={cambiarBarbero} className={`${css.cambiar} ${css.cambiarPc}`}>
                       Cambiar barbero
@@ -1563,11 +1569,12 @@ export function BookingWizard({
                 {sedeBarberos.map((b) => {
                   const sel = barbero?.id === b.id;
                   const ausente = ausenteSet.has(b.id);
-                  const est = estadoBarbero(b.id);
-                  // Ausente pisa el estado en vivo: no está trabajando ese día.
-                  const chipColor = ausente ? "#fbbf24" : est.tipo === "silla" ? "#e8675c" : est.tipo === "cerrado" ? "#9c958a" : "#34d399";
-                  const chipBorder = ausente ? "rgba(251,191,36,.4)" : est.tipo === "silla" ? "rgba(210,63,52,.45)" : est.tipo === "cerrado" ? "rgba(242,237,228,.16)" : "rgba(52,211,153,.4)";
-                  const estadoLabel = ausente ? (day ? "Ausente ese día" : "Ausente hoy") : est.label;
+                  const est = estadoVivo[b.id];
+                  // Ausente (el día elegido) pisa el estado en vivo: no trabaja ese día.
+                  const chipColor = ausente ? COLOR_ESTADO.ausente : est ? COLOR_ESTADO[est.estado] : "#9c958a";
+                  const chipBorder = `${chipColor}66`;
+                  const estadoLabel = ausente ? (day ? "Ausente ese día" : "Ausente hoy") : est ? textoEstado(est, fmtTime) : "…";
+                  const hechosTxt = est ? textoHechos(est.hechos) : null;
                   // Card del proto §6.5: una sola pieza aspect 3/3.6 con la foto
                   // enmascarada y el texto encima. Antes acá vivía la card de
                   // /barberos (foto + cuerpo con "Especialista en" + 4 chips): en
@@ -1617,10 +1624,15 @@ export function BookingWizard({
 
                       <div className="absolute inset-x-2.5 bottom-2.5">
                         <div className="font-display text-[21px] font-extrabold uppercase leading-none text-white">{b.nombre}</div>
-                        {b.rating != null && (
+                        {(b.rating != null || hechosTxt) && (
                           <div className="mt-1 text-[10px] text-[#c9c2b6]">
-                            <StarIcon className="inline h-3.5 w-3.5 fill-current" /> {b.rating.toFixed(1)}
-                            {b.resenas ? ` · ${b.resenas} reseñas` : ""}
+                            {b.rating != null && (
+                              <>
+                                <StarIcon className="inline h-3.5 w-3.5 fill-current" /> {b.rating.toFixed(1)}
+                                {b.resenas ? ` · ${b.resenas} reseñas` : ""}
+                              </>
+                            )}
+                            {hechosTxt && `${b.rating != null ? " · " : ""}${hechosTxt}`}
                           </div>
                         )}
                         <span

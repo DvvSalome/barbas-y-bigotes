@@ -4,7 +4,7 @@ import { cop } from "@/lib/format";
 import { CANCELACION_MIN_HORAS } from "@/lib/slots";
 import { categorias } from "@/lib/data/seed";
 import type { Barbero, Sede, Servicio } from "@/lib/data/types";
-import { Inclinable, WhatsAppIcono, ChipCupo, LineaCupo, EnlaceCupo } from "@/components/propuesta/Islas";
+import { Inclinable, WhatsAppIcono, ChipCupo, LineaCupo, EnlaceCupo, PuntoVivo } from "@/components/propuesta/Islas";
 import css from "./propuesta.module.css";
 
 /*
@@ -194,12 +194,16 @@ export function Hero({ barberos, servicios, sedes }: { barberos: Barbero[]; serv
                   aria-label={`Reservar con ${b.nombre}`}
                   className={`${css.gris} group flex flex-col items-center gap-1.5`}
                 >
-                  <span className="relative block h-14 w-14 overflow-hidden rounded-full ring-2 ring-line transition group-hover:ring-ink/60 lg:h-16 lg:w-16">
-                    {b.fotoUrl ? (
-                      <Image src={b.fotoUrl} alt="" fill sizes="128px" className="origin-[50%_18%] scale-[1.7] object-cover object-top" />
-                    ) : (
-                      <span className="grid h-full w-full place-items-center bg-elevated font-display text-lg font-bold">{b.nombre[0]}</span>
-                    )}
+                  {/* El punto (verde libre, rojo en silla) va fuera del recorte redondo. */}
+                  <span className="relative block">
+                    <span className="relative block h-14 w-14 overflow-hidden rounded-full ring-2 ring-line transition group-hover:ring-ink/60 lg:h-16 lg:w-16">
+                      {b.fotoUrl ? (
+                        <Image src={b.fotoUrl} alt="" fill sizes="128px" className="origin-[50%_18%] scale-[1.7] object-cover object-top" />
+                      ) : (
+                        <span className="grid h-full w-full place-items-center bg-elevated font-display text-lg font-bold">{b.nombre[0]}</span>
+                      )}
+                    </span>
+                    <PuntoVivo barberoId={b.id} />
                   </span>
                   <span className="text-[12px] text-muted transition group-hover:text-ink">{b.nombre.split(" ")[0]}</span>
                 </Link>

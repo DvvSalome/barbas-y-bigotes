@@ -2519,9 +2519,59 @@ export async function actualizarReserva(
       tag: "cancelacion",
     });
   }
+  if (patch.estado === "en_curso") await adelantarSiLlegoAntes(admin, reservaId);
 
   revalidatePath("/barbero");
   return { ok: true };
+}
+
+// La silla REAL manda sobre la agendada, para que el público vea lo que de
+// verdad pasa (pedido del dueño, 9-oct). Los dos son de mejor esfuerzo: si
+// fallan, la acción principal (llegó / cobro) ya quedó hecha.
+//
+// Llegó antes de su hora: la cita se corre a AHORA (redondeado a 5 min) con su
+// misma duración. Antes la silla aparecía "libre" mientras el barbero cortaba y
+// el hueco de la hora agendada quedaba bloqueado sin nadie. Si correrla choca
+// con otra cita (constraint de solape), se queda donde estaba. Los recordatorios
+// solo salen para pendiente/confirmada, así que no se dispara ninguno.
+async function adelantarSiLlegoAntes(sb: SupabaseClient, reservaId: string) {
+  try {
+    const { data } = await sb.from("reservas").select("inicio,fin").eq("id", reservaId).maybeSingle();
+    if (!data) return;
+    const ini = Date.parse((data as { inicio: string }).inicio);
+    const fin = Date.parse((data as { fin: string }).fin);
+    const desde = Math.floor(Date.now() / 300_000) * 300_000;
+    if (desde >= ini) return;
+    await sb
+      .from("reservas")
+      .update({ inicio: new Date(desde).toISOString(), fin: new Date(desde + (fin - ini)).toISOString() })
+      .eq("id", reservaId)
+      .eq("estado", "en_curso");
+  } catch {
+    // Se queda en su hora agendada.
+  }
+}
+
+// Cobrado antes de su hora de fin: el fin se recorta a AHORA (al próximo múltiplo
+// de 5 min). Antes la cita seguía ocupando la silla hasta la hora agendada: el
+// público veía al barbero "En silla" y no podía tomar ese hueco, porque la
+// constraint de solape usa el fin guardado.
+async function recortarFinAlTerminar(sb: SupabaseClient, reservaId: string) {
+  try {
+    const { data } = await sb.from("reservas").select("inicio,fin").eq("id", reservaId).maybeSingle();
+    if (!data) return;
+    const ini = Date.parse((data as { inicio: string }).inicio);
+    const fin = Date.parse((data as { fin: string }).fin);
+    const nuevo = Math.ceil(Date.now() / 300_000) * 300_000;
+    if (nuevo <= ini || nuevo >= fin) return;
+    await sb
+      .from("reservas")
+      .update({ fin: new Date(nuevo).toISOString() })
+      .eq("id", reservaId)
+      .eq("estado", "completada");
+  } catch {
+    // Se queda con su fin agendado.
+  }
 }
 
 // ---------- Modo mostrador: alcance por sede ----------
@@ -3164,6 +3214,9 @@ export async function completarReserva(input: {
       .maybeSingle();
     resenaUrl = (sedeRow as { google_review_url?: string | null } | null)?.google_review_url ?? null;
   }
+
+  // Terminó antes de lo agendado: la silla queda libre ya (ver recortarFinAlTerminar).
+  if (input.reservaId) await recortarFinAlTerminar(admin, input.reservaId);
 
   revalidatePath("/barbero");
   revalidatePath("/admin/inventario");

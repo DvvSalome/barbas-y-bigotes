@@ -1,9 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
-import { instanteBogota } from "@/lib/slots";
+import { instanteBogota, fmtTime } from "@/lib/slots";
 import { textoCupo, horaParam, type Cupo, type RespuestaCupo } from "@/lib/cupo";
+import { textoEstado, textoHechos, COLOR_ESTADO, type RespuestaEstado } from "@/lib/estado-barbero";
+import { supabaseBrowser } from "@/lib/supabase/client";
 import css from "./propuesta.module.css";
 
 /*
@@ -107,34 +109,76 @@ export function BarraReserva({ whatsapp }: { whatsapp: string }) {
   );
 }
 
-/* ── Próximo cupo online ──────────────────────────────────────────────────── */
-// Una sola lectura de /api/cupo por página (promesa de módulo), compartida por el
-// chip del hero, la línea de cada barbero y el chip del cierre.
-let promesaCupo: Promise<RespuestaCupo | null> | null = null;
+/* ── En vivo: próximo cupo y qué está haciendo cada barbero ──────────────── */
+// Un solo almacén por página, compartido por el chip del hero, las caritas, la
+// línea de cada barbero y el chip del cierre. Se llena con /api/cupo y
+// /api/estado, y se refresca:
+//   · al instante, con el aviso público "cambió la agenda de esta sede" (0080);
+//   · cada 30 s, de respaldo;
+//   · al volver a la pestaña.
 const CUPO_FRESCO_MS = 10 * 60_000;
+type Vivo = { cupo: RespuestaCupo | null; estado: RespuestaEstado | null };
+let vivo: Vivo | undefined;
+const oyentes = new Set<() => void>();
+let arrancado = false;
 
-const pedirCupo = (url: string) =>
-  fetch(url)
-    .then((r) => (r.ok ? (r.json() as Promise<RespuestaCupo>) : null))
+const pedir = <T,>(url: string) =>
+  fetch(url, { cache: "no-store" })
+    .then((r) => (r.ok ? (r.json() as Promise<T>) : null))
     .catch(() => null);
-const fresco = (d: RespuestaCupo | null) => !!d && Date.now() - Date.parse(d.generado) < CUPO_FRESCO_MS;
+// Un cupo viejo es una promesa rota (un caché intermedio o el service worker sin
+// red): más de 10 min → como si no hubiera.
+const fresco = (d: { generado: string } | null) => !!d && Date.now() - Date.parse(d.generado) < CUPO_FRESCO_MS;
+
+let enCurso: Promise<void> | null = null;
+function refrescar(saltarCache: boolean) {
+  enCurso ??= Promise.all([
+    pedir<RespuestaCupo>(saltarCache ? `/api/cupo?t=${Date.now()}` : "/api/cupo"),
+    pedir<RespuestaEstado>("/api/estado"),
+  ])
+    .then(async ([cupo, estado]) => {
+      if (!fresco(cupo) && !saltarCache) cupo = await pedir<RespuestaCupo>(`/api/cupo?t=${Date.now()}`);
+      vivo = { cupo: fresco(cupo) ? cupo : null, estado: fresco(estado) ? estado : (vivo?.estado ?? null) };
+      oyentes.forEach((f) => f());
+    })
+    .finally(() => {
+      enCurso = null;
+    });
+  return enCurso;
+}
+
+function arrancar() {
+  if (arrancado) return;
+  arrancado = true;
+  let espera: ReturnType<typeof setTimeout> | undefined;
+  // Una acción del mostrador puede disparar varios avisos seguidos: se juntan.
+  const pronto = () => {
+    clearTimeout(espera);
+    espera = setTimeout(() => refrescar(true), 400);
+  };
+  refrescar(false).then(() => {
+    const sedes = [...new Set((vivo?.estado?.barberos ?? []).map((b) => b.sede))];
+    const sb = supabaseBrowser();
+    for (const sede of sedes) sb.channel(`disponibilidad:${sede}`).on("broadcast", { event: "cambio" }, pronto).subscribe();
+  });
+  setInterval(() => refrescar(true), 30_000);
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") pronto();
+  });
+}
+
+function suscribir(avisar: () => void) {
+  oyentes.add(avisar);
+  arrancar();
+  return () => {
+    oyentes.delete(avisar);
+  };
+}
+const useVivo = () => useSyncExternalStore(suscribir, () => vivo, () => undefined);
 
 function useCupo(): RespuestaCupo | null | undefined {
-  const [datos, setDatos] = useState<RespuestaCupo | null | undefined>(undefined);
-  useEffect(() => {
-    // Un cupo viejo es una promesa rota: si lo que llega tiene más de 10 min (un
-    // caché intermedio, o el service worker sin red), se pide una vez saltándose
-    // el caché; si tampoco sirve, como si no hubiera.
-    promesaCupo ??= pedirCupo("/api/cupo").then((d) => (fresco(d) ? d : pedirCupo(`/api/cupo?t=${Date.now()}`)));
-    let vivo = true;
-    promesaCupo.then((d) => {
-      if (vivo) setDatos(fresco(d) ? d : null);
-    });
-    return () => {
-      vivo = false;
-    };
-  }, []);
-  return datos;
+  const v = useVivo();
+  return v === undefined ? undefined : v.cupo;
 }
 
 const vigente = (c: Cupo | null | undefined): c is Cupo => !!c && instanteBogota(c.fecha, c.minuto).getTime() > Date.now();
@@ -175,15 +219,46 @@ export function ChipCupo({ desde, sedes, className = "" }: { desde: string; sede
   );
 }
 
-/** La línea viva de cada barbero en el elenco: "Próximo cupo: hoy 3:30 pm". */
+/** Punto de color con lo que está haciendo el barbero (caritas del hero). */
+export function PuntoVivo({ barberoId }: { barberoId: string }) {
+  const e = useVivo()?.estado?.barberos.find((b) => b.id === barberoId);
+  if (!e || (e.estado !== "libre" && e.estado !== "en_silla")) return null;
+  return (
+    <span
+      title={textoEstado(e, fmtTime)}
+      className="absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full ring-2 ring-bg"
+      style={{ background: COLOR_ESTADO[e.estado] }}
+    >
+      <span className="sr-only">{textoEstado(e, fmtTime)}</span>
+    </span>
+  );
+}
+
+/**
+ * Las líneas vivas de cada barbero en el elenco: qué está haciendo AHORA, cuántos
+ * cortes lleva hoy y su próximo cupo. Ejemplo: "● En silla · sale 3:30 pm · 2
+ * cortes hoy" / "Próximo cupo: hoy 4:00 pm". En el HTML del servidor va solo
+ * "Ver sus horas libres"; lo demás llega con el dato vivo.
+ */
 export function LineaCupo({ barberoId }: { barberoId: string }) {
-  const datos = useCupo();
+  const v = useVivo();
+  const datos = v?.cupo;
+  const e = v?.estado?.barberos.find((b) => b.id === barberoId);
   const cupo = datos?.barberos.find((b) => b.id === barberoId)?.cupo;
   const texto = datos && vigente(cupo) ? `Próximo cupo: ${textoCupo(cupo, datos.hoy)}` : "Ver sus horas libres";
+  const vivoTxt = e ? [textoEstado(e, fmtTime), textoHechos(e.hechos)].filter(Boolean).join(" · ") : null;
   return (
-    <span key={texto} className={`${css.cambio} block text-[13px] font-semibold text-ink/90`}>
-      {texto}
-    </span>
+    <>
+      {e && vivoTxt && (
+        <span key={vivoTxt} className={`${css.cambio} flex items-center gap-1.5 text-[13px] font-semibold text-ink`}>
+          <span aria-hidden className="h-2 w-2 shrink-0 rounded-full" style={{ background: COLOR_ESTADO[e.estado] }} />
+          {vivoTxt}
+        </span>
+      )}
+      <span key={texto} className={`${css.cambio} block text-[13px] font-semibold text-ink/90`}>
+        {texto}
+      </span>
+    </>
   );
 }
 
