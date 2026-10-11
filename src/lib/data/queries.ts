@@ -2,6 +2,8 @@ import { type SupabaseClient } from "@supabase/supabase-js";
 import { supabaseServer, supabaseServerAuth, supabaseAdmin } from "@/lib/supabase/server";
 import { calendarConfigurado } from "@/lib/google-calendar";
 import { bogotaDayRange, bogotaDayRangeDeFecha, bogotaYmd, horarioEfectivo, rangoPeriodo, semanaDeFecha, type Periodo } from "@/lib/slots";
+import { diasDelRango, porDia, agrupar, ritmoDelMes, type Balde } from "@/lib/metricas";
+import { repartoDeVenta } from "@/lib/cobro";
 import {
   totalesPorMedio,
   totalDeMedio,
@@ -2340,18 +2342,61 @@ export async function getResumenTocaCorte(): Promise<ResumenTocaCorte> {
 
 // ---------- Métricas por período (/admin/metricas) ----------
 export type { Periodo };
+/** Un cobro, como se lee en el desglose de /admin/metricas. */
+export type CobroDetalle = {
+  id: string;
+  /** creado_en (ISO): cuándo se registró el cobro. */
+  cuando: string;
+  sede: SedeId;
+  /** null = lo cobró el local, sin barbero. */
+  barbero: string | null;
+  fotoUrl: string | null;
+  /** null = cobro sin cliente asociado. */
+  cliente: string | null;
+  /** Servicios y productos, como "Corte + 2× Agua". */
+  que: string;
+  total: number;
+  propina: number;
+  /** Una sola parte casi siempre; dos o más cuando se pagó con varios medios. */
+  partes: { medio: string; monto: number }[];
+};
+export const COBROS_EN_PANTALLA = 50;
+
 export type Metricas = {
   plata: number;
   /** Cantidad de COBROS (no de servicios sueltos: un cobro puede llevar varios). */
   servicios: number;
   ticket: number;
   propinas: number;
-  /** Mismo largo de período, inmediatamente anterior. Un número solo no dice si vas bien. */
-  antes: { plata: number; servicios: number };
-  porBarbero: { nombre: string; fotoUrl: string | null; plata: number; cortes: number }[];
+  /** En cuántos días del período hubo al menos un cobro. */
+  diasConCobros: number;
+  /** Mismo largo de período, inmediatamente anterior (en "mes", los mismos días
+   *  del mes pasado). Un número solo no dice si vas bien. */
+  antes: {
+    plata: number;
+    servicios: number;
+    diasConCobros: number;
+    /** Primer y último día civil (Bogotá) de ese período anterior, para nombrarlo. */
+    desdeYmd: string;
+    hastaYmd: string;
+  };
+  /** `propina` = lo que le dejaron a ese barbero; `conPropina`, en cuántos cobros. */
+  porBarbero: { nombre: string; fotoUrl: string | null; plata: number; cortes: number; propina: number; conPropina: number }[];
   porServicio: { nombre: string; veces: number; plata: number }[];
   porProducto: { nombre: string; veces: number; plata: number }[];
-  serie: { ymd: string; total: number }[];
+  /** Por dónde entró la plata. Un cobro partido (mitad efectivo, mitad Nequi) suma
+   *  cada parte a su medio y cuenta como cobro en los dos. */
+  porMedio: { medio: string; total: number; cobros: number }[];
+  /** Por dónde entraron las propinas. `propina_medio` null quiere decir "igual que
+   *  el pago" (0053): esa propina va al medio del cobro, como en el cuadre de caja. */
+  propinasPorMedio: { medio: string; total: number }[];
+  /** Cobro por cobro, del más reciente al más viejo. Solo los últimos
+   *  COBROS_EN_PANTALLA: el Excel trae todos. */
+  cobros: CobroDetalle[];
+  /** Un balde por cada día civil de Bogotá del período; el de hoy va `parcial`. */
+  serie: Balde[];
+  /** Cuánto puso cada sede. Vacío cuando ya se está mirando una sola. */
+  porSede: { sede: SedeId; total: number; cobros: number; antes: number }[];
   clientes: { total: number; repiten: number };
   dias: number;
 };
@@ -2360,56 +2405,108 @@ export async function getMetricas(p: Periodo = "mes", sede?: SedeId | null): Pro
   const sb = await supabaseServerAuth();
   const { desde, hasta, prevDesde, prevHasta } = rangoPeriodo(p);
 
-  // Una sola pasada por ventas: trae el período y el anterior juntos y se parten
-  // en memoria. Son cientos de filas al mes, no miles: agregar en SQL sería un RPC
-  // más que mantener. ponytail: mover a SQL si esto pasa de ~10k ventas por período.
-  let q = sb
-    .from("ventas")
-    .select("id,total,propina,creado_en,barbero_id,cliente_ref,barberos(nombre,foto_url)").is("anulada_en", null)
-    .gte("creado_en", prevDesde.toISOString())
-    .lt("creado_en", hasta.toISOString());
-  if (sede) q = q.eq("sede_id", sede);
-  const { data, error } = await q;
-  if (error) console.error("getMetricas:", error.message);
-  const filas = (data ?? []) as Record<string, unknown>[];
-  const enPeriodo = filas.filter((v) => new Date(v.creado_en as string) >= desde);
-  // El comparativo es SOLO [prevDesde, prevHasta): en "mes" eso son los mismos días
-  // del mes pasado, no toda la cola. Las ventas del hueco entre prevHasta y desde
-  // (la parte final del mes anterior) se traen en la misma query pero no cuentan.
-  const previas = filas.filter((v) => {
-    const t = new Date(v.creado_en as string);
-    return t >= prevDesde && t < prevHasta;
+  // Una sola lectura de ventas: trae el período y el anterior juntos, con sus
+  // ítems anidados, y se parte en memoria. De a páginas (todasLasFilas): antes
+  // iba sin paginar y PostgREST cortaba en 1.000 filas SIN avisar; a 40 cobros
+  // al día "este mes" ya se pasaba y la plata salía recortada.
+  // ponytail: son cientos de filas al mes hoy; con decenas de miles por período
+  // esto pide una vista agregada por día en SQL (migración), no más páginas.
+  const { data: filas, error } = await todasLasFilas<Record<string, unknown>>((a, b) => {
+    let q = sb
+      .from("ventas")
+      .select(
+        "id,total,propina,propina_medio,medio,pagos,creado_en,sede_id,barbero_id,cliente_ref,cliente_nombre,barberos(nombre,foto_url),clientes(nombre),venta_items(tipo,ref_id,descripcion,cantidad,precio_unitario)",
+      )
+      .is("anulada_en", null)
+      .gte("creado_en", prevDesde.toISOString())
+      .lt("creado_en", hasta.toISOString());
+    if (sede) q = q.eq("sede_id", sede);
+    // Por fecha y, de desempate, por id: la paginación queda estable Y las filas
+    // llegan en el orden en que pasaron (el ranking se queda con el nombre más
+    // reciente de un servicio renombrado; con order("id") salía uno al azar).
+    return q.order("creado_en").order("id").range(a, b);
   });
+  if (error) console.error("getMetricas:", error.message);
+  const ms = (v: Record<string, unknown>) => Date.parse(v.creado_en as string);
+  const total = (v: Record<string, unknown>) => (v.total as number) ?? 0;
+  const suma = (vs: Record<string, unknown>[]) => vs.reduce((a, v) => a + total(v), 0);
+  const enPeriodo = filas.filter((v) => ms(v) >= desde.getTime());
+  // El comparativo es SOLO [prevDesde, prevHasta): en "mes" eso son los mismos días
+  // del mes pasado, cortados a esta misma hora, no toda la cola. Las ventas del
+  // hueco entre prevHasta y desde vienen en la misma lectura pero no cuentan.
+  const previas = filas.filter((v) => ms(v) < prevHasta.getTime());
 
-  const plata = enPeriodo.reduce((a, v) => a + ((v.total as number) ?? 0), 0);
+  const plata = suma(enPeriodo);
   const propinas = enPeriodo.reduce((a, v) => a + ((v.propina as number) ?? 0), 0);
-
-  // Ítems solo del período (para el ranking de servicios y contar cortes por barbero).
-  const ids = enPeriodo.map((v) => v.id as string);
-  const { data: itemsRaw } = ids.length
-    ? await sb.from("venta_items").select("venta_id,tipo,ref_id,descripcion,cantidad,precio_unitario").in("venta_id", ids)
-    : { data: [] };
-  const items = (itemsRaw ?? []) as Record<string, unknown>[];
 
   // Con la foto: el ranking de "quién produce" se lee por la cara, no leyendo
   // seis nombres parecidos.
-  const porBarbero = new Map<
-    string,
-    { nombre: string; fotoUrl: string | null; plata: number; cortes: number }
-  >();
+  const porBarbero = new Map<string, Metricas["porBarbero"][number]>();
   for (const v of enPeriodo) {
     const b = v.barberos as { nombre?: string; foto_url?: string | null } | null;
-    const nombre = b?.nombre ?? "Sin barbero";
-    const acc = porBarbero.get(nombre) ?? { nombre, fotoUrl: b?.foto_url ?? null, plata: 0, cortes: 0 };
-    acc.plata += (v.total as number) ?? 0;
+    // Sin barbero = lo vendió el local (un producto del mostrador, p. ej.).
+    const nombre = b?.nombre ?? "El local";
+    // La llave es el id, no el nombre: dos tocayos sumaban plata y propinas juntos.
+    const clave = (v.barbero_id as string | null) ?? "local";
+    const acc = porBarbero.get(clave) ?? { nombre, fotoUrl: b?.foto_url ?? null, plata: 0, cortes: 0, propina: 0, conPropina: 0 };
+    acc.plata += total(v);
     acc.cortes += 1;
-    porBarbero.set(nombre, acc);
+    const propina = (v.propina as number) ?? 0;
+    acc.propina += propina;
+    if (propina > 0) acc.conPropina += 1;
+    porBarbero.set(clave, acc);
   }
+
+  // Por dónde entró la plata y por dónde las propinas. El reparto de un cobro
+  // sale de repartoDeVenta (lib/cobro.ts), el mismo que usa el cuadre de caja:
+  // así esta pantalla y el cajón dicen lo mismo.
+  const porMedio = new Map<string, { medio: string; total: number; cobros: number }>();
+  const propinasPorMedio = new Map<string, number>();
+  const partesDe = (v: Record<string, unknown>) =>
+    repartoDeVenta({ medio: String(v.medio ?? ""), total: total(v), pagos: v.pagos });
+  for (const v of enPeriodo) {
+    for (const parte of partesDe(v)) {
+      const acc = porMedio.get(parte.medio) ?? { medio: parte.medio, total: 0, cobros: 0 };
+      acc.total += parte.monto;
+      acc.cobros += 1;
+      porMedio.set(parte.medio, acc);
+    }
+    const propina = (v.propina as number) ?? 0;
+    if (propina > 0) {
+      const medio = (v.propina_medio as string | null) ?? String(v.medio ?? "");
+      propinasPorMedio.set(medio, (propinasPorMedio.get(medio) ?? 0) + propina);
+    }
+  }
+  const cobros: CobroDetalle[] = enPeriodo
+    .slice(-COBROS_EN_PANTALLA)
+    .reverse()
+    .map((v) => {
+      const b = v.barberos as { nombre?: string; foto_url?: string | null } | null;
+      const items = (v.venta_items as Record<string, unknown>[] | null) ?? [];
+      return {
+        id: v.id as string,
+        cuando: v.creado_en as string,
+        sede: v.sede_id as SedeId,
+        barbero: b?.nombre ?? null,
+        fotoUrl: b?.foto_url ?? null,
+        cliente: (v.clientes as { nombre?: string } | null)?.nombre ?? ((v.cliente_nombre as string | null) || null),
+        que: items
+          .map((i) => {
+            const c = (i.cantidad as number) ?? 1;
+            return c > 1 ? `${c}× ${i.descripcion}` : String(i.descripcion ?? "");
+          })
+          .filter(Boolean)
+          .join(" + "),
+        total: total(v),
+        propina: (v.propina as number) ?? 0,
+        partes: partesDe(v),
+      };
+    });
 
   type Linea = { nombre: string; veces: number; plata: number };
   const porServicio = new Map<string, Linea>();
   const porProducto = new Map<string, Linea>();
-  for (const it of items) {
+  for (const it of enPeriodo.flatMap((v) => (v.venta_items as Record<string, unknown>[] | null) ?? [])) {
     const destino = it.tipo === "servicio" ? porServicio : it.tipo === "producto" ? porProducto : null;
     if (!destino) continue;
     const nombre = (it.descripcion as string) ?? "—";
@@ -2438,39 +2535,52 @@ export async function getMetricas(p: Periodo = "mes", sede?: SedeId | null): Pro
     } else productos.set(k, { ...l });
   }
 
-  // Un balde por CADA día civil de Bogotá en [desde, hasta], inclusive. Antes se
-  // usaba Math.round(span/día) y se caminaba hacia atrás desde `hasta`: como el período
-  // casi nunca mide un nº entero de días (hasta = ahora), redondeaba hacia abajo y el
-  // día más temprano (p.ej. el 1° del mes) no quedaba como balde, así que sus ventas se
-  // caían del gráfico aunque el KPI "Entró" sí las contaba (chart ≠ total, y encima
-  // dependía de la hora). Ahora se recorre día civil por día civil (Colombia no tiene
-  // DST, así que +24h siempre cae en la misma hora local y avanza un día civil).
-  const serie = new Map<string, number>();
-  const finYmd = bogotaYmd(hasta);
-  const cursor = new Date(desde.getTime());
-  for (let guard = 0; guard < 400; guard++) {
-    const ymd = bogotaYmd(cursor);
-    serie.set(ymd, 0);
-    if (ymd >= finYmd) break;
-    cursor.setTime(cursor.getTime() + 86_400_000);
+  // La cuenta por días vive en lib/metricas.ts (probada con check-metricas): un
+  // balde por CADA día civil de Bogotá en [desde, hasta], los dos adentro. Si el
+  // primer día no fuera balde, sus ventas se caerían de la gráfica aunque el
+  // total sí las contara (gráfica ≠ total, y encima dependía de la hora).
+  const serie = porDia(
+    enPeriodo.map((v) => ({ ms: ms(v), total: total(v) })),
+    diasDelRango(desde, hasta),
+    bogotaYmd(hasta),
+  );
+  const dias = serie.length;
+
+  const sedesVistas = new Map<SedeId, { sede: SedeId; total: number; cobros: number; antes: number }>();
+  if (!sede) {
+    const deSede = (v: Record<string, unknown>) => {
+      const id = v.sede_id as SedeId;
+      const acc = sedesVistas.get(id) ?? { sede: id, total: 0, cobros: 0, antes: 0 };
+      sedesVistas.set(id, acc);
+      return acc;
+    };
+    for (const v of enPeriodo) {
+      const acc = deSede(v);
+      acc.total += total(v);
+      acc.cobros += 1;
+    }
+    for (const v of previas) deSede(v).antes += total(v);
   }
-  for (const v of enPeriodo) {
-    const d = bogotaYmd(new Date(v.creado_en as string));
-    if (serie.has(d)) serie.set(d, (serie.get(d) ?? 0) + ((v.total as number) ?? 0));
-  }
-  const dias = serie.size;
 
   // "Repiten" = clientes del período que ya habían venido ANTES del período.
   // Es la métrica que importa en una barbería: si nadie vuelve, no hay negocio.
+  // De a trozos y de a páginas: la lista de clientes va en la URL y la historia
+  // de cada uno puede ser larga.
   const refs = [...new Set(enPeriodo.map((v) => v.cliente_ref).filter(Boolean))] as string[];
-  let repiten = 0;
-  if (refs.length) {
-    const { data: viejas } = await sb
-      .from("ventas")
-      .select("cliente_ref").is("anulada_en", null)
-      .in("cliente_ref", refs)
-      .lt("creado_en", desde.toISOString());
-    repiten = new Set(((viejas ?? []) as { cliente_ref: string }[]).map((r) => r.cliente_ref)).size;
+  const viejos = new Set<string>();
+  for (let i = 0; i < refs.length; i += 200) {
+    const trozo = refs.slice(i, i + 200);
+    const { data: viejas } = await todasLasFilas<{ cliente_ref: string }>((a, b) =>
+      sb
+        .from("ventas")
+        .select("id,cliente_ref")
+        .is("anulada_en", null)
+        .in("cliente_ref", trozo)
+        .lt("creado_en", desde.toISOString())
+        .order("id")
+        .range(a, b),
+    );
+    for (const r of viejas) viejos.add(r.cliente_ref);
   }
 
   return {
@@ -2478,18 +2588,75 @@ export async function getMetricas(p: Periodo = "mes", sede?: SedeId | null): Pro
     servicios: enPeriodo.length,
     ticket: enPeriodo.length ? Math.round(plata / enPeriodo.length) : 0,
     propinas,
+    diasConCobros: serie.filter((b) => b.cobros > 0).length,
     antes: {
-      plata: previas.reduce((a, v) => a + ((v.total as number) ?? 0), 0),
+      plata: suma(previas),
       servicios: previas.length,
+      diasConCobros: new Set(previas.map((v) => bogotaYmd(new Date(ms(v))))).size,
+      desdeYmd: bogotaYmd(prevDesde),
+      hastaYmd: bogotaYmd(new Date(prevHasta.getTime() - 1)),
     },
     porBarbero: [...porBarbero.values()].sort((a, b) => b.plata - a.plata),
     porServicio: [...porServicio.values()].sort((a, b) => b.veces - a.veces),
     // Los productos se ordenan por PLATA, no por unidades: importa cuánto deja el
     // mostrador, y una cera de $32k no compite en unidades con las gaseosas.
     porProducto: [...productos.values()].sort((a, b) => b.plata - a.plata),
-    serie: [...serie.entries()].map(([ymd, total]) => ({ ymd, total })),
-    clientes: { total: refs.length, repiten },
+    porMedio: [...porMedio.values()].sort((a, b) => b.total - a.total),
+    propinasPorMedio: [...propinasPorMedio.entries()].map(([medio, t]) => ({ medio, total: t })).sort((a, b) => b.total - a.total),
+    cobros,
+    serie,
+    porSede: [...sedesVistas.values()].sort((a, b) => b.total - a.total),
+    clientes: { total: refs.length, repiten: viejos.size },
     dias,
+  };
+}
+
+export type Historico = {
+  /** El primer cobro de TODA la historia (no solo de la ventana); null = ninguno. */
+  primerCobroYmd: string | null;
+  /** En cuántos de los últimos 91 días hubo cobros: dice cuánto se usa la app. */
+  diasConCobros13s: number;
+  /** Los 12 meses de calendario hasta el actual (que va `parcial`). */
+  meses: Balde[];
+  /** Lo acumulado día a día: este mes hasta hoy y el mes pasado completo. */
+  ritmo: ReturnType<typeof ritmoDelMes>;
+  /** Lo que llevaba el mes pasado a esta misma fecha y hora: el mismo número
+   *  contra el que compara "Este mes", para que las dos gráficas no se contradigan. */
+  antesAhora: number;
+};
+
+/**
+ * Mes por mes, los últimos 12 de calendario. No depende del período elegido en
+ * /admin/metricas: es el contexto para leerlo ("¿este mes es bueno comparado con
+ * qué?"). Una consulta liviana (fecha y total), de a páginas.
+ */
+export async function getHistorico(sede?: SedeId | null): Promise<Historico> {
+  const sb = await supabaseServerAuth();
+  const hoy = bogotaYmd();
+  const [y, m] = hoy.split("-").map(Number);
+  const primero = new Date(Date.UTC(y, m - 12, 1)); // día 1 de hace 11 meses
+  const desde = bogotaDayRangeDeFecha(primero.toISOString().slice(0, 10)).desde;
+  let primeroQ = sb.from("ventas").select("creado_en").is("anulada_en", null).order("creado_en").limit(1);
+  if (sede) primeroQ = primeroQ.eq("sede_id", sede);
+  const [{ data, error }, primeroRes] = await Promise.all([
+    todasLasFilas<{ creado_en: string; total: number | null }>((a, b) => {
+      let q = sb.from("ventas").select("id,creado_en,total").is("anulada_en", null).gte("creado_en", desde.toISOString());
+      if (sede) q = q.eq("sede_id", sede);
+      return q.order("id").range(a, b);
+    }),
+    primeroQ,
+  ]);
+  if (error) console.error("getHistorico:", error.message);
+  const cobros = data.map((v) => ({ ms: Date.parse(v.creado_en), total: v.total ?? 0 }));
+  const dias = porDia(cobros, diasDelRango(desde, new Date()), hoy);
+  const primerCobro = (primeroRes.data?.[0] as { creado_en?: string } | undefined)?.creado_en;
+  const { prevDesde, prevHasta } = rangoPeriodo("mes");
+  return {
+    primerCobroYmd: primerCobro ? bogotaYmd(new Date(primerCobro)) : null,
+    diasConCobros13s: dias.slice(-91).filter((d) => d.cobros > 0).length,
+    meses: agrupar(dias, "mes"),
+    ritmo: ritmoDelMes(dias, hoy),
+    antesAhora: cobros.filter((c) => c.ms >= prevDesde.getTime() && c.ms < prevHasta.getTime()).reduce((a, c) => a + c.total, 0),
   };
 }
 
@@ -2502,18 +2669,22 @@ export async function getVentasParaCsv(
 ) {
   const sb = await supabaseServerAuth();
   const { desde, hasta } = rango ?? rangoPeriodo(p);
-  let q = sb
-    .from("ventas")
-    .select(
-      "creado_en,sede_id,medio,pagos,total,propina,descuento,cupon_codigo,cliente_nombre,barberos(nombre),clientes(nombre),venta_items(tipo,descripcion,cantidad,precio_unitario)",
-    ).is("anulada_en", null)
-    .gte("creado_en", desde.toISOString())
-    .lt("creado_en", hasta.toISOString())
-    .order("creado_en");
-  if (sede) q = q.eq("sede_id", sede);
-  const { data, error } = await q;
+  // De a páginas: la pantalla dice "Bajar todos en Excel" y sin esto PostgREST
+  // entregaba como mucho 1.000 cobros (los más viejos) sin avisar.
+  const { data, error } = await todasLasFilas<Record<string, unknown>>((a, b) => {
+    let q = sb
+      .from("ventas")
+      .select(
+        "id,creado_en,sede_id,medio,pagos,total,propina,descuento,cupon_codigo,cliente_nombre,barberos(nombre),clientes(nombre),venta_items(tipo,descripcion,cantidad,precio_unitario)",
+      )
+      .is("anulada_en", null)
+      .gte("creado_en", desde.toISOString())
+      .lt("creado_en", hasta.toISOString());
+    if (sede) q = q.eq("sede_id", sede);
+    return q.order("creado_en").order("id").range(a, b);
+  });
   if (error) console.error("getVentasParaCsv:", error.message);
-  return (data ?? []) as Record<string, unknown>[];
+  return data;
 }
 
 export type PulsoDia = {

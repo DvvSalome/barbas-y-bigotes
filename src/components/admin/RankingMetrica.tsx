@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type CSSProperties } from "react";
 import { CaraBarbero } from "@/components/staff/Elegir";
 
 // Ranking de métricas con top-6 + "Ver todos": una barbería con 40 servicios
@@ -16,29 +16,37 @@ export function RankingMetrica({
   orden,
   vacio,
   filas,
+  plano = false,
 }: {
-  titulo: string;
-  orden: string;
-  vacio: string;
+  titulo?: string;
+  orden?: string;
+  vacio?: string;
   filas: { nombre: string; valor: string; sub: string; peso: number; fotoUrl?: string | null }[];
+  /** Sin tarjeta ni cabecera: para ir DENTRO de otro panel (el desglose de la
+   *  tarjeta "Entró en caja"), donde una tarjeta más sería una caja en una caja. */
+  plano?: boolean;
 }) {
   const [todas, setTodas] = useState(false);
   const max = Math.max(...filas.map((f) => f.peso), 1);
   const visibles = todas ? filas : filas.slice(0, TOP);
 
   return (
-    <section className="rounded-2xl border border-line bg-panel p-5">
-      <div className="mb-3 flex items-baseline justify-between gap-2">
-        <h3 className="font-display text-lg">{titulo}</h3>
-        <span className="text-[12px] font-semibold uppercase tracking-wide text-muted">{orden}</span>
-      </div>
+    <section className={plano ? undefined : "rounded-2xl border border-line bg-panel p-5"}>
+      {!plano && (
+        <div className="mb-3 flex items-baseline justify-between gap-2">
+          <h3 className="font-display text-lg">{titulo}</h3>
+          <span className="text-[12px] font-semibold uppercase tracking-wide text-muted">{orden}</span>
+        </div>
+      )}
       {filas.length === 0 ? (
         <p className="text-[12.5px] text-muted">{vacio}</p>
       ) : (
         <>
           <ul className="space-y-3">
-            {visibles.map((f) => (
-              <li key={f.nombre}>
+            {visibles.map((f, i) => (
+              // bb-fila / bb-medida / --i: solo se mueven dentro de un panel que se
+              // acaba de abrir (globals.css); en la tarjeta normal no hacen nada.
+              <li key={`${f.nombre}|${i}`} className="bb-fila" style={{ "--i": i } as CSSProperties}>
                 <div className="flex items-baseline justify-between gap-3">
                   <span className="flex min-w-0 items-center gap-2">
                     {/* Solo el ranking de barberos trae cara; en servicios y
@@ -50,8 +58,8 @@ export function RankingMetrica({
                   </span>
                   <span className="shrink-0 text-[13px] text-ink">{f.valor}</span>
                 </div>
-                <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-elevated">
-                  <div className="h-full rounded-full bg-accent/70" style={{ width: `${(f.peso / max) * 100}%` }} />
+                <div className={`mt-1 h-1.5 overflow-hidden rounded-full ${plano ? "bg-ink/10" : "bg-elevated"}`}>
+                  <div className="bb-medida h-full rounded-full bg-bar" style={{ width: `${(f.peso / max) * 100}%` }} />
                 </div>
                 <div className="mt-0.5 text-[12px] text-muted">{f.sub}</div>
               </li>

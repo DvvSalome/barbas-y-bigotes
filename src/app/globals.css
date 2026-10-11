@@ -834,3 +834,360 @@ body {
     display: none;
   }
 }
+
+/* ---------------------------------------------------------------------------
+   Gráficas de /admin/metricas (.bb-graf).
+
+   Toda la geometría y todos los números salen ya puestos en el HTML del
+   servidor. El movimiento solo dice dos cosas: de dónde sale cada monto (desde
+   la base) y en qué orden pasó (de izquierda a derecha, el sentido del tiempo).
+   Los keyframes llevan solo `from` y relleno hacia atrás: sin CSS, sin JS o con
+   movimiento reducido se ve el estado final desde el primer pintado.
+
+   Color: el dato va en --bar (neutro) y el rojo queda para "lo que sigue
+   corriendo" (hoy, esta semana, este mes), igual que en el tablero de inicio.
+   --------------------------------------------------------------------------- */
+.bb-graf {
+  --bb-canal: 50px; /* ancho del canal de las marcas del eje */
+  --bb-alto: 168px; /* alto del plot, sin la banda de fechas */
+  --bb-aire: 22px; /* aire arriba del plot: ahí cabe la etiqueta del pico */
+  --bb-curva: cubic-bezier(0.22, 1, 0.36, 1); /* la curva de la casa: sin rebote */
+}
+@media (min-width: 1024px) {
+  .bb-graf {
+    --bb-alto: 216px;
+  }
+}
+.bb-plot {
+  position: relative;
+  height: var(--bb-alto);
+  margin: var(--bb-aire) 0 0 var(--bb-canal);
+  border-bottom: 1px solid color-mix(in oklab, var(--ink) 25%, transparent);
+}
+/* Rejilla: una línea por marca redonda, con su número en el canal. */
+.bb-marca {
+  position: absolute;
+  left: 0;
+  right: 0;
+  border-top: 1px solid var(--line);
+}
+.bb-marca span {
+  position: absolute;
+  right: calc(100% + 6px);
+  width: calc(var(--bb-canal) - 6px);
+  transform: translateY(-50%);
+  text-align: right;
+  font-size: 12px;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: var(--muted);
+}
+
+/* Columnas. Cada tramo es una casilla del mismo ancho; la barra adentro mide el
+   alto completo y se CORRE hacia abajo según --v (0 a 1): no se anima ningún
+   alto, y cuando entra un cobro la de hoy sube sola con la transición. */
+.bb-cols {
+  position: absolute;
+  inset: 0;
+  display: flex;
+}
+.bb-cupo {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  justify-content: center;
+  overflow: hidden;
+}
+.bb-col {
+  /* Nunca llena la casilla (lo que sobra es aire) ni pasa de 24 px. */
+  width: min(72%, 24px);
+  height: 100%;
+  border-radius: 4px 4px 0 0;
+  background: var(--bar);
+  transform: translateY(calc(100% - max(var(--v) * 100%, 3px)));
+}
+.bb-col[data-ahora] {
+  background: var(--accent);
+}
+/* Un tramo a medias que no es el de hoy (la semana o el mes donde arranca el
+   rango): hueco, para que no se lea como "se vendió menos". */
+.bb-col[data-hueca] {
+  background: transparent;
+  box-shadow: inset 0 0 0 1.5px var(--bar);
+}
+/* Con fondo del panel: si no, la rejilla (o la otra línea) las tacha por la mitad. */
+.bb-pico,
+.bb-rotulo {
+  background: var(--panel);
+  box-shadow: 0 0 0 2px var(--panel);
+}
+.bb-pico {
+  position: absolute;
+  transform: translateX(-50%);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: var(--ink);
+  pointer-events: none;
+}
+.bb-pico[data-lado="izq"] {
+  transform: none;
+}
+.bb-pico[data-lado="der"] {
+  transform: translateX(-100%);
+}
+
+/* Líneas (el ritmo del mes). El SVG se estira al ancho que haya; el trazo no. */
+.bb-lienzo {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.bb-lienzo path {
+  fill: none;
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+}
+.bb-antes {
+  stroke: color-mix(in oklab, var(--ink) 60%, transparent);
+}
+.bb-ahora {
+  stroke: var(--accent);
+}
+.bb-punto {
+  position: absolute;
+  z-index: 1; /* encima del rótulo del mes pasado, que ahora tiene fondo */
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--accent);
+  box-shadow: 0 0 0 2px var(--panel); /* anillo: se lee encima de la otra línea */
+  transform: translate(-50%, 50%);
+  pointer-events: none;
+}
+.bb-rotulo {
+  position: absolute;
+  right: 0;
+  font-size: 12px;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: var(--muted);
+  pointer-events: none;
+}
+.bb-rotulo b {
+  font-weight: 600;
+  color: var(--ink);
+}
+/* La leyenda imita la marca: un trazo corto, no una caja. */
+.bb-trazo-clave {
+  display: inline-block;
+  width: 16px;
+  height: 2px;
+  margin-right: 6px;
+  border-radius: 2px;
+  vertical-align: middle;
+}
+
+/* Fechas: pocas y día-primero. El alto de la gráfica incluye esta banda. */
+.bb-eje-x {
+  position: relative;
+  height: 22px;
+  margin-left: var(--bb-canal);
+  font-size: 12px;
+  line-height: 22px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: var(--muted);
+}
+.bb-eje-x span {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+}
+.bb-eje-x span[data-borde="izq"] {
+  transform: none;
+}
+.bb-eje-x span[data-borde="der"] {
+  transform: translateX(-100%);
+}
+.bb-eje-x span[data-hoy] {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+/* La capa que se toca: tapa el plot entero. pan-y deja que la página siga
+   bajando con el dedo; solo el arrastre de lado recorre la gráfica. */
+.bb-toque {
+  position: absolute;
+  top: var(--bb-aire);
+  right: 0;
+  left: var(--bb-canal);
+  height: var(--bb-alto);
+  touch-action: pan-y;
+  cursor: crosshair;
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.bb-toque:focus-visible {
+  outline: 2px solid var(--accent-soft);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+.bb-guia {
+  position: absolute;
+  inset-block: 0;
+  left: 0;
+  /* Tinta al 10 % con opacity y no con color-mix: en un navegador sin color-mix
+     el respaldo es tinta opaca, y la banda tapaba la barra elegida. */
+  background: var(--ink);
+  opacity: 0;
+}
+.bb-guia[data-activa] {
+  opacity: 0.1;
+}
+/* En las líneas la guía es un pelo vertical en el centro del día. */
+.bb-guia-linea {
+  background: linear-gradient(var(--ink), var(--ink)) center / 1px 100% no-repeat;
+}
+.bb-guia-linea[data-activa] {
+  opacity: 1;
+}
+
+/* Lo de antes sigue a la vista, atenuado, mientras llega el período nuevo. */
+.bb-cuerpo[data-cargando] {
+  opacity: 0.45;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .bb-col {
+    transition: transform 420ms var(--bb-curva);
+    animation: bbcrece 420ms var(--bb-curva) backwards;
+    /* Escalonado en el sentido del tiempo, con tope: 31 días no tardan más que 12 meses. */
+    animation-delay: calc(min(var(--i), 24) * 16ms);
+  }
+  .bb-pico,
+  .bb-rotulo {
+    animation: bbaparece 240ms ease-out 520ms backwards;
+  }
+  /* La línea del mes se descubre de izquierda a derecha, a velocidad pareja: así
+     se acumula la plata. La del mes pasado ya está: es el contexto. */
+  .bb-barrido {
+    animation: bbbarrido 700ms linear 150ms backwards;
+  }
+  .bb-punto {
+    animation: bbaparece 180ms ease-out backwards;
+    animation-delay: calc(150ms + 700ms * var(--avance, 1));
+  }
+  .bb-guia {
+    transition:
+      transform 120ms ease-out,
+      opacity 120ms ease-out;
+  }
+  .bb-cuerpo {
+    transition: opacity 240ms ease-out;
+  }
+  .bb-cuerpo[data-cargando] {
+    transition-delay: 120ms; /* un cambio rápido no alcanza a parpadear */
+  }
+  /* Lo que nace abajo del pliegue se guarda la entrada para cuando se vea
+     (LecturaGrafica pone y quita data-espera). */
+  .bb-graf[data-espera] :is(.bb-col, .bb-pico, .bb-rotulo, .bb-barrido, .bb-punto) {
+    animation: none;
+    visibility: hidden;
+  }
+}
+/* Al imprimir (o guardar en PDF) sin haber bajado, lo que esperaba a verse sale. */
+@media print {
+  .bb-graf[data-espera] :is(.bb-col, .bb-pico, .bb-rotulo, .bb-barrido, .bb-punto) {
+    visibility: visible;
+  }
+}
+@keyframes bbcrece {
+  from {
+    transform: translateY(100%);
+  }
+}
+@keyframes bbbarrido {
+  from {
+    clip-path: inset(-6px 100% -6px 0);
+  }
+  to {
+    clip-path: inset(-6px 0 -6px 0);
+  }
+}
+@keyframes bbaparece {
+  from {
+    opacity: 0;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   El desglose de la tarjeta "Entró en caja": cada número es un botón que abre
+   su detalle (components/admin/Desglose.tsx). El detalle entra con un fundido
+   corto y sus filas en escalera; las barritas crecen desde la izquierda. Todo
+   con transform y opacity: el alto no se anima.
+   --------------------------------------------------------------------------- */
+.bb-tile {
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    border-color 200ms ease,
+    background-color 200ms ease;
+}
+.bb-tile:focus-visible {
+  outline: 2px solid var(--accent-soft);
+  outline-offset: 2px;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .bb-tile {
+    transition:
+      transform 160ms cubic-bezier(0.22, 1, 0.36, 1),
+      border-color 200ms ease,
+      background-color 200ms ease;
+  }
+  /* Se hunde apenas al tocarlo: el botón "oyó" el toque antes de que abra. */
+  .bb-tile:active {
+    transform: scale(0.97);
+  }
+  /* Tailwind 4 gira con la propiedad `rotate` (no con transform): con
+     "transition: transform" la flecha saltaba sin animar. */
+  .bb-tile-flecha {
+    transition: rotate 200ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .bb-panel:not([hidden]) {
+    animation: bbabre 220ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
+  }
+  .bb-panel:not([hidden]) .bb-fila {
+    animation: bbsube 320ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
+    animation-delay: calc(min(var(--i, 0), 10) * 35ms + 60ms);
+  }
+  .bb-panel:not([hidden]) .bb-medida {
+    transform-origin: left;
+    animation: bbancho 420ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
+    animation-delay: calc(min(var(--i, 0), 10) * 35ms + 120ms);
+  }
+}
+@keyframes bbabre {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+@keyframes bbsube {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+@keyframes bbancho {
+  from {
+    transform: scaleX(0);
+  }
+}

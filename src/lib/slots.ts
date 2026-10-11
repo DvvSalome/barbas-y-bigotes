@@ -401,7 +401,10 @@ export function rangoPeriodo(p: Periodo, ahora: Date = new Date()): {
     const desde = bogotaDayRangeDeFecha(`${y}-${String(m).padStart(2, "0")}-01`).desde;
     const prevYm = m === 1 ? `${y - 1}-12` : `${y}-${String(m - 1).padStart(2, "0")}`;
     const prevDesde = bogotaDayRangeDeFecha(`${prevYm}-01`).desde;
-    const prevHasta = new Date(prevDesde.getTime() + (hasta.getTime() - desde.getTime()));
+    // …pero nunca más allá de donde arranca el mes actual: el 31 de octubre, "lo
+    // transcurrido" (30 días y pico) no cabe en septiembre (30 días), y el
+    // comparativo se metía en el 1° de octubre: esos cobros contaban en los dos lados.
+    const prevHasta = new Date(Math.min(prevDesde.getTime() + (hasta.getTime() - desde.getTime()), desde.getTime()));
     return { desde, hasta, prevDesde, prevHasta };
   }
   // Ventanas móviles (30d/90d): el comparativo son los N días JUSTO antes; termina
