@@ -365,7 +365,7 @@ export async function getAusenciasAdmin(): Promise<AusenciaAdmin[]> {
   }));
 }
 
-export type BebidaUpsell = { id: string; nombre: string; precio: number; sede: SedeId };
+export type BebidaUpsell = { id: string; nombre: string; precio: number; sede: SedeId; fotoUrl: string | null };
 
 // Bebidas del paso "¿le sumas una bebida?" del wizard: productos activos marcados
 // en_upsell, por sede. El wizard filtra por la sede activa. Orden por precio para
@@ -374,7 +374,7 @@ export async function getBebidasUpsell(): Promise<BebidaUpsell[]> {
   const sb = supabaseServer();
   const { data } = await sb
     .from("productos")
-    .select("id,nombre,precio,sede_id")
+    .select("id,nombre,precio,sede_id,foto_url")
     .eq("en_upsell", true)
     .eq("activo", true)
     .order("precio");
@@ -383,6 +383,7 @@ export async function getBebidasUpsell(): Promise<BebidaUpsell[]> {
     nombre: p.nombre as string,
     precio: p.precio as number,
     sede: p.sede_id as SedeId,
+    fotoUrl: (p.foto_url as string | null) ?? null,
   }));
 }
 

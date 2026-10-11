@@ -315,6 +315,7 @@ export function BookingWizard({
     () => bebidas.filter((b) => b.sede === sedeId),
     [bebidas, sedeId],
   );
+  const bebidasConFoto = bebidasSede.some((b) => b.fotoUrl);
   // Barberos ausentes en el día de referencia (el elegido, o hoy si aún no hay).
   // Se compara por YYYY-MM-DD local, igual que la fecha que guarda el admin.
   const ausenteSet = useMemo(() => {
@@ -1468,7 +1469,9 @@ export function BookingWizard({
                 </p>
               )}
 
-              <ul className={css.carta}>
+              {/* Con alguna foto en la categoría, todas las filas reservan el mismo
+                  ancho a la izquierda para que los nombres queden alineados. */}
+              <ul className={css.carta} data-fotos={serviciosCat.some((x) => x.fotoUrl) ? "" : undefined}>
                 {serviciosCat.map((sv) => {
                   const sel = servicio?.id === sv.id;
                   const precio = sedeId ? sv.precios[sedeId] : sv.precios["parque-venezuela"];
@@ -1488,7 +1491,7 @@ export function BookingWizard({
                       >
                         {sv.fotoUrl ? (
                           <span className={css.thumb}>
-                            <Image src={sv.fotoUrl} alt="" fill sizes="50px" />
+                            <Image src={sv.fotoUrl} alt="" fill sizes="(min-width:1024px) 124px, 88px" />
                           </span>
                         ) : (
                           <span className={css.dur}>
@@ -2294,29 +2297,55 @@ export function BookingWizard({
             className="w-full px-0"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="rounded-t-[22px] border-t border-line px-4 pb-[calc(env(safe-area-inset-bottom)+30px)] pt-5 md:px-14" style={{ background: "#0c0b0a" }}>
+            <div className="max-h-[92dvh] overflow-y-auto rounded-t-[22px] border-t border-line px-4 pb-[calc(env(safe-area-inset-bottom)+30px)] pt-5 md:px-14" style={{ background: "#0c0b0a" }}>
               <div className="mx-auto mb-4 h-1 w-[38px] rounded-full" style={{ background: "rgba(242,237,228,.18)" }} />
               <h3 className="text-center font-display text-[24px] font-extrabold uppercase leading-tight">
                 {upsellMode === "combo" ? UPSELL_COMBO.titulo : UPSELL_EXTRA.titulo}
               </h3>
               <p className="mt-1 text-center text-xs text-muted">{upsellMode === "combo" ? UPSELL_COMBO.sub : UPSELL_EXTRA.sub}</p>
 
-              <div className="mt-5 grid grid-cols-2 gap-2 md:grid-cols-[repeat(auto-fit,minmax(230px,1fr))]">
-                {bebidasSede.map((b) => (
-                  <button
-                    key={b.id}
-                    onClick={() => elegirBebida(b)}
-                    className="flex min-h-[54px] items-center justify-between rounded-[13px] border border-line px-3.5"
-                    style={{ background: "linear-gradient(180deg,#211d19,#151311)" }}
-                  >
-                    <span className="text-[13.5px] font-bold text-ink">{b.nombre}</span>
-                    {upsellMode === "combo" ? (
+              {/* Con al menos una foto subida (Inventario) la bebida se ve: tarjeta
+                  con la foto arriba. Sin ninguna, la lista compacta de siempre. */}
+              <div
+                className={
+                  bebidasConFoto
+                    ? `${css.bebidas} mt-5`
+                    : "mt-5 grid grid-cols-2 gap-2 md:grid-cols-[repeat(auto-fit,minmax(230px,1fr))]"
+                }
+              >
+                {bebidasSede.map((b) => {
+                  const precio =
+                    upsellMode === "combo" ? (
                       <span className="font-display text-[16px] font-extrabold" style={{ color: "#34d399" }}>Incluida</span>
                     ) : (
                       <span className="font-display text-[16px] font-extrabold tabular-nums text-accent-soft">+{cop(b.precio).replace(/\s/g, "")}</span>
-                    )}
-                  </button>
-                ))}
+                    );
+                  return bebidasConFoto ? (
+                    <button key={b.id} onClick={() => elegirBebida(b)} className={css.bebida}>
+                      <span className={css.bebidaFoto}>
+                        {b.fotoUrl ? (
+                          <Image src={b.fotoUrl} alt="" fill sizes="(max-width:768px) 46vw, 220px" />
+                        ) : (
+                          <span aria-hidden>{b.nombre.charAt(0).toUpperCase()}</span>
+                        )}
+                      </span>
+                      <span className="flex min-h-[48px] items-center justify-between gap-2 px-3 py-2">
+                        <span className="min-w-0 text-left text-[13.5px] font-bold leading-tight text-ink">{b.nombre}</span>
+                        {precio}
+                      </span>
+                    </button>
+                  ) : (
+                    <button
+                      key={b.id}
+                      onClick={() => elegirBebida(b)}
+                      className="flex min-h-[54px] items-center justify-between rounded-[13px] border border-line px-3.5"
+                      style={{ background: "linear-gradient(180deg,#211d19,#151311)" }}
+                    >
+                      <span className="text-[13.5px] font-bold text-ink">{b.nombre}</span>
+                      {precio}
+                    </button>
+                  );
+                })}
               </div>
 
               <button
