@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { getReporteMes, getSedes } from "@/lib/data/queries";
+import { getReporteMes, getSedes, getUltimoMesConDatos } from "@/lib/data/queries";
 import type { SedeId } from "@/lib/data/types";
 import { nombreMes, type FilaInventario } from "@/lib/reporte";
 import { DOW, dowDeFecha } from "@/lib/slots";
@@ -54,7 +54,8 @@ function FilaProducto({ f }: { f: FilaInventario }) {
         {f.ganancia === null ? (
           <div className="text-[12.5px] text-muted">sin costo</div>
         ) : (
-          <div className="bb-monto text-[12.5px] tabular-nums text-ok">+{cop(f.ganancia)}</div>
+          // Sin ventas no hay ganancia que mostrar: "+$ 0" en verde parecía un dato.
+          f.vendidas > 0 && <div className="bb-monto text-[12.5px] tabular-nums text-ok">+{cop(f.ganancia)}</div>
         )}
       </div>
     </li>
@@ -81,6 +82,9 @@ export default async function ReportePage({
   // Menos de 6 de cada 10 días con cobros: el mes está a medias en la app, y el
   // dueño lo va a comparar con su Excel. Se dice ANTES de que saque la conclusión
   // equivocada ("la app pierde plata").
+  // Un mes vacío (el que va en curso arranca así) no es un callejón: se ofrece
+  // el último que sí tiene algo. La consulta extra se paga solo en ese caso.
+  const ultimoConDatos = vacio ? await getUltimoMesConDatos(mes.desdeYmd, sede) : null;
   const aMedias = mes.dias.length > 0 && r.diasConCobros / mes.dias.length < 0.6;
   const gastosVeces = r.gastosPorConcepto.reduce((a, g) => a + g.veces, 0);
   // En pantalla, lo que más se vendió arriba; el Excel va por nombre, como un catálogo.
@@ -91,9 +95,21 @@ export default async function ReportePage({
         .filter((f) => f.sedeId === s.id)
         .sort((a, b) => b.vendidas - a.vendidas || a.nombre.localeCompare(b.nombre, "es")),
     }))
-    .filter((s) => s.filas.length);
+    .filter((s) => s.filas.length)
+    // Lo que no se vendió, ni entró, ni se ajustó va plegado: con 16 productos y
+    // 3 con movimiento, la lista entera era más de media pantalla de ceros.
+    .map((s) => ({
+      ...s,
+      movidas: s.filas.filter((f) => f.vendidas || f.entro || f.otras),
+      quietas: s.filas.filter((f) => !(f.vendidas || f.entro || f.otras)),
+    }));
   // Sin NINGÚN costo cargado, "Ganancia $ 0" diría que no se ganó nada: es que no se sabe.
   const sinNingunCosto = r.inventario.length > 0 && r.sinCosto === r.inventario.length;
+  // La ganancia solo se conoce de lo vendido QUE tiene costo: si nada de lo
+  // vendido lo tiene, "$ 0" sería mentira (no se sabe); si a una parte le falta, se avisa.
+  const vendidos = r.inventario.filter((f) => f.vendidas > 0);
+  const gananciaDesconocida = sinNingunCosto || (vendidos.length > 0 && vendidos.every((f) => f.ganancia === null));
+  const gananciaParcial = vendidos.some((f) => f.ganancia === null);
 
   return (
     <div className="max-w-5xl">
@@ -155,6 +171,13 @@ export default async function ReportePage({
             tinte="plata"
             titulo="Este mes no tiene nada registrado"
             texto="Aparece solo a medida que el mostrador cobra, la caja anota gastos y entra mercancía."
+            accion={
+              ultimoConDatos && (
+                <Link href={qs(ultimoConDatos)} className={botonClases("secundario", "md")}>
+                  Ver {nombreMes(ultimoConDatos)} <ChevronRightIcon className="h-4 w-4" />
+                </Link>
+              )
+            }
           />
         </div>
       ) : (
@@ -176,9 +199,9 @@ export default async function ReportePage({
                       <th className="px-3 py-2.5 font-semibold">Día</th>
                       <th className="px-2 py-2.5 text-right font-semibold">Ingresos</th>
                       <th className="px-2 py-2.5 text-right font-semibold">Local</th>
-                      <th className="px-3 py-2.5 text-right font-semibold sm:px-2">Gastos</th>
+                      <th className="hidden px-2 py-2.5 text-right font-semibold sm:table-cell">Gastos</th>
                       <th className="hidden px-2 py-2.5 text-right font-semibold sm:table-cell">Pedido</th>
-                      <th className="hidden px-3 py-2.5 text-right font-semibold sm:table-cell">Queda</th>
+                      <th className="px-3 py-2.5 text-right font-semibold">Queda</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-line/60">
@@ -189,14 +212,17 @@ export default async function ReportePage({
                           <div className="text-[12px] text-muted">
                             {d.cobros ? `${d.cobros} ${d.cobros === 1 ? "cobro" : "cobros"}` : "sin cobros"}
                           </div>
+                          {/* En el celular no cabe la columna de gastos: va acá, y la de
+                              "Queda" (la que importa) sí queda a la vista. */}
+                          {d.gastos > 0 && <div className="bb-monto whitespace-nowrap text-[12px] text-muted sm:hidden">gastos {cop(d.gastos)}</div>}
                         </td>
                         <td className="bb-monto px-2 py-2.5 text-right text-ink">{d.ingresos ? cop(d.ingresos) : "—"}</td>
                         <td className="bb-monto px-2 py-2.5 text-right text-ink">{d.local ? cop(d.local) : "—"}</td>
-                        <td className="bb-monto px-3 py-2.5 text-right text-muted sm:px-2" title={d.conceptos.map((c) => c.categoria).join(", ")}>
+                        <td className="bb-monto hidden px-2 py-2.5 text-right text-muted sm:table-cell" title={d.conceptos.map((c) => c.categoria).join(", ")}>
                           {d.gastos ? cop(d.gastos) : "—"}
                         </td>
                         <td className="bb-monto hidden px-2 py-2.5 text-right text-muted sm:table-cell">{d.pedido ? cop(d.pedido) : "—"}</td>
-                        <td className={`bb-monto hidden px-3 py-2.5 text-right font-semibold sm:table-cell ${d.queda < 0 ? "text-warn" : "text-ink"}`}>
+                        <td className={`bb-monto px-3 py-2.5 text-right font-semibold ${d.queda < 0 ? "text-warn" : "text-ink"}`}>
                           {cop(d.queda)}
                         </td>
                       </tr>
@@ -204,12 +230,17 @@ export default async function ReportePage({
                   </tbody>
                   <tfoot>
                     <tr className="border-t-2 border-accent/50 font-bold text-ink">
-                      <td className="px-3 py-3">Total</td>
+                      <td className="px-3 py-3">
+                        Total
+                        {r.totales.gastos > 0 && (
+                          <div className="bb-monto whitespace-nowrap text-[12px] font-normal text-muted sm:hidden">gastos {cop(r.totales.gastos)}</div>
+                        )}
+                      </td>
                       <td className="bb-monto px-2 py-3 text-right">{cop(r.totales.ingresos)}</td>
                       <td className="bb-monto px-2 py-3 text-right">{cop(r.totales.local)}</td>
-                      <td className="bb-monto px-3 py-3 text-right sm:px-2">{cop(r.totales.gastos)}</td>
+                      <td className="bb-monto hidden px-2 py-3 text-right sm:table-cell">{cop(r.totales.gastos)}</td>
                       <td className="bb-monto hidden px-2 py-3 text-right sm:table-cell">{cop(r.totales.pedido)}</td>
-                      <td className={`bb-monto hidden px-3 py-3 text-right sm:table-cell ${r.totales.queda < 0 ? "text-warn" : ""}`}>
+                      <td className={`bb-monto px-3 py-3 text-right ${r.totales.queda < 0 ? "text-warn" : ""}`}>
                         {cop(r.totales.queda)}
                       </td>
                     </tr>
@@ -264,11 +295,15 @@ export default async function ReportePage({
               </div>
               <div className="min-w-0 bg-panel px-3 py-3 sm:px-4">
                 <div className="eyebrow truncate">Ganancia</div>
-                <div className="bb-monto mt-1 font-display text-xl font-semibold tabular-nums text-ok sm:text-2xl">
-                  {sinNingunCosto ? "—" : cop(r.inventarioTotales.ganancia)}
+                <div
+                  className={`bb-monto mt-1 font-display text-xl font-semibold tabular-nums sm:text-2xl ${
+                    !gananciaDesconocida && r.inventarioTotales.ganancia > 0 ? "text-ok" : "text-ink"
+                  }`}
+                >
+                  {gananciaDesconocida ? "—" : cop(r.inventarioTotales.ganancia)}
                 </div>
                 <div className="mt-0.5 text-[12px] text-muted">
-                  {sinNingunCosto ? "falta el costo" : r.sinCosto ? "de los que tienen costo" : "vendido − costo"}
+                  {gananciaDesconocida ? "falta el costo" : gananciaParcial ? "de los que tienen costo" : "vendido − costo"}
                 </div>
               </div>
               <div className="min-w-0 bg-panel px-3 py-3 sm:px-4">
@@ -303,11 +338,30 @@ export default async function ReportePage({
                 {porSede.map((s) => (
                   <div key={s.id} className="mt-3 min-w-0">
                     {!sede && <p className="mb-1.5 text-[13px] font-semibold text-muted">{s.nombre}</p>}
-                    <ul className="divide-y divide-line/60 overflow-hidden rounded-2xl border border-line bg-panel">
-                      {s.filas.map((f) => (
-                        <FilaProducto key={f.productoId} f={f} />
-                      ))}
-                    </ul>
+                    {s.movidas.length ? (
+                      <ul className="divide-y divide-line/60 overflow-hidden rounded-2xl border border-line bg-panel">
+                        {s.movidas.map((f) => (
+                          <FilaProducto key={f.productoId} f={f} />
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="rounded-2xl border border-line bg-panel px-4 py-4 text-[13px] text-muted">
+                        Este mes no se vendió ni entró ningún producto.
+                      </p>
+                    )}
+                    {s.quietas.length > 0 && (
+                      <details className="group mt-2 overflow-hidden rounded-2xl border border-line bg-panel">
+                        <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 px-4 text-[13px] font-semibold text-muted transition hover:text-ink [&::-webkit-details-marker]:hidden">
+                          <ChevronRightIcon className="h-4 w-4 shrink-0 transition-transform group-open:rotate-90" />
+                          {s.quietas.length === 1 ? "1 producto no se movió" : `${s.quietas.length} productos no se movieron`}
+                        </summary>
+                        <ul className="divide-y divide-line/60 border-t border-line/60">
+                          {s.quietas.map((f) => (
+                            <FilaProducto key={f.productoId} f={f} />
+                          ))}
+                        </ul>
+                      </details>
+                    )}
                   </div>
                 ))}
               </div>

@@ -2791,6 +2791,33 @@ async function todasLasFilas<T>(
 }
 
 /**
+ * El mes ("2026-09") más reciente ANTERIOR a `antesDeYmd` con algún cobro o gasto,
+ * o null. Es para el atajo del reporte cuando el mes que se abre no tiene nada
+ * (el mes en curso arranca vacío). Va con la sesión: RLS deja leer gastos solo
+ * al admin, y a cualquier otro le devuelve null sin más.
+ */
+export async function getUltimoMesConDatos(antesDeYmd: string, sede: SedeId | null): Promise<string | null> {
+  const sb = await supabaseServerAuth();
+  let v = sb
+    .from("ventas")
+    .select("creado_en")
+    .is("anulada_en", null)
+    .lt("creado_en", bogotaDayRangeDeFecha(antesDeYmd).desde.toISOString())
+    .order("creado_en", { ascending: false })
+    .limit(1);
+  let g = sb.from("gastos").select("fecha").lt("fecha", antesDeYmd).order("fecha", { ascending: false }).limit(1);
+  if (sede) {
+    v = v.eq("sede_id", sede);
+    g = g.eq("sede_id", sede);
+  }
+  const [rv, rg] = await Promise.all([v, g]);
+  const venta = (rv.data?.[0] as { creado_en?: string } | undefined)?.creado_en;
+  const gasto = (rg.data?.[0] as { fecha?: string } | undefined)?.fecha;
+  const dias = [venta ? bogotaYmd(new Date(venta)) : null, gasto ?? null].filter((x): x is string => !!x);
+  return dias.length ? dias.sort().at(-1)!.slice(0, 7) : null;
+}
+
+/**
  * El mes como lo lleva el dueño en su Excel: consolidado día por día + inventario.
  * La cuenta vive en `lib/reporte.ts` (probada con scripts/check-reporte.ts); acá
  * solo se lee y se pasa cada fila a su día de Bogotá.
