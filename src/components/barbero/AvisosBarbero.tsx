@@ -41,7 +41,8 @@ async function obtenerSW(ms = 5000): Promise<ServiceWorkerRegistration | null> {
 
 type Estado = "cargando" | "oculto" | "ios-instalar" | "sin-sw" | "listo" | "activo";
 
-export function AvisosBarbero() {
+/** `dueno`: la versión del panel del admin (0083), que recibe TODAS las citas web. */
+export function AvisosBarbero({ dueno = false }: { dueno?: boolean } = {}) {
   const [estado, setEstado] = useState<Estado>("cargando");
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -137,7 +138,9 @@ export function AvisosBarbero() {
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
         <p className="flex items-center gap-2 text-[12px] text-muted">
           <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-ok" />
-          Avisos activos en este aparato: te llega la cita al celular aunque tengas la app cerrada.
+          {dueno
+            ? "Avisos activos en este aparato: te llega cada cliente que reserva, aunque tengas la app cerrada."
+            : "Avisos activos en este aparato: te llega la cita al celular aunque tengas la app cerrada."}
         </p>
         <button
           onClick={probar}
@@ -171,7 +174,7 @@ export function AvisosBarbero() {
               Baja y toca <span className="font-semibold text-ink">Agregar a pantalla de inicio</span>.
             </li>
             <li>
-              Abre <span className="font-semibold text-ink">Barbas &amp; Bigotes</span> desde el ícono nuevo y
+              Abre <span className="font-semibold text-ink">B&amp;B Equipo</span> desde el ícono nuevo y
               vuelve acá: el botón de activar te va a aparecer.
             </li>
           </ol>
@@ -181,8 +184,9 @@ export function AvisosBarbero() {
       ) : (
         <>
           <p className="mt-1 text-[12.5px] text-muted">
-            Ahora mismo solo suena si tienes el mostrador abierto en pantalla. Actívalos y te avisamos
-            cuando entre una cita tuya o se caiga una.
+            {dueno
+              ? "Actívalos y te llega al celular cada cliente que reserve por la web, aunque tengas la app cerrada."
+              : "Ahora mismo solo suena si tienes el mostrador abierto en pantalla. Actívalos y te avisamos cuando entre una cita tuya o se caiga una."}
           </p>
           <button
             onClick={activar}

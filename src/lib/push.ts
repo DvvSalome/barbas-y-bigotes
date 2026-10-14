@@ -75,8 +75,17 @@ export async function pushASede(sedeId: string, payload: PushPayload): Promise<P
   return enviar({ columna: "sede_id", id: sedeId }, payload);
 }
 
+/**
+ * Al DUEÑO: todos los aparatos de los admins (0083). No tienen sede ni ficha de
+ * barbero, así que su suscripción va atada a su usuario y les llega todo.
+ */
+export async function pushAAdmins(payload: PushPayload): Promise<PushResumen> {
+  return enviar({ columna: "admin_auth", id: null }, payload);
+}
+
 async function enviar(
-  destino: { columna: "cliente_ref" | "barbero_id" | "sede_id"; id: string },
+  // id null = todas las suscripciones de esa columna (los admins).
+  destino: { columna: "cliente_ref" | "barbero_id" | "sede_id" | "admin_auth"; id: string | null },
   payload: PushPayload,
 ): Promise<PushResumen> {
   const configurado = configurarVapid();
@@ -85,13 +94,13 @@ async function enviar(
   // mandó" de "se mandó bien" en vez de asumir un 200.
   const resumen: PushResumen = { configurado, enviadas: 0, fallidas: 0, muertas: 0 };
   try {
-    if (!destino.id || !configurado) return resumen;
+    if ((!destino.id && destino.columna !== "admin_auth") || !configurado) return resumen;
 
     const sb = supabaseAdmin();
     const { data, error } = await sb
       .from("push_subscriptions")
       .select("endpoint,p256dh,auth")
-      .eq(destino.columna, destino.id);
+      .filter(destino.columna, destino.id ? "eq" : "not.is", destino.id ?? "null");
     if (error) {
       errorPublico("pushACliente select", error);
       return resumen;

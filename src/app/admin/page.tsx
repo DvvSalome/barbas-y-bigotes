@@ -21,6 +21,7 @@ import { DesbloquearPinBtn } from "@/components/admin/DesbloquearPinBtn";
 import { AlertIcon, ScissorsIcon, CheckIcon, StarIcon, PercentIcon, CashIcon, TicketIcon, GridIcon } from "@/components/icons";
 import type { SedeId } from "@/lib/data/types";
 import { AvisoCaja } from "@/components/admin/AvisoCaja";
+import { AvisosBarbero } from "@/components/barbero/AvisosBarbero";
 import { Estrellas } from "@/components/ui/Estrellas";
 
 export const metadata: Metadata = { title: "Hoy · Admin" };
@@ -323,6 +324,9 @@ export default async function AdminHoy({
           </div>
         </div>
       </header>
+
+      {/* Avisos al celular del dueño (0083): cada cliente que reserva por la web. */}
+      <AvisosBarbero dueno />
 
       {/* ── El pulso del día ────────────────────────────────
           Seis números que antes no estaban en ninguna pantalla (ticket

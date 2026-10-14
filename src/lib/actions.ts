@@ -48,7 +48,7 @@ import { emailGuardable, esEmailEnviable } from "@/lib/email";
 import { avisarConfirmacionPendiente } from "@/lib/n8n";
 import { calcularCobro, snapshotDinero, diferenciaCaja, sumaGastosEfectivo } from "@/lib/cobro";
 import { beneficioProximoCorte, sanearConfigTarjeta, type BeneficioTarjeta } from "@/lib/tarjeta";
-import { pushACliente, pushABarbero, pushASede } from "@/lib/push";
+import { pushACliente, pushABarbero, pushASede, pushAAdmins } from "@/lib/push";
 import { cop, fechaHoraBogota } from "@/lib/format";
 
 export type ActionResult = { ok: boolean; error?: string; /** Se guardó, pero con salvedades que el admin debe ver (p.ej. especialidades descartadas). */ aviso?: string; id?: string; total?: number; descuento?: number; propina?: number; puntos?: number; encolado?: boolean; esperaHasta?: string | null; tarjeta?: { cortesTotales: number; posicion: number; beneficio: BeneficioTarjeta | null }; resenaUrl?: string | null; /** confirm_token de la reserva recién creada: credencial para deshacerla desde la confirmación del wizard. */ token?: string | null; /** Lo que se creó cuando es más de uno (un producto en las dos sedes). */ ids?: string[]; /** Qué hizo "Eliminar": borrar de verdad o retirar del catálogo. */ modo?: "borrado" | "retirado"; /** Unidades que "Eliminar" sacó como merma. */ baja?: number };
@@ -1839,6 +1839,8 @@ export async function createReserva(input: {
   };
   await pushASede(input.sede, avisoCita);
   await pushABarbero(barberoId, avisoCita);
+  // Y al dueño (0083): se entera de cada cliente que reserva por la web.
+  await pushAAdmins({ ...avisoCita, url: "/admin" });
   // Empujón a n8n para que mande la confirmación YA y no en la vuelta del cron:
   // el cliente todavía está mirando la pantalla del "¡Listo!". Nunca bloquea ni
   // revienta —la cita ya está guardada— y si falla, el cron la manda igual.
@@ -4607,7 +4609,9 @@ export async function probarAvisoStaff(): Promise<ActionResult> {
     ? await pushABarbero(staff.barberoId, aviso)
     : staff.sedeId
       ? await pushASede(staff.sedeId, aviso)
-      : null;
+      : staff.rol === "admin"
+        ? await pushAAdmins({ ...aviso, url: "/admin" })
+        : null;
 
   if (!r) return { ok: false, error: "Este perfil no tiene aparato al que avisar." };
   if (!r.configurado) return { ok: false, error: "El servidor no tiene las llaves de avisos configuradas." };
@@ -4636,18 +4640,23 @@ export async function guardarPushStaff(sub: {
   keys: { p256dh: string; auth: string };
 }): Promise<ActionResult> {
   const staff = await getStaffContext();
+  // El admin/dueño no tiene sede ni ficha: su suscripción va atada a su usuario (0083).
+  const authId =
+    staff.rol === "admin" ? (await (await supabaseServerAuth()).auth.getUser()).data.user?.id ?? null : null;
+  const nadie = { sede_id: null, barbero_id: null, cliente_ref: null, admin_auth: null };
   const dueno = staff.sedeId
-    ? { sede_id: staff.sedeId, barbero_id: null, cliente_ref: null }
+    ? { ...nadie, sede_id: staff.sedeId }
     : staff.barberoId
-      ? { sede_id: null, barbero_id: staff.barberoId, cliente_ref: null }
-      : null;
-  // El admin/dueño no tiene sede ni ficha: no hay a quién atar la suscripción.
+      ? { ...nadie, barbero_id: staff.barberoId }
+      : authId
+        ? { ...nadie, admin_auth: authId }
+        : null;
   if (!dueno) return { ok: false, error: "Esta sesión no tiene sede ni barbero al que avisarle." };
   if (!sub?.endpoint || !sub.keys?.p256dh || !sub.keys?.auth) {
     return { ok: false, error: "Suscripción inválida." };
   }
   const { error } = await supabaseAdmin().from("push_subscriptions").upsert(
-    // Los tres campos van explícitos (dos en null): el CHECK push_sub_dueno_unico
+    // Los cuatro campos van explícitos (tres en null): el CHECK push_sub_dueno_unico
     // exige exactamente un dueño, y en un upsert los que no se mandan conservan
     // el valor viejo de la fila.
     { ...dueno, endpoint: sub.endpoint, p256dh: sub.keys.p256dh, auth: sub.keys.auth },
