@@ -119,6 +119,12 @@ export default async function LiquidacionPage({
                     <span className="flex min-w-0 items-center gap-2.5">
                       <CaraBarbero b={{ id: f.barberoId, nombre: f.nombre, fotoUrl: f.fotoUrl }} size={38} aro />
                       <span className="font-display text-[19px] font-bold uppercase leading-tight text-ink">{f.nombre}</span>
+                      {/* Dado de baja con plata en la semana: sale para poder pagarle. */}
+                      {!f.activo && (
+                        <span className="shrink-0 rounded-full border border-warn/45 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-warn">
+                          Ya no trabaja aquí
+                        </span>
+                      )}
                     </span>
                     <span className="text-[12px] text-muted">
                       {sedes.find((s) => s.id === f.sedeId)?.nombre ?? f.sedeId} ·{" "}

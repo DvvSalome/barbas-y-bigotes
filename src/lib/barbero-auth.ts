@@ -3,15 +3,10 @@
 import { supabaseServerAuth, supabaseAdmin } from "@/lib/supabase/server";
 import { getStaffContext } from "@/lib/data/queries";
 import { errorPublico } from "@/lib/errors";
+import { esPinValido } from "@/lib/equipo-reglas";
 
-const PINS_TRIVIALES = new Set([
-  "000000", "111111", "222222", "333333", "444444", "555555", "666666",
-  "777777", "888888", "999999", "123456", "654321", "012345", "121212",
-]);
-
-function esPinValido(pin: string): boolean {
-  return /^\d{6}$/.test(pin) && !PINS_TRIVIALES.has(pin);
-}
+// La regla del PIN vive en equipo-reglas.ts: la usan también el alta y la
+// reactivación de un barbero (equipo-actions.ts), y tiene su chequeo.
 
 // Login del barbero por PIN. Verifica (con bloqueo) y mina la sesión real de Supabase.
 export async function loginBarberoPin(
@@ -29,6 +24,11 @@ export async function loginBarberoPin(
   if (estado === "locked") return { ok: false, error: "Demasiados intentos. Espera unos minutos." };
   if (estado !== "ok") return { ok: false, error: "PIN incorrecto." };
 
+  // Dado de baja (0087): su PIN ya se borró, pero si alguien lo dejó puesto, igual
+  // no entra. Mismo mensaje que un PIN malo: no se le cuenta nada a quien prueba.
+  const { data: ficha } = await admin.from("barberos").select("activo").eq("id", barberoId).maybeSingle();
+  if (!ficha || (ficha as { activo?: boolean }).activo === false) return { ok: false, error: "PIN incorrecto." };
+
   // Resolver el email de auth del barbero y minar su sesión.
   const { data: prof } = await admin
     .from("profiles")
@@ -37,11 +37,11 @@ export async function loginBarberoPin(
     .eq("rol", "barbero")
     .maybeSingle();
   const authId = (prof as { auth_id?: string } | null)?.auth_id;
-  if (!authId) return { ok: false, error: "Este barbero no tiene acceso configurado. Avisa al admin." };
+  if (!authId) return { ok: false, error: "Todavía no tienes acceso a la app. Pídele al dueño que toque «Crear acceso» en tu ficha (Equipo)." };
 
   const { data: userData } = await admin.auth.admin.getUserById(authId);
   const email = userData?.user?.email;
-  if (!email) return { ok: false, error: "Este barbero no tiene acceso configurado. Avisa al admin." };
+  if (!email) return { ok: false, error: "Todavía no tienes acceso a la app. Pídele al dueño que toque «Crear acceso» en tu ficha (Equipo)." };
 
   const { data: link, error: lErr } = await admin.auth.admin.generateLink({ type: "magiclink", email });
   const tokenHash = (link as { properties?: { hashed_token?: string } } | null)?.properties?.hashed_token;
@@ -127,6 +127,10 @@ export async function setearPinBarbero(
   if (!(await esAdmin())) return { ok: false, error: "Requiere permiso de administrador" };
   if (!esPinValido(pin)) return { ok: false, error: "PIN inválido (6 dígitos, no triviales como 123456 o 000000)." };
   const admin = supabaseAdmin();
+  // A un dado de baja no se le pone PIN suelto: se le pone al reactivarlo.
+  const { data: ficha } = await admin.from("barberos").select("activo").eq("id", barberoId).maybeSingle();
+  if (!ficha || (ficha as { activo?: boolean }).activo === false)
+    return { ok: false, error: "Ese barbero ya no trabaja aquí. Reactívalo para ponerle un PIN." };
   const { error } = await admin.rpc("set_pin_barbero", { p_barbero_id: barberoId, p_pin: pin });
   if (error) return { ok: false, error: errorPublico("setearPinBarbero", error, "No se pudo guardar el PIN. Intenta de nuevo.") };
   return { ok: true };

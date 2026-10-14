@@ -125,7 +125,49 @@ const sinAcceso: DatosPuesta = {
 };
 assert.deepEqual(claves(sinAcceso), ["barberos-sin-acceso"], "sin acceso no se le pide activar avisos");
 assert.match(armarPuesta(sinAcceso)[0].detalle, /Andrés Gómez y Luis Pérez: les falta/);
-assert.match(armarPuesta(sinAcceso)[0].detalle, /soporte/);
+// Desde 0087 el acceso lo crea el dueño desde la ficha: ya no se manda a soporte.
+assert.match(armarPuesta(sinAcceso)[0].detalle, /«Crear acceso»/);
+assert.doesNotMatch(armarPuesta(sinAcceso)[0].detalle, /soporte|FourG/);
+assert.match(armarPuesta(sinAcceso)[0].detalle, /no les llega ningún correo/, "plural concordado");
+assert.equal(armarPuesta(sinAcceso)[0].href, "/admin/equipo", "varios: a Equipo");
+const unoSinAcceso = armarPuesta({ ...sano, barberos: [{ id: "k1", nombre: "Kevin Valencia", aparatos: 0, correo: true, acceso: false }] })[0];
+assert.equal(unoSinAcceso.href, "/admin/equipo?ficha=k1", "uno solo: directo a su ficha");
+assert.equal(unoSinAcceso.boton, "Crear acceso");
+assert.match(unoSinAcceso.detalle, /no le llega ningún correo/);
+
+// (4b) El checklist de la ficha en el Inicio (0087): PIN, foto y contrato.
+//      Sin el dato (undefined/null), se calla: los barberos de `sano` no lo traen.
+const aMedias: DatosPuesta = {
+  ...sano,
+  barberos: [
+    { id: "k1", nombre: "Kevin Valencia", aparatos: 1, correo: true, acceso: true, pin: false, foto: false, contrato: false },
+    { id: "a", nombre: "Andrés Gómez", aparatos: 1, correo: true, acceso: true, pin: true, foto: true, contrato: true },
+  ],
+};
+assert.deepEqual(claves(aMedias), ["barberos-sin-pin", "barberos-sin-foto", "barberos-sin-contrato"]);
+const pinK = armarPuesta(aMedias)[0];
+assert.equal(pinK.tono, "falta", "sin PIN no entra: es falta");
+assert.equal(pinK.titulo, "Kevin no tiene PIN para entrar");
+assert.equal(pinK.href, "/admin/equipo?ficha=k1");
+assert.equal(armarPuesta(aMedias).find((p) => p.clave === "barberos-sin-foto")!.tono, "sugerencia");
+assert.equal(armarPuesta(aMedias).find((p) => p.clave === "barberos-sin-foto")!.titulo, "Kevin sale sin foto en la web");
+// Sin foto la web NO muestra las iniciales: muestra una foto genérica de otra persona.
+assert.doesNotMatch(armarPuesta(aMedias).find((p) => p.clave === "barberos-sin-foto")!.detalle, /iniciales/);
+assert.match(armarPuesta(aMedias).find((p) => p.clave === "barberos-sin-foto")!.detalle, /foto genérica que no es él/);
+const contratoK = armarPuesta(aMedias).find((p) => p.clave === "barberos-sin-contrato")!;
+assert.equal(contratoK.tono, "sugerencia");
+assert.match(contratoK.detalle, /50 %/, "dice cuánto se le está cobrando");
+assert.equal(contratoK.href, "/admin/comisiones");
+// Sin acceso, no se le pide el PIN (primero el acceso).
+assert.deepEqual(
+  claves({ ...sano, barberos: [{ id: "k1", nombre: "Kevin", aparatos: 0, correo: true, acceso: false, pin: false }] }),
+  ["barberos-sin-acceso"],
+);
+assert.deepEqual(
+  claves({ ...sano, barberos: [{ id: "k1", nombre: "Kevin", aparatos: 1, correo: true, acceso: true, pin: null, foto: null, contrato: null }] }),
+  [],
+  "null = no se sabe: callado",
+);
 
 // Un dato desconocido de un barbero no lo acusa.
 const dudoso: DatosPuesta = {
@@ -139,6 +181,13 @@ const sinCrear: DatosPuesta = { ...sano, agendas: { sinAgenda: ["Luis Pérez"], 
 assert.equal(armarPuesta(sinCrear)[0].titulo, "Luis no ve sus citas en Google Calendar");
 assert.match(armarPuesta(sinCrear)[0].detalle, /Crear las agendas/);
 assert.deepEqual(armarPuesta({ ...sano, agendas: null }), [], "Google sin configurar: no es reproche");
+// Un dado de baja que sigue viendo su agenda (Google falló al quitársela): es falta.
+const exConAgenda = armarPuesta({ ...sano, agendas: { sinAgenda: [], sinCompartir: [], exConAcceso: [{ id: "k1", nombre: "Kevin Valencia" }] } });
+assert.deepEqual(exConAgenda.map((p) => p.clave), ["ex-barbero-con-agenda"]);
+assert.equal(exConAgenda[0].tono, "falta");
+assert.equal(exConAgenda[0].titulo, "Kevin ya no trabaja aquí y sigue viendo su agenda");
+assert.match(exConAgenda[0].detalle, /«Quitarle el acceso»/);
+assert.deepEqual(claves({ ...sano, agendas: { sinAgenda: [], sinCompartir: [], exConAcceso: [] } }), [], "sin ex con agenda, nada");
 
 // (6) Cobros sin cliente: solo con semana de verdad y más de la mitad.
 assert.deepEqual(claves({ ...sano, cobros7d: { total: COBROS_MINIMOS - 1, sinCorreo: COBROS_MINIMOS - 1 } }), [], "pocos cobros: no hay tendencia");

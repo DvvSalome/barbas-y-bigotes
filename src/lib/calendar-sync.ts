@@ -2,8 +2,11 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import {
   calendarConfigurado,
+  calendarCuenta,
+  correosConAcceso,
   crearCalendario,
   compartirCalendario,
+  descompartirCalendario,
   guardarEvento,
   borrarEvento,
   type EventoCalendar,
@@ -66,6 +69,51 @@ export async function calendarioDeBarbero(admin: SupabaseClient, barberoId: stri
     await compartirCalendario(id, e.email, e.rol).catch(() => null);
   }
   return id;
+}
+
+/**
+ * Le quita al barbero el acceso a SU agenda (la baja, 0087). Los eventos llevan
+ * nombre y teléfono de cada cliente: el que se va no se los puede seguir llevando.
+ * La agenda queda (con su historial) por si vuelve; se le quita a TODO correo que
+ * la vea salvo la cuenta de servicio (la dueña) y los lectores generales del dueño
+ * (calendar_compartidos). No se fía solo de compartido_con: si al barbero le
+ * cambiaron el correo de avisos, el viejo seguía con acceso y la base no lo sabía.
+ * Devuelve los correos a los que se les quitó ([] si no había nadie).
+ * Lanza si Google o la base fallan: quien llama decide cómo contarlo.
+ */
+export async function quitarAccesoAgenda(admin: SupabaseClient, barberoId: string): Promise<string[]> {
+  const { data, error } = await admin
+    .from("barbero_calendar")
+    .select("calendar_id,compartido_con")
+    .eq("barbero_id", barberoId)
+    .maybeSingle();
+  if (error) throw new Error(`barbero_calendar: ${error.message}`);
+  const fila = data as { calendar_id: string; compartido_con: string | null } | null;
+  if (!fila?.calendar_id) return [];
+  if (!calendarConfigurado()) {
+    if (fila.compartido_con) throw new Error("Google Calendar no está configurado en el servidor");
+    return [];
+  }
+  // Los que se quedan: la cuenta de servicio y los correos del dueño. Si no se
+  // puede leer esa lista, no se toca nada (se le quitaría la agenda al dueño).
+  const { data: extra, error: eErr } = await admin.from("calendar_compartidos").select("email");
+  if (eErr) throw new Error(`calendar_compartidos: ${eErr.message}`);
+  const quedan = new Set(
+    [calendarCuenta(), ...((extra ?? []) as { email: string }[]).map((e) => e.email)]
+      .filter((e): e is string => !!e)
+      .map((e) => e.trim().toLowerCase()),
+  );
+  const conAcceso = await correosConAcceso(fila.calendar_id);
+  const quitar = new Set(conAcceso.filter((a) => a.rol !== "owner" && !quedan.has(a.email)).map((a) => a.email));
+  if (fila.compartido_con && !quedan.has(fila.compartido_con.toLowerCase())) quitar.add(fila.compartido_con.toLowerCase());
+  for (const email of quitar) await descompartirCalendario(fila.calendar_id, email);
+  if (fila.compartido_con) {
+    await admin
+      .from("barbero_calendar")
+      .update({ compartido_con: null, actualizado_en: new Date().toISOString() })
+      .eq("barbero_id", barberoId);
+  }
+  return [...quitar];
 }
 
 function eventoDe(f: FilaCola): EventoCalendar {

@@ -50,10 +50,21 @@ export type DatosPuesta = {
         correo: boolean | null;
         /** Tiene usuario para entrar con su PIN (profiles con su barbero_id). */
         acceso: boolean | null;
+        /** Tiene PIN puesto (barbero_pin). Sin el dato, se calla. */
+        pin?: boolean | null;
+        /** Tiene foto (la ve el cliente en la web y al reservar). */
+        foto?: boolean | null;
+        /** Su contrato está escrito (si no, el cobro usa el 50 % por defecto). */
+        contrato?: boolean | null;
       }[]
     | null;
   /** Google Calendar (0073). null si no está configurado en el servidor. */
-  agendas: { sinAgenda: string[]; sinCompartir: string[] } | null;
+  agendas: {
+    sinAgenda: string[];
+    sinCompartir: string[];
+    /** Dados de baja que TODAVÍA ven su agenda (Google falló al quitársela). */
+    exConAcceso?: { id: string; nombre: string }[];
+  } | null;
   /** Cobros no anulados de los últimos 7 días, y cuántos sin cliente con correo. */
   cobros7d: { total: number; sinCorreo: number } | null;
   /** "Te toca corte" (0068). */
@@ -80,6 +91,9 @@ export function listaNombres(nombres: string[], max = 3): string {
 }
 
 const primerNombre = (nombre: string) => nombre.trim().split(/\s+/)[0] ?? nombre;
+
+/** A la ficha de ESE barbero si es uno solo; a Equipo si son varios. */
+const fichaDe = (lista: { id: string }[]) => (lista.length === 1 ? `/admin/equipo?ficha=${lista[0].id}` : "/admin/equipo");
 
 export function armarPuesta(d: DatosPuesta): PendientePuesta[] {
   const lista: PendientePuesta[] = [];
@@ -132,9 +146,23 @@ export function armarPuesta(d: DatosPuesta): PendientePuesta[] {
       titulo: uno
         ? `${primerNombre(sinAcceso[0].nombre)} no puede entrar a la app`
         : `${sinAcceso.length} barberos no pueden entrar a la app`,
-      detalle: `${uno ? "Le falta" : `${listaNombres(sinAcceso.map((b) => b.nombre))}: les falta`} el acceso para entrar con su PIN. Ese acceso lo crea soporte (FourG): escríbeles con ${uno ? "su nombre" : "los nombres"}.`,
-      href: "/admin/equipo",
-      boton: "Ver equipo",
+      detalle: `${uno ? "Le falta" : `${listaNombres(sinAcceso.map((b) => b.nombre))}: les falta`} el acceso para entrar con su PIN. En Equipo, abre ${uno ? "su ficha" : "la ficha de cada uno"} y toca «Crear acceso»: no ${uno ? "le" : "les"} llega ningún correo, solo ${uno ? "queda listo" : "quedan listos"} para entrar.`,
+      href: fichaDe(sinAcceso),
+      boton: "Crear acceso",
+    });
+  }
+
+  // Sin PIN el acceso no le sirve. Al que le falta el acceso ya se le pidió arriba.
+  const sinPin = barberos.filter((b) => b.pin === false && b.acceso !== false);
+  if (sinPin.length) {
+    const uno = sinPin.length === 1;
+    lista.push({
+      clave: "barberos-sin-pin",
+      tono: "falta",
+      titulo: uno ? `${primerNombre(sinPin[0].nombre)} no tiene PIN para entrar` : `${sinPin.length} barberos sin PIN para entrar`,
+      detalle: `${uno ? "" : `${listaNombres(sinPin.map((b) => b.nombre))}. `}Sin PIN no puede${uno ? "" : "n"} entrar a la app ni ver sus citas. Ponlo en Equipo, en ${uno ? "su ficha" : "la ficha de cada uno"}, y díselo en persona.`,
+      href: fichaDe(sinPin),
+      boton: uno ? "Poner PIN" : "Poner PINes",
     });
   }
 
@@ -150,7 +178,7 @@ export function armarPuesta(d: DatosPuesta): PendientePuesta[] {
       detalle: uno
         ? "No se entera por correo cuando le reservan. Ponlo en Equipo, en su ficha, y toca «Probar»."
         : `${listaNombres(sinCorreo.map((b) => b.nombre))}: no se enteran por correo cuando les reservan. Ponlo en Equipo, en la ficha de cada uno, y toca «Probar».`,
-      href: "/admin/equipo",
+      href: fichaDe(sinCorreo),
       boton: uno ? "Poner correo" : "Poner correos",
     });
   }
@@ -173,7 +201,52 @@ export function armarPuesta(d: DatosPuesta): PendientePuesta[] {
     });
   }
 
+  // La cara en la web: el cliente elige barbero por la foto.
+  const sinFoto = barberos.filter((b) => b.foto === false);
+  if (sinFoto.length) {
+    const uno = sinFoto.length === 1;
+    lista.push({
+      clave: "barberos-sin-foto",
+      tono: "sugerencia",
+      titulo: uno ? `${primerNombre(sinFoto[0].nombre)} sale sin foto en la web` : `${sinFoto.length} barberos salen sin foto en la web`,
+      detalle: `${uno ? "" : `${listaNombres(sinFoto.map((b) => b.nombre))}. `}En la web y al reservar sale${uno ? "" : "n"} con una foto genérica que no es ${uno ? "él" : "ninguno de ellos"}, y el cliente elige barbero por la cara. Súbela desde ${uno ? "su ficha" : "la ficha de cada uno"} en Equipo.`,
+      href: fichaDe(sinFoto),
+      boton: uno ? "Subir foto" : "Subir fotos",
+    });
+  }
+
+  // El contrato que nadie escribió: el cobro usa el 50 % por defecto.
+  const sinContrato = barberos.filter((b) => b.contrato === false);
+  if (sinContrato.length) {
+    const uno = sinContrato.length === 1;
+    lista.push({
+      clave: "barberos-sin-contrato",
+      tono: "sugerencia",
+      titulo: uno ? `Contrato sin definir: ${primerNombre(sinContrato[0].nombre)}` : `${sinContrato.length} contratos sin definir`,
+      detalle: `${uno ? "Se le está" : `${listaNombres(sinContrato.map((b) => b.nombre))}: se les está`} cobrando el 50 % de comisión por defecto. Si no es eso, cámbialo en Comisiones.`,
+      href: "/admin/comisiones",
+      boton: "Revisar",
+    });
+  }
+
   // --- Google Calendar ---------------------------------------------------------
+  // Uno que ya se fue y sigue viendo su agenda (nombre y teléfono de los clientes):
+  // la baja lo intentó y Google no dejó. Es lo primero, y es falta.
+  const ex = d.agendas?.exConAcceso ?? [];
+  if (ex.length) {
+    const uno = ex.length === 1;
+    lista.push({
+      clave: "ex-barbero-con-agenda",
+      tono: "falta",
+      titulo: uno
+        ? `${primerNombre(ex[0].nombre)} ya no trabaja aquí y sigue viendo su agenda`
+        : `${ex.length} barberos que ya no trabajan aquí siguen viendo su agenda`,
+      detalle: `${uno ? "" : `${listaNombres(ex.map((b) => b.nombre))}. `}En su agenda de Google están el nombre y el teléfono de tus clientes. En Equipo, abre «Ya no trabajan aquí», toca ${uno ? "su nombre" : "cada nombre"} y «Quitarle el acceso».`,
+      href: "/admin/equipo",
+      boton: "Quitar acceso",
+    });
+  }
+
   if (d.agendas) {
     const nombres = [...d.agendas.sinAgenda, ...d.agendas.sinCompartir];
     if (nombres.length) {

@@ -6,6 +6,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { actualizarContratoBarbero } from "@/lib/actions";
 import { sanearCop, sanearComisionPct } from "@/lib/admin-reglas";
+import { COMISION_POR_DEFECTO } from "@/lib/equipo-reglas";
 import { cop, plataEnCampo, digitosDePlata } from "@/lib/format";
 import type { TipoContrato } from "@/lib/data/types";
 
@@ -28,7 +29,7 @@ export function ContratoEditable({
   const router = useRouter();
   const [editando, setEditando] = useState(false);
   const [t, setT] = useState<TipoContrato>(tipo);
-  const [pct, setPct] = useState(comisionPct != null ? String(comisionPct) : "50");
+  const [pct, setPct] = useState(comisionPct != null ? String(comisionPct) : String(COMISION_POR_DEFECTO));
   const [arr, setArr] = useState(arriendoMensual != null ? String(arriendoMensual) : "");
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -68,20 +69,27 @@ export function ContratoEditable({
         type="button"
         onClick={() => {
           setT(tipo);
-          setPct(comisionPct != null ? String(comisionPct) : "50");
+          setPct(comisionPct != null ? String(comisionPct) : String(COMISION_POR_DEFECTO));
           setArr(arriendoMensual != null ? String(arriendoMensual) : "");
           setError(null);
           setEditando(true);
         }}
         title={`Toca para cambiar el contrato de ${nombre}`}
-        className="inline-flex items-center gap-2 rounded-lg px-2.5 py-2 transition hover:bg-elevated"
+        className="inline-flex min-h-11 items-center gap-2 rounded-lg px-2.5 py-2 transition hover:bg-elevated"
       >
         {tipo === "porcentaje" ? (
           <span className="inline-flex items-center gap-1.5">
             <span className="rounded-full border border-accent/35 px-2 py-0.5 text-[12px] font-bold uppercase tracking-wide text-accent-soft">
               Comisión
             </span>
-            <span className="font-semibold text-ink tabular-nums">{comisionPct ?? 0}%</span>
+            {/* Sin porcentaje cargado el cobro aplica el de por defecto (50 %).
+                Antes acá decía "0%": el dueño leía que no había que pagarle y
+                la liquidación le reconocía la mitad de cada corte. */}
+            {comisionPct != null ? (
+              <span className="font-semibold text-ink tabular-nums">{comisionPct}%</span>
+            ) : (
+              <span className="font-semibold text-warn">Sin definir · se cobra {COMISION_POR_DEFECTO}&nbsp;%</span>
+            )}
           </span>
         ) : (
           <span className="inline-flex items-center gap-1.5">
@@ -112,7 +120,8 @@ export function ContratoEditable({
               setT(op);
               setError(null);
             }}
-            className={`rounded-full border px-3 py-1 text-[12px] font-bold uppercase tracking-wide transition ${
+            // 44 px de alto: es el destino de «Arreglarlo aquí abajo» en la ficha, y a 360 px se toca con el dedo.
+            className={`inline-flex min-h-11 items-center rounded-full border px-4 text-[12px] font-bold uppercase tracking-wide transition ${
               t === op ? "border-ink bg-ink text-bg" : "border-line text-muted hover:text-ink"
             }`}
           >
@@ -137,7 +146,7 @@ export function ContratoEditable({
             }}
             onKeyDown={(e) => e.key === "Enter" && guardar()}
             aria-label="Porcentaje de comisión"
-            className="w-20 rounded-lg border border-accent/60 bg-bg px-2 py-1 text-sm text-ink tabular-nums focus:outline-none"
+            className="min-h-11 w-20 rounded-lg border border-accent/60 bg-bg px-2 text-sm text-ink tabular-nums focus:outline-none"
           />
           % de lo que cobra
         </label>
@@ -156,7 +165,7 @@ export function ContratoEditable({
             onKeyDown={(e) => e.key === "Enter" && guardar()}
             aria-label="Arriendo mensual en pesos"
             placeholder="$ 500.000"
-            className="w-28 rounded-lg border border-accent/60 bg-bg px-2 py-1 text-sm text-ink tabular-nums focus:outline-none"
+            className="min-h-11 w-28 rounded-lg border border-accent/60 bg-bg px-2 text-sm text-ink tabular-nums focus:outline-none"
           />
           al mes por la silla
         </label>
@@ -179,7 +188,7 @@ export function ContratoEditable({
             setEditando(false);
             setError(null);
           }}
-          className="rounded-full border border-line px-4 py-2.5 text-[12px] text-muted transition hover:text-ink"
+          className="min-h-11 rounded-full border border-line px-4 text-[12px] text-muted transition hover:text-ink"
         >
           Cancelar
         </button>

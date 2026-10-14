@@ -32,6 +32,7 @@ export function Fila({
   titulo,
   subtitulo,
   badge,
+  badgeEtiqueta,
   pill,
   valor,
   destacada = false,
@@ -44,6 +45,8 @@ export function Fila({
   subtitulo?: string;
   /** Número en ámbar: algo pide atención (PIN bloqueado, stock bajo). */
   badge?: number;
+  /** Qué significa el número, para el lector de pantalla y al pasar el mouse. */
+  badgeEtiqueta?: string;
   /** Etiqueta corta de texto ("Nuevo"). */
   pill?: string;
   /** Monto o dato a la derecha (se difumina con el ojo del panel). */
@@ -64,8 +67,12 @@ export function Fila({
         </span>
       )}
       {badge !== undefined && badge > 0 && (
-        <span className="grid h-[22px] min-w-[22px] shrink-0 place-items-center rounded-full bg-warn px-1.5 text-[12px] font-bold text-bg">
-          {badge > 99 ? "99+" : badge}
+        <span
+          title={badgeEtiqueta}
+          className="grid h-[22px] min-w-[22px] shrink-0 place-items-center rounded-full bg-warn px-1.5 text-[12px] font-bold text-bg"
+        >
+          <span aria-hidden={badgeEtiqueta ? true : undefined}>{badge > 99 ? "99+" : badge}</span>
+          {badgeEtiqueta && <span className="sr-only">{badgeEtiqueta}</span>}
         </span>
       )}
       {valor && <span className="bb-monto shrink-0 text-[15px] font-bold tabular-nums text-ink">{valor}</span>}

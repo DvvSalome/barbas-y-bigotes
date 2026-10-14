@@ -5,7 +5,8 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Hoja } from "@/components/ui/Hoja";
 import { Boton } from "@/components/ui/Boton";
-import { bloquearHoras, quitarBloqueo, marcarCobertura, quitarCobertura, moverCita, type ActionResult } from "@/lib/actions";
+import { bloquearHoras, quitarBloqueo, marcarCobertura, quitarCobertura, type ActionResult } from "@/lib/actions";
+import { pasarCitas } from "@/lib/pasar-citas";
 import { horaBogota } from "@/lib/format";
 import type { AgendaItem } from "@/lib/data/queries";
 
@@ -92,19 +93,13 @@ export function EquipoHoyHoja({ equipo, agenda, onCerrar }: { equipo: EquipoHoy;
     if (!a) return setMsg({ ok: false, txt: "Elige a quién se las pasas." });
     setBusy(llave);
     setMsg(null);
-    const fallas: string[] = [];
-    for (const r of citas) {
-      const res = await moverCita({ reservaId: r.id, inicioISO: r.inicio, barberoId: a }).catch(
-        () => ({ ok: false, error: "sin conexión" }) as ActionResult,
-      );
-      if (!res.ok) fallas.push(`${horaBogota(r.inicio)} (${r.cliente || "cliente"}): ${res.error}`);
-    }
-    setBusy(null);
+    // El mismo paso a paso que usa la baja de un barbero (src/lib/pasar-citas.ts).
     const quien = nombreCorto(equipo.presentes.find((p) => p.id === a)?.nombre ?? "");
-    const pasadas = citas.length - fallas.length;
+    const { pasadas, fallas } = await pasarCitas(citas, a, undefined, quien);
+    setBusy(null);
     setMsg(
       fallas.length
-        ? { ok: false, txt: `${pasadas ? `${pasadas} pasaron a ${quien}. ` : ""}No se pudo: ${fallas.join(" · ")}` }
+        ? { ok: false, txt: `${pasadas ? `${pasadas} pasaron a ${quien}. ` : ""}No se pudo: ${fallas.map((f) => f.texto).join(" · ")}` }
         : { ok: true, txt: `${pasadas === 1 ? "La cita pasó" : `Las ${pasadas} citas pasaron`} a ${quien}. Avísale al cliente si hace falta.` },
     );
     router.refresh();

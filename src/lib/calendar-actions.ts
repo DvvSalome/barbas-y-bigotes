@@ -4,8 +4,9 @@ import { revalidatePath } from "next/cache";
 import { supabaseServerAuth, supabaseAdmin } from "@/lib/supabase/server";
 import { requireAdmin, type ActionResult } from "@/lib/actions";
 import { esEmailEnviable } from "@/lib/email";
-import { calendarConfigurado, compartirCalendario } from "@/lib/google-calendar";
-import { calendarioDeBarbero, encolarFuturas, sincronizarCalendar } from "@/lib/calendar-sync";
+import { calendarConfigurado, compartirCalendario, descompartirCalendario } from "@/lib/google-calendar";
+import { errorPublico } from "@/lib/errors";
+import { calendarioDeBarbero, encolarFuturas, sincronizarCalendar, quitarAccesoAgenda } from "@/lib/calendar-sync";
 
 // Acciones del admin para Google Calendar (0073). Solo el dueño; todo con el
 // service role después del gate, porque las tablas de calendario son deny-all.
@@ -46,44 +47,120 @@ export async function prepararCalendarios(): Promise<ActionResult> {
   };
 }
 
-/** Comparte la agenda de cada barbero con su correo de avisos (Equipo → Correo de avisos). */
+/** Si el correo de avisos cambió, el viejo deja de ver la agenda (best-effort: el nuevo es lo que importa). */
+async function soltarCorreoViejo(calendarId: string, viejo: string | null, nuevo: string) {
+  if (!viejo || viejo.toLowerCase() === nuevo.toLowerCase()) return;
+  await descompartirCalendario(calendarId, viejo).catch((e: Error) => errorPublico("soltarCorreoViejo", { message: e.message }));
+}
+
+/** Comparte la agenda de cada barbero ACTIVO con su correo de avisos (Equipo → Correo de avisos). */
 export async function compartirAgendasConBarberos(): Promise<ActionResult> {
   const denied = await gate();
   if (denied) return { ok: false, error: denied };
   const admin = supabaseAdmin();
-  const [{ data: agendas }, { data: contactos }, { data: barberos }] = await Promise.all([
+  const [{ data: agendas }, { data: contactos }, { data: barberos, error: bErr }] = await Promise.all([
     admin.from("barbero_calendar").select("barbero_id,calendar_id,compartido_con"),
     admin.from("barbero_contacto").select("barbero_id,email"),
-    admin.from("barberos").select("id,nombre"),
+    // Solo los que trabajan aquí: la agenda de uno dado de baja (0087) tiene el
+    // nombre y el teléfono de sus clientes y NO se le vuelve a compartir.
+    admin.from("barberos").select("id,nombre").eq("activo", true),
   ]);
+  if (bErr) return { ok: false, error: "No se pudieron leer los barberos. Intenta de nuevo." };
   const nombre = Object.fromEntries(((barberos ?? []) as { id: string; nombre: string }[]).map((b) => [b.id, b.nombre]));
   const correo = Object.fromEntries(((contactos ?? []) as { barbero_id: string; email: string }[]).map((c) => [c.barbero_id, c.email]));
   let compartidas = 0;
   const sinCorreo: string[] = [];
   const fallas: string[] = [];
   for (const a of (agendas ?? []) as { barbero_id: string; calendar_id: string; compartido_con: string | null }[]) {
+    if (!nombre[a.barbero_id]) continue; // ya no trabaja aquí
     const email = correo[a.barbero_id];
     if (!email) {
-      sinCorreo.push(nombre[a.barbero_id] ?? a.barbero_id);
+      sinCorreo.push(nombre[a.barbero_id]);
       continue;
     }
     if (a.compartido_con === email) continue; // ya estaba
     try {
       await compartirCalendario(a.calendar_id, email, "reader");
+      await soltarCorreoViejo(a.calendar_id, a.compartido_con, email);
       await admin
         .from("barbero_calendar")
         .update({ compartido_con: email, actualizado_en: new Date().toISOString() })
         .eq("barbero_id", a.barbero_id);
       compartidas++;
     } catch (e) {
-      fallas.push(`${nombre[a.barbero_id] ?? "?"} (${email}): ${(e as Error).message}`);
+      errorPublico("compartirAgendasConBarberos", { message: (e as Error).message });
+      fallas.push(nombre[a.barbero_id]);
     }
   }
   revalidatePath("/admin/equipo");
   const partes = [`Compartidas ahora: ${compartidas}.`];
   if (sinCorreo.length) partes.push(`Sin correo cargado: ${sinCorreo.join(", ")}.`);
-  if (fallas.length) return { ok: false, error: `${partes.join(" ")} Falló: ${fallas.join(" · ")}` };
+  if (fallas.length)
+    return { ok: false, error: `${partes.join(" ")} Google no dejó compartir la de ${fallas.join(", ")}: intenta en un rato y, si sigue, avísale a soporte.` };
   return { ok: true, aviso: `${partes.join(" ")} A cada barbero le llega un correo de Google para aceptar la agenda.` };
+}
+
+/**
+ * La agenda de UN barbero, desde su ficha: la crea si no existe y se la comparte
+ * a su correo de avisos. Es lo mismo que los dos botones de "El local → Google
+ * Calendar", pero para el que acaba de llegar, sin tocar a los demás.
+ */
+export async function compartirAgendaDeBarbero(barberoId: string): Promise<ActionResult> {
+  const denied = await gate();
+  if (denied) return { ok: false, error: denied };
+  const admin = supabaseAdmin();
+  const [{ data: b }, { data: c }] = await Promise.all([
+    admin.from("barberos").select("id,nombre,activo").eq("id", barberoId).maybeSingle(),
+    admin.from("barbero_contacto").select("email").eq("barbero_id", barberoId).maybeSingle(),
+  ]);
+  const barbero = b as { id: string; nombre: string; activo: boolean } | null;
+  if (!barbero || !barbero.activo) return { ok: false, error: "Ese barbero no existe o ya no trabaja aquí." };
+  const email = (c as { email?: string } | null)?.email ?? "";
+  if (!email) return { ok: false, error: "Primero pon su correo de avisos: la agenda se le comparte a ese correo." };
+  try {
+    const calendarId = await calendarioDeBarbero(admin, barbero.id, barbero.nombre);
+    const { data: fila } = await admin.from("barbero_calendar").select("compartido_con").eq("barbero_id", barbero.id).maybeSingle();
+    const antes = (fila as { compartido_con?: string | null } | null)?.compartido_con ?? null;
+    if (antes !== email) {
+      await compartirCalendario(calendarId, email, "reader");
+      await soltarCorreoViejo(calendarId, antes, email);
+      await admin
+        .from("barbero_calendar")
+        .update({ compartido_con: email, actualizado_en: new Date().toISOString() })
+        .eq("barbero_id", barbero.id);
+    }
+  } catch (e) {
+    errorPublico("compartirAgendaDeBarbero", { message: (e as Error).message });
+    return { ok: false, error: "Google no dejó compartir la agenda. Intenta en un rato y, si sigue, avísale a soporte." };
+  }
+  // Sus citas futuras que todavía no estén en la agenda, a la cola.
+  await encolarFuturas(admin);
+  revalidatePath("/admin/equipo");
+  revalidatePath("/admin");
+  return { ok: true, aviso: `Listo: le llega un correo de Google a ${email} para aceptar la agenda.` };
+}
+
+/**
+ * Reintento de la baja: le quita el acceso a su agenda a un barbero que YA no
+ * trabaja aquí (si Google falló en el momento de darlo de baja). Para un barbero
+ * activo no se usa: a él se le comparte, no se le quita.
+ */
+export async function quitarAgendaDeExBarbero(barberoId: string): Promise<ActionResult> {
+  const denied = await gate();
+  if (denied) return { ok: false, error: denied };
+  const admin = supabaseAdmin();
+  const { data: b } = await admin.from("barberos").select("activo").eq("id", barberoId).maybeSingle();
+  if (!b) return { ok: false, error: "Ese barbero no existe." };
+  if ((b as { activo: boolean }).activo) return { ok: false, error: "Sigue trabajando aquí: su agenda se le deja." };
+  try {
+    const quitados = await quitarAccesoAgenda(admin, barberoId);
+    revalidatePath("/admin/equipo");
+    revalidatePath("/admin");
+    return { ok: true, aviso: quitados.length ? `Listo: ${quitados.join(", ")} ya no ve la agenda.` : "Ya no tenía acceso a la agenda." };
+  } catch (e) {
+    errorPublico("quitarAgendaDeExBarbero", { message: (e as Error).message });
+    return { ok: false, error: "Google no dejó quitarle la agenda. Intenta en un rato y, si sigue, avísale a soporte." };
+  }
 }
 
 /** Un correo que ve TODAS las agendas (el dueño). Se aplica a las existentes y a las que se creen después. */

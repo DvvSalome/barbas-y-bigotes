@@ -72,10 +72,13 @@ export function Hoja({
 export function PieHoja({
   onCancelar,
   textoCancelar = "Cancelar",
+  bloqueado = false,
   children,
 }: {
   onCancelar: () => void;
   textoCancelar?: string;
+  /** Mientras la acción corre en el servidor, salir no la frena: se apaga para no mentir. */
+  bloqueado?: boolean;
   /** El botón primario. Va con disabled mientras el formulario no sea válido. */
   children: ReactNode;
 }) {
@@ -84,7 +87,8 @@ export function PieHoja({
       <button
         type="button"
         onClick={onCancelar}
-        className="min-h-11 shrink-0 px-2 text-[13px] font-semibold text-muted underline decoration-line underline-offset-4 transition hover:text-ink"
+        disabled={bloqueado}
+        className="min-h-11 shrink-0 px-2 text-[13px] font-semibold text-muted underline decoration-line underline-offset-4 transition hover:text-ink disabled:opacity-40"
       >
         {textoCancelar}
       </button>

@@ -25,6 +25,8 @@ import { armarReporte, mesDelReporte, type MesReporte, type Reporte } from "@/li
 import type { Sede, SedeId, Servicio, Barbero, Producto, Categoria, TipoContrato } from "./types";
 import type { Cobertura } from "@/lib/cobertura";
 import { armarPuesta, type DatosPuesta, type PendientePuesta } from "@/lib/puesta";
+import { contratoDefinido } from "@/lib/equipo-reglas";
+import { esEmailEnviable } from "@/lib/email";
 import { faltaTablaAvisosDueno } from "@/lib/avisos-dueno";
 import { conteo } from "@/lib/avisos-reglas";
 
@@ -1156,22 +1158,25 @@ export async function getCajaDesglose(sedeId: string): Promise<CajaDesglose> {
   const ses = sesion as { id: string; abierta_en: string; monto_apertura: number | null };
 
   const [barbsRes, vsRaw, gastosRes] = await Promise.all([
+    // TODOS los de la sede, activos o no: el que se dio de baja hoy tiene ventas
+    // en esta caja, y si se filtrara por activo su plata desaparecía del cuadre.
+    // Abajo se dejan los activos + los inactivos con ventas en la sesión.
     admin
       .from("barberos")
-      .select("id,nombre,foto_url,orden")
+      .select("id,nombre,foto_url,orden,activo")
       .eq("sede_id", sedeId)
-      .eq("activo", true)
       .order("orden"),
     // Ventas de la SESIÓN (por caja_sesion_id, 0052), con su id para atribuir la comisión.
     ventasDeSesion(admin, sedeId, ses.id, ses.abierta_en, "id,barbero_id,medio,total,propina,propinaMedio:propina_medio"),
     admin.from("gastos").select("monto").eq("sede_id", sedeId).gte("creado_en", ses.abierta_en),
   ]);
 
-  const barbs = (barbsRes.data ?? []) as {
+  const barbsTodos = (barbsRes.data ?? []) as {
     id: string;
     nombre: string;
     foto_url: string | null;
     orden: number | null;
+    activo: boolean | null;
   }[];
   const vs = vsRaw as {
     id: string;
@@ -1215,6 +1220,16 @@ export async function getCajaDesglose(sedeId: string): Promise<CajaDesglose> {
     comisionPorBarbero.set(bid, (comisionPorBarbero.get(bid) ?? 0) + c);
   }
 
+  const barbs = barbsTodos.filter((b) => b.activo !== false || ventasPorBarbero.has(b.id));
+  // Los que cobraron en esta caja pero su sede fija es OTRA: vino a cubrir (0081)
+  // o le cambiaron la sede a mitad del día desde su ficha. Sus ventas ya están en
+  // los totales; sin su fila, la suma por barbero no cuadraba con el total.
+  const deFuera = [...ventasPorBarbero.keys()].filter((id) => !barbsTodos.some((b) => b.id === id));
+  if (deFuera.length) {
+    const { data: extra, error: exErr } = await admin.from("barberos").select("id,nombre,foto_url,orden,activo").in("id", deFuera);
+    if (exErr) console.error("getCajaDesglose de otra sede:", exErr.message);
+    barbs.push(...((extra ?? []) as typeof barbsTodos));
+  }
   const barberos: CajaDesgloseBarbero[] = barbs.map((b) => ({
     barberoId: b.id,
     nombre: b.nombre,
@@ -2073,8 +2088,14 @@ export async function getStaffContext(): Promise<StaffContext> {
   // Foto del barbero (para el header de la app): la ficha vive en barberos.
   let fotoUrl: string | null = null;
   if (row.barbero_id) {
-    const { data: b } = await sb.from("barberos").select("foto_url").eq("id", row.barbero_id).maybeSingle();
+    const { data: b } = await sb.from("barberos").select("foto_url,activo").eq("id", row.barbero_id).maybeSingle();
     fotoUrl = ((b as { foto_url?: string } | null)?.foto_url as string) ?? null;
+    // Dado de baja (0087): sin privilegios desde YA, aunque su sesión todavía no
+    // haya vencido. La RLS ya le cierra los datos; esto le cierra la pantalla y
+    // las server actions, que deciden por este rol.
+    if (row.rol === "barbero" && (b as { activo?: boolean } | null)?.activo === false) {
+      return { rol: "none", barberoId: null, sedeId: null, nombre: "", fotoUrl: null };
+    }
   }
   return {
     rol: row.rol,
@@ -2879,6 +2900,8 @@ export type LiquidacionBarbero = {
    *  se reconoce de un vistazo, una fila de caras sí. */
   fotoUrl: string | null;
   sedeId: string;
+  /** false = ya no trabaja aquí, pero tuvo movimientos en el período (se le debe o debe). */
+  activo: boolean;
   tipoContrato: TipoContrato;
   /** Lo que entró por su trabajo en el período (neto, sin propina). */
   facturado: number;
@@ -2919,10 +2942,12 @@ export async function getLiquidacion(
 ): Promise<LiquidacionBarbero[]> {
   const admin = supabaseAdmin();
   const [barbRes, ventasRes, adelRes, consRes, ajuRes] = await Promise.all([
+    // Activos E INACTIVOS: la semana en que un barbero se va es justo cuando hay
+    // que pagarle y descontarle los adelantos. Filtrar por activo borraba su plata
+    // de la liquidación en silencio. Abajo se quitan los inactivos SIN movimientos.
     admin
       .from("barberos")
-      .select("id,nombre,sede_id,tipo_contrato,comision_pct,arriendo_mensual,foto_url")
-      .eq("activo", true)
+      .select("id,nombre,sede_id,tipo_contrato,comision_pct,arriendo_mensual,foto_url,activo")
       .order("sede_id")
       .order("nombre"),
     admin
@@ -2964,6 +2989,7 @@ export async function getLiquidacion(
       nombre: (b.nombre as string) ?? "",
       fotoUrl: (b.foto_url as string | null) ?? null,
       sedeId: b.sede_id as string,
+      activo: b.activo !== false,
       tipoContrato: ((b.tipo_contrato as TipoContrato) ?? "porcentaje") as TipoContrato,
       facturado: 0,
       comision: 0,
@@ -3023,8 +3049,14 @@ export async function getLiquidacion(
   }
 
   for (const fila of porBarbero.values()) fila.neto = netoLiquidacion(fila);
+  // Un dado de baja sale solo si esa semana tuvo algo: cobros, adelantos,
+  // consumos o ajustes. Las semanas siguientes ya no aparece.
+  const conMovimiento = (f: LiquidacionBarbero) =>
+    f.cobros > 0 || f.adelantos !== 0 || f.consumos !== 0 || f.detalleAjustes.length > 0;
   // Primero el que más produjo: es el orden en que el dueño quiere leerlo.
-  return [...porBarbero.values()].sort((a, b) => b.facturado - a.facturado);
+  return [...porBarbero.values()]
+    .filter((f) => f.activo || conMovimiento(f))
+    .sort((a, b) => b.facturado - a.facturado);
 }
 
 // ---------- Reporte del mes (el Excel del dueño) ----------
@@ -3317,6 +3349,266 @@ export async function getCalendarEstado(): Promise<CalendarEstado> {
   };
 }
 
+// ---------- La ficha de cada barbero (alta, checklist y baja, 0087) ----------
+
+/**
+ * Un barbero visto por el dueño en /admin/equipo: lo público (cara, nombre,
+ * perfil) + lo que solo ve el admin (contrato, si puede entrar, si alguna vez
+ * entró, cuántos aparatos le avisan, si el correo se probó). `null`/`undefined`
+ * en un campo = no se pudo saber, y la ficha no lo acusa.
+ */
+export type FichaBarbero = Barbero & {
+  activo: boolean;
+  orden: number;
+  contrato: { tipo: TipoContrato; comisionPct: number | null; arriendoMensual: number | null };
+  /** Perfil de barbero + usuario de Auth (con lo que el PIN abre la sesión). */
+  acceso: boolean | null;
+  /** Último ingreso a la app: null = nunca, undefined = no se pudo saber. */
+  ultimoIngreso: string | null | undefined;
+  /** Aparatos con sus avisos al celular (push_subscriptions con su barbero_id). */
+  aparatos: number | null;
+  /** ¿Salió una prueba al correo de avisos que tiene HOY? (0070) */
+  correoProbado: boolean | null;
+};
+
+/**
+ * Todas las fichas, activas y dadas de baja, para /admin/equipo. Tablas cerradas
+ * (barbero_contacto, push_subscriptions, el contrato, Auth): service role SOLO
+ * después de confirmar que quien pide es el admin.
+ */
+export async function getFichasEquipo(): Promise<FichaBarbero[]> {
+  if (!(await soyAdmin())) return [];
+  const admin = supabaseAdmin();
+  const [barbs, perfiles, subs, contactos, pruebas] = await Promise.all([
+    admin
+      .from("barberos")
+      .select(
+        "id,nombre,sede_id,foto_url,destacado,bio,orden,activo,tipo_contrato,comision_pct,arriendo_mensual,barbero_especialidades(especialidad)",
+      )
+      .order("sede_id")
+      .order("orden")
+      .order("nombre"),
+    admin.from("profiles").select("barbero_id,auth_id").eq("rol", "barbero").not("barbero_id", "is", null),
+    admin.from("push_subscriptions").select("barbero_id").not("barbero_id", "is", null),
+    admin.from("barbero_contacto").select("barbero_id,email"),
+    // La prueba "salió" cuando n8n la tomó de la cola (tomado_en).
+    admin.from("barbero_correo_prueba").select("barbero_id,email").not("tomado_en", "is", null),
+  ]);
+  if (barbs.error) {
+    console.error("getFichasEquipo:", barbs.error.message);
+    return [];
+  }
+
+  const authDe = new Map<string, string | null>();
+  if (!perfiles.error) {
+    for (const p of (perfiles.data ?? []) as { barbero_id: string; auth_id: string | null }[]) {
+      authDe.set(p.barbero_id, p.auth_id);
+    }
+  }
+  // El usuario de Auth de cada uno (son pocos: uno por barbero con perfil). Así se
+  // sabe si existe de verdad y cuándo entró por última vez.
+  const usuario = new Map<string, { existe: boolean; ultimo: string | null } | null>();
+  await Promise.all(
+    [...authDe.values()]
+      .filter((id): id is string => !!id)
+      .map(async (id) => {
+        try {
+          const { data, error } = await admin.auth.admin.getUserById(id);
+          if (error) usuario.set(id, error.status === 404 ? { existe: false, ultimo: null } : null);
+          else usuario.set(id, { existe: !!data.user, ultimo: data.user?.last_sign_in_at ?? null });
+        } catch {
+          usuario.set(id, null);
+        }
+      }),
+  );
+
+  const aparatos = new Map<string, number>();
+  if (!subs.error) {
+    for (const r of (subs.data ?? []) as { barbero_id: string }[]) aparatos.set(r.barbero_id, (aparatos.get(r.barbero_id) ?? 0) + 1);
+  }
+  const correoDe = new Map(((contactos.data ?? []) as { barbero_id: string; email: string }[]).map((c) => [c.barbero_id, c.email]));
+  const probados = new Set(
+    ((pruebas.data ?? []) as { barbero_id: string; email: string }[]).map((r) => `${r.barbero_id}|${r.email.toLowerCase()}`),
+  );
+
+  return ((barbs.data ?? []) as Record<string, unknown>[]).map((r) => {
+    const base = mapBarberoPublico(r);
+    const tipo = ((r.tipo_contrato as TipoContrato) ?? "porcentaje") as TipoContrato;
+    const pct = r.comision_pct == null ? null : Number(r.comision_pct);
+    const arriendo = r.arriendo_mensual == null ? null : Number(r.arriendo_mensual);
+
+    let acceso: boolean | null = null;
+    let ultimoIngreso: string | null | undefined = undefined;
+    if (!perfiles.error) {
+      const authId = authDe.get(base.id);
+      if (!authId) acceso = false;
+      else {
+        const u = usuario.get(authId);
+        if (u) {
+          acceso = u.existe;
+          ultimoIngreso = u.existe ? u.ultimo : undefined;
+        }
+      }
+    }
+    const correo = correoDe.get(base.id) ?? "";
+    return {
+      ...base,
+      tipoContrato: tipo,
+      comisionPct: pct ?? undefined,
+      arriendoMensual: arriendo ?? undefined,
+      activo: r.activo !== false,
+      orden: Number(r.orden ?? 0),
+      contrato: { tipo, comisionPct: pct, arriendoMensual: arriendo },
+      acceso,
+      ultimoIngreso,
+      aparatos: subs.error ? null : (aparatos.get(base.id) ?? 0),
+      correoProbado: pruebas.error || !correo ? null : probados.has(`${base.id}|${correo.toLowerCase()}`),
+    };
+  });
+}
+
+export type CitaFutura = {
+  id: string;
+  inicio: string;
+  fin: string;
+  estado: string;
+  cliente: string;
+  servicio: string;
+  /** ¿Le llega el correo de "tu cita se canceló / se movió"? Sin correo, no le llega nada. */
+  conCorreo: boolean;
+  /** Para llamarlo cuando no tiene correo (lo ve solo el admin). */
+  telefono: string | null;
+};
+
+/** Una semana de Liquidación con lo de ese barbero (fila null si no tuvo nada). */
+export type SemanaBaja = { desdeYmd: string; hastaYmd: string; fila: LiquidacionBarbero | null };
+
+/** Lo que el dueño tiene que ver ANTES de dar de baja a un barbero. */
+export type ResumenBaja = {
+  barbero: { id: string; nombre: string; sedeId: string; activo: boolean; fotoUrl: string | null };
+  /** Sus citas que todavía no terminaron (pendientes o confirmadas). */
+  citas: CitaFutura[];
+  /** Citas de los últimos 7 días que YA pasaron y nadie cobró ni marcó "no vino":
+   *  al darlo de baja su columna sale del mostrador y ese corte no se cobraría nunca. */
+  sinCobrar: CitaFutura[];
+  /** Tiene a alguien en la silla HOY (cita en curso): no se puede ir a mitad de un corte. */
+  enSilla: boolean;
+  /** A quién se le pueden pasar: los activos de su misma sede. */
+  destinos: { id: string; nombre: string; fotoUrl: string | null }[];
+  /** Su liquidación de la semana en curso. */
+  semana: SemanaBaja;
+  /** La semana anterior, SOLO si tuvo movimientos (la baja de un lunes no la puede esconder). */
+  semanaAnterior: SemanaBaja | null;
+  /** Lo que se le cierra al confirmar. */
+  accesos: { pin: boolean; usuario: boolean; aparatos: number; agendaCompartida: string | null };
+};
+
+const filaACita = (r: Record<string, unknown>): CitaFutura => {
+  const c = r.clientes as { nombre?: string; email?: string | null; telefono?: string | null } | null;
+  return {
+    id: r.id as string,
+    inicio: r.inicio as string,
+    fin: r.fin as string,
+    estado: r.estado as string,
+    cliente: c?.nombre ?? "",
+    servicio: (r.servicios as { nombre?: string } | null)?.nombre ?? "",
+    conCorreo: esEmailEnviable((c?.email ?? "").trim()),
+    telefono: c?.telefono?.trim() || null,
+  };
+};
+
+/** ¿Esa semana tuvo algo que pagar o descontar? */
+const semanaConMovimiento = (f: LiquidacionBarbero | null) =>
+  !!f && (f.cobros > 0 || f.adelantos !== 0 || f.consumos !== 0 || f.ajustes !== 0);
+
+export async function getResumenBaja(barberoId: string): Promise<ResumenBaja | null> {
+  if (!(await soyAdmin())) return null;
+  const admin = supabaseAdmin();
+  const { data: b } = await admin.from("barberos").select("id,nombre,sede_id,activo,foto_url").eq("id", barberoId).maybeSingle();
+  const barb = b as { id: string; nombre: string; sede_id: string; activo: boolean; foto_url: string | null } | null;
+  if (!barb) return null;
+
+  const ahora = new Date().toISOString();
+  const haceSiete = new Date(Date.now() - 7 * 86_400_000).toISOString();
+  const { desde: hoyDesde } = bogotaDayRange();
+  const [citas, pasadas, silla, destinos, pin, perfil, subs, agenda] = await Promise.all([
+    // Las que todavía no terminaron: la de las 3:00 cuando son las 3:10 también
+    // cuenta (el cliente puede estar llegando).
+    admin
+      .from("reservas")
+      .select("id,inicio,fin,estado,servicios(nombre),clientes(nombre,email,telefono)")
+      .eq("barbero_id", barberoId)
+      .in("estado", ["pendiente", "confirmada"])
+      .gt("fin", ahora)
+      .order("inicio"),
+    // Las que ya terminaron y siguen abiertas: el mismo rango que deja registrar
+    // el mostrador (una semana atrás). Lo normal es cobrar después; si se da de
+    // baja antes, ese corte no lo cobra nadie.
+    admin
+      .from("reservas")
+      .select("id,inicio,fin,estado,servicios(nombre),clientes(nombre,email,telefono)")
+      .eq("barbero_id", barberoId)
+      .in("estado", ["pendiente", "confirmada", "en_curso"])
+      .lte("fin", ahora)
+      .gte("inicio", haceSiete)
+      .order("inicio"),
+    // Solo las de HOY: hay citas en_curso viejas que nadie cerró y no son "en la silla".
+    admin
+      .from("reservas")
+      .select("id", { count: "exact", head: true })
+      .eq("barbero_id", barberoId)
+      .eq("estado", "en_curso")
+      .gte("inicio", hoyDesde.toISOString()),
+    admin
+      .from("barberos")
+      .select("id,nombre,foto_url")
+      .eq("sede_id", barb.sede_id)
+      .eq("activo", true)
+      .neq("id", barberoId)
+      .order("orden"),
+    admin.from("barbero_pin").select("barbero_id").eq("barbero_id", barberoId).maybeSingle(),
+    // Todos sus perfiles (debería haber uno; con dos, maybeSingle daba error y
+    // la hoja decía que no tenía acceso).
+    admin.from("profiles").select("auth_id").eq("barbero_id", barberoId).eq("rol", "barbero"),
+    admin.from("push_subscriptions").select("id", { count: "exact", head: true }).eq("barbero_id", barberoId),
+    admin.from("barbero_calendar").select("compartido_con").eq("barbero_id", barberoId).maybeSingle(),
+  ]);
+  // Si no se pudieron leer sus citas, NO se dice "no tiene citas": la baja se
+  // confirmaría con clientes que nadie atiende.
+  if (citas.error || pasadas.error) {
+    console.error("getResumenBaja citas:", (citas.error ?? pasadas.error)?.message);
+    return null;
+  }
+
+  const { desdeYmd, hastaYmd } = semanaDeFecha(bogotaYmd());
+  const ant = semanaDeFecha(bogotaYmd(new Date(bogotaDayRangeDeFecha(desdeYmd).desde.getTime() - 1)));
+  const [filas, filasAnt] = await Promise.all([
+    getLiquidacion(bogotaDayRangeDeFecha(desdeYmd).desde, bogotaDayRangeDeFecha(hastaYmd).hasta, null),
+    getLiquidacion(bogotaDayRangeDeFecha(ant.desdeYmd).desde, bogotaDayRangeDeFecha(ant.hastaYmd).hasta, null),
+  ]);
+  const filaAnt = filasAnt.find((f) => f.barberoId === barberoId) ?? null;
+
+  return {
+    barbero: { id: barb.id, nombre: barb.nombre, sedeId: barb.sede_id, activo: barb.activo !== false, fotoUrl: barb.foto_url ?? null },
+    citas: ((citas.data ?? []) as Record<string, unknown>[]).map(filaACita),
+    sinCobrar: ((pasadas.data ?? []) as Record<string, unknown>[]).map(filaACita),
+    enSilla: (silla.count ?? 0) > 0,
+    destinos: ((destinos.data ?? []) as { id: string; nombre: string; foto_url: string | null }[]).map((d) => ({
+      id: d.id,
+      nombre: d.nombre,
+      fotoUrl: d.foto_url ?? null,
+    })),
+    semana: { desdeYmd, hastaYmd, fila: filas.find((f) => f.barberoId === barberoId) ?? null },
+    semanaAnterior: semanaConMovimiento(filaAnt) ? { ...ant, fila: filaAnt } : null,
+    accesos: {
+      pin: !!pin.data,
+      usuario: ((perfil.data ?? []) as { auth_id?: string | null }[]).some((p) => !!p.auth_id),
+      aparatos: subs.count ?? 0,
+      agendaCompartida: (agenda.data as { compartido_con?: string | null } | null)?.compartido_con ?? null,
+    },
+  };
+}
+
 // ---------- Avisos para el dueño y puesta a punto (0084) ----------
 
 /** ¿Quien pide es el admin? Mismo candado que getEmailsBarberos: recién después
@@ -3395,14 +3687,19 @@ export async function saludConfiguracion(): Promise<PendientePuesta[]> {
   const hace7 = new Date(Date.now() - 7 * 86_400_000).toISOString();
   const conGoogle = calendarConfigurado();
 
-  const [correos, subs, admins, sedes, barberos, contactos, perfiles, agendas, ventas, ajustes, elegibles] = await Promise.all([
+  const [correos, subs, admins, sedes, barberos, contactos, perfiles, agendas, ventas, ajustes, elegibles, pines, exBarberos] = await Promise.all([
     admin.from("avisos_dueno").select("id", { count: "exact", head: true }),
     admin.from("push_subscriptions").select("barbero_id,sede_id,admin_auth").is("cliente_ref", null),
     // Quiénes son admin HOY: un aparato de alguien que dejó de serlo no cuenta
     // (pushAAdmins tampoco le manda, ver push.ts).
     admin.from("profiles").select("auth_id").eq("rol", "admin").not("auth_id", "is", null),
     admin.from("sedes").select("id,nombre").eq("activa", true).order("nombre"),
-    admin.from("barberos").select("id,nombre").eq("activo", true).order("sede_id").order("orden"),
+    admin
+      .from("barberos")
+      .select("id,nombre,foto_url,tipo_contrato,comision_pct,arriendo_mensual")
+      .eq("activo", true)
+      .order("sede_id")
+      .order("orden"),
     admin.from("barbero_contacto").select("barbero_id"),
     // Con qué entra cada barbero: su perfil con usuario (loginBarberoPin lo busca así).
     admin.from("profiles").select("barbero_id").eq("rol", "barbero").not("auth_id", "is", null).not("barbero_id", "is", null),
@@ -3410,6 +3707,10 @@ export async function saludConfiguracion(): Promise<PendientePuesta[]> {
     admin.from("ventas").select("cliente_ref").is("anulada_en", null).gte("creado_en", hace7),
     admin.from("ajustes_avisos").select("*").eq("id", 1).maybeSingle(),
     admin.from("v_toca_corte_elegibles").select("cliente_ref", { count: "exact", head: true }),
+    // Con qué PIN entra cada uno (el hash no se pide: solo si hay fila).
+    admin.from("barbero_pin").select("barbero_id"),
+    // Los dados de baja (0087): si alguno sigue viendo su agenda de Google, es falta.
+    admin.from("barberos").select("id,nombre").eq("activo", false),
   ]);
 
   // Aparatos con avisos, por dueño.
@@ -3426,7 +3727,17 @@ export async function saludConfiguracion(): Promise<PendientePuesta[]> {
     ? null
     : new Set(((perfiles.data ?? []) as { barbero_id: string }[]).map((p) => p.barbero_id));
 
-  const listaBarberos = barberos.error ? null : ((barberos.data ?? []) as { id: string; nombre: string }[]);
+  const listaBarberos = barberos.error
+    ? null
+    : ((barberos.data ?? []) as {
+        id: string;
+        nombre: string;
+        foto_url: string | null;
+        tipo_contrato: TipoContrato | null;
+        comision_pct: number | null;
+        arriendo_mensual: number | null;
+      }[]);
+  const conPin = pines.error ? null : new Set(((pines.data ?? []) as { barbero_id: string }[]).map((p) => p.barbero_id));
 
   // Google: sin credencial en el servidor no se habla de agendas.
   let datosAgendas: DatosPuesta["agendas"] = null;
@@ -3437,6 +3748,9 @@ export async function saludConfiguracion(): Promise<PendientePuesta[]> {
     datosAgendas = {
       sinAgenda: listaBarberos.filter((b) => !porBarbero.has(b.id)).map((b) => b.nombre),
       sinCompartir: listaBarberos.filter((b) => porBarbero.has(b.id) && !porBarbero.get(b.id)?.compartido_con).map((b) => b.nombre),
+      exConAcceso: exBarberos.error
+        ? []
+        : ((exBarberos.data ?? []) as { id: string; nombre: string }[]).filter((b) => !!porBarbero.get(b.id)?.compartido_con),
     };
   }
 
@@ -3484,6 +3798,13 @@ export async function saludConfiguracion(): Promise<PendientePuesta[]> {
           aparatos: cuenta((f) => f.barbero_id === b.id),
           correo: conCorreo ? conCorreo.has(b.id) : null,
           acceso: conAcceso ? conAcceso.has(b.id) : null,
+          pin: conPin ? conPin.has(b.id) : null,
+          foto: !!b.foto_url,
+          contrato: contratoDefinido({
+            tipo: b.tipo_contrato ?? "porcentaje",
+            comisionPct: b.comision_pct,
+            arriendoMensual: b.arriendo_mensual,
+          }),
         }))
       : null,
     agendas: datosAgendas,

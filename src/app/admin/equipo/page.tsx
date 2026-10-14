@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { getBarberos, getSedes, getAusenciasAdmin, getEmailsBarberos, getCalendarEstado, getAjustesEquipo } from "@/lib/data/queries";
+import { getSedes, getAusenciasAdmin, getEmailsBarberos, getCalendarEstado, getAjustesEquipo, getFichasEquipo } from "@/lib/data/queries";
 import { bogotaYmd } from "@/lib/slots";
 import { getBarberosPinEstado, getSedesPinEstado } from "@/lib/barbero-auth";
 import { SectionHeader } from "@/components/admin/SectionHeader";
@@ -16,10 +16,21 @@ export const metadata: Metadata = { title: "Equipo · Admin" };
   de ellas (PIN, correo, agenda de Google). Medía 5.269 px a 390 px: la más larga
   del panel. Ahora son dos grupos de filas —lo del LOCAL y las PERSONAS— y todo
   lo demás vive detrás de la fila que lo nombra.
+
+  Desde el 14-oct las personas se dan de alta, se editan y se dan de baja desde
+  acá (src/lib/equipo-actions.ts): el dueño ya no depende de soporte para que
+  entre o salga alguien.
 */
-export default async function EquipoPage() {
-  const [barberos, sedes, estado, estadoSedes, ausencias, emails, calendar, ajustesEquipo] = await Promise.all([
-    getBarberos(),
+export default async function EquipoPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ [k: string]: string | string[] | undefined }>;
+}) {
+  const sp = await searchParams;
+  const ficha = typeof sp.ficha === "string" && /^[0-9a-f-]{36}$/i.test(sp.ficha) ? sp.ficha : null;
+
+  const [fichas, sedes, estado, estadoSedes, ausencias, emails, calendar, ajustesEquipo] = await Promise.all([
+    getFichasEquipo(),
     getSedes(),
     getBarberosPinEstado(),
     getSedesPinEstado(),
@@ -28,6 +39,8 @@ export default async function EquipoPage() {
     getCalendarEstado(),
     getAjustesEquipo(),
   ]);
+  const barberos = fichas.filter((f) => f.activo);
+  const inactivos = fichas.filter((f) => !f.activo);
 
   const sinCorreo = barberos.filter((b) => !emails[b.id]).length;
 
@@ -36,7 +49,7 @@ export default async function EquipoPage() {
       <SectionHeader
         eyebrow="Equipo"
         title="Quién trabaja acá"
-        description="Cada barbero tiene su ficha: el PIN con el que entra, el correo al que le avisamos las citas, su agenda de Google y el perfil que ve el cliente."
+        description="Cada barbero tiene su ficha: lo que le falta para trabajar con la app, su PIN, el correo al que le avisamos las citas, su agenda de Google, su foto y su contrato. Desde aquí también se agrega uno nuevo o se da de baja al que se va."
       />
 
       {sinCorreo > 0 && (
@@ -59,12 +72,16 @@ export default async function EquipoPage() {
       />
 
       <EquipoFichas
+        // Con ?ficha= distinto (un enlace del Inicio) se vuelve a montar y abre esa.
+        key={ficha ?? "-"}
         barberos={barberos}
+        inactivos={inactivos}
         sedes={sedes}
         estado={estado}
         emails={emails}
         calendar={calendar}
         ausentesHoy={ausencias.filter((a) => a.fecha === bogotaYmd()).map((a) => a.barberoId)}
+        fichaInicial={ficha}
       />
 
       {/* El horario de la sede (semana + días especiales) se movió a su propia

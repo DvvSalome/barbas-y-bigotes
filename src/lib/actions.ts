@@ -63,6 +63,7 @@ import {
 import { encolarAvisoDueno, faltaTablaAvisosDueno } from "@/lib/avisos-dueno";
 import { correoDelDueno, conteo } from "@/lib/avisos-reglas";
 import { cop, fechaHoraBogota } from "@/lib/format";
+import { COMISION_POR_DEFECTO } from "@/lib/equipo-reglas";
 
 export type ActionResult = { ok: boolean; error?: string; /** Se guardó, pero con salvedades que el admin debe ver (p.ej. especialidades descartadas). */ aviso?: string; id?: string; total?: number; descuento?: number; propina?: number; puntos?: number; encolado?: boolean; esperaHasta?: string | null; tarjeta?: { cortesTotales: number; posicion: number; beneficio: BeneficioTarjeta | null }; resenaUrl?: string | null; /** confirm_token de la reserva recién creada: credencial para deshacerla desde la confirmación del wizard. */ token?: string | null; /** Lo que se creó cuando es más de uno (un producto en las dos sedes). */ ids?: string[]; /** Qué hizo "Eliminar": borrar de verdad o retirar del catálogo. */ modo?: "borrado" | "retirado"; /** Unidades que "Eliminar" sacó como merma. */ baja?: number };
 
@@ -90,10 +91,31 @@ async function requireStaff(sb: SupabaseClient): Promise<string | null> {
   // getTarjetaParaCobro corre con supabaseAdmin() (bypassea RLS) y le habría
   // dejado leer los cortes de cualquier cliente sabiendo su UUID. Se pide rol,
   // igual que requireAdmin.
-  const { data } = await sb.from("profiles").select("rol").eq("auth_id", user.id).maybeSingle();
-  const rol = (data as { rol?: string } | null)?.rol;
+  const { data } = await sb.from("profiles").select("rol,barbero_id").eq("auth_id", user.id).maybeSingle();
+  const fila = data as { rol?: string; barbero_id?: string | null } | null;
+  const rol = fila?.rol;
   if (!ROLES_MOSTRADOR.includes(rol ?? "")) return "Requiere permiso del equipo";
+  // Un barbero dado de baja (0087) con la sesión todavía viva no opera nada:
+  // varias actions de acá leen con service role después de este gate (buscar
+  // clientes, la tarjeta del cobro), así que la RLS no lo frena. Si la lectura
+  // falla, se cierra: mejor un "intenta de nuevo" que dejar pasar a quien se fue.
+  if (rol === "barbero") {
+    if (!fila?.barbero_id || !(await barberoActivo(fila.barbero_id))) return "Requiere permiso del equipo";
+  }
   return null;
+}
+
+/**
+ * ¿La ficha de este barbero está activa? Lee con service role (la ficha de un
+ * dado de baja no la ve cualquiera). false si no existe o si la lectura falla.
+ */
+async function barberoActivo(barberoId: string): Promise<boolean> {
+  const { data, error } = await supabaseAdmin().from("barberos").select("activo").eq("id", barberoId).maybeSingle();
+  if (error) {
+    errorPublico("barberoActivo", error);
+    return false;
+  }
+  return (data as { activo?: boolean } | null)?.activo === true;
 }
 
 /**
@@ -801,6 +823,9 @@ export async function actualizarContratoBarbero(input: {
     return { ok: false, error: "No se guardó el contrato: tu usuario no tiene permiso para editar el equipo." };
   }
   revalidatePath("/admin/comisiones");
+  // También vive en la ficha de Equipo y en la puesta a punto del Inicio.
+  revalidatePath("/admin/equipo");
+  revalidatePath("/admin");
   revalidatePath("/barbero");
   return { ok: true };
 }
@@ -2236,6 +2261,11 @@ export async function agendarCita(input: {
   const esPasada = inicio.getTime() <= Date.now();
   if (inicio.getTime() < Date.now() - 7 * 86_400_000)
     return { ok: false, error: "Esa fecha es de hace más de una semana. Revisala." };
+  // Una cita POR DELANTE con alguien dado de baja (0087) no la atiende nadie: la
+  // tablet del mostrador puede tener todavía su columna si nadie la refrescó.
+  // Registrar un corte que YA hizo (esPasada) sí se deja: es plata de antes de irse.
+  if (!esPasada && !(await barberoActivo(input.barberoId)))
+    return { ok: false, error: "Ese barbero ya no trabaja aquí. Refresca la pantalla y elige otro." };
 
   const admin = supabaseAdmin();
   // Duración del servicio + que tenga precio en la sede (misma barrera que createReserva).
@@ -2376,6 +2406,8 @@ export async function bloquearHoras(input: {
   if (!puedeMostrador(staff.rol)) return { ok: false, error: "No autorizado" };
   if (!(await staffPuedeOperarBarbero(staff, input.barberoId)))
     return { ok: false, error: "Ese barbero no es de tu sede." };
+  if (!(await barberoActivo(input.barberoId)))
+    return { ok: false, error: "Ese barbero ya no trabaja aquí. Refresca la pantalla." };
   if (!/^\d{4}-\d{2}-\d{2}$/.test(input.fecha)) return { ok: false, error: "Fecha inválida." };
 
   const parcial = input.desdeMin != null || input.hastaMin != null;
@@ -2526,6 +2558,10 @@ export async function moverCita(input: {
 
   const barberoId = input.barberoId ?? r.barbero_id;
   if (!barberoId) return { ok: false, error: "Elige a qué barbero pasa la cita." };
+  // A un barbero dado de baja no se le pasan citas (0087): el cliente llegaría y
+  // no habría nadie. Moverla de HORA sin cambiar de barbero sí se deja.
+  if (barberoId !== r.barbero_id && !(await barberoActivo(barberoId)))
+    return { ok: false, error: "Ese barbero ya no trabaja aquí. Elige otro." };
 
   const inicio = new Date(input.inicioISO);
   if (isNaN(inicio.getTime())) return { ok: false, error: "Hora inválida." };
@@ -3049,7 +3085,9 @@ export async function completarReserva(input: {
     // no ve, y el silencio es justo lo que hizo que durara meses.
     if (barbErr || !barbRow) errorPublico("completarReserva comisión", barbErr ?? { message: "barbero no encontrado" });
     if (barbRow && barbRow.tipo_contrato === "porcentaje") {
-      barberComision = barbRow.comision_pct != null ? Number(barbRow.comision_pct) : 50;
+      // Sin porcentaje cargado, el de por defecto. Es el MISMO número que muestra
+      // Comisiones como "Sin definir · se cobra 50 %" (equipo-reglas.ts).
+      barberComision = barbRow.comision_pct != null ? Number(barbRow.comision_pct) : COMISION_POR_DEFECTO;
     }
   }
 
@@ -4219,6 +4257,8 @@ export async function agregarListaEspera(input: {
     return { ok: false, error: "Esa sede no es la tuya." };
   if (input.barberoId && !(await staffPuedeOperarBarbero(staff, input.barberoId)))
     return { ok: false, error: "Ese barbero es de otra sede." };
+  if (input.barberoId && !(await barberoActivo(input.barberoId)))
+    return { ok: false, error: "Ese barbero ya no trabaja aquí. Refresca la pantalla y elige otro." };
   const clienteRef = await upsertClienteId(sb, input.clienteNombre, input.telefono, "", "walkin");
   const { error } = await sb.from("lista_espera").insert({
     sede_id: input.sede,

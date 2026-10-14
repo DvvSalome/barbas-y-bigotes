@@ -141,6 +141,42 @@ export async function compartirCalendario(calendarId: string, email: string, rol
   });
 }
 
+/**
+ * Le QUITA a un correo el acceso a un calendario (la regla de ACL "user:<correo>").
+ * Las agendas son de la cuenta de servicio y el dueño solo las ve como lector,
+ * así que desde Google Calendar no lo puede hacer él: tiene que salir de acá.
+ * Si ya no tenía acceso (404/410), no pasa nada.
+ */
+export async function descompartirCalendario(calendarId: string, email: string): Promise<void> {
+  const regla = `user:${email.trim().toLowerCase()}`;
+  await api("DELETE", `/calendars/${encodeURIComponent(calendarId)}/acl/${encodeURIComponent(regla)}`, undefined, true);
+}
+
+/**
+ * Con quién está compartido un calendario (los correos de las reglas "user:").
+ * Lo usa la baja para quitar a TODOS los del barbero, no solo el que la base
+ * recuerda: si cambió el correo de avisos, el viejo seguía con acceso.
+ */
+export async function correosConAcceso(calendarId: string): Promise<{ email: string; rol: string }[]> {
+  const out: { email: string; rol: string }[] = [];
+  let pagina: string | undefined;
+  for (let i = 0; i < 10; i++) {
+    const q = new URLSearchParams({ maxResults: "250", ...(pagina ? { pageToken: pagina } : {}) });
+    const r = await api<{ items?: { role?: string; scope?: { type?: string; value?: string } }[]; nextPageToken?: string }>(
+      "GET",
+      `/calendars/${encodeURIComponent(calendarId)}/acl?${q}`,
+      undefined,
+      true,
+    );
+    for (const it of r?.items ?? []) {
+      if (it.scope?.type === "user" && it.scope.value) out.push({ email: it.scope.value.toLowerCase(), rol: it.role ?? "" });
+    }
+    pagina = r?.nextPageToken;
+    if (!pagina) break;
+  }
+  return out;
+}
+
 export type EventoCalendar = {
   summary: string;
   description?: string;
