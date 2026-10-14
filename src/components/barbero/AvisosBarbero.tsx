@@ -33,6 +33,11 @@ function conKeyVigente(sub: PushSubscription, actual: Uint8Array) {
 async function obtenerSW(ms = 5000): Promise<ServiceWorkerRegistration | null> {
   const reg = await navigator.serviceWorker.getRegistration();
   if (reg?.active) return reg;
+  // Registrado pero instalándose: la primera visita tarda ~25 s en producción
+  // (precarga). Con el techo de 5 s el botón decía "Disponible en la app
+  // instalada" y nadie podía activar los avisos. En producción el PWA siempre
+  // está prendido (aunque todavía no se haya registrado): se espera sin techo.
+  if (reg || process.env.NODE_ENV === "production") return navigator.serviceWorker.ready;
   return Promise.race([
     navigator.serviceWorker.ready,
     new Promise<null>((r) => setTimeout(() => r(null), ms)),

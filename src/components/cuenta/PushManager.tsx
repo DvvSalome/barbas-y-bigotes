@@ -36,6 +36,9 @@ function conKeyVigente(sub: PushSubscription, keyActual: Uint8Array): boolean {
 async function obtenerSW(ms = 5000): Promise<ServiceWorkerRegistration | null> {
   const reg = await navigator.serviceWorker.getRegistration();
   if (reg?.active) return reg;
+  // En producción el PWA siempre está prendido y la primera instalación tarda
+  // ~25 s (medido): con el techo, el primer load daba "no disponible".
+  if (reg || process.env.NODE_ENV === "production") return navigator.serviceWorker.ready;
   return Promise.race([
     navigator.serviceWorker.ready,
     new Promise<null>((resolve) => setTimeout(() => resolve(null), ms)),
