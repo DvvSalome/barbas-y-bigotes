@@ -170,7 +170,7 @@ export function SiteFooter({
             </p>
             {/* Las legales van SIEMPRE visibles, tambien aca: Google revisa que
                 sean alcanzables y un <details> cerrado no cuenta. */}
-            <nav className="flex items-center gap-3">
+            <nav className="flex flex-wrap items-center justify-center gap-x-3 gap-y-2">
               <Link
                 href="/privacidad"
                 className="relative transition hover:text-accent-soft before:absolute before:-inset-y-3.5 before:inset-x-0 before:content-['']"
@@ -183,6 +183,15 @@ export function SiteFooter({
                 className="relative transition hover:text-accent-soft before:absolute before:-inset-y-3.5 before:inset-x-0 before:content-['']"
               >
                 Términos
+              </Link>
+              <span aria-hidden className="h-[3px] w-[3px] rounded-full bg-muted/60" />
+              {/* Entrada del equipo: desde la app instalada (sin barra de dirección)
+                  es la única forma de llegar al login del staff. */}
+              <Link
+                href="/login"
+                className="relative transition hover:text-accent-soft before:absolute before:-inset-y-3.5 before:inset-x-0 before:content-['']"
+              >
+                Equipo
               </Link>
               <span aria-hidden className="h-[3px] w-[3px] rounded-full bg-muted/60" />
               <span>Cancelas online hasta 2 h antes</span>
@@ -304,6 +313,13 @@ export function SiteFooter({
             className="relative transition hover:text-accent-soft before:absolute before:-inset-y-3.5 before:inset-x-0 before:content-['']"
           >
             Términos
+          </Link>
+          <span aria-hidden className="h-[3px] w-[3px] rounded-full bg-muted/60" />
+          <Link
+            href="/login"
+            className="relative transition hover:text-accent-soft before:absolute before:-inset-y-3.5 before:inset-x-0 before:content-['']"
+          >
+            Equipo
           </Link>
         </nav>
 
