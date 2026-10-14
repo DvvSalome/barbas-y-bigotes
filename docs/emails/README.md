@@ -9,7 +9,7 @@ no está cableada.
 | `confirmacion.html` | ¡Tu reserva en Barbas & Bigotes está confirmada! | `JJiAjBoc9NBQbky1` | cada 1 min | vista `v_confirmaciones_pendientes` |
 | `recordatorio.html` | Recordatorio de tu cita 🔔 | `x8B5l6NbG2supIbH` | 9:15, 13:15, 17:15, 20:15 | RPC `tomar_recordatorios_pendientes()` |
 | `cupo.html` | ¡Se liberó un cupo! 🎉 | `Psk61KioW7QM0tdA` | cada 10 min | vista `v_avisos_cola_pendientes` |
-| `resena.html` | ¿Cómo te quedó? Dejanos tu reseña ✂️ | `3Y5sa4e6ve1PuwpK` | cada 30 min | RPC `tomar_resenas_pendientes()` |
+| `resena.html` | ¿Cómo te quedó? Califica tu visita ✂️ | `3Y5sa4e6ve1PuwpK` | cada 30 min | RPC `tomar_resenas_pendientes()` (con `resena_token` desde 0082) |
 | `aviso-barbero.html` | 💈 Nueva cita: (cliente) · (cuándo) — al BARBERO | `JJiAjBoc9NBQbky1` (rama) | cada 5 min + webhook al reservar | RPC `tomar_avisos_barbero()`; la renderiza el nodo Code (ver cabecera del archivo) |
 
 **`options.appendAttribution: false` en los 4 nodos de correo.** Por defecto n8n

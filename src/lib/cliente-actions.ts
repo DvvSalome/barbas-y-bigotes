@@ -9,6 +9,7 @@ import { choqueAusencia } from "@/lib/ausencias";
 import { errorPublico } from "@/lib/errors";
 import { pushACliente, pushABarbero, pushASede } from "@/lib/push";
 import { fechaHoraBogota } from "@/lib/format";
+import { getVisitaPorTokenDeResena } from "@/lib/data/queries";
 
 // Ventana de "deshacer" (minutos): desde la pantalla de confirmación del wizard,
 // el cliente puede cancelar la reserva que ACABA de hacer si puso un dato mal.
@@ -318,8 +319,9 @@ export async function cancelarReservaCliente(
 // Calificar la atención de una visita ya completada (postventa). Mismo patrón de
 // ownership que cancelarReservaCliente: la action usa supabaseAdmin (bypassa RLS),
 // así que TODO se valida acá server-side (dueño, estado, score); no confiar en la UI.
-// Rating gate: score alto → devuelve la URL de reseña de Google de LA sede que
-// atendió; score bajo → null (feedback interno, no mandamos clientes molestos a Google).
+// Devuelve la URL de reseña de Google de LA sede que atendió, SEA CUAL SEA la nota.
+// Antes solo se la daba a quien ponía 4-5 estrellas: eso es "review gating", lo
+// prohíbe la política de Google y puede costar las reseñas de la ficha (ver 0035).
 export async function calificarServicio(input: {
   reservaId: string;
   score: number;
@@ -361,21 +363,54 @@ export async function calificarServicio(input: {
     return { ok: false, error: errorPublico("calificarServicio", insErr) };
   }
 
-  // Rating gate: solo con 4-5 estrellas se empuja a Google. La URL es de ESA sede
-  // (cada sede tiene su ficha de Maps); nullable = botón apagado hasta configurarla.
-  let googleReviewUrl: string | null = null;
-  if (score >= 4) {
-    const { data: sede, error: sedeErr } = await admin
-      .from("sedes")
-      .select("google_review_url")
-      .eq("id", r.sede_id)
-      .maybeSingle();
-    if (sedeErr) errorPublico("calificarServicio sede", sedeErr);
-    googleReviewUrl = (sede as { google_review_url?: string | null } | null)?.google_review_url ?? null;
-  }
+  // La URL es de ESA sede (cada sede tiene su ficha de Maps); nullable = botón
+  // apagado hasta configurarla.
+  const { data: sede, error: sedeErr } = await admin
+    .from("sedes")
+    .select("google_review_url")
+    .eq("id", r.sede_id)
+    .maybeSingle();
+  if (sedeErr) errorPublico("calificarServicio sede", sedeErr);
+  const googleReviewUrl = (sede as { google_review_url?: string | null } | null)?.google_review_url || null;
 
   revalidatePath("/cuenta");
   return { ok: true, googleReviewUrl };
+}
+
+// La misma calificación, desde el enlace del correo de postventa (/calificar/[token]).
+// Sin login: el token es la credencial (como /confirmar/[token]). Vale para ventas
+// sin cita (walk-in), que /cuenta no podía calificar. Una sola por visita: el
+// unique de venta_id y el de reserva_id (si vino de una cita) lo garantizan.
+export async function calificarPorToken(input: {
+  token: string;
+  score: number;
+  comentario?: string;
+}): Promise<{ ok: boolean; error?: string; googleReviewUrl?: string | null }> {
+  const score = input.score;
+  if (!Number.isInteger(score) || score < 1 || score > 5)
+    return { ok: false, error: "La calificación va de 1 a 5 estrellas." };
+  const comentario = (input.comentario ?? "").trim().slice(0, 500) || null;
+
+  const v = await getVisitaPorTokenDeResena(input.token);
+  // cliente_ref es obligatorio en resenas_servicio; el correo solo sale a ventas con cliente.
+  if (!v || !v.clienteRef) return { ok: false, error: "Este enlace no es válido." };
+  if (v.vencida) return { ok: false, error: "Este enlace ya venció." };
+  if (v.yaCalificada) return { ok: false, error: "Ya calificaste esta visita." };
+
+  const { error } = await supabaseAdmin().from("resenas_servicio").insert({
+    venta_id: v.ventaId,
+    reserva_id: v.reservaId,
+    cliente_ref: v.clienteRef,
+    barbero_id: v.barberoId,
+    sede_id: v.sedeId,
+    score,
+    comentario,
+  });
+  if (error) {
+    if (error.code === "23505") return { ok: false, error: "Ya calificaste esta visita." };
+    return { ok: false, error: errorPublico("calificarPorToken", error) };
+  }
+  return { ok: true, googleReviewUrl: v.googleReviewUrl };
 }
 
 // Reagendar la propia cita. Misma ventana de 2h que cancelar. Pre-chequea solape

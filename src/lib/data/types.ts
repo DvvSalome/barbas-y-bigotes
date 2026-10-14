@@ -59,7 +59,9 @@ export interface Barbero {
   arriendoMensual?: number;
   fotoUrl?: string | null;
   destacado?: boolean;
+  /** Promedio de lo que calificaron los clientes en la app; solo desde 5 calificaciones. */
   rating?: number;
+  /** Cuántas calificaciones hay detrás de `rating` (no son reseñas de Google). */
   resenas?: number;
   bio?: string | null;
 }

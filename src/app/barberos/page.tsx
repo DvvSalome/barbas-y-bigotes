@@ -5,6 +5,7 @@ import { SiteFooter } from "@/components/SiteFooter";
 import { getSedes, getBarberos } from "@/lib/data/queries";
 import { barberosItemList, jsonLd } from "@/lib/schema-org";
 import type { Barbero } from "@/lib/data/types";
+import { Estrellas } from "@/components/ui/Estrellas";
 
 export const metadata: Metadata = {
   title: "Nuestros barberos",
@@ -56,15 +57,19 @@ function BarberoCard({ barbero: b, sedeNombre }: { barbero: Barbero; sedeNombre:
 
       {/* Cuerpo */}
       <div className="px-[18px] py-4">
-        <div className="flex items-center gap-1.5 text-[13px]">
-          <span className="tracking-[1px] text-accent">★★★★★</span>
-          {b.rating != null && <b className="text-ink">{b.rating.toFixed(1)}</b>}
-          {b.resenas != null && <span className="text-muted">· {b.resenas} reseñas</span>}
-        </div>
+        {/* Solo con calificaciones de verdad (getBarberos): antes las cinco
+            estrellas iban escritas fijas y los números eran de prueba. */}
+        {b.rating != null && (
+          <div className="flex items-center gap-1.5 text-[13px]">
+            <Estrellas score={b.rating} />
+            <b className="text-ink">{b.rating.toLocaleString("es-CO", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}</b>
+            <span className="text-muted">· {b.resenas} calificaciones</span>
+          </div>
+        )}
 
         {b.especialidades.length > 0 && (
           <>
-            <div className="mb-2 mt-3.5 text-[10px] uppercase tracking-[0.18em] text-muted">
+            <div className="mb-2 mt-3.5 text-[10px] uppercase tracking-[0.18em] text-muted first:mt-0">
               Especialista en
             </div>
             <div className="flex flex-wrap gap-1.5">

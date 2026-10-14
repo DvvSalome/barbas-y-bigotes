@@ -1631,8 +1631,8 @@ export function BookingWizard({
                           <div className="mt-1 text-[10px] text-[#c9c2b6]">
                             {b.rating != null && (
                               <>
-                                <StarIcon className="inline h-3.5 w-3.5 fill-current" /> {b.rating.toFixed(1)}
-                                {b.resenas ? ` · ${b.resenas} reseñas` : ""}
+                                <StarIcon className="inline h-3.5 w-3.5 fill-current" /> {b.rating.toLocaleString("es-CO", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}
+                                {b.resenas ? ` · ${b.resenas} calificaciones` : ""}
                               </>
                             )}
                             {hechosTxt && `${b.rating != null ? " · " : ""}${hechosTxt}`}

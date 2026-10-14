@@ -134,8 +134,6 @@ function mapBarberoPublico(b: Record<string, unknown>): Barbero {
     especialidades: ((b.barbero_especialidades as { especialidad: string }[]) ?? []).map((e) => e.especialidad),
     fotoUrl: (b.foto_url as string) ?? null,
     destacado: b.destacado as boolean,
-    rating: (b.rating as number) ?? undefined,
-    resenas: (b.resenas as number) ?? undefined,
     bio: (b.bio as string) ?? null,
   };
 }
@@ -144,15 +142,29 @@ function mapBarberoPublico(b: Record<string, unknown>): Barbero {
 // trae tipo_contrato/comision_pct/arriendo_mensual: esas columnas están revocadas a
 // anon/authenticated (0049) porque son el reparto de plata del local. Si se pidieran
 // acá con la anon key, el REST las devolvía a cualquiera.
+//
+// Las estrellas salen de lo que calificaron los clientes (calificacion_barberos,
+// 0082), y solo desde 5 calificaciones: antes eran números de prueba escritos a
+// mano. Si el RPC falla o todavía no existe, el barbero sale sin estrellas.
 export async function getBarberos(): Promise<Barbero[]> {
   const sb = supabaseServer();
-  const { data } = await sb
-    .from("barberos")
-    .select("id,nombre,sede_id,foto_url,destacado,rating,resenas,bio,orden,barbero_especialidades(especialidad)")
-    .eq("activo", true)
-    .order("sede_id")
-    .order("orden");
-  return (data ?? []).map((b) => mapBarberoPublico(b as Record<string, unknown>));
+  const [{ data }, { data: notas }] = await Promise.all([
+    sb
+      .from("barberos")
+      .select("id,nombre,sede_id,foto_url,destacado,bio,orden,barbero_especialidades(especialidad)")
+      .eq("activo", true)
+      .order("sede_id")
+      .order("orden"),
+    sb.rpc("calificacion_barberos"),
+  ]);
+  const nota = new Map(
+    ((notas ?? []) as { barbero_id: string; promedio: number; total: number }[]).map((n) => [n.barbero_id, n]),
+  );
+  return (data ?? []).map((b) => {
+    const barbero = mapBarberoPublico(b as Record<string, unknown>);
+    const n = nota.get(barbero.id);
+    return n ? { ...barbero, rating: Number(n.promedio), resenas: n.total } : barbero;
+  });
 }
 
 // Correo de avisos por barbero (barbero_contacto, 0066). La tabla es RLS-cerrada
@@ -211,7 +223,7 @@ export async function getBarberosContrato(): Promise<BarberoConContrato[]> {
   const { data } = await sb
     .from("barberos")
     .select(
-      "id,nombre,sede_id,tipo_contrato,comision_pct,arriendo_mensual,foto_url,destacado,rating,resenas,bio,orden,barbero_especialidades(especialidad)",
+      "id,nombre,sede_id,tipo_contrato,comision_pct,arriendo_mensual,foto_url,destacado,bio,orden,barbero_especialidades(especialidad)",
     )
     .eq("activo", true)
     .order("sede_id")
@@ -2223,6 +2235,77 @@ export async function getReservaSinCalificar(clienteId: string): Promise<Reserva
     servicio: (pendiente.servicios as { nombre?: string } | null)?.nombre ?? "Tu servicio",
     barbero: (pendiente.barberos as { nombre?: string } | null)?.nombre ?? "—",
     sede: (pendiente.sedes as { nombre?: string } | null)?.nombre ?? (pendiente.sede_id as string),
+  };
+}
+
+/** La visita que se califica con el enlace del correo de postventa (/calificar/[token]). */
+export type VisitaPorToken = {
+  ventaId: string;
+  reservaId: string | null;
+  clienteRef: string | null;
+  barberoId: string | null;
+  sedeId: string;
+  servicio: string;
+  barbero: string;
+  /** creado_en del cobro (ISO). */
+  fecha: string;
+  googleReviewUrl: string | null;
+  /** El enlace vale 30 días desde el cobro. */
+  vencida: boolean;
+  /** Ya hay calificación para esta venta o para su cita (por /cuenta). */
+  yaCalificada: boolean;
+};
+
+// Sin login: el token (ventas.resena_token, 0082) es la credencial, así que se lee
+// con service role. Trae ids para la action; la página solo muestra lo de pantalla.
+export async function getVisitaPorTokenDeResena(token: string): Promise<VisitaPorToken | null> {
+  // Un UUID mal formado ni toca la base.
+  if (!/^[0-9a-f-]{36}$/i.test(token)) return null;
+  const admin = supabaseAdmin();
+  const { data, error } = await admin
+    .from("ventas")
+    .select(
+      "id,reserva_id,cliente_ref,barbero_id,sede_id,creado_en,anulada_en,barberos(nombre),sedes(google_review_url),venta_items(tipo,descripcion,precio_unitario)",
+    )
+    .eq("resena_token", token)
+    .maybeSingle();
+  if (error || !data) return null;
+  const v = data as {
+    id: string;
+    reserva_id: string | null;
+    cliente_ref: string | null;
+    barbero_id: string | null;
+    sede_id: string;
+    creado_en: string;
+    anulada_en: string | null;
+    barberos: { nombre?: string } | null;
+    sedes: { google_review_url?: string | null } | null;
+    venta_items: { tipo: string; descripcion: string; precio_unitario: number | null }[] | null;
+  };
+  if (v.anulada_en) return null;
+
+  const califQ = admin.from("resenas_servicio").select("id", { count: "exact", head: true });
+  const { count } = await (v.reserva_id
+    ? califQ.or(`venta_id.eq.${v.id},reserva_id.eq.${v.reserva_id}`)
+    : califQ.eq("venta_id", v.id));
+
+  // Lo mismo que dice el correo: el servicio más caro de la venta.
+  const servicio = (v.venta_items ?? [])
+    .filter((i) => i.tipo === "servicio")
+    .sort((a, b) => (b.precio_unitario ?? 0) - (a.precio_unitario ?? 0))[0]?.descripcion;
+
+  return {
+    ventaId: v.id,
+    reservaId: v.reserva_id,
+    clienteRef: v.cliente_ref,
+    barberoId: v.barbero_id,
+    sedeId: v.sede_id,
+    servicio: servicio ?? "Tu visita",
+    barbero: v.barberos?.nombre ?? "el equipo",
+    fecha: v.creado_en,
+    googleReviewUrl: v.sedes?.google_review_url || null,
+    vencida: Date.now() - Date.parse(v.creado_en) > 30 * 86_400_000,
+    yaCalificada: (count ?? 0) > 0,
   };
 }
 
