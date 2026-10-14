@@ -6,6 +6,14 @@ import { getStaffContext } from "@/lib/data/queries";
 import { TEMA_COOKIE, temaDesdeCookie } from "@/lib/tema";
 import { PerfilMenu } from "@/components/staff/PerfilMenu";
 import { TemaBoton } from "@/components/staff/TemaBoton";
+import { RecordarEquipo } from "@/components/staff/AppEquipo";
+import { APP_EQUIPO_META } from "@/lib/app-equipo";
+import type { Metadata } from "next";
+
+// Manifiesto PROPIO del staff (ver src/lib/app-equipo.ts): quien instala la app
+// desde acá obtiene una que abre en /equipo. El que la instala desde el sitio
+// público sigue con la de siempre, que abre en la portada.
+export const metadata: Metadata = APP_EQUIPO_META;
 
 export default async function BarberoLayout({
   children,
@@ -25,6 +33,7 @@ export default async function BarberoLayout({
 
   return (
     <div data-staff data-theme={tema} className="min-h-dvh">
+      <RecordarEquipo />
       <header className="sticky top-0 z-30 border-b border-line bg-bg/70 backdrop-blur-md">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-3.5">
           <Link href="/" aria-label="Barbas & Bigotes">

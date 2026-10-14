@@ -1,16 +1,19 @@
 {
   "id": "/barbero",
-  "name": "Barbas & Bigotes · Mostrador",
-  "short_name": "Mostrador",
-  "description": "El mostrador del local: turnos, agenda, lista de espera y cierre de caja.",
-  "start_url": "/barbero",
+  "name": "Barbas & Bigotes · Equipo",
+  "short_name": "B&B Equipo",
+  "description": "La app del equipo: mostrador, agenda, caja y, para el dueño, el panel.",
+  "start_url": "/equipo",
   "scope": "/",
   "display": "standalone",
   "background_color": "#0c0b0a",
   "theme_color": "#0c0b0a",
   "orientation": "any",
   "lang": "es-CO",
-  "categories": ["business", "productivity"],
+  "categories": [
+    "business",
+    "productivity"
+  ],
   "icons": [
     {
       "src": "/brand/icon-192x192.png",

@@ -4,6 +4,7 @@ import { Ubicacion } from "@/components/home/Ubicacion";
 import { Faq } from "@/components/home/Faq";
 import { Hero, LaCarta, Elenco, TiraCortes, ComoFunciona, Cierre, WHATSAPP } from "@/components/propuesta/Secciones";
 import { BarraReserva } from "@/components/propuesta/Islas";
+import { AbrirComoEquipo } from "@/components/staff/AppEquipo";
 import { getSedes, getBarberos, getServicios } from "@/lib/data/queries";
 
 /*
@@ -22,6 +23,8 @@ export default async function Home() {
   const [sedes, barberos, servicios] = await Promise.all([getSedes(), getBarberos(), getServicios()]);
   return (
     <>
+      {/* La app instalada en un aparato del equipo no se queda en la portada. */}
+      <AbrirComoEquipo />
       <SiteHeader transparente />
       <main>
         <Hero barberos={barberos} servicios={servicios} sedes={sedes} />

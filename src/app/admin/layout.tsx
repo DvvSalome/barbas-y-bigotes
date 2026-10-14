@@ -9,6 +9,14 @@ import { AdminSubTabs } from "@/components/admin/AdminNav";
 import { AdminNavInferior } from "@/components/admin/AdminNavInferior";
 import { CommandK } from "@/components/staff/CommandK";
 import { RealtimeRefresh } from "@/components/motion/RealtimeRefresh";
+import { RecordarEquipo } from "@/components/staff/AppEquipo";
+import { APP_EQUIPO_META } from "@/lib/app-equipo";
+import type { Metadata } from "next";
+
+// Manifiesto PROPIO del staff (ver src/lib/app-equipo.ts): quien instala la app
+// desde acá obtiene una que abre en /equipo. El que la instala desde el sitio
+// público sigue con la de siempre, que abre en la portada.
+export const metadata: Metadata = APP_EQUIPO_META;
 
 export default async function AdminLayout({
   children,
@@ -36,6 +44,7 @@ export default async function AdminLayout({
 
   return (
     <div data-staff data-theme={tema} className="flex min-h-dvh flex-col">
+      <RecordarEquipo />
       <RealtimeRefresh
         subscriptions={[
           { table: "reservas" },

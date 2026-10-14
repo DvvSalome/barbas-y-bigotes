@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import { getBarberos, getSedes } from "@/lib/data/queries";
 import { StaffLogin } from "@/components/staff/StaffLogin";
+import { APP_EQUIPO_META } from "@/lib/app-equipo";
 
-export const metadata: Metadata = { title: "Entrar" };
+// Desde el login del staff también se instala la app del equipo.
+export const metadata: Metadata = { ...APP_EQUIPO_META, title: "Entrar" };
 
 // Gateway único del staff: se elige perfil (barbero/admin) y va el login que
 // toca. No cachear la lista de barberos (un barbero nuevo debe poder entrar sin
