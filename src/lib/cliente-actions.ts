@@ -7,7 +7,8 @@ import { CANCELACION_MIN_HORAS, slotEnVentana, bogotaYmd } from "@/lib/slots";
 import { ventanaDeDia } from "@/lib/horario";
 import { choqueAusencia } from "@/lib/ausencias";
 import { errorPublico } from "@/lib/errors";
-import { pushACliente, pushABarbero, pushASede } from "@/lib/push";
+import { pushACliente, pushABarbero, pushASede, pushAAdmins, guardarSuscripcion } from "@/lib/push";
+import { encolarAvisoDueno } from "@/lib/avisos-dueno";
 import { fechaHoraBogota } from "@/lib/format";
 import { getVisitaPorTokenDeResena } from "@/lib/data/queries";
 
@@ -224,33 +225,21 @@ export async function savePushSubscription(
     return { ok: false, error: "No autorizado" };
   }
 
-  const admin = supabaseAdmin();
-
-  // Upsert por endpoint (unique push_sub_endpoint_unica, 0022): en un equipo
-  // compartido el mismo endpoint del navegador puede quedar atado a otro cliente,
-  // así que hay que RE-VINCULARLO al cliente logueado ahora (si no, el dueño
-  // anterior seguiría recibiendo sus avisos en este dispositivo → fuga de datos).
-  // El upsert reemplaza el select+branch y cierra la fuga incluso si hubiera
-  // filas duplicadas del pasado (el dedup + unique de 0022 las colapsa a una).
-  // barbero_id/sede_id en null EXPLICITO: la migracion 0047 agrego el CHECK
-  // push_sub_dueno_unico (exactamente UN dueno). En un aparato compartido, si el
-  // staff se suscribio antes en este mismo navegador, la fila tenia sede_id; sin
-  // limpiarlos, el upsert por endpoint dejaba cliente_ref Y sede_id -> viola el
-  // CHECK y el cliente NO podia activar sus avisos. guardarPushStaff ya hace esto.
-  const { error } = await admin.from("push_subscriptions").upsert(
-    {
-      cliente_ref: ctx.clienteId,
-      barbero_id: null,
-      sede_id: null,
-      endpoint: subscription.endpoint,
-      p256dh: subscription.keys.p256dh,
-      auth: subscription.keys.auth,
-    },
-    { onConflict: "endpoint" },
+  // Un aparato es de UN solo cliente (0022, y desde 0085 el índice parcial
+  // push_sub_endpoint_cliente): en un equipo compartido el endpoint del navegador
+  // pudo quedar atado a otro cliente, y hay que RE-VINCULARLO al logueado ahora
+  // (si no, el anterior seguiría recibiendo sus avisos acá → fuga de datos).
+  // guardarSuscripcion borra al otro cliente y guarda esta fila con los cuatro
+  // dueños explícitos (el CHECK push_sub_dueno_unico pide exactamente uno), sin
+  // tocar las filas del equipo que compartan el aparato (0085). También valida
+  // endpoint y llaves: esto es un POST que cualquier cuenta de Google puede llamar.
+  const res = await guardarSuscripcion(
+    { tipo: "cliente", id: ctx.clienteId },
+    { endpoint: subscription?.endpoint, p256dh: subscription?.keys?.p256dh, auth: subscription?.keys?.auth },
   );
 
-  if (error) {
-    console.error("Error saving push subscription", error);
+  if (!res.ok) {
+    console.error("Error saving push subscription", res.error);
     return { ok: false, error: "Error al guardar suscripción" };
   }
 
@@ -338,12 +327,18 @@ export async function calificarServicio(input: {
   const admin = supabaseAdmin();
   const { data: res, error: getErr } = await admin
     .from("reservas")
-    .select("id, cliente_ref, barbero_id, sede_id, estado")
+    .select("id, cliente_ref, barbero_id, sede_id, estado, servicio_id")
     .eq("id", input.reservaId)
     .maybeSingle();
   if (getErr) return { ok: false, error: errorPublico("calificarServicio reserva", getErr) };
   if (!res) return { ok: false, error: "Reserva no encontrada" };
-  const r = res as { cliente_ref: string | null; barbero_id: string | null; sede_id: string; estado: string };
+  const r = res as {
+    cliente_ref: string | null;
+    barbero_id: string | null;
+    sede_id: string;
+    estado: string;
+    servicio_id: string | null;
+  };
 
   if (r.cliente_ref !== ctx.clienteId) return { ok: false, error: "Reserva no encontrada" };
   if (r.estado !== "completada")
@@ -373,8 +368,69 @@ export async function calificarServicio(input: {
   if (sedeErr) errorPublico("calificarServicio sede", sedeErr);
   const googleReviewUrl = (sede as { google_review_url?: string | null } | null)?.google_review_url || null;
 
+  await avisarResenaBaja({
+    score,
+    comentario,
+    clienteRef: ctx.clienteId,
+    barberoId: r.barbero_id,
+    sedeId: r.sede_id,
+    servicioId: r.servicio_id,
+  });
+
   revalidatePath("/cuenta");
   return { ok: true, googleReviewUrl };
+}
+
+/**
+ * Una calificación de 3 o menos le avisa al DUEÑO al momento: push a sus aparatos
+ * y correo a los suyos (alertas, 0084). Antes solo aparecía unos días en "Para
+ * hacer", y nadie se enteraba si no entraba al panel. Nunca lanza: la
+ * calificación ya quedó guardada.
+ */
+async function avisarResenaBaja(c: {
+  score: number;
+  comentario: string | null;
+  clienteRef: string | null;
+  barberoId: string | null;
+  sedeId: string;
+  servicioId?: string | null;
+  servicio?: string | null;
+}): Promise<void> {
+  if (c.score > 3) return;
+  try {
+    const admin = supabaseAdmin();
+    const nombre = async (tabla: "clientes" | "barberos" | "sedes" | "servicios", id: string | null | undefined) => {
+      if (!id) return null;
+      const { data } = await admin.from(tabla).select("nombre").eq("id", id).maybeSingle();
+      return (data as { nombre?: string } | null)?.nombre ?? null;
+    };
+    const [cliente, barbero, sede, servicioDeCita] = await Promise.all([
+      nombre("clientes", c.clienteRef),
+      nombre("barberos", c.barberoId),
+      nombre("sedes", c.sedeId),
+      c.servicio ? Promise.resolve(null) : nombre("servicios", c.servicioId),
+    ]);
+    const quien = cliente ?? "Un cliente";
+    const conQuien = barbero ? ` con ${barbero}` : "";
+    await pushAAdmins({
+      title: `Calificación de ${c.score} de 5 ★`,
+      body: `${quien}${conQuien}${c.comentario ? `: «${c.comentario.slice(0, 90)}»` : " · sin comentario"}`,
+      url: c.clienteRef ? `/admin/clientes/${c.clienteRef}` : "/admin",
+      tag: "resena-baja",
+    });
+    await encolarAvisoDueno("resena_baja", {
+      score: c.score,
+      comentario: c.comentario,
+      cliente: quien,
+      barbero,
+      sede: sede ?? c.sedeId,
+      sede_id: c.sedeId,
+      servicio: c.servicio ?? servicioDeCita,
+      fecha: new Date().toISOString(),
+    }, { clienteRef: c.clienteRef });
+  } catch (e) {
+    console.error("[avisarResenaBaja]", e);
+  }
 }
 
 // La misma calificación, desde el enlace del correo de postventa (/calificar/[token]).
@@ -410,6 +466,14 @@ export async function calificarPorToken(input: {
     if (error.code === "23505") return { ok: false, error: "Ya calificaste esta visita." };
     return { ok: false, error: errorPublico("calificarPorToken", error) };
   }
+  await avisarResenaBaja({
+    score,
+    comentario,
+    clienteRef: v.clienteRef,
+    barberoId: v.barberoId,
+    sedeId: v.sedeId,
+    servicio: v.servicio,
+  });
   return { ok: true, googleReviewUrl: v.googleReviewUrl };
 }
 

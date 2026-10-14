@@ -79,7 +79,7 @@ export const HOJAS: readonly {
   { href: "/admin/reportes", label: "Reporte del mes", sub: "Como el Excel: día por día e inventario", grupo: "Informes", icono: ReceiptIcon, tinte: "plata" },
   { href: "/admin/cupones", label: "Cupones", sub: "Descuentos con código", grupo: "Marketing", icono: TicketIcon, tinte: "marca" },
   { href: "/admin/tarjeta", label: "Tarjeta de cortes", sub: "Cada cuántos cortes va uno gratis", grupo: "Marketing", icono: StarIcon, tinte: "marca" },
-  { href: "/admin/avisos", label: "Avisos al cliente", sub: "Recordatorios y «te toca corte»", grupo: "Marketing", icono: BellIcon, tinte: "marca" },
+  { href: "/admin/avisos", label: "Avisos", sub: "Los tuyos, los del cliente y los del equipo", grupo: "Marketing", icono: BellIcon, tinte: "marca" },
   { href: "/barbero", label: "App del barbero", sub: "El mostrador, como lo ve el equipo", grupo: "Otros", icono: TagIcon, tinte: "neutro" },
   { href: "/admin/ayuda", label: "Cómo se usa", sub: "La guía, por si alguien se pierde", grupo: "Otros", icono: BookIcon, tinte: "neutro" },
 ] as const;

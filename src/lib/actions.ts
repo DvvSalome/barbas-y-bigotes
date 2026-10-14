@@ -48,7 +48,20 @@ import { emailGuardable, esEmailEnviable } from "@/lib/email";
 import { avisarConfirmacionPendiente } from "@/lib/n8n";
 import { calcularCobro, snapshotDinero, diferenciaCaja, sumaGastosEfectivo } from "@/lib/cobro";
 import { beneficioProximoCorte, sanearConfigTarjeta, type BeneficioTarjeta } from "@/lib/tarjeta";
-import { pushACliente, pushABarbero, pushASede, pushAAdmins } from "@/lib/push";
+import {
+  pushACliente,
+  pushABarbero,
+  pushASede,
+  pushAAdmins,
+  guardarSuscripcion,
+  duenosDelAparato,
+  soltarAparato,
+  endpointValido,
+  type DuenoPush,
+  type FilaAparato,
+} from "@/lib/push";
+import { encolarAvisoDueno, faltaTablaAvisosDueno } from "@/lib/avisos-dueno";
+import { correoDelDueno, conteo } from "@/lib/avisos-reglas";
 import { cop, fechaHoraBogota } from "@/lib/format";
 
 export type ActionResult = { ok: boolean; error?: string; /** Se guardó, pero con salvedades que el admin debe ver (p.ej. especialidades descartadas). */ aviso?: string; id?: string; total?: number; descuento?: number; propina?: number; puntos?: number; encolado?: boolean; esperaHasta?: string | null; tarjeta?: { cortesTotales: number; posicion: number; beneficio: BeneficioTarjeta | null }; resenaUrl?: string | null; /** confirm_token de la reserva recién creada: credencial para deshacerla desde la confirmación del wizard. */ token?: string | null; /** Lo que se creó cuando es más de uno (un producto en las dos sedes). */ ids?: string[]; /** Qué hizo "Eliminar": borrar de verdad o retirar del catálogo. */ modo?: "borrado" | "retirado"; /** Unidades que "Eliminar" sacó como merma. */ baja?: number };
@@ -1710,10 +1723,10 @@ export async function createReserva(input: {
   // chequeo se podía reservar un barbero de la otra sede (o inactivo) por POST directo.
   const { data: barb } = await sb
     .from("barberos")
-    .select("sede_id,activo")
+    .select("sede_id,activo,nombre")
     .eq("id", barberoId)
     .maybeSingle();
-  const barbRow = barb as { sede_id?: string; activo?: boolean } | null;
+  const barbRow = barb as { sede_id?: string; activo?: boolean; nombre?: string } | null;
   if (!barbRow || barbRow.activo === false || barbRow.sede_id !== input.sede)
     return { ok: false, error: "Ese barbero no está disponible en esa sede." };
   // Ese día puede estar cubriendo en la otra sede (0081): ahí no se le reserva.
@@ -1837,16 +1850,85 @@ export async function createReserva(input: {
     url: "/barbero",
     tag: "cita-nueva",
   };
+  // Al dueño (0083) PRIMERO: se entera de cada cliente que reserva por la web.
+  // Va antes que el del local a propósito: con el mismo tag, en un aparato que es
+  // de la sede y del dueño a la vez (0085, la tableta) gana el ÚLTIMO, y ahí la
+  // notificación tiene que abrir el mostrador (/barbero), no el panel del admin.
+  await pushAAdmins({ ...avisoCita, url: "/admin" });
   await pushASede(input.sede, avisoCita);
   await pushABarbero(barberoId, avisoCita);
-  // Y al dueño (0083): se entera de cada cliente que reserva por la web.
-  await pushAAdmins({ ...avisoCita, url: "/admin" });
+  // ...y por correo, a los que puso en Avisos → "Avisos para ti" (0084). Lo
+  // manda n8n con el empujón de abajo; si la tabla no existe todavía, no pasa nada.
+  await encolarCitaParaDueno(sb, {
+    clienteRef,
+    cliente: clienteNombre || "Un cliente",
+    telefono: telefono || null,
+    servicio: servicioNombre,
+    duracionMin: dur,
+    barbero: barbRow.nombre ?? null,
+    sedeId: input.sede,
+    inicio,
+    fin,
+    nota,
+  });
   // Empujón a n8n para que mande la confirmación YA y no en la vuelta del cron:
   // el cliente todavía está mirando la pantalla del "¡Listo!". Nunca bloquea ni
   // revienta —la cita ya está guardada— y si falla, el cron la manda igual.
   await avisarConfirmacionPendiente();
   revalidatePath("/barbero");
   return { ok: true, token: (creada as { confirm_token?: string } | null)?.confirm_token ?? null };
+}
+
+/**
+ * La cita nueva, a la cola de avisos del dueño (0084). Va con todo resuelto
+ * (nombres, fechas ISO, si es cliente nuevo) para que n8n no consulte nada. No
+ * exportada a propósito: en un archivo "use server" sería un endpoint público.
+ * Nunca lanza: la reserva ya está guardada.
+ */
+async function encolarCitaParaDueno(
+  sb: SupabaseClient,
+  c: {
+    clienteRef: string | null;
+    cliente: string;
+    telefono: string | null;
+    servicio: string;
+    duracionMin: number;
+    barbero: string | null;
+    sedeId: string;
+    inicio: Date;
+    fin: Date;
+    nota: string | null;
+  },
+): Promise<void> {
+  try {
+    const { data: sede } = await sb.from("sedes").select("nombre").eq("id", c.sedeId).maybeSingle();
+    // Visitas cobradas antes de esta (igual que el aviso al barbero, 0071): 0 = nuevo.
+    let visitas: number | null = null;
+    if (c.clienteRef) {
+      const { count } = await sb
+        .from("ventas")
+        .select("id", { count: "exact", head: true })
+        .eq("cliente_ref", c.clienteRef)
+        .is("anulada_en", null);
+      visitas = count ?? null;
+    }
+    await encolarAvisoDueno("cita", {
+      cliente: c.cliente,
+      telefono: c.telefono,
+      servicio: c.servicio,
+      duracion_min: c.duracionMin,
+      barbero: c.barbero,
+      sede: (sede as { nombre?: string } | null)?.nombre ?? c.sedeId,
+      sede_id: c.sedeId,
+      inicio: c.inicio.toISOString(),
+      fin: c.fin.toISOString(),
+      nota: c.nota,
+      visitas,
+      cliente_nuevo: visitas === 0,
+    }, { clienteRef: c.clienteRef });
+  } catch (e) {
+    console.error("[encolarCitaParaDueno]", e);
+  }
 }
 
 // Rangos ocupados de un barbero en un día (solo inicio/fin, sin datos del cliente).
@@ -3941,6 +4023,8 @@ export async function cerrarCaja(input: {
     nota: input.nota || null,
   });
   if (!res.ok) return { ok: false, error: res.error };
+  // El correo con el detalle lo encola el trigger de 0084; esto es el aviso corto.
+  await pushCierreAlDueno(input.sede, totalCierre(res.snap.totales), res.diferencia);
   revalidatePath("/admin/cuadre");
   revalidatePath("/admin");
   // Devolvemos la diferencia y el esperado para que la UI muestre en el acto si
@@ -4031,11 +4115,40 @@ export async function cerrarCajaSede(input: {
   const snap = res.snap;
   const diferencia = res.diferencia;
 
-  const total = Object.values(snap.totales).reduce((a, t) => a + t.total, 0);
+  const total = totalCierre(snap.totales);
+  // Al dueño, al momento: el correo con el detalle lo encola el trigger de 0084.
+  await pushCierreAlDueno(sede, total, diferencia);
   revalidatePath("/barbero");
   revalidatePath("/admin");
   revalidatePath("/admin/cuadre");
   return { ok: true, total, diferencia, esperado: snap.esperadoEfectivo };
+}
+
+/** Lo cobrado en el turno (sin propinas), como lo muestra el correo de cierre. */
+function totalCierre(totales: Record<string, { total: number }>): number {
+  return Object.values(totales).reduce((a, t) => a + (t.total ?? 0), 0);
+}
+
+/**
+ * "Caja cerrada · Plaza de la Paz — Entró $ 293.000 · cuadra exacto" a los
+ * aparatos del dueño. Tag por sede: si se cierran las dos, quedan las dos.
+ * Nunca lanza (pushAAdmins no lanza y la sede es solo para el texto).
+ */
+async function pushCierreAlDueno(sedeId: string, total: number, diferencia: number): Promise<void> {
+  try {
+    const { data } = await supabaseAdmin().from("sedes").select("nombre").eq("id", sedeId).maybeSingle();
+    const sede = (data as { nombre?: string } | null)?.nombre ?? sedeId;
+    const cuadre =
+      diferencia === 0 ? "cuadra exacto" : diferencia > 0 ? `sobran ${cop(diferencia)}` : `faltan ${cop(-diferencia)}`;
+    await pushAAdmins({
+      title: `Caja cerrada · ${sede}`,
+      body: `Entró ${cop(total)} · ${cuadre}.`,
+      url: "/admin/cuadre",
+      tag: `cierre-${sedeId}`,
+    });
+  } catch (e) {
+    console.error("[pushCierreAlDueno]", e);
+  }
 }
 
 // ---------- Medios de pago (admin) ----------
@@ -4626,42 +4739,279 @@ export async function probarAvisoStaff(): Promise<ActionResult> {
 
 
 /**
- * Guarda la suscripción push del STAFF logueado. El dueño de la suscripción sale
- * del PERFIL, no del cliente: un perfil por sede la ata a la sede (el aparato del
- * mostrador, que es el destinatario que importa) y un login de barbero a su ficha.
+ * De quién es la suscripción que guarda el STAFF logueado. Sale del PERFIL, no del
+ * cliente: un perfil por sede la ata a la sede (el aparato del mostrador, que es
+ * el destinatario que importa), un login de barbero a su ficha y el dueño, que no
+ * tiene ni sede ni ficha, a su usuario (0083).
+ */
+async function duenoPushDelStaff(): Promise<DuenoPush | null> {
+  const staff = await getStaffContext();
+  if (!puedeMostrador(staff.rol)) return null;
+  if (staff.sedeId) return { tipo: "sede", id: staff.sedeId };
+  if (staff.barberoId) return { tipo: "barbero", id: staff.barberoId };
+  if (staff.rol === "admin") {
+    const authId = (await (await supabaseServerAuth()).auth.getUser()).data.user?.id ?? null;
+    return authId ? { tipo: "admin", id: authId } : null;
+  }
+  return null;
+}
+
+/**
+ * Guarda la suscripción push del STAFF logueado.
  *
- * El upsert va por `endpoint` y RE-VINCULA la fila al que está logueado ahora: en
- * el aparato compartido del local ese mismo navegador pudo quedar suscrito antes
- * como cliente o como otro barbero, y si no se re-vincula los avisos le siguen
- * llegando al anterior.
+ * Desde 0085 AGREGA la fila de este perfil sin quitarle el aparato a nadie: la
+ * tableta del mostrador puede avisarle a la sede y al dueño a la vez. Antes el
+ * upsert por endpoint re-vinculaba la fila al último que tocaba "Activar", y si
+ * era el dueño en la tableta del local, el mostrador dejaba de enterarse de las
+ * citas sin que nadie lo supiera. (Sin 0085 aplicada se comporta como antes.)
+ * Como ya nadie re-vincula, cada perfil se quita solo: «Desactivar en este
+ * aparato» o cerrar sesión (soltarAvisosDeEsteAparato).
  */
 export async function guardarPushStaff(sub: {
   endpoint: string;
   keys: { p256dh: string; auth: string };
 }): Promise<ActionResult> {
-  const staff = await getStaffContext();
-  // El admin/dueño no tiene sede ni ficha: su suscripción va atada a su usuario (0083).
-  const authId =
-    staff.rol === "admin" ? (await (await supabaseServerAuth()).auth.getUser()).data.user?.id ?? null : null;
-  const nadie = { sede_id: null, barbero_id: null, cliente_ref: null, admin_auth: null };
-  const dueno = staff.sedeId
-    ? { ...nadie, sede_id: staff.sedeId }
-    : staff.barberoId
-      ? { ...nadie, barbero_id: staff.barberoId }
-      : authId
-        ? { ...nadie, admin_auth: authId }
-        : null;
+  const dueno = await duenoPushDelStaff();
   if (!dueno) return { ok: false, error: "Esta sesión no tiene sede ni barbero al que avisarle." };
-  if (!sub?.endpoint || !sub.keys?.p256dh || !sub.keys?.auth) {
+  if (!endpointValido(sub?.endpoint) || !sub.keys?.p256dh || !sub.keys?.auth) {
     return { ok: false, error: "Suscripción inválida." };
   }
-  const { error } = await supabaseAdmin().from("push_subscriptions").upsert(
-    // Los cuatro campos van explícitos (tres en null): el CHECK push_sub_dueno_unico
-    // exige exactamente un dueño, y en un upsert los que no se mandan conservan
-    // el valor viejo de la fila.
-    { ...dueno, endpoint: sub.endpoint, p256dh: sub.keys.p256dh, auth: sub.keys.auth },
-    { onConflict: "endpoint" },
-  );
-  if (error) return { ok: false, error: errorPublico("guardarPushStaff", error, "No se pudieron activar los avisos.") };
+  const res = await guardarSuscripcion(dueno, { endpoint: sub.endpoint, p256dh: sub.keys.p256dh, auth: sub.keys.auth });
+  if (!res.ok) return { ok: false, error: errorPublico("guardarPushStaff", res.error, "No se pudieron activar los avisos.") };
   return { ok: true };
+}
+
+/**
+ * Quita los avisos de ESTE perfil de este aparato, sin tocar los de los demás
+ * que lo comparten. Lo usan el botón «Desactivar en este aparato» y el cierre de
+ * sesión del equipo (PerfilMenu): cerrar sesión = este aparato ya no es tuyo.
+ * Sin sesión de equipo no hace nada.
+ */
+export async function soltarAvisosDeEsteAparato(endpoint: string): Promise<ActionResult> {
+  const dueno = await duenoPushDelStaff();
+  if (!dueno) return { ok: false, error: "No autorizado" };
+  if (!endpointValido(endpoint)) return { ok: false, error: "Aparato inválido." };
+  const ok = await soltarAparato(dueno, endpoint);
+  return ok ? { ok: true } : { ok: false, error: "No se pudieron desactivar los avisos. Intenta de nuevo." };
+}
+
+export type EstadoAparato = {
+  ok: boolean;
+  /** ESTE perfil tiene una fila con este aparato: sus avisos le llegan acá. */
+  mio: boolean;
+  /** A quién más del EQUIPO le avisa este aparato ("el mostrador de Plaza de la Paz", "Carlos", "el dueño"). */
+  otros: string[];
+  /**
+   * 0085 aplicada: activar AGREGA este perfil y los demás siguen recibiendo. Sin
+   * ella activar re-vincula la única fila del aparato: se los QUITA al que estaba.
+   */
+  varios: boolean;
+  /** El aparato ya le avisa al mostrador de una sede (y quien mira no es esa sede). */
+  delLocal: boolean;
+};
+
+/**
+ * ¿Los avisos de ESTE perfil llegan a este aparato? La tarjeta de avisos se lo
+ * preguntaba solo al navegador ("hay una suscripción"), y en un aparato
+ * compartido le decía "activos" a quien no los recibía. Devuelve también a quién
+ * más del equipo le avisa el aparato, para decirlo con nombre. Las filas de
+ * clientes no se cuentan: si alguien del equipo activa acá, guardarSuscripcion
+ * las borra (los avisos personales de un cliente no suenan en un aparato del
+ * equipo), así que no hay nada que "no quitarle".
+ */
+export async function estadoAvisosAparato(endpoint: string): Promise<EstadoAparato> {
+  const nada: EstadoAparato = { ok: false, mio: false, otros: [], varios: false, delLocal: false };
+  const dueno = await duenoPushDelStaff();
+  if (!dueno || !endpointValido(endpoint)) return nada;
+  const aparato = await duenosDelAparato(endpoint);
+  if (!aparato) return nada;
+  const { filas, varios } = aparato;
+
+  const deEste = (f: FilaAparato) =>
+    (dueno.tipo === "sede" && f.sede_id === dueno.id) ||
+    (dueno.tipo === "barbero" && f.barbero_id === dueno.id) ||
+    (dueno.tipo === "admin" && f.admin_auth === dueno.id);
+  const ajenas = filas.filter((f) => !deEste(f) && !f.cliente_ref);
+
+  const admin = supabaseAdmin();
+  const sedeIds = [...new Set(ajenas.map((f) => f.sede_id).filter((x): x is string => !!x))];
+  const barberoIds = [...new Set(ajenas.map((f) => f.barbero_id).filter((x): x is string => !!x))];
+  const nombre = new Map<string, string>();
+  if (sedeIds.length) {
+    const { data } = await admin.from("sedes").select("id,nombre").in("id", sedeIds);
+    for (const r of (data ?? []) as { id: string; nombre: string }[]) nombre.set(r.id, r.nombre);
+  }
+  if (barberoIds.length) {
+    const { data } = await admin.from("barberos").select("id,nombre").in("id", barberoIds);
+    for (const r of (data ?? []) as { id: string; nombre: string }[]) nombre.set(r.id, r.nombre);
+  }
+  const otros = ajenas.map((f) =>
+    f.sede_id
+      ? `el mostrador de ${nombre.get(f.sede_id) ?? f.sede_id}`
+      : f.barbero_id
+        ? (nombre.get(f.barbero_id) ?? "un barbero")
+        : // Para el mostrador o un barbero, la fila de un admin es la del dueño.
+          dueno.tipo === "admin"
+          ? "otro administrador"
+          : "el dueño",
+  );
+  return {
+    ok: true,
+    mio: filas.some(deEste),
+    otros: [...new Set(otros)],
+    varios,
+    delLocal: ajenas.some((f) => !!f.sede_id),
+  };
+}
+
+// ---------- Avisos para el dueño: sus correos (0084) ----------
+//
+// Hasta 5 correos, cada uno con tres interruptores (citas nuevas, cierre de caja,
+// alertas). La tabla es de service role: todo pasa por requireAdmin y después
+// supabaseAdmin(), como el correo de los barberos.
+
+const MAX_CORREOS_DUENO = 5;
+const CAMPO_AVISO_DUENO = {
+  citas: "recibe_citas",
+  cierres: "recibe_cierres",
+  alertas: "recibe_alertas",
+} as const;
+export type CampoAvisoDueno = keyof typeof CAMPO_AVISO_DUENO;
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export async function agregarCorreoDueno(email: string): Promise<ActionResult> {
+  const sb = await supabaseServerAuth();
+  const denied = await requireAdmin(sb);
+  if (denied) return { ok: false, error: denied };
+  const c = correoDelDueno(email);
+  if (!c.ok) return { ok: false, error: c.error };
+  const admin = supabaseAdmin();
+  const cuenta = await admin.from("avisos_dueno").select("id", { count: "exact", head: true });
+  const count = conteo(cuenta);
+  // Con la tabla sin crear el HEAD no trae error, solo count null (ver conteo).
+  if (count === null) {
+    if (!cuenta.error || faltaTablaAvisosDueno(cuenta.error))
+      return { ok: false, error: "Falta aplicar la migración 0084 en Supabase." };
+    return { ok: false, error: errorPublico("agregarCorreoDueno cuenta", cuenta.error) };
+  }
+  if (count >= MAX_CORREOS_DUENO)
+    return { ok: false, error: `Ya tienes ${MAX_CORREOS_DUENO} correos. Quita uno para poner otro.` };
+  // Primero «Probar», después «Agregar». Un correo agregado recibe desde ya cada
+  // cita web, cada cierre y cada alerta: si está mal escrito son varios rebotes
+  // duros al día desde reservas@ (el buzón ya fue suspendido tres veces por eso)
+  // y nadie lo nota. Con la prueba pedida, el dueño tuvo cómo ver que le llega; un
+  // dominio mal escrito rebota UNA vez, no todos los días. Si la lectura falla
+  // (null) no se frena: la tabla existe (la cuenta de arriba funcionó).
+  const hace24h = new Date(Date.now() - 86_400_000).toISOString();
+  const probado = conteo(
+    await admin
+      .from("aviso_dueno_cola")
+      .select("id", { count: "exact", head: true })
+      .eq("tipo", "prueba")
+      .eq("solo_email", c.email)
+      .gte("creado_en", hace24h),
+  );
+  if (probado === 0)
+    return {
+      ok: false,
+      error: "Primero toca «Probar» con este correo y revisa que te llegó (mira también en Spam). Cuando te llegue, toca «Agregar».",
+    };
+  const { error } = await admin.from("avisos_dueno").insert({ email: c.email });
+  if (error) {
+    if (error.code === "23505") return { ok: false, error: "Ese correo ya está en la lista." };
+    return { ok: false, error: errorPublico("agregarCorreoDueno", error) };
+  }
+  revalidatePath("/admin/avisos");
+  revalidatePath("/admin");
+  return { ok: true, aviso: `Listo: desde ahora los avisos van también a ${c.email}.` };
+}
+
+export async function quitarCorreoDueno(id: string): Promise<ActionResult> {
+  const sb = await supabaseServerAuth();
+  const denied = await requireAdmin(sb);
+  if (denied) return { ok: false, error: denied };
+  if (!UUID.test(id ?? "")) return { ok: false, error: "Correo no encontrado." };
+  const { error } = await supabaseAdmin().from("avisos_dueno").delete().eq("id", id);
+  if (error) return { ok: false, error: errorPublico("quitarCorreoDueno", error) };
+  revalidatePath("/admin/avisos");
+  revalidatePath("/admin");
+  return { ok: true, aviso: "Quitado: a ese correo ya no le llegan avisos." };
+}
+
+export async function cambiarAvisoDueno(id: string, campo: CampoAvisoDueno, valor: boolean): Promise<ActionResult> {
+  const sb = await supabaseServerAuth();
+  const denied = await requireAdmin(sb);
+  if (denied) return { ok: false, error: denied };
+  const columna = CAMPO_AVISO_DUENO[campo];
+  if (!UUID.test(id ?? "") || !columna || typeof valor !== "boolean") return { ok: false, error: "Ajuste inválido." };
+  const { data, error } = await supabaseAdmin()
+    .from("avisos_dueno")
+    .update({ [columna]: valor })
+    .eq("id", id)
+    .select("id");
+  if (error) return { ok: false, error: errorPublico("cambiarAvisoDueno", error) };
+  if (!data?.length) return { ok: false, error: "Ese correo ya no está en la lista." };
+  revalidatePath("/admin/avisos");
+  revalidatePath("/admin");
+  return { ok: true };
+}
+
+/**
+ * "Probar" en /admin/avisos: encola un aviso de PRUEBA a la dirección escrita
+ * (guardada o no) por el MISMO camino de los reales (cola → n8n → reservas@,
+ * misma plantilla). Freno: una por correo por minuto y diez por hora en total —
+ * el buzón ya pagó tres suspensiones por volumen raro.
+ */
+export async function probarCorreoDueno(email: string): Promise<ActionResult> {
+  const sb = await supabaseServerAuth();
+  const denied = await requireAdmin(sb);
+  if (denied) return { ok: false, error: denied };
+  const c = correoDelDueno(email);
+  if (!c.ok) return { ok: false, error: c.error };
+  const admin = supabaseAdmin();
+  const haceUnMinuto = new Date(Date.now() - 60_000).toISOString();
+  const haceUnaHora = new Date(Date.now() - 3_600_000).toISOString();
+  const [reciente, enLaHora, enLista] = await Promise.all([
+    admin
+      .from("aviso_dueno_cola")
+      .select("id", { count: "exact", head: true })
+      .eq("tipo", "prueba")
+      .eq("solo_email", c.email)
+      .gte("creado_en", haceUnMinuto),
+    admin
+      .from("aviso_dueno_cola")
+      .select("id", { count: "exact", head: true })
+      .eq("tipo", "prueba")
+      .gte("creado_en", haceUnaHora),
+    admin.from("avisos_dueno").select("id").eq("email", c.email).maybeSingle(),
+  ]);
+  const nReciente = conteo(reciente);
+  const nEnLaHora = conteo(enLaHora);
+  // Con la tabla sin crear el HEAD no trae error, solo count null (ver conteo).
+  if (nReciente === null || nEnLaHora === null) {
+    const errLee = reciente.error ?? enLaHora.error;
+    if (!errLee || faltaTablaAvisosDueno(errLee)) return { ok: false, error: "Falta aplicar la migración 0084 en Supabase." };
+    return { ok: false, error: errorPublico("probarCorreoDueno", errLee) };
+  }
+  if (nReciente > 0)
+    return { ok: false, error: "Ya se mandó una prueba a ese correo hace menos de un minuto. Espera un poco." };
+  if (nEnLaHora >= 10)
+    return { ok: false, error: "Ya se mandaron muchas pruebas en la última hora. Vuelve a intentar más tarde." };
+  // ¿El correo ya está en la lista? La prueba de uno sin guardar no puede decir
+  // "te llega porque tu correo está en Avisos": el dueño creería que ya quedó.
+  const guardado = !enLista.error && !!enLista.data;
+  const { error } = await admin
+    .from("aviso_dueno_cola")
+    .insert({ tipo: "prueba", solo_email: c.email, datos: { pedida_en: new Date().toISOString(), guardado } });
+  if (error) return { ok: false, error: errorPublico("probarCorreoDueno", error) };
+  // Que n8n mire la cola ya (la rama del dueño va junto a la del barbero, en el
+  // workflow de la confirmación). Si el ping falla, la vuelta del cron la toma.
+  await avisarConfirmacionPendiente();
+  return {
+    ok: true,
+    aviso: guardado
+      ? `Prueba enviada a ${c.email}. Te llega en uno o dos minutos.`
+      : `Prueba enviada a ${c.email}. Te llega en uno o dos minutos. Ojo: todavía no está en tu lista; si te llegó, toca «Agregar».`,
+  };
 }

@@ -104,6 +104,25 @@ export function beneficioProximoCorte(
   return { tipo: etiquetaHito(hito), descuento, posicion };
 }
 
+/**
+ * La frase del próximo premio, tal como sale en el correo de reseña: "Te faltan 2
+ * cortes para tu regalo", "Te faltan 5 cortes para tu 50 % de descuento" o, si el
+ * que viene ya es el del premio, "¡Tu próximo corte tiene premio!". null solo si la
+ * tarjeta no tiene ningún premio (config vacía).
+ *
+ * ESPEJO: public.tarjeta_proximo_premio() en supabase/migrations/0086_correos_fieles.sql
+ * arma la misma frase en SQL para tomar_resenas_pendientes(). Si cambia una, cambiar
+ * la otra (scripts/check-tarjeta.ts fija los textos).
+ */
+export function textoProximoPremio(cortesTotales: number, cfg: ConfigTarjeta = TARJETA_DEFECTO): string | null {
+  const { proximo } = estadoTarjeta(cortesTotales, cfg);
+  if (!proximo) return null;
+  if (proximo.faltan === 1) return "¡Tu próximo corte tiene premio!";
+  const hito = cfg.hitos.find((h) => h.posicion === proximo.posicion);
+  if (!hito || hito.tipo === "regalo") return `Te faltan ${proximo.faltan} cortes para tu regalo`;
+  return `Te faltan ${proximo.faltan} cortes para tu ${hito.valor} % de descuento`;
+}
+
 /** Estado de la tarjeta para mostrar: sellos llenos y cuál es el próximo premio. */
 export function estadoTarjeta(
   cortesTotales: number,

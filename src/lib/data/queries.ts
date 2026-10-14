@@ -24,6 +24,9 @@ import {
 import { armarReporte, mesDelReporte, type MesReporte, type Reporte } from "@/lib/reporte";
 import type { Sede, SedeId, Servicio, Barbero, Producto, Categoria, TipoContrato } from "./types";
 import type { Cobertura } from "@/lib/cobertura";
+import { armarPuesta, type DatosPuesta, type PendientePuesta } from "@/lib/puesta";
+import { faltaTablaAvisosDueno } from "@/lib/avisos-dueno";
+import { conteo } from "@/lib/avisos-reglas";
 
 export async function getSedes(): Promise<Sede[]> {
   const sb = supabaseServer();
@@ -3312,4 +3315,179 @@ export async function getCalendarEstado(): Promise<CalendarEstado> {
     pendientes: pendientes.count ?? 0,
     errores: ((errores.data ?? []) as { reserva_id: string; error: string }[]).map((e) => ({ reservaId: e.reserva_id, error: e.error })),
   };
+}
+
+// ---------- Avisos para el dueño y puesta a punto (0084) ----------
+
+/** ¿Quien pide es el admin? Mismo candado que getEmailsBarberos: recién después
+ *  de esto se puede leer con service role. */
+async function soyAdmin(): Promise<boolean> {
+  const auth = await supabaseServerAuth();
+  const {
+    data: { user },
+  } = await auth.auth.getUser();
+  if (!user) return false;
+  const { data: prof } = await auth.from("profiles").select("rol").eq("auth_id", user.id).maybeSingle();
+  return (prof as { rol?: string } | null)?.rol === "admin";
+}
+
+export type CorreoDueno = {
+  id: string;
+  email: string;
+  /** Cada cliente que reserva por la web. */
+  citas: boolean;
+  /** El resumen de cada cierre de caja. */
+  cierres: boolean;
+  /** Caja que sigue abierta y calificaciones de 3 o menos. */
+  alertas: boolean;
+};
+
+/**
+ * Los correos del dueño para avisos (avisos_dueno, 0084). Tabla de service role:
+ * solo tras confirmar admin. `disponible: false` = la migración todavía no está
+ * (o la lectura falló): la pantalla lo dice en vez de mostrar una lista vacía
+ * que invite a agregar un correo que no se va a poder guardar.
+ */
+export async function getCorreosDueno(): Promise<{ disponible: boolean; correos: CorreoDueno[] }> {
+  if (!(await soyAdmin())) return { disponible: false, correos: [] };
+  const { data, error } = await supabaseAdmin()
+    .from("avisos_dueno")
+    .select("id,email,recibe_citas,recibe_cierres,recibe_alertas")
+    .order("creado_en");
+  if (error) {
+    if (!faltaTablaAvisosDueno(error)) console.error("getCorreosDueno:", error.message);
+    return { disponible: false, correos: [] };
+  }
+  return {
+    disponible: true,
+    correos: (
+      (data ?? []) as {
+        id: string;
+        email: string;
+        recibe_citas: boolean;
+        recibe_cierres: boolean;
+        recibe_alertas: boolean;
+      }[]
+    ).map((r) => ({
+      id: r.id,
+      email: r.email,
+      citas: r.recibe_citas,
+      cierres: r.recibe_cierres,
+      alertas: r.recibe_alertas,
+    })),
+  };
+}
+
+/**
+ * Puesta a punto del negocio para el Inicio: lo que falta para que los avisos le
+ * lleguen a alguien (correo del dueño, aparatos del mostrador y de los barberos,
+ * correos y accesos de los barberos, agendas de Google) y un par de sugerencias.
+ *
+ * Junta los datos con service role (las tablas que lo saben están cerradas:
+ * push_subscriptions, barbero_contacto, barbero_calendar, avisos_dueno) y la
+ * decisión de qué decir vive en src/lib/puesta.ts, que es pura y tiene su check.
+ * Tolerante: lo que no se puede leer (tabla sin crear, error) queda en null y
+ * ese chequeo se calla.
+ */
+export async function saludConfiguracion(): Promise<PendientePuesta[]> {
+  if (!(await soyAdmin())) return [];
+  const admin = supabaseAdmin();
+  const hace7 = new Date(Date.now() - 7 * 86_400_000).toISOString();
+  const conGoogle = calendarConfigurado();
+
+  const [correos, subs, admins, sedes, barberos, contactos, perfiles, agendas, ventas, ajustes, elegibles] = await Promise.all([
+    admin.from("avisos_dueno").select("id", { count: "exact", head: true }),
+    admin.from("push_subscriptions").select("barbero_id,sede_id,admin_auth").is("cliente_ref", null),
+    // Quiénes son admin HOY: un aparato de alguien que dejó de serlo no cuenta
+    // (pushAAdmins tampoco le manda, ver push.ts).
+    admin.from("profiles").select("auth_id").eq("rol", "admin").not("auth_id", "is", null),
+    admin.from("sedes").select("id,nombre").eq("activa", true).order("nombre"),
+    admin.from("barberos").select("id,nombre").eq("activo", true).order("sede_id").order("orden"),
+    admin.from("barbero_contacto").select("barbero_id"),
+    // Con qué entra cada barbero: su perfil con usuario (loginBarberoPin lo busca así).
+    admin.from("profiles").select("barbero_id").eq("rol", "barbero").not("auth_id", "is", null).not("barbero_id", "is", null),
+    conGoogle ? admin.from("barbero_calendar").select("barbero_id,compartido_con") : Promise.resolve(null),
+    admin.from("ventas").select("cliente_ref").is("anulada_en", null).gte("creado_en", hace7),
+    admin.from("ajustes_avisos").select("*").eq("id", 1).maybeSingle(),
+    admin.from("v_toca_corte_elegibles").select("cliente_ref", { count: "exact", head: true }),
+  ]);
+
+  // Aparatos con avisos, por dueño.
+  const filasPush = subs.error
+    ? null
+    : ((subs.data ?? []) as { barbero_id: string | null; sede_id: string | null; admin_auth: string | null }[]);
+  const cuenta = (pred: (f: NonNullable<typeof filasPush>[number]) => boolean) =>
+    filasPush ? filasPush.filter(pred).length : null;
+
+  const conCorreo = contactos.error
+    ? null
+    : new Set(((contactos.data ?? []) as { barbero_id: string }[]).map((c) => c.barbero_id));
+  const conAcceso = perfiles.error
+    ? null
+    : new Set(((perfiles.data ?? []) as { barbero_id: string }[]).map((p) => p.barbero_id));
+
+  const listaBarberos = barberos.error ? null : ((barberos.data ?? []) as { id: string; nombre: string }[]);
+
+  // Google: sin credencial en el servidor no se habla de agendas.
+  let datosAgendas: DatosPuesta["agendas"] = null;
+  if (conGoogle && agendas && !agendas.error && listaBarberos) {
+    const porBarbero = new Map(
+      ((agendas.data ?? []) as { barbero_id: string; compartido_con: string | null }[]).map((a) => [a.barbero_id, a]),
+    );
+    datosAgendas = {
+      sinAgenda: listaBarberos.filter((b) => !porBarbero.has(b.id)).map((b) => b.nombre),
+      sinCompartir: listaBarberos.filter((b) => porBarbero.has(b.id) && !porBarbero.get(b.id)?.compartido_con).map((b) => b.nombre),
+    };
+  }
+
+  // Cobros de la semana sin un cliente al que le pueda llegar el correo de reseña.
+  let cobros7d: DatosPuesta["cobros7d"] = null;
+  if (!ventas.error) {
+    const refs = ((ventas.data ?? []) as { cliente_ref: string | null }[]).map((v) => v.cliente_ref);
+    const ids = [...new Set(refs.filter((r): r is string => !!r))];
+    let conEmail = new Set<string>();
+    let leido = true;
+    if (ids.length) {
+      const { data: cli, error: errCli } = await admin.from("clientes").select("id,email").in("id", ids);
+      if (errCli) leido = false;
+      conEmail = new Set(
+        ((cli ?? []) as { id: string; email: string | null }[]).filter((c) => (c.email ?? "").trim()).map((c) => c.id),
+      );
+    }
+    if (leido) cobros7d = { total: refs.length, sinCorreo: refs.filter((r) => !r || !conEmail.has(r)).length };
+  }
+
+  const fila = ajustes.error ? null : (ajustes.data as { corte_activo?: boolean } | null);
+  const tocaCorte =
+    fila && typeof fila.corte_activo === "boolean"
+      ? { activo: fila.corte_activo, elegibles: elegibles.error ? 0 : (elegibles.count ?? 0) }
+      : null;
+
+  const idsAdmin = admins.error ? null : new Set(((admins.data ?? []) as { auth_id: string }[]).map((p) => p.auth_id));
+
+  return armarPuesta({
+    // conteo(): con la tabla sin crear (0084 sin aplicar) el HEAD no trae error,
+    // solo count null. Tomarlo por 0 pedía «Poner mi correo» sin dónde ponerlo.
+    correosDueno: conteo(correos),
+    aparatosDueno: idsAdmin ? cuenta((f) => !!f.admin_auth && idsAdmin.has(f.admin_auth)) : null,
+    sedes: sedes.error
+      ? null
+      : ((sedes.data ?? []) as { id: string; nombre: string }[]).map((s) => ({
+          id: s.id,
+          nombre: s.nombre,
+          aparatos: cuenta((f) => f.sede_id === s.id) ?? 1,
+        })),
+    barberos: listaBarberos
+      ? listaBarberos.map((b) => ({
+          id: b.id,
+          nombre: b.nombre,
+          aparatos: cuenta((f) => f.barbero_id === b.id),
+          correo: conCorreo ? conCorreo.has(b.id) : null,
+          acceso: conAcceso ? conAcceso.has(b.id) : null,
+        }))
+      : null,
+    agendas: datosAgendas,
+    cobros7d,
+    tocaCorte,
+  });
 }

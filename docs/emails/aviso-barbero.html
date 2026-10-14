@@ -5,6 +5,11 @@
      convertida a template literal) y el emailSend solo recibe asunto/html/text.
      Los bloques condicionales llegan ya armados desde el Code como HTML:
      badge_html (cliente nuevo / N.ª visita), telefono_html, nota_html.
+     El pie (pie) también lo pone el Code, en TUTEO como todo lo que lee el equipo:
+       · cita real: "Si no puedes atenderla, avísale al administrador cuanto antes."
+       · prueba:    "Este correo es una prueba que mandó el administrador desde Equipo. No hay ninguna cita."
+     (Hasta el 14-oct el Code decía "Si no podés atenderla, avisale…": cambiarlo
+     también en el nodo "Filas aviso barbero" y en su texto plano.)
      Asunto: 💈 Nueva cita: (cliente) · (cuándo)
      Ojo: sin llaves dobles vacías (check-correos). Los dos GIF son opacos y comparten
      color con su fondo a propósito: logo-anim.gif con la cabecera (#0a0908) y
@@ -51,6 +56,7 @@
 <div style="margin-top:2px;font-size:11.5px;color:#9c958a;">{{ $json.direccion }}</div>
 </td></tr></table>
 <a href="{{ $json.agenda_url }}" style="display:block;margin-top:20px;text-align:center;background:linear-gradient(180deg,#e8675c,#d23f34);color:#fbf7f0;border-radius:13px;padding:16px;font-family:'Barlow Condensed',Arial,sans-serif;font-size:17px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;text-decoration:none;">Ver mi agenda del d&iacute;a</a>
+<!-- Pie: "Si no puedes atenderla, avísale al administrador cuanto antes." (lo manda el Code como pie). -->
 <p style="margin:14px 0 0;font-size:12px;color:#9c958a;text-align:center;line-height:1.5;">{{ $json.pie }}</p>
 </div>
 <div style="border-top:1px solid rgba(242,237,228,.08);background:#0a0908;background-image:linear-gradient(#0a0908,#0a0908);padding:20px;text-align:center;">

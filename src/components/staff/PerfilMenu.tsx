@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { supabaseBrowser } from "@/lib/supabase/client";
+import { soltarAvisosDeEsteAparato } from "@/lib/actions";
 import { leerTema, ponerTema, suscribirTema, temaServidor, type TemaStaff } from "@/lib/tema";
 import { LogoutIcon } from "@/components/icons";
 
@@ -13,6 +14,28 @@ import { LogoutIcon } from "@/components/icons";
 // Todo lo tocable acá va a 44px de alto/ancho mínimo: en el mostrador esto se
 // usa de pie, con una mano y el cliente enfrente; el avatar de 30px y los
 // botones de tema de ~24px se erraban seguido.
+
+/**
+ * Cerrar sesión = este aparato ya no es de este perfil: se le quitan SUS avisos
+ * al celular (0085). Desde que un aparato puede avisarle a varios, nadie
+ * re-vincula la fila al activar, y sin esto la tableta del local se quedaba con
+ * los avisos del dueño (cierres, calificaciones) o el celular de un barbero con
+ * los de la sede. Solo la fila de este perfil: los demás que comparten el
+ * aparato siguen recibiendo. Con techo de 2 s: salir nunca se traba por esto.
+ */
+async function soltarAvisosAlSalir(): Promise<void> {
+  try {
+    if (!("serviceWorker" in navigator)) return;
+    const tarea = (async () => {
+      const reg = await navigator.serviceWorker.getRegistration();
+      const sub = await reg?.pushManager?.getSubscription();
+      if (sub?.endpoint) await soltarAvisosDeEsteAparato(sub.endpoint);
+    })();
+    await Promise.race([tarea, new Promise((r) => setTimeout(r, 2000))]);
+  } catch {
+    // Sin red o sin service worker: se sale igual.
+  }
+}
 
 export function PerfilMenu({
   nombre,
@@ -67,6 +90,7 @@ export function PerfilMenu({
 
   async function cerrarSesion() {
     setSaliendo(true);
+    await soltarAvisosAlSalir();
     await supabaseBrowser().auth.signOut();
     router.push(salidaHref);
     router.refresh();

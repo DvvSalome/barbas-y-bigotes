@@ -185,23 +185,44 @@ export function AvisosAdmin({
         </div>
       </section>
 
-      {/* ---- Los demás avisos: informativos, para que el dueño sepa qué se manda ---- */}
+      {/* ---- Los demás avisos: informativos, para que el dueño sepa qué se manda.
+           Cada uno dice de QUÉ depende: antes decía "no hay nada que configurar"
+           y el aviso al barbero, por ejemplo, no sale si no tiene correo. ---- */}
       <section>
         <h3 className="mb-1 font-display text-lg">Los otros avisos</h3>
         <p className="mb-3 text-[12.5px] text-muted">
-          Salen solos, no hay nada que configurar. Se listan para que sepas qué le llega a tu cliente.
+          Salen solos. Acá está a quién le llega cada uno y de qué depende, para que sepas qué revisar si alguno no llega.
         </p>
         <div className="divide-y divide-line overflow-hidden rounded-2xl border border-line bg-panel">
           {[
-            { t: "Confirmación de la reserva", c: "Apenas reserva, con el detalle de la cita." },
-            { t: "Recordatorio del día antes", c: "El día previo, con el botón para confirmar que viene." },
-            { t: "Se liberó un cupo", c: "Si alguien cancela, al primero de la lista de espera." },
+            {
+              t: "Confirmación de la reserva",
+              c: "Al cliente, apenas se agenda la cita (por la web o desde la agenda), con el detalle y el enlace para cambiarla. Solo si dejó su correo.",
+            },
+            {
+              t: "Recordatorio del día antes",
+              c: "Al cliente, el día previo, con el botón para confirmar que viene. No le llega a quien reservó ese mismo día: acaba de recibir la confirmación.",
+            },
+            {
+              t: "Se liberó un cupo",
+              c: "Si se cancela una cita que todavía no pasó, a los que se anotaron en la lista de espera de esa sede en los últimos 2 días y dejaron su correo; el primero que reserva se queda con el turno. Marcar que alguien no vino no lo dispara: ese turno ya pasó.",
+            },
             {
               t: "Reseña después del corte",
-              c: "Un par de horas después de cobrar le pide calificar la visita de 1 a 5 y lo invita a dejar la reseña en Google. Solo sale si al cobrar se eligió al cliente y tiene correo.",
+              c: "Un par de horas después de cobrar le pide calificar la visita de 1 a 5, le cuenta cuánto le falta para el próximo premio de su tarjeta y lo invita a dejar la reseña en Google. Solo sale si al cobrar se eligió al cliente y tiene correo, y una vez al mes por cliente.",
             },
-            { t: "Cambio o cancelación de cita", c: "Si el mostrador mueve o cancela una cita, el cliente se entera." },
-            { t: "Aviso al barbero", c: "Cuando le cae una cita nueva, al correo que pusiste en Equipo." },
+            {
+              t: "Cambio o cancelación de cita",
+              c: "Si desde el mostrador o la agenda se mueve o se cancela su cita, el cliente se entera por correo (si dejó su correo).",
+            },
+            {
+              t: "Aviso al barbero",
+              c: "Al barbero, por correo, cada vez que le agendan una cita. Depende de que tenga su correo puesto en Equipo, en su ficha; sin correo no le llega nada.",
+            },
+            {
+              t: "Avisos al celular del equipo",
+              c: "Al mostrador y al barbero les suena la cita que un cliente reserva por la web y la que cancela o mueve desde su cuenta; «la caja sigue abierta», solo al mostrador (y a ti). Lo que se agenda, mueve o cancela desde el mostrador o la agenda no suena. Cada uno los activa en su aparato: el mostrador con el PIN de la sede y cada barbero con el suyo, en Turnos → «Activar avisos».",
+            },
           ].map((a) => (
             <div key={a.t} className="flex items-start gap-3 px-4 py-3.5">
               <span aria-hidden className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-ok" />

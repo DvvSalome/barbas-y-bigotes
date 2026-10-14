@@ -14,6 +14,7 @@ import {
   getPostventaResumen,
   getCierresHoy,
   pulsoDelDia,
+  saludConfiguracion,
 } from "@/lib/data/queries";
 import { cop, horaBogota, diasDesde } from "@/lib/format";
 import { fmtTime, CLOSE } from "@/lib/slots";
@@ -22,6 +23,8 @@ import { AlertIcon, ScissorsIcon, CheckIcon, StarIcon, PercentIcon, CashIcon, Ti
 import type { SedeId } from "@/lib/data/types";
 import { AvisoCaja } from "@/components/admin/AvisoCaja";
 import { AvisosBarbero } from "@/components/barbero/AvisosBarbero";
+import { PuestaAPunto } from "@/components/admin/PuestaAPunto";
+import { hayFaltas } from "@/lib/puesta";
 import { Estrellas } from "@/components/ui/Estrellas";
 
 export const metadata: Metadata = { title: "Hoy · Admin" };
@@ -148,7 +151,7 @@ export default async function AdminHoy({
   const sedeParam = typeof sp.sede === "string" ? sp.sede : undefined;
   const sede = sedeParam && sedeParam in NOMBRE_SEDE ? (sedeParam as SedeId) : null;
 
-  const [plata, equipo, citas, vencidas, sinCobrar, tareas, serie, postventa, caja, pulso] = await Promise.all([
+  const [plata, equipo, citas, vencidas, sinCobrar, tareas, serie, postventa, caja, pulso, puesta] = await Promise.all([
     ventasHoyPorMedio(sede),
     equipoAhora(sede),
     citasSiguientes(sede),
@@ -159,6 +162,8 @@ export default async function AdminHoy({
     getPostventaResumen(sede ?? undefined),
     getCierresHoy(sede),
     pulsoDelDia(sede),
+    // Puesta a punto (correos y avisos): es del negocio entero, no de una sede.
+    saludConfiguracion(),
   ]);
 
   const fecha = new Date().toLocaleDateString("es-CO", {
@@ -172,6 +177,11 @@ export default async function AdminHoy({
   const montoSinCobrar = sinCobrar.reduce((a, c) => a + (c.precio ?? 0), 0);
   const sinTareas =
     tareas.bajoMinimo.length === 0 && tareas.malasResenas.length === 0 && tareas.cuponesPorVencer.length === 0;
+  // «Todo al día» solo si TAMPOCO hay algo que no le está llegando a nadie (las
+  // 'falta'): antes lo decía con el dueño sin correo y ningún aparato del local
+  // recibiendo avisos. Las sugerencias no cuentan: algunas son decisiones del
+  // dueño ("Te toca corte" apagado a propósito) y no se pueden descartar.
+  const todoAlDia = sinTareas && !hayFaltas(puesta);
 
   // El equipo se parte en dos: los que necesitan una mirada (en silla, pasados de
   // hora, PIN bloqueado) van como fila con su detalle; los libres se resumen en
@@ -700,16 +710,25 @@ export default async function AdminHoy({
             </div>
           </section>
 
+          {/* Puesta a punto: lo que falta para que los avisos le lleguen a
+              alguien. Arriba de "Para hacer" porque, mientras falte, ningún
+              aviso de lo de abajo le llega al dueño fuera del panel. */}
+          <PuestaAPunto pendientes={puesta} />
+
           {/* Para hacer */}
           <section aria-label="Para hacer">
             <h2 className={`${SEC} mb-2.5`}>
               <span>Para hacer</span>
             </h2>
-            {sinTareas ? (
+            {todoAlDia ? (
               <div className={`${PANEL} px-4 py-5 text-center`}>
                 <CheckIcon className="mx-auto h-4 w-4 text-ok" />
                 <p className="mt-1 text-[13px] font-semibold text-ink">Todo al día</p>
                 <p className="text-[12px] text-muted">Sin stock bajo, malas calificaciones ni cupones por vencer.</p>
+              </div>
+            ) : sinTareas ? (
+              <div className={`${PANEL} px-4 py-4 text-[12px] text-muted`}>
+                Nada más por ahora: sin stock bajo, malas calificaciones ni cupones por vencer.
               </div>
             ) : (
               <div className={PANEL}>

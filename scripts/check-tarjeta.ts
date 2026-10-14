@@ -14,6 +14,7 @@ import {
   estadoTarjeta,
   sanearConfigTarjeta,
   etiquetaHito,
+  textoProximoPremio,
   TARJETA_DEFECTO,
   type ConfigTarjeta,
 } from "../src/lib/tarjeta.ts";
@@ -142,5 +143,29 @@ assert.equal(estadoTarjeta(0, desordenada!).proximo?.posicion, 3, "el próximo e
 assert.equal(etiquetaHito({ posicion: 1, tipo: "regalo", valor: 0 }), "regalo");
 assert.equal(etiquetaHito({ posicion: 1, tipo: "porcentaje", valor: 50 }), "50%", "compatible con las ventas viejas");
 assert.equal(etiquetaHito({ posicion: 1, tipo: "porcentaje", valor: 30 }), "30%");
+
+// (7) La frase del próximo premio del correo de reseña. ESPEJO de
+//     public.tarjeta_proximo_premio() (0086): estos textos son los que tiene que
+//     devolver también el SQL. Antes el correo decía "al llegar a 10, el corte va
+//     por la casa" con una tarjeta que da regalo al 5º y 50 % al 10º.
+assert.equal(textoProximoPremio(0), "Te faltan 5 cortes para tu regalo", "tarjeta nueva: el regalo del 5º");
+assert.equal(textoProximoPremio(1), "Te faltan 4 cortes para tu regalo");
+assert.equal(textoProximoPremio(3), "Te faltan 2 cortes para tu regalo");
+assert.equal(textoProximoPremio(4), "¡Tu próximo corte tiene premio!", "el que viene es el 5º");
+assert.equal(textoProximoPremio(5), "Te faltan 5 cortes para tu 50 % de descuento", "pasado el regalo, el 50 % del 10º");
+assert.equal(textoProximoPremio(9), "¡Tu próximo corte tiene premio!", "el que viene es el 10º");
+assert.equal(textoProximoPremio(10), "Te faltan 5 cortes para tu regalo", "tarjeta llena: arranca otra");
+assert.equal(textoProximoPremio(23), "Te faltan 2 cortes para tu regalo", "tercer ciclo");
+// Config a medida: el único premio al final.
+const soloFinal: ConfigTarjeta = { tamano: 6, hitos: [{ posicion: 6, tipo: "porcentaje", valor: 100 }] };
+assert.equal(textoProximoPremio(0, soloFinal), "Te faltan 6 cortes para tu 100 % de descuento");
+assert.equal(textoProximoPremio(6, soloFinal), "Te faltan 6 cortes para tu 100 % de descuento", "ciclo nuevo");
+assert.equal(textoProximoPremio(5, soloFinal), "¡Tu próximo corte tiene premio!");
+// Premio al principio de la tarjeta: después de cobrarlo, el que viene es el del ciclo siguiente.
+const alInicio: ConfigTarjeta = { tamano: 4, hitos: [{ posicion: 1, tipo: "regalo", valor: 0 }] };
+assert.equal(textoProximoPremio(1, alInicio), "Te faltan 4 cortes para tu regalo", "1 sello: faltan 3 + 1 del ciclo que viene");
+assert.equal(textoProximoPremio(3, alInicio), "Te faltan 2 cortes para tu regalo");
+assert.equal(textoProximoPremio(0, alInicio), "¡Tu próximo corte tiene premio!");
+assert.equal(textoProximoPremio(-3), textoProximoPremio(0), "un conteo negativo se trata como cero");
 
 console.log("check-tarjeta OK — hitos configurables, % sobre el servicio cobrado y saneo de la config");
