@@ -48,8 +48,8 @@ export function AdminTabs() {
 }
 
 /**
- * Segunda fila con las pantallas hermanas. Hoy solo la usa Catálogo (servicios
- * y productos); Equipo y Marketing pasaron a ser grupos del hub de Ajustes.
+ * Segunda fila con las pantallas hermanas de un mismo grupo de Ajustes
+ * (Catálogo, Informes, Equipo, Marketing): moverse entre ellas sin volver al hub.
  */
 export function AdminSubTabs() {
   const path = usePathname();

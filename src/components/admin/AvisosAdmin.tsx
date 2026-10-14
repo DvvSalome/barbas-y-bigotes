@@ -166,8 +166,8 @@ export function AvisosAdmin({
             </div>
           </div>
           <p className="mt-3 text-[12px] leading-relaxed text-muted">
-            Sale por el proveedor de marketing (Brevo), no por el correo de reservas: si un aviso rebota, las
-            confirmaciones de citas no se ven afectadas.
+            Sale desde reservas@barbasybigotes.com, el mismo correo de las confirmaciones (así llega a la bandeja
+            principal y no a Promociones). Si ese envío falla, sale por un proveedor de respaldo.
           </p>
         </div>
 
@@ -196,7 +196,10 @@ export function AvisosAdmin({
             { t: "Confirmación de la reserva", c: "Apenas reserva, con el detalle de la cita." },
             { t: "Recordatorio del día antes", c: "El día previo, con el botón para confirmar que viene." },
             { t: "Se liberó un cupo", c: "Si alguien cancela, al primero de la lista de espera." },
-            { t: "Reseña después del corte", c: "Un par de horas después de cobrar, invita a calificar en Google." },
+            {
+              t: "Reseña después del corte",
+              c: "Un par de horas después de cobrar le pide calificar la visita de 1 a 5 y lo invita a dejar la reseña en Google. Solo sale si al cobrar se eligió al cliente y tiene correo.",
+            },
             { t: "Cambio o cancelación de cita", c: "Si el mostrador mueve o cancela una cita, el cliente se entera." },
             { t: "Aviso al barbero", c: "Cuando le cae una cita nueva, al correo que pusiste en Equipo." },
           ].map((a) => (

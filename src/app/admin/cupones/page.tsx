@@ -10,7 +10,7 @@ export default async function CuponesPage() {
   return (
     <div className="max-w-6xl">
       <SectionHeader
-        eyebrow="Promociones"
+        eyebrow="Marketing"
         title="Cupones"
         description="Códigos de descuento que se aplican al cobrar en la app del barbero."
       />

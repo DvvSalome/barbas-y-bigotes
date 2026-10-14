@@ -146,6 +146,22 @@ export const HERMANAS: readonly { hijos: readonly { href: string; label: string 
       { href: "/admin/reportes", label: "Reporte del mes" },
     ],
   },
+  // Equipo y Marketing (14-oct): sin esta fila, para ir de Cupones a Avisos
+  // había que volver a Ajustes cada vez.
+  {
+    hijos: [
+      { href: "/admin/equipo", label: "Barberos y PINes" },
+      { href: "/admin/comisiones", label: "Comisiones" },
+      { href: "/admin/liquidacion", label: "Liquidación" },
+    ],
+  },
+  {
+    hijos: [
+      { href: "/admin/cupones", label: "Cupones" },
+      { href: "/admin/tarjeta", label: "Tarjeta de cortes" },
+      { href: "/admin/avisos", label: "Avisos" },
+    ],
+  },
 ];
 
 export { esRuta };

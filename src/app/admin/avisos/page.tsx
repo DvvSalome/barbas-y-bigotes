@@ -10,7 +10,7 @@ export default async function AvisosPage() {
   return (
     <div className="max-w-3xl">
       <SectionHeader
-        eyebrow="Automático"
+        eyebrow="Marketing"
         title="Avisos al cliente"
         description="Los correos que salen solos: el aviso antes de la cita y el 'te toca corte' a quien lleva días sin venir."
       />
