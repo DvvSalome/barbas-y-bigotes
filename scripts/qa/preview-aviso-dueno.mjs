@@ -114,6 +114,9 @@ const filas = [
     datos: {
       score: 2,
       comentario: "Me hicieron esperar 40 minutos y el corte quedó disparejo.",
+      // Los chips de la reseña (0088): van como texto y tienen que salir escapados.
+      etiquetas: ["Tuve que esperar", "El corte quedó disparejo", MALICIOSO],
+      texto_generado: true,
       cliente: "Laura Martínez",
       barbero: "Luis Pérez",
       sede: "Parque Venezuela",
@@ -166,6 +169,10 @@ comoArray.forEach((it, i) => {
     const esperado = d.monto_apertura + ef.total + ef.propina - d.total_gastos;
     debe(esperado === d.efectivo_contado - d.diferencia, "los datos de ejemplo no cuadran");
     debe(text.includes("Cobrado en efectivo"), "falta el cobrado en efectivo: la caja Efectivo no suma");
+  }
+  if (nombres[i] === "resena-baja") {
+    debe(html.includes("Tuve que esperar") && text.includes("Marcó: Tuve que esperar"), "faltan los chips que marcó el cliente");
+    debe(/armado con lo que marc/.test(text), "no avisa que el texto se armó con los chips");
   }
   if (nombres[i] === "prueba") debe(!/NO est/.test(text) && /tu correo está en Ajustes/.test(text), "la prueba de un correo guardado");
   if (nombres[i] === "prueba-sin-guardar")

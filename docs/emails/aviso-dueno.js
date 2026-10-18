@@ -335,15 +335,31 @@ function cajaAbierta(x) {
   };
 }
 
+// Los chips que marcó el cliente ("Tuve que esperar"), como píldoras. Datos
+// viejos sin `etiquetas` no muestran nada (el correo queda como antes).
+const chips = (lista) =>
+  '<div style="margin-top:10px;">' +
+  lista
+    .map(
+      (t) =>
+        '<span style="display:inline-block;margin:0 6px 6px 0;border-radius:999px;padding:5px 11px;font-size:12.5px;font-weight:700;background:' +
+        FONDO.rojo + ";border:1px solid " + BORDE.rojo + ';color:#f2ede4;">' + esc(t) + "</span>",
+    )
+    .join("") +
+  "</div>";
+
 function resenaBaja(x) {
   const score = Math.max(1, Math.min(5, Math.round(num(x.score) || 1)));
   const cliente = x.cliente || "Un cliente";
   const barbero = x.barbero || "";
   const sede = x.sede || "";
   const estrellas = "&#9733;".repeat(score) + '<span style="color:#3a332c;">' + "&#9733;".repeat(5 - score) + "</span>";
+  const marcadas = Array.isArray(x.etiquetas) ? x.etiquetas.filter((t) => typeof t === "string" && t) : [];
   return {
     asunto: "Calificación de " + score + " ★ · " + cliente + (barbero ? " con " + primerNombre(barbero) : ""),
-    preheader: x.comentario ? "«" + String(x.comentario).slice(0, 90) + "»" : cliente + " calificó la visita con " + score + " de 5.",
+    preheader: marcadas.length
+      ? marcadas.join(" · ").slice(0, 90)
+      : x.comentario ? "«" + String(x.comentario).slice(0, 90) + "»" : cliente + " calificó la visita con " + score + " de 5.",
     sede,
     etiqueta: etiqueta("Calificación baja", "rojo"),
     titulo: cliente + " calificó con " + score + " de 5",
@@ -352,8 +368,10 @@ function resenaBaja(x) {
       caja(
         "Lo que dijo",
         '<div style="margin-top:4px;font-size:24px;letter-spacing:3px;color:' + COLOR.ambar + ';">' + estrellas + "</div>" +
+          (marcadas.length ? chips(marcadas) : "") +
           (x.comentario
-            ? '<div style="margin-top:8px;font-size:15px;color:#f2ede4;line-height:1.55;font-style:italic;">&laquo;' + esc(x.comentario) + "&raquo;</div>"
+            ? '<div style="margin-top:8px;font-size:15px;color:#f2ede4;line-height:1.55;font-style:italic;">&laquo;' + esc(x.comentario) + "&raquo;</div>" +
+              (x.texto_generado ? linea("Texto armado con lo que marc&oacute; (&eacute;l lo revis&oacute; y lo envi&oacute;).") : "")
             : linea("No dej&oacute; comentario.")),
         true,
       ) +
@@ -363,7 +381,8 @@ function resenaBaja(x) {
     pie: "En el Inicio aparece en «Para hacer», con el enlace a la ficha del cliente.",
     text: [
       cliente + " calificó con " + score + " de 5" + (barbero ? " (con " + barbero + ")" : "") + (sede ? " · " + sede : ""),
-      x.comentario ? "«" + x.comentario + "»" : "No dejó comentario.",
+      marcadas.length ? "Marcó: " + marcadas.join(" · ") : null,
+      x.comentario ? "«" + x.comentario + "»" + (x.texto_generado ? " (texto armado con lo que marcó)" : "") : "No dejó comentario.",
       x.servicio ? "Servicio: " + x.servicio : null,
       "",
       "Verla en el panel: " + SITIO + "/admin",

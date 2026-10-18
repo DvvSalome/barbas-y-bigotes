@@ -5,6 +5,7 @@ import { SiteFooter } from "@/components/SiteFooter";
 import { CalificarServicio, GraciasCalificacion } from "@/components/cuenta/CalificarServicio";
 import { getVisitaPorTokenDeResena } from "@/lib/data/queries";
 import { fechaCortaBogota } from "@/lib/format";
+import { hayIA } from "@/lib/resena-ia";
 
 export const metadata: Metadata = {
   title: "Califica tu visita",
@@ -17,6 +18,7 @@ const POLE = "repeating-linear-gradient(150deg, var(--accent) 0 6px, var(--ink) 
 // Pública y sin login: el token del correo es la credencial. Cargar la página NO
 // guarda nada (un antivirus que abre los enlaces del correo no puede calificar
 // por el cliente): la estrella llega marcada y se guarda al tocar "Enviar".
+// Armar "Tu reseña" (con IA o con la plantilla) tampoco guarda nada.
 export default async function CalificarPage({
   params,
   searchParams,
@@ -55,6 +57,7 @@ export default async function CalificarPage({
         ) : (
           <CalificarServicio
             inicial={Number(n) || 0}
+            conIA={hayIA()}
             pendiente={{
               token,
               servicio: visita.servicio,

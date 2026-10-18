@@ -29,6 +29,12 @@ import { contratoDefinido } from "@/lib/equipo-reglas";
 import { esEmailEnviable } from "@/lib/email";
 import { faltaTablaAvisosDueno } from "@/lib/avisos-dueno";
 import { conteo } from "@/lib/avisos-reglas";
+import { esEtiquetaMala, etiquetaLabel, topEtiquetas } from "@/lib/resena-texto";
+
+/** Ids de chips (0088) → lo que dice el chip. Antes de la migración la columna no viene: []. */
+function labelsDeEtiquetas(v: unknown): string[] {
+  return Array.isArray(v) ? v.filter((x): x is string => typeof x === "string" && x !== "").map(etiquetaLabel) : [];
+}
 
 export async function getSedes(): Promise<Sede[]> {
   const sb = supabaseServer();
@@ -1550,8 +1556,21 @@ export type ClienteDetalle = {
   wallet: { id: string; tipo: string; monto: number; nota: string; fecha: string }[];
   resenas: { id: string; score: number; nota: string; barbero: string; fecha: string }[];
   puntos: { id: string; tipo: string; puntos: number; nota: string; fecha: string }[];
-  /** Postventa: lo que EL CLIENTE opinó del servicio (resenas_servicio), últimas 10. */
-  calificaciones: { id: string; score: number; comentario: string; barbero: string; sede: string; fecha: string }[];
+  /**
+   * Postventa: lo que EL CLIENTE opinó del servicio (resenas_servicio), últimas 10.
+   * `etiquetas` = los chips que marcó, ya en texto; `textoGenerado` = el
+   * comentario es el texto que le armamos con esos chips (lo pudo retocar).
+   */
+  calificaciones: {
+    id: string;
+    score: number;
+    comentario: string;
+    etiquetas: string[];
+    textoGenerado: boolean;
+    barbero: string;
+    sede: string;
+    fecha: string;
+  }[];
 };
 
 export async function getClienteDetalle(id: string): Promise<ClienteDetalle | null> {
@@ -1583,9 +1602,11 @@ export async function getClienteDetalle(id: string): Promise<ClienteDetalle | nu
     sb.from("cliente_wallet_mov").select("id,tipo,monto,nota,creado_en").eq("cliente_ref", id).order("creado_en", { ascending: false }),
     sb.from("cliente_resenas").select("id,score,nota,creado_en,barberos(nombre)").eq("cliente_ref", id).order("creado_en", { ascending: false }),
     sb.from("puntos_mov").select("id,tipo,puntos,nota,creado_en").eq("cliente_ref", id).order("creado_en", { ascending: false }),
+    // "*" y no la lista de columnas: así trae etiquetas/texto_generado cuando
+    // 0088 esté aplicada y no se rompe mientras no lo esté.
     sb
       .from("resenas_servicio")
-      .select("id,score,comentario,creado_en,barberos(nombre),sedes(nombre)")
+      .select("*,barberos(nombre),sedes(nombre)")
       .eq("cliente_ref", id)
       .order("creado_en", { ascending: false })
       .limit(10),
@@ -1656,6 +1677,8 @@ export async function getClienteDetalle(id: string): Promise<ClienteDetalle | nu
       id: r.id as string,
       score: r.score as number,
       comentario: (r.comentario as string) ?? "",
+      etiquetas: labelsDeEtiquetas(r.etiquetas),
+      textoGenerado: r.texto_generado === true,
       barbero: (r.barberos as { nombre?: string } | null)?.nombre ?? "—",
       sede: (r.sedes as { nombre?: string } | null)?.nombre ?? "—",
       fecha: r.creado_en as string,
@@ -1668,27 +1691,34 @@ export type PostventaResumen = {
   promedio: number | null;
   /** Cantidad de calificaciones de los últimos 30 días. */
   total: number;
-  /** Últimas 3 calificaciones que traen comentario. */
-  ultimas: { id: string; score: number; comentario: string; barbero: string; sede: string; fecha: string }[];
+  /** Últimas 3 calificaciones que traen comentario (con los chips que marcó). */
+  ultimas: { id: string; score: number; comentario: string; etiquetas: string[]; barbero: string; sede: string; fecha: string }[];
+  /** Lo que más destacan (chips de 4-5 ★), de más a menos. Vacío sin datos o sin 0088. */
+  destacan: { label: string; veces: number }[];
+  /** Lo que más falla (chips de 1-3 ★). */
+  fallan: { label: string; veces: number }[];
 };
 
 // Postventa para el panel admin: cómo vienen calificando los clientes.
 // Sesión del staff: la RLS de resenas_servicio (0018) da todo al admin y
 // solo lo suyo al barbero. Si la tabla aún no existe, queda vacío.
+// select("*") en vez de nombrar columnas: trae etiquetas cuando 0088 está y no
+// rompe la lectura mientras no lo esté.
 export async function getPostventaResumen(sede?: string): Promise<PostventaResumen> {
   const sb = await supabaseServerAuth();
   const desde = new Date(Date.now() - 30 * 24 * 3600_000).toISOString();
-  let scoresQ = sb.from("resenas_servicio").select("score").gte("creado_en", desde);
+  let scoresQ = sb.from("resenas_servicio").select("*").gte("creado_en", desde);
   if (sede) scoresQ = scoresQ.eq("sede_id", sede);
   let ultimasQ = sb
     .from("resenas_servicio")
-    .select("id,score,comentario,creado_en,barberos(nombre),sedes(nombre)")
+    .select("*,barberos(nombre),sedes(nombre)")
     .not("comentario", "is", null)
     .order("creado_en", { ascending: false })
     .limit(3);
   if (sede) ultimasQ = ultimasQ.eq("sede_id", sede);
   const [scoresRes, ultimasRes] = await Promise.all([scoresQ, ultimasQ]);
-  const scores = ((scoresRes.data ?? []) as { score: number }[]).map((s) => s.score);
+  const filas = (scoresRes.data ?? []) as { score: number; etiquetas?: unknown }[];
+  const scores = filas.map((s) => s.score);
   const promedio = scores.length
     ? Math.round((scores.reduce((a, s) => a + s, 0) / scores.length) * 10) / 10
     : null;
@@ -1696,11 +1726,17 @@ export async function getPostventaResumen(sede?: string): Promise<PostventaResum
     id: r.id as string,
     score: r.score as number,
     comentario: (r.comentario as string) ?? "",
+    etiquetas: labelsDeEtiquetas(r.etiquetas),
     barbero: (r.barberos as { nombre?: string } | null)?.nombre ?? "—",
     sede: (r.sedes as { nombre?: string } | null)?.nombre ?? "—",
     fecha: r.creado_en as string,
   }));
-  return { promedio, total: scores.length, ultimas };
+  // Los chips se cuentan aparte por tono: lo que destacan y lo que falla no se
+  // mezclan en un mismo ranking (un "Tuve que esperar" no es un elogio).
+  const top = topEtiquetas(filas, 20);
+  const destacan = top.filter((t) => !esEtiquetaMala(t.id)).slice(0, 4).map(({ label, veces }) => ({ label, veces }));
+  const fallan = top.filter((t) => esEtiquetaMala(t.id)).slice(0, 3).map(({ label, veces }) => ({ label, veces }));
+  return { promedio, total: scores.length, ultimas, destacan, fallan };
 }
 
 export type Cupon = {
@@ -1969,7 +2005,17 @@ export async function atendidasSinCobrar(sede?: SedeId | null): Promise<Atendida
 export type ParaHacer = {
   bajoMinimo: { id: string; nombre: string; stock: number; sede: SedeId }[];
   /** clienteRef null = reseña de un walk-in sin ficha (no hay a dónde linkear). */
-  malasResenas: { id: string; score: number; comentario: string; barbero: string; sede: SedeId; fecha: string; clienteRef: string | null }[];
+  malasResenas: {
+    id: string;
+    score: number;
+    comentario: string;
+    /** Lo que marcó como "¿Qué falló?" (0088), ya en texto. */
+    etiquetas: string[];
+    barbero: string;
+    sede: SedeId;
+    fecha: string;
+    clienteRef: string | null;
+  }[];
   cuponesPorVencer: { codigo: string; venceEn: string; usos: number; usosMax: number | null }[];
 };
 
@@ -1983,9 +2029,10 @@ export async function paraHacer(sede?: SedeId | null): Promise<ParaHacer> {
 
   let pq = sb.from("productos").select("id,nombre,stock,stock_minimo,sede_id").eq("activo", true);
   if (sede) pq = pq.eq("sede_id", sede);
+  // "*": trae las etiquetas cuando 0088 está aplicada, sin romperse antes.
   let rq = sb
     .from("resenas_servicio")
-    .select("id,score,comentario,creado_en,sede_id,cliente_ref,barberos(nombre)")
+    .select("*,barberos(nombre)")
     .lte("score", 3)
     .gte("creado_en", desde7.toISOString())
     .order("creado_en", { ascending: false })
@@ -2014,6 +2061,7 @@ export async function paraHacer(sede?: SedeId | null): Promise<ParaHacer> {
       id: r.id as string,
       score: r.score as number,
       comentario: (r.comentario as string) ?? "",
+      etiquetas: labelsDeEtiquetas(r.etiquetas),
       barbero: (r.barberos as { nombre?: string } | null)?.nombre ?? "—",
       sede: r.sede_id as SedeId,
       fecha: r.creado_en as string,

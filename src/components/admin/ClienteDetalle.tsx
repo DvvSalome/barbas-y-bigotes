@@ -1,6 +1,7 @@
 "use client";
 
 import { Estrellas } from "@/components/ui/Estrellas";
+import { ChipsMarcados } from "@/components/ui/ChipsResena";
 import {
   BookIcon,
   CalendarIcon,
@@ -834,7 +835,8 @@ function FidelidadTab({ d, tarjeta }: { d: Detalle; tarjeta: TarjetaClienteView 
 }
 
 // Postventa: lo que EL CLIENTE opinó del servicio ("Su opinión", al revés de
-// "Nota del staff", donde el staff califica al cliente). Solo lectura — se crea desde /cuenta.
+// "Nota del staff", donde el staff califica al cliente). Solo lectura — la crea el
+// cliente desde /cuenta o desde el enlace del correo (/calificar), con chips.
 function CalificacionesTab({ d }: { d: Detalle }) {
   if (!d.calificaciones.length) return <Empty>Este cliente todavía no calificó ninguna visita.</Empty>;
   return (
@@ -846,8 +848,14 @@ function CalificacionesTab({ d }: { d: Detalle }) {
             <Estrellas score={c.score} />
             <span className="text-xs text-muted">{fecha(c.fecha)}</span>
           </div>
-          {c.comentario ? <div className="mt-1">{c.comentario}</div> : null}
-          <div className="mt-1 text-xs text-muted">{c.barbero} · {c.sede}</div>
+          <ChipsMarcados etiquetas={c.etiquetas} />
+          {c.comentario ? <div className="mt-1.5">{c.comentario}</div> : null}
+          <div className="mt-1 text-xs text-muted">
+            {c.barbero} · {c.sede}
+            {/* Que el dueño sepa que esas palabras las armamos con lo que marcó
+                (él las revisó y las envió, pero no las escribió de cero). */}
+            {c.textoGenerado && c.comentario ? " · texto armado con lo que marcó" : ""}
+          </div>
         </div>
       ))}
     </div>

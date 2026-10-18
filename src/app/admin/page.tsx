@@ -26,6 +26,7 @@ import { AvisosBarbero } from "@/components/barbero/AvisosBarbero";
 import { PuestaAPunto } from "@/components/admin/PuestaAPunto";
 import { hayFaltas } from "@/lib/puesta";
 import { Estrellas } from "@/components/ui/Estrellas";
+import { ChipsMarcados, ResumenChips } from "@/components/ui/ChipsResena";
 
 export const metadata: Metadata = { title: "Hoy · Admin" };
 
@@ -621,9 +622,19 @@ export default async function AdminHoy({
                     : "Sin calificaciones todavía"}
                 </span>
               </div>
+              {/* Lo que más marcan los clientes en los chips de la reseña. Lo que
+                  destacan y lo que falla van en filas aparte: mezclados, un
+                  "Tuve que esperar" se leía como un elogio más. */}
+              {postventa.destacan.length > 0 && (
+                <ResumenChips titulo="Lo que más destacan" chips={postventa.destacan} />
+              )}
+              {postventa.fallan.length > 0 && (
+                <ResumenChips titulo="Lo que más falla" chips={postventa.fallan} malo />
+              )}
               {postventa.ultimas.map((c) => (
                 <div key={c.id} className="mt-3 border-t border-line/60 pt-3 text-[12.5px]">
                   <p className="text-ink/85">“{c.comentario}”</p>
+                  {c.etiquetas.length > 0 && <ChipsMarcados etiquetas={c.etiquetas} />}
                   <p className="mt-0.5 text-[12px] text-muted">
                     <Estrellas score={c.score} /> · {c.barbero} · {c.sede} · {fechaCorta(c.fecha)}
                   </p>
@@ -770,8 +781,14 @@ export default async function AdminHoy({
                         Calificación {r.score}/5 · {r.barbero}
                       </span>
                       <span className="block truncate text-[12px] text-muted">
-                        {r.comentario ? `“${r.comentario}”` : "Sin comentario"} · {TAG_SEDE[r.sede] ?? r.sede} ·{" "}
-                        {fechaCorta(r.fecha)}
+                        {/* Lo que marcó se lee de un vistazo; el texto completo
+                            está en la ficha ("Ver cliente"). */}
+                        {r.etiquetas.length > 0
+                          ? r.etiquetas.join(" · ")
+                          : r.comentario
+                            ? `“${r.comentario}”`
+                            : "Sin comentario"}{" "}
+                        · {TAG_SEDE[r.sede] ?? r.sede} · {fechaCorta(r.fecha)}
                       </span>
                     </span>
                     {/* Con ficha → directo a la pestaña "Su opinión" del cliente;

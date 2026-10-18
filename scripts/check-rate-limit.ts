@@ -27,4 +27,29 @@ assert.equal(permitir(ip, { porMinuto: 100, porHora: 4 }), false, "y ahí sí se
 assert.ok(permitir("otra-ip", { porMinuto: 1, porHora: 1 }), "otra IP arranca con su propio cupo");
 assert.equal(permitir("otra-ip", { porMinuto: 1, porHora: 1 }), false, "y con su propio tope");
 
-console.log("check-rate-limit OK — tope por minuto, sin castigo acumulado, claves independientes");
+// (d) Tope por día (la reseña con IA: 6 por visita al día). Lo de hace más de
+//     una hora SIGUE contando para el día: si la ventana fuera la hora de
+//     siempre, a las 2 h la misma visita tendría 6 más.
+{
+  const real = Date.now;
+  let reloj = real();
+  Date.now = () => reloj;
+  try {
+    const lim = { porMinuto: 100, porHora: 100, porDia: 6 };
+    for (let i = 0; i < 6; i++) assert.ok(permitir("visita-x", lim), `la versión ${i + 1} del día pasa`);
+    assert.equal(permitir("visita-x", lim), false, "la 7ª del día se corta");
+    reloj += 2 * 3_600_000;
+    assert.equal(permitir("visita-x", lim), false, "dos horas después sigue cortada: cuenta el día, no la hora");
+    reloj += 23 * 3_600_000;
+    assert.ok(permitir("visita-x", lim), "pasadas 24 h vuelve a tener cupo");
+    // Y sin porDia la ventana sigue siendo la hora (no cambió nada para el resto).
+    for (let i = 0; i < 2; i++) assert.ok(permitir("ip-sin-dia", { porMinuto: 100, porHora: 2 }));
+    assert.equal(permitir("ip-sin-dia", { porMinuto: 100, porHora: 2 }), false);
+    reloj += 3_600_001;
+    assert.ok(permitir("ip-sin-dia", { porMinuto: 100, porHora: 2 }), "sin porDia, a la hora se libera");
+  } finally {
+    Date.now = real;
+  }
+}
+
+console.log("check-rate-limit OK — tope por minuto, sin castigo acumulado, claves independientes, tope por día");

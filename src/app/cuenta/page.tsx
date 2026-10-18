@@ -9,6 +9,7 @@ import { AdelantoBanner } from "@/components/cuenta/AdelantoBanner";
 import { PushManager } from "@/components/cuenta/PushManager";
 import { CitaAcciones } from "@/components/cuenta/CitaAcciones";
 import { CalificarServicio } from "@/components/cuenta/CalificarServicio";
+import { hayIA } from "@/lib/resena-ia";
 import { ensureCliente } from "@/lib/cliente-actions";
 import { TarjetaFidelidad } from "@/components/cuenta/TarjetaFidelidad";
 import { SEDE_INFO } from "@/lib/data/sede-info";
@@ -283,6 +284,7 @@ async function Portal({ clienteId, nombre, avatarUrl }: { clienteId: string; nom
       {/* calificación post-servicio: SIEMPRE montado (pendiente puede ser null)
           para que la pantalla de gracias sobreviva al revalidatePath de la action */}
       <CalificarServicio
+        conIA={hayIA()}
         pendiente={
           sinCalificar
             ? {

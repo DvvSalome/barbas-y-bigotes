@@ -11,6 +11,17 @@ import { pushACliente, pushABarbero, pushASede, pushAAdmins, guardarSuscripcion 
 import { encolarAvisoDueno } from "@/lib/avisos-dueno";
 import { fechaHoraBogota } from "@/lib/format";
 import { getVisitaPorTokenDeResena } from "@/lib/data/queries";
+import { headers } from "next/headers";
+import { permitir } from "@/lib/rate-limit";
+import {
+  TOPE_RESENA,
+  componerResena,
+  etiquetaLabel,
+  etiquetasValidas,
+  faltaColumnaResena,
+  limpiarExtra,
+} from "@/lib/resena-texto";
+import { redactarConIA } from "@/lib/resena-ia";
 
 // Ventana de "deshacer" (minutos): desde la pantalla de confirmación del wizard,
 // el cliente puede cancelar la reserva que ACABA de hacer si puso un dato mal.
@@ -315,6 +326,10 @@ export async function calificarServicio(input: {
   reservaId: string;
   score: number;
   comentario?: string;
+  /** Ids de los chips (resena-texto.ts); se validan acá contra el catálogo. */
+  etiquetas?: string[];
+  /** El comentario salió del texto que le armamos (aunque lo haya retocado). */
+  textoGenerado?: boolean;
 }): Promise<{ ok: boolean; error?: string; googleReviewUrl?: string | null }> {
   const ctx = await ensureCliente();
   if (ctx.estado !== "cliente" || !ctx.clienteId) return { ok: false, error: "No autorizado" };
@@ -322,36 +337,23 @@ export async function calificarServicio(input: {
   const score = input.score;
   if (!Number.isInteger(score) || score < 1 || score > 5)
     return { ok: false, error: "La calificación va de 1 a 5 estrellas." };
-  const comentario = (input.comentario ?? "").trim().slice(0, 500) || null;
+  const comentario = (input.comentario ?? "").trim().slice(0, TOPE_RESENA) || null;
 
-  const admin = supabaseAdmin();
-  const { data: res, error: getErr } = await admin
-    .from("reservas")
-    .select("id, cliente_ref, barbero_id, sede_id, estado, servicio_id")
-    .eq("id", input.reservaId)
-    .maybeSingle();
-  if (getErr) return { ok: false, error: errorPublico("calificarServicio reserva", getErr) };
-  if (!res) return { ok: false, error: "Reserva no encontrada" };
-  const r = res as {
-    cliente_ref: string | null;
-    barbero_id: string | null;
-    sede_id: string;
-    estado: string;
-    servicio_id: string | null;
-  };
+  const r = await reservaParaCalificar(input.reservaId, ctx.clienteId);
+  if (!r.ok) return { ok: false, error: r.error };
 
-  if (r.cliente_ref !== ctx.clienteId) return { ok: false, error: "Reserva no encontrada" };
-  if (r.estado !== "completada")
-    return { ok: false, error: "Solo se pueden calificar visitas ya completadas." };
-
-  const { error: insErr } = await admin.from("resenas_servicio").insert({
-    reserva_id: input.reservaId,
-    cliente_ref: ctx.clienteId,
-    barbero_id: r.barbero_id,
-    sede_id: r.sede_id,
-    score,
-    comentario,
-  });
+  const etiquetas = etiquetasValidas(score, input.etiquetas, r.servicio);
+  const insErr = await insertarResena(
+    {
+      reserva_id: input.reservaId,
+      cliente_ref: ctx.clienteId,
+      barbero_id: r.barberoId,
+      sede_id: r.sedeId,
+      score,
+      comentario,
+    },
+    { etiquetas, texto_generado: Boolean(input.textoGenerado && comentario) },
+  );
   if (insErr) {
     // 23505 = unique(reserva_id): esta visita ya tiene calificación.
     if (insErr.code === "23505") return { ok: false, error: "Ya calificaste esta visita." };
@@ -360,10 +362,10 @@ export async function calificarServicio(input: {
 
   // La URL es de ESA sede (cada sede tiene su ficha de Maps); nullable = botón
   // apagado hasta configurarla.
-  const { data: sede, error: sedeErr } = await admin
+  const { data: sede, error: sedeErr } = await supabaseAdmin()
     .from("sedes")
     .select("google_review_url")
-    .eq("id", r.sede_id)
+    .eq("id", r.sedeId)
     .maybeSingle();
   if (sedeErr) errorPublico("calificarServicio sede", sedeErr);
   const googleReviewUrl = (sede as { google_review_url?: string | null } | null)?.google_review_url || null;
@@ -371,14 +373,66 @@ export async function calificarServicio(input: {
   await avisarResenaBaja({
     score,
     comentario,
+    etiquetas,
+    textoGenerado: Boolean(input.textoGenerado && comentario),
     clienteRef: ctx.clienteId,
-    barberoId: r.barbero_id,
-    sedeId: r.sede_id,
-    servicioId: r.servicio_id,
+    barberoId: r.barberoId,
+    sedeId: r.sedeId,
+    servicio: r.servicio,
   });
 
   revalidatePath("/cuenta");
   return { ok: true, googleReviewUrl };
+}
+
+/**
+ * La cita del cliente logueado que se va a calificar (o a redactar): suya,
+ * completada y con el nombre del servicio (los chips dependen de él). Corre con
+ * service role: el dueño se verifica acá, no en la UI.
+ */
+async function reservaParaCalificar(
+  reservaId: string,
+  clienteId: string,
+): Promise<
+  | { ok: true; barberoId: string | null; sedeId: string; servicio: string | null }
+  | { ok: false; error: string }
+> {
+  if (!/^[0-9a-f-]{36}$/i.test(reservaId)) return { ok: false, error: "Reserva no encontrada" };
+  const { data: res, error: getErr } = await supabaseAdmin()
+    .from("reservas")
+    .select("id, cliente_ref, barbero_id, sede_id, estado, servicios(nombre)")
+    .eq("id", reservaId)
+    .maybeSingle();
+  if (getErr) return { ok: false, error: errorPublico("calificarServicio reserva", getErr) };
+  if (!res) return { ok: false, error: "Reserva no encontrada" };
+  const r = res as {
+    cliente_ref: string | null;
+    barbero_id: string | null;
+    sede_id: string;
+    estado: string;
+    servicios: { nombre?: string } | null;
+  };
+  if (r.cliente_ref !== clienteId) return { ok: false, error: "Reserva no encontrada" };
+  if (r.estado !== "completada") return { ok: false, error: "Solo se pueden calificar visitas ya completadas." };
+  return { ok: true, barberoId: r.barbero_id, sedeId: r.sede_id, servicio: r.servicios?.nombre ?? null };
+}
+
+/**
+ * Guarda la calificación. Con 0088 aplicada van también los chips y la marca de
+ * texto armado; sin ella (deploy antes de la migración) se reintenta sin esas
+ * columnas: el texto ya dice lo que marcó, así que el dueño no pierde nada.
+ * Si el primer insert falló por la columna, no escribió nada: reintentar es seguro.
+ */
+async function insertarResena(
+  fila: Record<string, unknown>,
+  nuevas: { etiquetas: string[]; texto_generado: boolean },
+): Promise<{ code?: string; message: string } | null> {
+  const admin = supabaseAdmin();
+  const { error } = await admin.from("resenas_servicio").insert({ ...fila, ...nuevas });
+  if (!error) return null;
+  if (!faltaColumnaResena(error)) return error;
+  const { error: sinColumnas } = await admin.from("resenas_servicio").insert(fila);
+  return sinColumnas ?? null;
 }
 
 /**
@@ -390,6 +444,9 @@ export async function calificarServicio(input: {
 async function avisarResenaBaja(c: {
   score: number;
   comentario: string | null;
+  /** Ids ya validados; al aviso van como texto ("Tuve que esperar"). */
+  etiquetas?: string[];
+  textoGenerado?: boolean;
   clienteRef: string | null;
   barberoId: string | null;
   sedeId: string;
@@ -412,15 +469,27 @@ async function avisarResenaBaja(c: {
     ]);
     const quien = cliente ?? "Un cliente";
     const conQuien = barbero ? ` con ${barbero}` : "";
+    const etiquetas = (c.etiquetas ?? []).map(etiquetaLabel);
+    // En el push manda lo que marcó (se lee de un vistazo en la pantalla
+    // bloqueada); sin chips, el comentario como antes.
+    const detalle = etiquetas.length
+      ? `: ${etiquetas.join(" · ")}`
+      : c.comentario
+        ? `: «${c.comentario.slice(0, 90)}»`
+        : " · sin comentario";
     await pushAAdmins({
       title: `Calificación de ${c.score} de 5 ★`,
-      body: `${quien}${conQuien}${c.comentario ? `: «${c.comentario.slice(0, 90)}»` : " · sin comentario"}`,
+      body: `${quien}${conQuien}${detalle}`,
       url: c.clienteRef ? `/admin/clientes/${c.clienteRef}` : "/admin",
       tag: "resena-baja",
     });
     await encolarAvisoDueno("resena_baja", {
       score: c.score,
       comentario: c.comentario,
+      // El correo (docs/emails/aviso-dueno.js) las muestra como chips; uno viejo
+      // que no las conoce sigue mostrando solo el comentario.
+      etiquetas,
+      texto_generado: Boolean(c.textoGenerado),
       cliente: quien,
       barbero,
       sede: sede ?? c.sedeId,
@@ -441,11 +510,13 @@ export async function calificarPorToken(input: {
   token: string;
   score: number;
   comentario?: string;
+  etiquetas?: string[];
+  textoGenerado?: boolean;
 }): Promise<{ ok: boolean; error?: string; googleReviewUrl?: string | null }> {
   const score = input.score;
   if (!Number.isInteger(score) || score < 1 || score > 5)
     return { ok: false, error: "La calificación va de 1 a 5 estrellas." };
-  const comentario = (input.comentario ?? "").trim().slice(0, 500) || null;
+  const comentario = (input.comentario ?? "").trim().slice(0, TOPE_RESENA) || null;
 
   const v = await getVisitaPorTokenDeResena(input.token);
   // cliente_ref es obligatorio en resenas_servicio; el correo solo sale a ventas con cliente.
@@ -453,15 +524,20 @@ export async function calificarPorToken(input: {
   if (v.vencida) return { ok: false, error: "Este enlace ya venció." };
   if (v.yaCalificada) return { ok: false, error: "Ya calificaste esta visita." };
 
-  const { error } = await supabaseAdmin().from("resenas_servicio").insert({
-    venta_id: v.ventaId,
-    reserva_id: v.reservaId,
-    cliente_ref: v.clienteRef,
-    barbero_id: v.barberoId,
-    sede_id: v.sedeId,
-    score,
-    comentario,
-  });
+  const etiquetas = etiquetasValidas(score, input.etiquetas, v.servicio);
+  const textoGenerado = Boolean(input.textoGenerado && comentario);
+  const error = await insertarResena(
+    {
+      venta_id: v.ventaId,
+      reserva_id: v.reservaId,
+      cliente_ref: v.clienteRef,
+      barbero_id: v.barberoId,
+      sede_id: v.sedeId,
+      score,
+      comentario,
+    },
+    { etiquetas, texto_generado: textoGenerado },
+  );
   if (error) {
     if (error.code === "23505") return { ok: false, error: "Ya calificaste esta visita." };
     return { ok: false, error: errorPublico("calificarPorToken", error) };
@@ -469,12 +545,85 @@ export async function calificarPorToken(input: {
   await avisarResenaBaja({
     score,
     comentario,
+    etiquetas,
+    textoGenerado,
     clienteRef: v.clienteRef,
     barberoId: v.barberoId,
     sedeId: v.sedeId,
     servicio: v.servicio,
   });
   return { ok: true, googleReviewUrl: v.googleReviewUrl };
+}
+
+/**
+ * "Tu reseña": el texto ya escrito con lo que el cliente marcó, para que lo
+ * revise, lo cambie si quiere y lo envíe (y, si le provoca, lo pegue en Google).
+ * NO guarda nada: guardar es calificarPorToken / calificarServicio.
+ *
+ * Misma credencial que guardar: el token del correo (sin login) o la cita del
+ * cliente logueado en /cuenta. Con ANTHROPIC_API_KEY lo redacta Claude; sin
+ * llave, con la IA caída, lenta (>6 s) o con el freno puesto, sale la plantilla
+ * de resena-texto.ts. Las dos siguen las mismas reglas (sin inventar, sin
+ * nombrar al barbero) y el cliente no ve la diferencia.
+ *
+ * Freno (es un proxy a un LLM, quema plata): 6 redacciones por visita al día,
+ * más un tope por IP y uno global por instancia. Pasado el freno no hay error:
+ * sale la plantilla, que no cuesta nada.
+ */
+export async function redactarResena(input: {
+  token?: string;
+  reservaId?: string;
+  score: number;
+  etiquetas?: string[];
+  extra?: string;
+  /** 0 la primera vez; "Otra versión" suma 1. */
+  version?: number;
+  /** El texto que ya vio: la nueva versión no puede repetirlo. */
+  anterior?: string;
+}): Promise<{ ok: boolean; texto?: string; error?: string }> {
+  const score = input.score;
+  if (!Number.isInteger(score) || score < 1 || score > 5)
+    return { ok: false, error: "La calificación va de 1 a 5 estrellas." };
+
+  // La misma validación que guardar: si no podría calificar, tampoco redacta.
+  let visita: string;
+  let servicio: string | null;
+  if (input.token) {
+    const v = await getVisitaPorTokenDeResena(input.token);
+    if (!v || !v.clienteRef) return { ok: false, error: "Este enlace no es válido." };
+    if (v.vencida) return { ok: false, error: "Este enlace ya venció." };
+    if (v.yaCalificada) return { ok: false, error: "Ya calificaste esta visita." };
+    visita = v.ventaId;
+    servicio = v.servicio;
+  } else {
+    const ctx = await ensureCliente();
+    if (ctx.estado !== "cliente" || !ctx.clienteId) return { ok: false, error: "No autorizado" };
+    const r = await reservaParaCalificar(input.reservaId ?? "", ctx.clienteId);
+    if (!r.ok) return { ok: false, error: r.error };
+    visita = input.reservaId ?? "";
+    servicio = r.servicio;
+  }
+
+  const etiquetas = etiquetasValidas(score, input.etiquetas, servicio);
+  const extra = limpiarExtra(input.extra);
+  const version = Math.max(0, Math.min(50, Math.floor(Number(input.version) || 0)));
+  const anterior = (input.anterior ?? "").slice(0, TOPE_RESENA) || null;
+  // La semilla es la credencial que ya tiene el cliente (token o cita): la
+  // plantilla le sale igual que la que arma su navegador sin IA.
+  const semilla = input.token || visita;
+  const plantilla = () => componerResena({ score, etiquetas, extra, semilla, version, evitar: anterior });
+
+  const h = await headers();
+  const ip = (h.get("x-forwarded-for") ?? "").split(",")[0].trim() || "sin-ip";
+  const conCupo =
+    permitir(`resena-ia:${visita}`, { porMinuto: 3, porHora: 6, porDia: 6 }) &&
+    permitir(`resena-ia-ip:${ip}`, { porMinuto: 6, porHora: 20 }) &&
+    permitir("resena-ia:global", { porMinuto: 30, porHora: 300 });
+  if (!conCupo) return { ok: true, texto: plantilla() };
+
+  const ia = await redactarConIA({ score, etiquetas, extra, servicio, version, anterior });
+  // Si la IA devolvió lo mismo que ya vio, mejor una plantilla distinta.
+  return { ok: true, texto: ia && ia !== anterior ? ia : plantilla() };
 }
 
 // Reagendar la propia cita. Misma ventana de 2h que cancelar. Pre-chequea solape

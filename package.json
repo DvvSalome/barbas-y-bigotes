@@ -7,9 +7,10 @@
     "build": "next build --webpack",
     "start": "next start",
     "lint": "eslint",
-    "test": "node scripts/check-cobro.ts && node scripts/check-tarjeta.ts && node scripts/check-caja.ts && node scripts/check-tz.ts && node scripts/check-push.ts && node scripts/check-slots.ts && node scripts/check-tema.ts && node scripts/check-metricas.ts && node scripts/check-admin.ts && node scripts/check-sentry.ts && node scripts/check-correos.ts && node scripts/check-whatsapp.ts && node scripts/check-rate-limit.ts && node scripts/check-liquidacion.ts && node scripts/check-email.ts && node scripts/check-skew.ts && node scripts/check-reporte.ts && node scripts/check-cupo.ts && node scripts/check-estado.ts && node scripts/check-cobertura.ts && node scripts/check-puesta.ts && node scripts/check-avisos.ts && node scripts/check-equipo.ts"
+    "test": "node scripts/check-cobro.ts && node scripts/check-tarjeta.ts && node scripts/check-caja.ts && node scripts/check-tz.ts && node scripts/check-push.ts && node scripts/check-slots.ts && node scripts/check-tema.ts && node scripts/check-metricas.ts && node scripts/check-admin.ts && node scripts/check-sentry.ts && node scripts/check-correos.ts && node scripts/check-whatsapp.ts && node scripts/check-rate-limit.ts && node scripts/check-liquidacion.ts && node scripts/check-email.ts && node scripts/check-skew.ts && node scripts/check-reporte.ts && node scripts/check-cupo.ts && node scripts/check-estado.ts && node scripts/check-cobertura.ts && node scripts/check-puesta.ts && node scripts/check-avisos.ts && node scripts/check-equipo.ts && node scripts/check-resena.ts"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.135.0",
     "@ducanh2912/next-pwa": "^10.2.9",
     "@gsap/react": "^2.1.2",
     "@react-three/drei": "^10.7.7",
