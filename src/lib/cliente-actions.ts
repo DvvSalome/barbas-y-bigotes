@@ -15,11 +15,13 @@ import { headers } from "next/headers";
 import { permitir } from "@/lib/rate-limit";
 import {
   TOPE_RESENA,
+  comoTexto,
   componerResena,
   etiquetaLabel,
   etiquetasValidas,
   faltaColumnaResena,
   limpiarExtra,
+  soloRepiteLaNota,
 } from "@/lib/resena-texto";
 import { redactarConIA } from "@/lib/resena-ia";
 
@@ -337,15 +339,18 @@ export async function calificarServicio(input: {
   const score = input.score;
   if (!Number.isInteger(score) || score < 1 || score > 5)
     return { ok: false, error: "La calificación va de 1 a 5 estrellas." };
-  const comentario = (input.comentario ?? "").trim().slice(0, TOPE_RESENA) || null;
+  // comoTexto: la action recibe lo que le manden (un arreglo no es comentario,
+  // y `.trim()` sobre él reventaba con un 500).
+  const comentario = comoTexto(input.comentario).trim().slice(0, TOPE_RESENA) || null;
+  const reservaId = comoTexto(input.reservaId);
 
-  const r = await reservaParaCalificar(input.reservaId, ctx.clienteId);
+  const r = await reservaParaCalificar(reservaId, ctx.clienteId);
   if (!r.ok) return { ok: false, error: r.error };
 
   const etiquetas = etiquetasValidas(score, input.etiquetas, r.servicio);
   const insErr = await insertarResena(
     {
-      reserva_id: input.reservaId,
+      reserva_id: reservaId,
       cliente_ref: ctx.clienteId,
       barbero_id: r.barberoId,
       sede_id: r.sedeId,
@@ -394,13 +399,13 @@ async function reservaParaCalificar(
   reservaId: string,
   clienteId: string,
 ): Promise<
-  | { ok: true; barberoId: string | null; sedeId: string; servicio: string | null }
+  | { ok: true; barberoId: string | null; sedeId: string; servicio: string | null; inicio: string }
   | { ok: false; error: string }
 > {
   if (!/^[0-9a-f-]{36}$/i.test(reservaId)) return { ok: false, error: "Reserva no encontrada" };
   const { data: res, error: getErr } = await supabaseAdmin()
     .from("reservas")
-    .select("id, cliente_ref, barbero_id, sede_id, estado, servicios(nombre)")
+    .select("id, cliente_ref, barbero_id, sede_id, estado, inicio, servicios(nombre)")
     .eq("id", reservaId)
     .maybeSingle();
   if (getErr) return { ok: false, error: errorPublico("calificarServicio reserva", getErr) };
@@ -410,11 +415,12 @@ async function reservaParaCalificar(
     barbero_id: string | null;
     sede_id: string;
     estado: string;
+    inicio: string;
     servicios: { nombre?: string } | null;
   };
   if (r.cliente_ref !== clienteId) return { ok: false, error: "Reserva no encontrada" };
   if (r.estado !== "completada") return { ok: false, error: "Solo se pueden calificar visitas ya completadas." };
-  return { ok: true, barberoId: r.barbero_id, sedeId: r.sede_id, servicio: r.servicios?.nombre ?? null };
+  return { ok: true, barberoId: r.barbero_id, sedeId: r.sede_id, servicio: r.servicios?.nombre ?? null, inicio: r.inicio };
 }
 
 /**
@@ -471,11 +477,16 @@ async function avisarResenaBaja(c: {
     const conQuien = barbero ? ` con ${barbero}` : "";
     const etiquetas = (c.etiquetas ?? []).map(etiquetaLabel);
     // En el push manda lo que marcó (se lee de un vistazo en la pantalla
-    // bloqueada); sin chips, el comentario como antes.
+    // bloqueada); sin chips, el comentario. Entre «» solo lo que escribió él:
+    // el texto que le armamos no se cita como palabras suyas, y si solo repite
+    // la nota ("Mala experiencia.") no dice nada que las estrellas no digan.
+    const armado = Boolean(c.textoGenerado);
     const detalle = etiquetas.length
       ? `: ${etiquetas.join(" · ")}`
-      : c.comentario
-        ? `: «${c.comentario.slice(0, 90)}»`
+      : c.comentario && !(armado && soloRepiteLaNota(c.score, c.comentario))
+        ? armado
+          ? `: ${c.comentario.slice(0, 90)}`
+          : `: «${c.comentario.slice(0, 90)}»`
         : " · sin comentario";
     await pushAAdmins({
       title: `Calificación de ${c.score} de 5 ★`,
@@ -516,9 +527,9 @@ export async function calificarPorToken(input: {
   const score = input.score;
   if (!Number.isInteger(score) || score < 1 || score > 5)
     return { ok: false, error: "La calificación va de 1 a 5 estrellas." };
-  const comentario = (input.comentario ?? "").trim().slice(0, TOPE_RESENA) || null;
+  const comentario = comoTexto(input.comentario).trim().slice(0, TOPE_RESENA) || null;
 
-  const v = await getVisitaPorTokenDeResena(input.token);
+  const v = await getVisitaPorTokenDeResena(comoTexto(input.token));
   // cliente_ref es obligatorio en resenas_servicio; el correo solo sale a ventas con cliente.
   if (!v || !v.clienteRef) return { ok: false, error: "Este enlace no es válido." };
   if (v.vencida) return { ok: false, error: "Este enlace ya venció." };
@@ -569,6 +580,10 @@ export async function calificarPorToken(input: {
  * Freno (es un proxy a un LLM, quema plata): 6 redacciones por visita al día,
  * más un tope por IP y uno global por instancia. Pasado el freno no hay error:
  * sale la plantilla, que no cuesta nada.
+ *
+ * Todo lo que entra se trata como `unknown`: una server action es un POST que
+ * cualquiera arma a mano, y un arreglo en `anterior` se saltaba el tope de 500
+ * (pasaba como 500 elementos de cualquier largo) y le mandaba megas a Claude.
  */
 export async function redactarResena(input: {
   token?: string;
@@ -578,18 +593,21 @@ export async function redactarResena(input: {
   extra?: string;
   /** 0 la primera vez; "Otra versión" suma 1. */
   version?: number;
-  /** El texto que ya vio: la nueva versión no puede repetirlo. */
+  /** El último texto que le ARMAMOS (no lo que tenga en el cuadro): la nueva versión no puede repetirlo. */
   anterior?: string;
 }): Promise<{ ok: boolean; texto?: string; error?: string }> {
   const score = input.score;
   if (!Number.isInteger(score) || score < 1 || score > 5)
     return { ok: false, error: "La calificación va de 1 a 5 estrellas." };
+  const token = comoTexto(input.token);
 
   // La misma validación que guardar: si no podría calificar, tampoco redacta.
   let visita: string;
   let servicio: string | null;
-  if (input.token) {
-    const v = await getVisitaPorTokenDeResena(input.token);
+  // Sin IA aunque haya cupo (la plantilla igual le sirve al cliente).
+  let soloPlantilla = false;
+  if (token) {
+    const v = await getVisitaPorTokenDeResena(token);
     if (!v || !v.clienteRef) return { ok: false, error: "Este enlace no es válido." };
     if (v.vencida) return { ok: false, error: "Este enlace ya venció." };
     if (v.yaCalificada) return { ok: false, error: "Ya calificaste esta visita." };
@@ -598,20 +616,31 @@ export async function redactarResena(input: {
   } else {
     const ctx = await ensureCliente();
     if (ctx.estado !== "cliente" || !ctx.clienteId) return { ok: false, error: "No autorizado" };
-    const r = await reservaParaCalificar(input.reservaId ?? "", ctx.clienteId);
+    const reservaId = comoTexto(input.reservaId);
+    const r = await reservaParaCalificar(reservaId, ctx.clienteId);
     if (!r.ok) return { ok: false, error: r.error };
-    visita = input.reservaId ?? "";
+    // Lo mismo que mira el enlace del correo: ya calificada no redacta (si no,
+    // cada cita vieja del historial abría su propio cupo de 6 redacciones al
+    // día), y la IA solo para la ventana de 30 días que /cuenta ofrece calificar.
+    const { count, error: califErr } = await supabaseAdmin()
+      .from("resenas_servicio")
+      .select("id", { count: "exact", head: true })
+      .eq("reserva_id", reservaId);
+    if (!califErr && (count ?? 0) > 0) return { ok: false, error: "Ya calificaste esta visita." };
+    soloPlantilla = Boolean(califErr) || !(Date.now() - Date.parse(r.inicio) <= 30 * 86_400_000);
+    visita = reservaId;
     servicio = r.servicio;
   }
 
   const etiquetas = etiquetasValidas(score, input.etiquetas, servicio);
   const extra = limpiarExtra(input.extra);
   const version = Math.max(0, Math.min(50, Math.floor(Number(input.version) || 0)));
-  const anterior = (input.anterior ?? "").slice(0, TOPE_RESENA) || null;
+  const anterior = comoTexto(input.anterior).slice(0, TOPE_RESENA) || null;
   // La semilla es la credencial que ya tiene el cliente (token o cita): la
   // plantilla le sale igual que la que arma su navegador sin IA.
-  const semilla = input.token || visita;
+  const semilla = token || visita;
   const plantilla = () => componerResena({ score, etiquetas, extra, semilla, version, evitar: anterior });
+  if (soloPlantilla) return { ok: true, texto: plantilla() };
 
   const h = await headers();
   const ip = (h.get("x-forwarded-for") ?? "").split(",")[0].trim() || "sin-ip";

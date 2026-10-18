@@ -18,9 +18,9 @@
 // hablar con el dueño, debajo, sin quitarles el botón de Google. Nunca se
 // publica por el cliente: él pega y publica.
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { calificarServicio, calificarPorToken, redactarResena } from "@/lib/cliente-actions";
-import { chipsPara, componerResena, esBuena, TOPE_EXTRA, TOPE_RESENA } from "@/lib/resena-texto";
+import { chipsPara, componerResena, esBuena, pareceGenerado, TOPE_EXTRA, TOPE_RESENA } from "@/lib/resena-texto";
 import { ArrowRightIcon, CheckIcon, RepeatIcon, StarIcon } from "@/components/icons";
 
 export type VisitaPendiente = {
@@ -94,6 +94,7 @@ export function GraciasCalificacion({
   texto = "",
   copiado = false,
   bajo = false,
+  enfocar = false,
 }: {
   googleUrl: string | null;
   ya?: boolean;
@@ -103,8 +104,14 @@ export function GraciasCalificacion({
   copiado?: boolean;
   /** Nota de 1 a 3: además de Google, la puerta para hablar con el dueño. */
   bajo?: boolean;
+  /** Recién enviada: el foco va al título (el botón que tocó ya no existe y el lector de pantalla quedaba mudo). */
+  enfocar?: boolean;
 }) {
   const [estadoCopia, setEstadoCopia] = useState<"ok" | "fallo" | null>(copiado ? "ok" : null);
+  const titulo = useRef<HTMLHeadingElement>(null);
+  useEffect(() => {
+    if (enfocar) titulo.current?.focus();
+  }, [enfocar]);
 
   function abrirGoogle() {
     // Sin preventDefault: el enlace abre Google en otra pestaña mientras se
@@ -115,7 +122,7 @@ export function GraciasCalificacion({
 
   return (
     <section className="mb-8 rounded-2xl border border-accent/40 bg-accent/5 p-5 text-center">
-      <h3 className="font-display text-xl font-bold uppercase">
+      <h3 ref={titulo} tabIndex={-1} className="font-display text-xl font-bold uppercase focus:outline-none">
         {ya ? "Ya calificaste esta visita" : "¡Gracias por contarnos!"}
       </h3>
       <p className="mt-2 text-sm text-muted">Tu calificación ya le llegó a la barbería.</p>
@@ -174,7 +181,7 @@ export function GraciasCalificacion({
   );
 }
 
-type Final = { googleUrl: string | null; texto: string; copiado: boolean; bajo: boolean };
+type Final = { googleUrl: string | null; texto: string; copiado: boolean; bajo: boolean; enfocar: boolean };
 
 export function CalificarServicio({
   pendiente,
@@ -191,9 +198,6 @@ export function CalificarServicio({
   const [extra, setExtra] = useState("");
   const [paso, setPaso] = useState<"calificar" | "texto">("calificar");
   const [texto, setTexto] = useState("");
-  // El comentario salió del texto que le armamos (aunque lo retoque). Si lo
-  // borra todo y escribe el suyo, deja de serlo.
-  const [generado, setGenerado] = useState(false);
   const [version, setVersion] = useState(0);
   const [redactando, setRedactando] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -203,6 +207,19 @@ export function CalificarServicio({
   // le reescribe lo que ya tenía (ni se gasta otra redacción).
   const firmaTexto = useRef("");
   const pedido = useRef(0);
+  // Lo ÚLTIMO que le armamos. Es lo que va como "anterior" en Otra versión (no
+  // lo que tenga en el cuadro, que es texto libre suyo y no tiene por qué ir a
+  // la IA) y contra lo que se mide si lo que envía sigue siendo "texto armado".
+  const ultimoArmado = useRef("");
+  // Al cambiar de paso el botón que tocó desaparece y el foco caía al body: se
+  // lleva al título del paso nuevo. No en la primera pintada (en /cuenta
+  // saltaría la página hasta acá).
+  const tituloPaso = useRef<HTMLHeadingElement>(null);
+  const pasoPrevio = useRef(paso);
+  useEffect(() => {
+    if (pasoPrevio.current !== paso) tituloPaso.current?.focus();
+    pasoPrevio.current = paso;
+  }, [paso]);
 
   // Pantalla de gracias: persiste aunque el server ya no mande visita pendiente.
   if (final) return <GraciasCalificacion {...final} />;
@@ -219,13 +236,17 @@ export function CalificarServicio({
     setSel((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
   }
 
+  function armado(t: string) {
+    ultimoArmado.current = t;
+    setTexto(t);
+  }
+
   async function redactar(v: number, anterior: string | null) {
     const local = () => componerResena({ score, etiquetas: marcadas, extra, semilla, version: v, evitar: anterior });
     setVersion(v);
     setErr(null);
     if (!conIA) {
-      setTexto(local());
-      setGenerado(true);
+      armado(local());
       return;
     }
     const mio = ++pedido.current;
@@ -242,21 +263,18 @@ export function CalificarServicio({
       });
       if (mio !== pedido.current) return; // llegó tarde: ya pidió otra
       if (res.ok && res.texto) {
-        setTexto(res.texto);
+        armado(res.texto);
       } else if (!res.ok && res.error) {
         // Enlace vencido o visita ya calificada: guardar tampoco va a poder.
         setErr(res.error);
-        setTexto(local());
+        armado(local());
       } else {
-        setTexto(local());
+        armado(local());
       }
     } catch {
-      if (mio === pedido.current) setTexto(local());
+      if (mio === pedido.current) armado(local());
     } finally {
-      if (mio === pedido.current) {
-        setGenerado(true);
-        setRedactando(false);
-      }
+      if (mio === pedido.current) setRedactando(false);
     }
   }
 
@@ -282,7 +300,8 @@ export function CalificarServicio({
         score,
         comentario: textoFinal || undefined,
         etiquetas: marcadas,
-        textoGenerado: generado && Boolean(textoFinal),
+        // Retocado sigue siendo "armado"; reescrito entero ya es suyo.
+        textoGenerado: pareceGenerado(textoFinal, ultimoArmado.current),
       };
       const res = visita.token
         ? await calificarPorToken({ token: visita.token, ...datos })
@@ -291,7 +310,7 @@ export function CalificarServicio({
         setErr(res.error ?? "No se pudo enviar. Intenta de nuevo.");
         return;
       }
-      setFinal({ googleUrl: res.googleReviewUrl ?? null, texto: textoFinal, copiado: await copia, bajo: score <= 3 });
+      setFinal({ googleUrl: res.googleReviewUrl ?? null, texto: textoFinal, copiado: await copia, bajo: score <= 3, enfocar: true });
     } catch {
       // Falla de red: no dejar el botón colgado en "Enviando…".
       setErr("No se pudo enviar. Revisa tu conexión e intenta de nuevo.");
@@ -306,7 +325,9 @@ export function CalificarServicio({
 
       {paso === "calificar" ? (
         <>
-          <h3 className="mt-1 font-display text-2xl font-bold uppercase">¿Cómo estuvo tu visita?</h3>
+          <h3 ref={tituloPaso} tabIndex={-1} className="mt-1 font-display text-2xl font-bold uppercase focus:outline-none">
+            ¿Cómo estuvo tu visita?
+          </h3>
           <p className="mt-1 text-sm text-muted">
             {visita.servicio} · {visita.barbero} · {visita.fecha}
           </p>
@@ -398,15 +419,18 @@ export function CalificarServicio({
           >
             ← Cambiar lo que marqué
           </button>
-          <h3 className="mt-1 font-display text-2xl font-bold uppercase">Tu reseña</h3>
+          <h3 ref={tituloPaso} tabIndex={-1} className="mt-1 font-display text-2xl font-bold uppercase focus:outline-none">
+            Tu reseña
+          </h3>
           <p className="mt-1 text-sm text-muted">Te dejamos el texto listo, cámbialo si quieres.</p>
+          {/* Para el lector de pantalla: el esqueleto se cambia por el cuadro
+              con el texto y nadie le avisaba que ya estaba. */}
+          <p className="sr-only" aria-live="polite">
+            {redactando ? "Armando tu reseña…" : "Tu reseña está lista: puedes cambiarla antes de enviarla."}
+          </p>
 
           {redactando ? (
-            <div
-              className="mt-4 min-h-[8.5rem] rounded-lg border border-line bg-bg px-3 py-3"
-              role="status"
-              aria-label="Armando tu reseña"
-            >
+            <div className="mt-4 min-h-[8.5rem] rounded-lg border border-line bg-bg px-3 py-3" aria-hidden>
               <div className="h-3.5 w-11/12 animate-pulse rounded bg-line" />
               <div className="mt-2.5 h-3.5 w-10/12 animate-pulse rounded bg-line" />
               <div className="mt-2.5 h-3.5 w-7/12 animate-pulse rounded bg-line" />
@@ -415,10 +439,7 @@ export function CalificarServicio({
           ) : (
             <textarea
               value={texto}
-              onChange={(e) => {
-                setTexto(e.target.value);
-                if (!e.target.value.trim()) setGenerado(false);
-              }}
+              onChange={(e) => setTexto(e.target.value)}
               aria-label="Tu reseña"
               placeholder="Cuéntanos cómo te fue"
               rows={5}
@@ -428,13 +449,15 @@ export function CalificarServicio({
           )}
 
           {err && (
-            <div className="mt-3 rounded-lg border border-accent/40 bg-accent/10 px-3 py-2 text-sm text-accent-soft">{err}</div>
+            <div role="alert" className="mt-3 rounded-lg border border-accent/40 bg-accent/10 px-3 py-2 text-sm text-accent-soft">
+              {err}
+            </div>
           )}
 
           <div className="mt-4 flex flex-col-reverse gap-2 sm:flex-row">
             <button
               type="button"
-              onClick={() => void redactar(version + 1, texto || null)}
+              onClick={() => void redactar(version + 1, ultimoArmado.current || null)}
               disabled={redactando || busy}
               className={SECUNDARIO}
             >

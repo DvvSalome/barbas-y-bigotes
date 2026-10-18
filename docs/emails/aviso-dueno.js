@@ -357,9 +357,12 @@ function resenaBaja(x) {
   const marcadas = Array.isArray(x.etiquetas) ? x.etiquetas.filter((t) => typeof t === "string" && t) : [];
   return {
     asunto: "Calificación de " + score + " ★ · " + cliente + (barbero ? " con " + primerNombre(barbero) : ""),
+    // Entre «» solo lo que escribió él: el texto armado no se cita como suyo.
     preheader: marcadas.length
       ? marcadas.join(" · ").slice(0, 90)
-      : x.comentario ? "«" + String(x.comentario).slice(0, 90) + "»" : cliente + " calificó la visita con " + score + " de 5.",
+      : x.comentario && !x.texto_generado
+        ? "«" + String(x.comentario).slice(0, 90) + "»"
+        : cliente + " calificó la visita con " + score + " de 5.",
     sede,
     etiqueta: etiqueta("Calificación baja", "rojo"),
     titulo: cliente + " calificó con " + score + " de 5",

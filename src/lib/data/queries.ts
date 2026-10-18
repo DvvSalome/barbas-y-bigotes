@@ -29,7 +29,7 @@ import { contratoDefinido } from "@/lib/equipo-reglas";
 import { esEmailEnviable } from "@/lib/email";
 import { faltaTablaAvisosDueno } from "@/lib/avisos-dueno";
 import { conteo } from "@/lib/avisos-reglas";
-import { esEtiquetaMala, etiquetaLabel, topEtiquetas } from "@/lib/resena-texto";
+import { esEtiquetaMala, etiquetaLabel, soloRepiteLaNota, topEtiquetas } from "@/lib/resena-texto";
 
 /** Ids de chips (0088) → lo que dice el chip. Antes de la migración la columna no viene: []. */
 function labelsDeEtiquetas(v: unknown): string[] {
@@ -1691,8 +1691,23 @@ export type PostventaResumen = {
   promedio: number | null;
   /** Cantidad de calificaciones de los últimos 30 días. */
   total: number;
-  /** Últimas 3 calificaciones que traen comentario (con los chips que marcó). */
-  ultimas: { id: string; score: number; comentario: string; etiquetas: string[]; barbero: string; sede: string; fecha: string }[];
+  /**
+   * Últimas 3 calificaciones que traen comentario (con los chips que marcó).
+   * `textoGenerado`: el comentario es el texto que le armamos (no se cita como
+   * palabras suyas). `soloNota`: además solo repite la nota ("Excelente
+   * experiencia."), no dice nada que las estrellas no digan.
+   */
+  ultimas: {
+    id: string;
+    score: number;
+    comentario: string;
+    etiquetas: string[];
+    textoGenerado: boolean;
+    soloNota: boolean;
+    barbero: string;
+    sede: string;
+    fecha: string;
+  }[];
   /** Lo que más destacan (chips de 4-5 ★), de más a menos. Vacío sin datos o sin 0088. */
   destacan: { label: string; veces: number }[];
   /** Lo que más falla (chips de 1-3 ★). */
@@ -1727,6 +1742,8 @@ export async function getPostventaResumen(sede?: string): Promise<PostventaResum
     score: r.score as number,
     comentario: (r.comentario as string) ?? "",
     etiquetas: labelsDeEtiquetas(r.etiquetas),
+    textoGenerado: r.texto_generado === true,
+    soloNota: r.texto_generado === true && soloRepiteLaNota(r.score as number, r.comentario as string | null),
     barbero: (r.barberos as { nombre?: string } | null)?.nombre ?? "—",
     sede: (r.sedes as { nombre?: string } | null)?.nombre ?? "—",
     fecha: r.creado_en as string,
@@ -2011,6 +2028,10 @@ export type ParaHacer = {
     comentario: string;
     /** Lo que marcó como "¿Qué falló?" (0088), ya en texto. */
     etiquetas: string[];
+    /** El comentario es el texto que le armamos (como en PostventaResumen.ultimas). */
+    textoGenerado: boolean;
+    /** …y además solo repite la nota: no hay comentario que mostrar. */
+    soloNota: boolean;
     barbero: string;
     sede: SedeId;
     fecha: string;
@@ -2062,6 +2083,8 @@ export async function paraHacer(sede?: SedeId | null): Promise<ParaHacer> {
       score: r.score as number,
       comentario: (r.comentario as string) ?? "",
       etiquetas: labelsDeEtiquetas(r.etiquetas),
+      textoGenerado: r.texto_generado === true,
+      soloNota: r.texto_generado === true && soloRepiteLaNota(r.score as number, r.comentario as string | null),
       barbero: (r.barberos as { nombre?: string } | null)?.nombre ?? "—",
       sede: r.sede_id as SedeId,
       fecha: r.creado_en as string,

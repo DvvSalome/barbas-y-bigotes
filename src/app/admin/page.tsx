@@ -633,10 +633,15 @@ export default async function AdminHoy({
               )}
               {postventa.ultimas.map((c) => (
                 <div key={c.id} className="mt-3 border-t border-line/60 pt-3 text-[12.5px]">
-                  <p className="text-ink/85">“{c.comentario}”</p>
+                  {/* Entre comillas solo lo que escribió él. El texto que le
+                      armamos va sin comillas y marcado; si además solo repite
+                      la nota ("Excelente experiencia."), no se muestra: las
+                      estrellas ya lo dicen. */}
+                  {!c.soloNota && <p className="text-ink/85">{c.textoGenerado ? c.comentario : `“${c.comentario}”`}</p>}
                   {c.etiquetas.length > 0 && <ChipsMarcados etiquetas={c.etiquetas} />}
                   <p className="mt-0.5 text-[12px] text-muted">
                     <Estrellas score={c.score} /> · {c.barbero} · {c.sede} · {fechaCorta(c.fecha)}
+                    {c.textoGenerado ? " · texto armado con lo que marcó" : ""}
                   </p>
                 </div>
               ))}
@@ -785,8 +790,10 @@ export default async function AdminHoy({
                             está en la ficha ("Ver cliente"). */}
                         {r.etiquetas.length > 0
                           ? r.etiquetas.join(" · ")
-                          : r.comentario
-                            ? `“${r.comentario}”`
+                          : r.comentario && !r.soloNota
+                            ? r.textoGenerado
+                              ? r.comentario
+                              : `“${r.comentario}”`
                             : "Sin comentario"}{" "}
                         · {TAG_SEDE[r.sede] ?? r.sede} · {fechaCorta(r.fecha)}
                       </span>
