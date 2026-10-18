@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import { BarberoPinLogin, type Destino } from "@/components/barbero/BarberoPinLogin";
 import { soltarAvisosAlSalir } from "@/components/staff/PerfilMenu";
 import { supabaseBrowser } from "@/lib/supabase/client";
-import { pasosInstalar, sistemaDe, nombreCorto, type Sistema } from "@/lib/app-personal";
+import { notaInstalar, pasosInstalar, sistemaDe, nombreCorto, type Sistema } from "@/lib/app-personal";
 
 /*
   La pantalla de /equipo/<slug>: la app PROPIA de un barbero o de un mostrador.
@@ -24,6 +24,10 @@ import { pasosInstalar, sistemaDe, nombreCorto, type Sistema } from "@/lib/app-p
   al hidratar) vale null y la tarjeta no se pinta, para que en la app instalada
   nunca parpadee.
 */
+
+// Ojo: esta página NO va dentro de [data-staff], así que --ok y --warn no
+// existen acá (text-ok/text-warn salen sin color). Lo de error va en el rojo
+// del sitio (accent), como el error del PIN.
 
 type Entorno = Sistema | "instalada";
 
@@ -104,13 +108,14 @@ function InstalarApp({ sistema, titulo, tipo }: { sistema: Sistema; titulo: stri
 
   if (lista) {
     return (
-      <div role="status" className="rounded-2xl border border-ok/40 bg-ok/10 px-4 py-3 text-left text-[13px] text-ok">
+      <div role="status" className="rounded-2xl border border-line bg-panel px-4 py-3 text-left text-[13px] text-ink">
         Listo: ábrela desde el ícono «{titulo}» y entra con {tipo === "sede" ? "el PIN del local" : "tu PIN"}.
       </div>
     );
   }
 
   const pasos = pasosInstalar(sistema);
+  const nota = notaInstalar(sistema);
   return (
     <section aria-labelledby="instalar-titulo" className="rounded-2xl border border-line bg-panel px-4 py-4 text-left">
       <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-accent">{tipo === "sede" ? "La app del local" : "Tu app"}</p>
@@ -151,6 +156,7 @@ function InstalarApp({ sistema, titulo, tipo }: { sistema: Sistema; titulo: stri
               </li>
             ))}
           </ol>
+          {nota && <p className="mt-3 text-[12px] leading-relaxed text-muted">{nota}</p>}
           <p className="mt-3 border-t border-line/60 pt-3 text-[12px] leading-relaxed text-muted">
             {sistema === "ios"
               ? `La primera vez que la abras, entra con ${tipo === "sede" ? "el PIN del local" : "tu PIN"}: el iPhone guarda la sesión de la app aparte de Safari.`
@@ -172,18 +178,22 @@ export function EntradaPersonal({
   /** "B&B Meyer": lo que dice debajo del ícono. */
   titulo: string;
   entrada: "suya" | "otra" | "pin";
-  /** Quién tiene la sesión abierta (para "Entraste como X"). */
-  sesion: { nombre: string; esSede: boolean };
+  /** Quién tiene la sesión abierta (para "Entraste como X"). `sede`: de cuál, si es un mostrador. */
+  sesion: { nombre: string; esSede: boolean; sede?: string | null };
 }) {
   const router = useRouter();
   const entorno = useEntorno();
   const [cambiado, setCambiado] = useState(false);
   const [saliendo, setSaliendo] = useState(false);
+  const [noSalio, setNoSalio] = useState(false);
   const esSede = destino.tipo === "sede";
   const quien = nombreCorto(destino.nombre);
-  // "Entraste como Kevin" / "como el mostrador"; "la sesión de Kevin" / "del mostrador".
-  const otro = sesion.esSede ? "el mostrador" : sesion.nombre.trim() ? nombreCorto(sesion.nombre) : "otra persona";
-  const deOtro = sesion.esSede ? "del mostrador" : `de ${otro}`;
+  // "Entraste como Kevin" / "como el mostrador de Parque Venezuela"; "la sesión
+  // de Kevin" / "del mostrador de Parque Venezuela". Con dos sedes, "el
+  // mostrador" a secas no dice cuál queda.
+  const mostradorDeSesion = sesion.sede ? `mostrador de ${sesion.sede}` : "mostrador";
+  const otro = sesion.esSede ? `el ${mostradorDeSesion}` : sesion.nombre.trim() ? nombreCorto(sesion.nombre) : "otra persona";
+  const deOtro = sesion.esSede ? `del ${mostradorDeSesion}` : `de ${otro}`;
 
   // Su sesión, dentro de la app instalada: no hay nada que mostrar, a su agenda.
   useEffect(() => {
@@ -192,13 +202,29 @@ export function EntradaPersonal({
 
   async function cambiar() {
     setSaliendo(true);
+    setNoSalio(false);
     // Sus avisos dejan de sonar en este aparato (lo mismo que "Cerrar sesión").
     await soltarAvisosAlSalir();
     // Solo ESTE aparato: X sigue con su sesión en su propio celular, y el
     // mostrador en los demás aparatos del local.
-    await supabaseBrowser().auth.signOut({ scope: "local" }).catch(() => null);
-    setCambiado(true);
+    // signOut NO lanza: si /logout falla (sin señal, Supabase caído) devuelve
+    // { error } y DEJA la sesión puesta. Mostrar el PIN igual dejaría al dueño
+    // creyendo que salió, con su sesión abierta en el aparato. Solo se pasa al
+    // PIN si de verdad ya no queda sesión.
+    let cerrada = false;
+    try {
+      const sb = supabaseBrowser();
+      const { error } = await sb.auth.signOut({ scope: "local" });
+      cerrada = !error && !(await sb.auth.getSession()).data.session;
+    } catch {
+      cerrada = false;
+    }
     setSaliendo(false);
+    if (!cerrada) {
+      setNoSalio(true);
+      return;
+    }
+    setCambiado(true);
     router.refresh();
   }
 
@@ -238,18 +264,26 @@ export function EntradaPersonal({
             type="button"
             onClick={cambiar}
             disabled={saliendo}
-            className="flex min-h-11 w-full items-center justify-center rounded-full bg-[linear-gradient(180deg,var(--cta-1),var(--cta-2))] px-4 text-sm font-semibold uppercase tracking-wide text-on-accent disabled:opacity-50"
+            className="flex min-h-11 w-full items-center justify-center rounded-full bg-[linear-gradient(180deg,var(--cta-1),var(--cta-2))] px-4 py-2 text-center text-sm font-semibold uppercase leading-tight tracking-wide text-on-accent disabled:opacity-50"
           >
-            {saliendo ? "Cerrando la sesión…" : esSede ? "Cambiar al mostrador" : `Cambiar a ${quien}`}
+            {saliendo ? "Cerrando la sesión…" : esSede ? `Cambiar al mostrador de ${destino.nombre}` : `Cambiar a ${quien}`}
           </button>
           <Link
             href="/equipo"
-            className="flex min-h-11 w-full items-center justify-center rounded-full border border-line px-4 text-sm font-semibold uppercase tracking-wide text-ink transition hover:border-accent/50"
+            className="flex min-h-11 w-full items-center justify-center rounded-full border border-line px-4 py-2 text-center text-sm font-semibold uppercase leading-tight tracking-wide text-ink transition hover:border-accent/50"
           >
             Seguir como {otro}
           </Link>
         </div>
-        <p className="mt-3 text-[12px] text-muted">Cambiar cierra la sesión {deOtro} solo en este aparato.</p>
+        {noSalio && (
+          <p role="alert" className="mt-3 rounded-xl border border-accent/40 bg-accent/[0.08] px-3 py-2 text-[12.5px] font-semibold text-accent-soft">
+            No se pudo cerrar la sesión {deOtro}: sigue abierta en este aparato. Revisa la conexión e intenta de nuevo.
+          </p>
+        )}
+        <p className="mt-3 text-[12px] leading-relaxed text-muted">
+          Cambiar cierra la sesión {deOtro} solo en este aparato. Si aquí le llegaban sus avisos, dejan de llegar hasta
+          que vuelva a entrar y los active de nuevo.
+        </p>
       </div>
     );
   } else {

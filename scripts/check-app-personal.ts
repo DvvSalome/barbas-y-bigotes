@@ -32,6 +32,9 @@ import {
   marcaPara,
   sistemaDe,
   pasosInstalar,
+  notaInstalar,
+  tituloEnlace,
+  descripcionEnlace,
   mensajeApp,
   linkWhatsAppTexto,
   SITIO,
@@ -39,9 +42,13 @@ import {
   ICONOS_APP,
 } from "../src/lib/app-personal.ts";
 
-// (1) slugBase da EXACTAMENTE lo que dio la expresión SQL de 0089 contra la base
-// de producción (consulta de solo lectura, 18-oct). Si alguien toca una de las
-// dos reglas y no la otra, esto se rompe.
+// (1) slugBase da EXACTAMENTE lo que dio el cuerpo de public.slug_barbero_base
+// (copiado tal cual de 0089) contra la base de producción, Postgres 17.6
+// (consulta de solo lectura, 18-oct). Si alguien toca una de las dos reglas y no
+// la otra, esto se rompe. Incluye letras que NO estaban en la tabla de
+// translate() de la primera versión (š, ș, ć) y una ñ en NFD (n + U+0303, la
+// que llega al pegar desde un Mac): con la tabla, SQL daba "toma", "tefan" y
+// "nun-ez" y JS "tomas", "stefan" y "nunez".
 const DE_SQL: [string | null, string][] = [
   ["Meyer", "meyer"],
   ["Jhon", "jhon"],
@@ -61,25 +68,37 @@ const DE_SQL: [string | null, string][] = [
   ["Zoë Ünal", "zoe-unal"],
   ["Ana_María", "ana-maria"],
   [null, "barbero"],
+  ["Tomáš", "tomas"],
+  ["Ștefan", "stefan"],
+  ["Ćosić", "cosic"],
+  ["Nuñez", "nunez"],
+  ["José", "jose"],
+  ["Łukasz Øster", "ukasz-ster"],
+  ["Straße", "stra-e"],
+  ["İlker", "ilker"],
+  ["Ångström", "angstrom"],
+  ["xKx", "xkx"],
+  ["mostrador", "barbero-mostrador"],
 ];
 for (const [nombre, esperado] of DE_SQL) {
   assert.equal(slugBase(nombre as string), esperado, `slugBase(${JSON.stringify(nombre)})`);
 }
 assert.ok(slugBase("x".repeat(80)).length <= 40, "40 letras como mucho");
 
-// La tabla de tildes de la migración: mismo largo de los dos lados, y cada letra
-// cae donde la deja slugBase (NFD). Sin esto, una letra agregada en un lado solo
-// partiría los slugs de quien la tenga en el nombre.
+// La migración hace los MISMOS pasos que slugBase: NFD, fuera U+0300–U+036F,
+// minúsculas, guiones. Nada de tabla de letras (translate), que deja afuera
+// las que nadie anotó.
 const sql = readFileSync(new URL("../supabase/migrations/0089_app_barbero.sql", import.meta.url), "utf8");
-const tr = /translate\(coalesce\(p_nombre, ''\),\s*'([^']+)',\s*'([^']+)'\)/.exec(sql);
-assert.ok(tr, "la migración tiene la tabla de translate()");
-const de = [...tr[1]];
-const a = [...tr[2]];
-assert.equal(de.length, a.length, "translate(): mismo largo de los dos lados");
-de.forEach((letra, i) => assert.equal(slugBase(`x${letra}x`), `x${a[i]}x`, `la ${letra} va a ${a[i]} en SQL y en JS`));
 assert.ok(
-  sql.includes("order by (activo is not false) desc, creado_en asc nulls last, id asc"),
-  "el backfill asigna en el mismo orden que asignarSlugs",
+  sql.includes("regexp_replace(lower(regexp_replace(normalize(coalesce(p_nombre, ''), NFD), '[\\u0300-\\u036f]', '', 'g')),"),
+  "SQL: NFD y fuera todas las marcas, igual que slugBase",
+);
+assert.ok(!/translate\(/.test(sql), "sin tabla de translate(): se queda corta");
+const fuenteJs = readFileSync(new URL("../src/lib/app-personal.ts", import.meta.url), "utf8");
+assert.ok(fuenteJs.includes('.normalize("NFD")') && fuenteJs.includes('.replace(/[\\u0300-\\u036f]/g, "")'), "JS: NFD y el mismo rango");
+assert.ok(
+  sql.includes("order by creado_en asc nulls last, id asc") && !/order by \(activo/.test(sql),
+  "el backfill asigna en el mismo orden que asignarSlugs (sin mirar si está activo)",
 );
 assert.ok(sql.includes("grant select (slug) on public.barberos to anon, authenticated"), "anon puede leer el slug (0049 abre por columna)");
 assert.ok(/set search_path = ''/.test(sql), "funciones con search_path vacío");
@@ -91,12 +110,12 @@ assert.equal(slugLibre("kevin", ["kevin", "kevin-2"]), "kevin-3");
 // Los 6 de producción, todos del mismo seed (mismo creado_en): lo de hoy.
 const SEED = "2026-05-25T03:44:54.55225+00:00";
 const hoy = asignarSlugs([
-  { id: "9d3b8b07-0000-0000-0000-000000000000", nombre: "Meyer", activo: true, creadoEn: SEED },
-  { id: "6a3d6f17-0000-0000-0000-000000000000", nombre: "Jhon", activo: true, creadoEn: SEED },
-  { id: "5d295f78-0000-0000-0000-000000000000", nombre: "Junior", activo: true, creadoEn: SEED },
-  { id: "affeca61-0000-0000-0000-000000000000", nombre: "Bryan García", activo: true, creadoEn: SEED },
-  { id: "58e9c8bb-0000-0000-0000-000000000000", nombre: "Kevin Valencia", activo: true, creadoEn: SEED },
-  { id: "cbbe0ee9-0000-0000-0000-000000000000", nombre: "Abel Barbers", activo: true, creadoEn: SEED },
+  { id: "9d3b8b07-0000-0000-0000-000000000000", nombre: "Meyer", creadoEn: SEED },
+  { id: "6a3d6f17-0000-0000-0000-000000000000", nombre: "Jhon", creadoEn: SEED },
+  { id: "5d295f78-0000-0000-0000-000000000000", nombre: "Junior", creadoEn: SEED },
+  { id: "affeca61-0000-0000-0000-000000000000", nombre: "Bryan García", creadoEn: SEED },
+  { id: "58e9c8bb-0000-0000-0000-000000000000", nombre: "Kevin Valencia", creadoEn: SEED },
+  { id: "cbbe0ee9-0000-0000-0000-000000000000", nombre: "Abel Barbers", creadoEn: SEED },
 ]);
 assert.deepEqual(
   [...hoy.values()].sort(),
@@ -106,27 +125,30 @@ assert.deepEqual(
 
 // El guardado manda, aunque el nombre ya no coincida (le cambiaron el nombre).
 const conGuardado = asignarSlugs([
-  { id: "a", nombre: "Kevin Andrés", activo: true, slug: "kevin" },
-  { id: "b", nombre: "Kevin", activo: true, slug: null },
+  { id: "a", nombre: "Kevin Andrés", slug: "kevin" },
+  { id: "b", nombre: "Kevin", slug: null },
 ]);
 assert.equal(conGuardado.get("a"), "kevin", "el slug guardado no se mueve");
 assert.equal(conGuardado.get("b"), "kevin-2", "el nuevo toma el siguiente libre");
 
-// Sin guardados: activos antes que los de baja; después el más antiguo; al empatar, por id.
+// Sin guardados: el más antiguo primero (por microsegundos, como Postgres); al
+// empatar, por id; sin fecha, al final. Y SIN mirar si está activo: con "activos
+// primero", dar de baja al Jhon viejo le pasaba "jhon" al nuevo y "jhon-2" al
+// viejo, y la app instalada de cada uno abría el PIN del otro.
 const orden = asignarSlugs([
-  { id: "z", nombre: "Kevin", activo: false, creadoEn: "2026-01-01T00:00:00+00:00" },
-  { id: "y", nombre: "Kevin", activo: true, creadoEn: "2026-06-01T00:00:00.000002+00:00" },
-  { id: "x", nombre: "Kevin", activo: true, creadoEn: "2026-06-01T00:00:00.000001+00:00" },
-  { id: "w", nombre: "Kevin", activo: null, creadoEn: null },
-  { id: "c", nombre: "Kevin", activo: true, creadoEn: "2026-07-01T00:00:00+00:00" },
-  { id: "b", nombre: "Kevin", activo: true, creadoEn: "2026-07-01T00:00:00+00:00" },
+  { id: "z", nombre: "Kevin", creadoEn: "2026-01-01T00:00:00+00:00" },
+  { id: "y", nombre: "Kevin", creadoEn: "2026-06-01T00:00:00.000002+00:00" },
+  { id: "x", nombre: "Kevin", creadoEn: "2026-06-01T00:00:00.000001+00:00" },
+  { id: "w", nombre: "Kevin", creadoEn: null },
+  { id: "c", nombre: "Kevin", creadoEn: "2026-07-01T00:00:00+00:00" },
+  { id: "b", nombre: "Kevin", creadoEn: "2026-07-01T00:00:00+00:00" },
 ]);
-assert.equal(orden.get("x"), "kevin", "activo más antiguo (por microsegundos, como Postgres)");
-assert.equal(orden.get("y"), "kevin-2");
-assert.equal(orden.get("b"), "kevin-3", "empate de fecha: por id");
-assert.equal(orden.get("c"), "kevin-4");
-assert.equal(orden.get("w"), "kevin-5", "activo null cuenta como activo; sin fecha, al final de los activos");
-assert.equal(orden.get("z"), "kevin-6", "el de baja, al final");
+assert.equal(orden.get("z"), "kevin", "el más antiguo, aunque esté de baja");
+assert.equal(orden.get("x"), "kevin-2", "microsegundos, como Postgres");
+assert.equal(orden.get("y"), "kevin-3");
+assert.equal(orden.get("b"), "kevin-4", "empate de fecha: por id");
+assert.equal(orden.get("c"), "kevin-5");
+assert.equal(orden.get("w"), "kevin-6", "sin fecha, al final (nulls last)");
 assert.ok(microsDe("2026-06-01T00:00:00.000001+00:00") < microsDe("2026-06-01T00:00:00.000002+00:00"));
 assert.ok(microsDe("2026-06-01T00:00:00+00:00") < microsDe("2026-06-01T00:00:00.5+00:00"));
 assert.equal(microsDe(null), Number.POSITIVE_INFINITY);
@@ -209,14 +231,35 @@ assert.equal(sistemaDe(ANDROID, 5), "android");
 assert.equal(sistemaDe(WINDOWS), "otro");
 assert.ok(pasosInstalar("ios").some((p) => p.includes("Agregar a pantalla de inicio")));
 assert.ok(pasosInstalar("ios").some((p) => p.includes("Safari")));
+// iOS 26: el Safari de fábrica (barra «Compacta») esconde Compartir dentro de
+// «···», y «Agregar a pantalla de inicio» a veces queda bajo «Ver más».
+assert.ok(pasosInstalar("ios").some((p) => p.includes("«···»") && p.includes("Compartir")), "iOS 26: Compartir va dentro de ···");
+assert.ok(pasosInstalar("ios").some((p) => p.includes("cuadrito con la flecha")), "y el botón de los iPhone de antes");
+assert.ok(pasosInstalar("ios").some((p) => p.includes("«Ver más»")), "si no sale, Ver más");
 assert.ok(pasosInstalar("android").some((p) => p.includes("Instalar app")));
 assert.equal(pasosInstalar("otro").length, 1);
+// Android con «B&B Equipo» ya instalada: el menú dice «Abrir B&B Equipo».
+assert.ok(notaInstalar("android")?.includes("Abrir B&B Equipo") && notaInstalar("android")?.includes("Desinstalar"));
+assert.equal(notaInstalar("ios"), null);
+assert.equal(notaInstalar("otro"), null);
+
+// La tarjeta que arma WhatsApp con el enlace: de SU app, no de la web de reservas.
+assert.equal(tituloEnlace({ tipo: "barbero", nombre: "Meyer" }), "App de Meyer");
+assert.equal(tituloEnlace({ tipo: "sede", nombre: "Plaza de la Paz" }), "App del mostrador de Plaza de la Paz");
+for (const d of [{ tipo: "barbero" as const, nombre: "Bryan García" }, { tipo: "sede" as const, nombre: "Plaza de la Paz" }]) {
+  const desc = descripcionEnlace(d);
+  assert.ok(desc.includes("PIN") && desc.includes("pantalla de inicio"), "dice qué hacer con el enlace");
+  assert.ok(!/reserv/i.test(desc), "no parece la página de reservas");
+}
+assert.ok(descripcionEnlace({ tipo: "barbero", nombre: "Bryan García" }).includes("Bryan"));
 
 // (8) El mensaje de WhatsApp.
 const enlace = enlaceAbsoluto("/equipo/meyer");
 const txt = mensajeApp({ tipo: "barbero", nombre: "Meyer", enlace });
 assert.ok(txt.includes(enlace), "lleva su enlace");
 assert.ok(txt.includes("Agregar a pantalla de inicio") && txt.includes("Instalar app"), "lleva los pasos de iPhone y Android");
+assert.ok(txt.includes("«···»") && txt.includes("«Ver más»"), "los pasos de iPhone sirven en iOS 26");
+assert.ok(txt.includes("Abrir B&B Equipo"), "y el tropiezo de Android con la app general ya instalada");
 assert.ok(txt.includes("«B&B Meyer»") && txt.includes("PIN"), "dice el ícono que va a ver y que entra con su PIN");
 assert.ok(!/\d{6}/.test(txt), "nunca lleva un PIN");
 const txtSede = mensajeApp({ tipo: "sede", nombre: "Plaza de la Paz", enlace: enlaceAbsoluto(rutaMostrador("plaza-de-la-paz")) });

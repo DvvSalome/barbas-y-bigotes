@@ -10,20 +10,22 @@
 -- columna y no se calcula del nombre cada vez.
 --
 -- Regla (la MISMA que slugBase() en src/lib/app-personal.ts, con su chequeo en
--- scripts/check-app-personal.ts): sin tildes, minúsculas, guiones, 40 letras
--- como mucho; vacío → "barbero"; si empieza por "mostrador" va con "barbero-"
--- delante (/equipo/mostrador-<sede> es de los mostradores). Si choca: -2, -3…
--- El backfill asigna en el mismo orden que el código usa ANTES de esta
--- migración (activos primero, el más antiguo primero, después por id): un
--- enlace mandado antes de aplicarla sigue siendo el mismo después.
+-- scripts/check-app-personal.ts): NFD y fuera TODAS las marcas U+0300–U+036F
+-- (no una tabla de letras: así «Tomáš», «Ștefan» o una ñ pegada en NFD dan lo
+-- mismo que en JS), minúsculas, guiones, 40 letras como mucho; vacío →
+-- "barbero"; si empieza por "mostrador" va con "barbero-" delante
+-- (/equipo/mostrador-<sede> es de los mostradores). Si choca: -2, -3…
+-- El backfill asigna del más antiguo al más nuevo (al empatar, por id), sin
+-- mirar si está activo.
 --
 -- Hoy (18-oct) da: meyer, jhon, junior, bryan-garcia, kevin-valencia, abel-barbers.
 --
--- ORDEN RESPECTO AL DEPLOY: cualquiera. El código vive sin la columna (calcula el
--- mismo slug desde el nombre) y esta migración no rompe el código viejo (el
--- alta vieja no manda slug y el trigger lo pone). Recomendado: aplicarla ANTES
--- de mandar los enlaces por WhatsApp, para que un cambio de nombre posterior no
--- los mueva.
+-- ORDEN RESPECTO AL DEPLOY: aplicarla ANTES. Sin la columna, el código nuevo no
+-- rompe nada pero los barberos NO tienen app propia (su ficha dice "Su enlace
+-- todavía no está listo" y /equipo/<slug> no abre); los mostradores sí, porque
+-- su ruta es el id de la sede. A propósito: un enlace calculado del nombre se
+-- movía con una baja o un cambio de nombre. Esta migración no rompe el código
+-- viejo (el alta vieja no manda slug y el trigger lo pone).
 --
 -- Idempotente. Funciones con search_path = '' y todo calificado con esquema.
 
@@ -39,9 +41,8 @@ as $$
   select case when s.v like 'mostrador%' then 'barbero-' || s.v else s.v end
   from (
     select coalesce(nullif(trim(both '-' from left(trim(both '-' from
-      regexp_replace(lower(translate(coalesce(p_nombre, ''),
-        'áàäâãåÁÀÄÂÃÅéèëêÉÈËÊíìïîÍÌÏÎóòöôõÓÒÖÔÕúùüûÚÙÜÛñÑçÇýÿÝŸ',
-        'aaaaaaaaaaaaeeeeeeeeiiiiiiiioooooooooouuuuuuuunnccyyyy')), '[^a-z0-9]+', '-', 'g')), 40)), ''), 'barbero') as v
+      regexp_replace(lower(regexp_replace(normalize(coalesce(p_nombre, ''), NFD), '[\u0300-\u036f]', '', 'g')),
+        '[^a-z0-9]+', '-', 'g')), 40)), ''), 'barbero') as v
   ) s
 $$;
 
@@ -85,7 +86,8 @@ create trigger barberos_slug_por_defecto
   before insert on public.barberos
   for each row execute function public.barberos_slug_por_defecto();
 
--- Backfill, en el orden de asignarSlugs() (src/lib/app-personal.ts).
+-- Backfill, en el orden de asignarSlugs() (src/lib/app-personal.ts): el más
+-- antiguo se queda con el slug sin sufijo.
 do $$
 declare
   r record;
@@ -93,7 +95,7 @@ begin
   for r in
     select id, nombre from public.barberos
     where slug is null or btrim(slug) = ''
-    order by (activo is not false) desc, creado_en asc nulls last, id asc
+    order by creado_en asc nulls last, id asc
   loop
     update public.barberos set slug = public.slug_barbero_libre(r.nombre, r.id) where id = r.id;
   end loop;

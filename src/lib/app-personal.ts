@@ -25,7 +25,8 @@ const LARGO_MAX = 40;
 
 /**
  * "Bryan García" → "bryan-garcia". MISMA regla que public.slug_barbero_base
- * (migración 0089): sin tildes, minúsculas, guiones, 40 letras como mucho. Un
+ * (migración 0089), paso por paso: NFD, fuera las marcas U+0300–U+036F (todas
+ * las tildes, no una tabla), minúsculas, guiones, 40 letras como mucho. Un
  * nombre que empieza por "mostrador" va con prefijo: esa ruta es de las sedes.
  */
 export function slugBase(nombre: string): string {
@@ -34,7 +35,7 @@ export function slugBase(nombre: string): string {
     sinBordes(
       (nombre ?? "")
         .normalize("NFD")
-        .replace(/[̀-ͯ]/g, "")
+        .replace(/[\u0300-\u036f]/g, "")
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, "-"),
     ).slice(0, LARGO_MAX),
@@ -63,8 +64,6 @@ export function microsDe(iso: string | null | undefined): number {
 export type FilaSlug = {
   id: string;
   nombre: string;
-  /** null = no se sabe: cuenta como activo (igual que `activo is not false` en SQL). */
-  activo: boolean | null;
   creadoEn?: string | null;
   slug?: string | null;
 };
@@ -72,10 +71,9 @@ export type FilaSlug = {
 /**
  * id → slug de TODOS los barberos (activos y de baja). El guardado manda: no
  * cambia aunque le cambien el nombre, porque es el enlace de su app instalada.
- * A los que no tienen (antes de aplicar 0089) se les asigna en el MISMO orden
- * que el backfill de la migración: activos primero, después el más antiguo, y
- * al empatar por id. Así el enlace que se mandó antes de la migración sigue
- * siendo el mismo después.
+ * Con 0089 todos tienen uno; a una fila sin él se le asigna en el MISMO orden
+ * que el backfill de la migración: el más antiguo primero y, al empatar, por id.
+ * Sin mirar si está activo: una baja no le pasa el sufijo de uno a otro.
  */
 export function asignarSlugs(filas: FilaSlug[]): Map<string, string> {
   const out = new Map<string, string>();
@@ -89,12 +87,7 @@ export function asignarSlugs(filas: FilaSlug[]): Map<string, string> {
   }
   const faltan = filas
     .filter((f) => !out.has(f.id))
-    .sort(
-      (a, b) =>
-        Number(b.activo !== false) - Number(a.activo !== false) ||
-        microsDe(a.creadoEn) - microsDe(b.creadoEn) ||
-        (a.id < b.id ? -1 : a.id > b.id ? 1 : 0),
-    );
+    .sort((a, b) => microsDe(a.creadoEn) - microsDe(b.creadoEn) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
   for (const f of faltan) {
     const s = slugLibre(slugBase(f.nombre), tomados);
     out.set(f.id, s);
@@ -163,6 +156,22 @@ export function nombreApp(d: Pick<DuenoApp, "tipo" | "nombre">): string {
   return d.tipo === "sede" ? `Barbas & Bigotes · Mostrador de ${d.nombre}` : `Barbas & Bigotes · ${d.nombre}`;
 }
 
+/** El título de la página (y de la tarjeta de WhatsApp): "App de Meyer". */
+export function tituloEnlace(d: Pick<DuenoApp, "tipo" | "nombre">): string {
+  return d.tipo === "sede" ? `App del mostrador de ${d.nombre}` : `App de ${d.nombre}`;
+}
+
+/**
+ * Lo que dice la tarjeta que arma WhatsApp debajo del enlace. Sin esto hereda
+ * la de la web de clientes ("Reserva tu cita online") y el barbero cree que le
+ * mandaron la página de reservas.
+ */
+export function descripcionEnlace(d: Pick<DuenoApp, "tipo" | "nombre">): string {
+  return d.tipo === "sede"
+    ? `La app del mostrador de ${d.nombre}: ábrela en el celular o la tablet del local, agrégala a la pantalla de inicio y entra con el PIN del local.`
+    : `Tu app de Barbas & Bigotes, ${nombreCorto(d.nombre)}: ábrela, agrégala a la pantalla de inicio y entra con tu PIN.`;
+}
+
 /** Colores e íconos: los MISMOS de public/manifest-staff.json (check-app-personal lo compara). */
 export const COLOR_APP = "#0c0b0a";
 export const ICONOS_APP = [
@@ -228,13 +237,18 @@ export function sistemaDe(ua: string, toques = 0): Sistema {
   return "otro";
 }
 
-/** Los pasos, en palabras del celular de cada uno. */
+/**
+ * Los pasos, en palabras del celular de cada uno. iPhone: desde iOS 26 el
+ * Safari de fábrica (barra «Compacta») ya no deja Compartir a la vista, va
+ * dentro de «···»; en los de antes es el cuadrito con la flecha. Y «Agregar a
+ * pantalla de inicio» a veces queda bajo «Ver más».
+ */
 export function pasosInstalar(sistema: Sistema): string[] {
   if (sistema === "ios")
     return [
       "Abre este enlace en Safari (si se abrió dentro de otra app, búscale «Abrir en Safari»).",
-      "Toca Compartir: el cuadrito con la flecha hacia arriba.",
-      "Elige «Agregar a pantalla de inicio» y toca «Agregar».",
+      "Toca «···» junto a la dirección y luego «Compartir». En iPhones más viejos, toca directo Compartir: el cuadrito con la flecha hacia arriba.",
+      "Elige «Agregar a pantalla de inicio» (si no sale, toca «Ver más»), deja encendido «Abrir como app web» y toca «Agregar».",
     ];
   if (sistema === "android")
     return [
@@ -243,6 +257,18 @@ export function pasosInstalar(sistema: Sistema): string[] {
       "Elige «Instalar app» o «Agregar a pantalla principal».",
     ];
   return ["Abre este enlace en tu celular: desde ahí se agrega a la pantalla de inicio."];
+}
+
+/**
+ * Android: Chrome decide si "ya está instalada" por el alcance (scope), no por
+ * el id. Quien ya tiene «B&B Equipo» (scope "/") ve «Abrir B&B Equipo» en el
+ * menú en vez de «Instalar app», y no le sale el botón. Lo que lo destraba es
+ * quitar esa app general (la suya la reemplaza). Sin medir en un aparato: va
+ * como nota, no como paso.
+ */
+export function notaInstalar(sistema: Sistema): string | null {
+  if (sistema !== "android") return null;
+  return "¿En el menú sale «Abrir B&B Equipo» y no «Instalar app»? Ya tienes la app general del equipo: desinstálala (mantén presionado su ícono → Desinstalar) y vuelve a abrir este enlace.";
 }
 
 // ---------- El mensaje que le manda el dueño ----------
@@ -259,8 +285,8 @@ export function mensajeApp(d: Pick<DuenoApp, "tipo" | "nombre"> & { enlace: stri
     d.enlace,
     "",
     d.tipo === "sede" ? "Para dejarla en el celular o la tablet del local:" : "Para tenerla en tu celular:",
-    "• iPhone: ábrela en Safari → Compartir → «Agregar a pantalla de inicio».",
-    "• Android: ábrela en Chrome → menú ⋮ → «Instalar app» (o «Agregar a pantalla principal»).",
+    "• iPhone: ábrela en Safari → «···» → «Compartir» → «Agregar a pantalla de inicio» (si no sale, «Ver más»). En iPhones más viejos, Compartir es el cuadrito con la flecha.",
+    "• Android: ábrela en Chrome → menú ⋮ → «Instalar app» (o «Agregar a pantalla principal»). Si sale «Abrir B&B Equipo», desinstala primero «B&B Equipo» y vuelve a abrir el enlace.",
     "",
     d.tipo === "sede"
       ? `Después ábrela desde el ícono «${titulo}» y entra con el PIN del local.`

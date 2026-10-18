@@ -2124,31 +2124,20 @@ function faltaColumnaSlug(error: { code?: string; message?: string } | null): bo
 }
 
 /**
- * id → slug de TODOS los barberos (activos y de baja). Antes de aplicar 0089 no
- * hay columna: se calcula igual que el backfill de la migración, así el enlace
- * que se mande hoy es el mismo después de aplicarla. Si la lectura falla por
- * otra cosa, vacío: sin enlaces, pero sin inventar uno que después no abre.
+ * id → slug de TODOS los barberos (activos y de baja), el GUARDADO (0089).
+ * Antes de aplicar 0089 no hay columna y sale vacío: sin enlaces de barbero.
+ * No se calculan del nombre a propósito: calculados, una baja o un cambio de
+ * nombre le pasaban el enlace (y la app ya instalada) de un barbero a otro. Los
+ * mostradores no dependen de esto (su ruta es el id de la sede).
  */
 async function slugsDeBarberos(): Promise<Map<string, string>> {
-  const sb = supabaseServer();
-  type Fila = { id: string; nombre: string; activo: boolean | null; creado_en: string | null; slug?: string | null };
-  const con = await sb.from("barberos").select("id,nombre,activo,creado_en,slug");
-  let filas = (con.data ?? []) as Fila[];
-  if (con.error) {
-    if (!faltaColumnaSlug(con.error)) {
-      console.error("slugsDeBarberos:", con.error.message);
-      return new Map();
-    }
-    const sin = await sb.from("barberos").select("id,nombre,activo,creado_en");
-    if (sin.error) {
-      console.error("slugsDeBarberos (sin columna):", sin.error.message);
-      return new Map();
-    }
-    filas = (sin.data ?? []) as Fila[];
+  type Fila = { id: string; nombre: string; creado_en: string | null; slug: string | null };
+  const { data, error } = await supabaseServer().from("barberos").select("id,nombre,creado_en,slug");
+  if (error) {
+    if (!faltaColumnaSlug(error)) console.error("slugsDeBarberos:", error.message);
+    return new Map();
   }
-  return asignarSlugs(
-    filas.map((f) => ({ id: f.id, nombre: f.nombre, activo: f.activo, creadoEn: f.creado_en, slug: f.slug ?? null })),
-  );
+  return asignarSlugs(((data ?? []) as Fila[]).map((f) => ({ id: f.id, nombre: f.nombre, creadoEn: f.creado_en, slug: f.slug })));
 }
 
 /** De quién es /equipo/<segmento>, con lo que muestra su pantalla de entrada. */
@@ -2194,12 +2183,10 @@ export const getDestinoApp = cache(async (segmento: string): Promise<DestinoApp 
 export async function getRutaApp(staff: Pick<StaffContext, "rol" | "barberoId" | "sedeId">): Promise<string | null> {
   if (staff.rol === "sede" && staff.sedeId) return rutaMostrador(staff.sedeId);
   if (staff.rol !== "barbero" || !staff.barberoId) return null;
-  // Con 0089: una sola fila. Sin la columna (o sin valor): el cálculo de siempre.
+  // Una sola fila. Sin la columna (antes de 0089): null, la app general del equipo.
   const { data, error } = await supabaseServer().from("barberos").select("slug").eq("id", staff.barberoId).maybeSingle();
   const guardado = !error ? ((data as { slug?: string | null } | null)?.slug ?? null) : null;
-  if (guardado) return rutaBarbero(guardado);
-  const s = (await slugsDeBarberos()).get(staff.barberoId);
-  return s ? rutaBarbero(s) : null;
+  return guardado ? rutaBarbero(guardado) : null;
 }
 
 // ---------- Tarjeta de cortes (fidelización) ----------
@@ -3465,7 +3452,7 @@ export type FichaBarbero = Barbero & {
   aparatos: number | null;
   /** ¿Salió una prueba al correo de avisos que tiene HOY? (0070) */
   correoProbado: boolean | null;
-  /** Su app propia: /equipo/<slug> (0089). null = no se pudo saber. */
+  /** Su app propia: /equipo/<slug> (0089). null = todavía sin enlace (falta 0089) o no se pudo leer. */
   slug: string | null;
 };
 

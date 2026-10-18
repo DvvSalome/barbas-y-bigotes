@@ -23,7 +23,7 @@ export function AppDelCelular({
   tipo: "barbero" | "sede";
   /** El barbero, o la sede del mostrador. */
   nombre: string;
-  /** /equipo/<slug>; null = no se pudo saber su enlace. */
+  /** /equipo/<slug>; null = todavía no tiene enlace fijo (antes de 0089) o no se pudo leer. */
   ruta: string | null;
   /** Dentro de una tarjeta angosta (el mostrador): sin el párrafo de explicación. */
   compacto?: boolean;
@@ -31,7 +31,9 @@ export function AppDelCelular({
   const [copia, setCopia] = useState<"ok" | "error" | null>(null);
 
   if (!ruta) {
-    return <p className="text-[12.5px] text-muted">No se pudo armar el enlace ahora. Recarga la página en un momento.</p>;
+    // Sin enlace FIJO no se ofrece ninguno: uno calculado del nombre podía
+    // pasarle a otro la app ya instalada.
+    return <p className="text-[12.5px] text-muted">Su enlace todavía no está listo. Aparece aquí apenas quede activo.</p>;
   }
 
   const enlace = enlaceAbsoluto(ruta);

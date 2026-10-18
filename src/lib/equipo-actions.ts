@@ -203,7 +203,7 @@ export async function crearBarbero(input: NuevoBarberoEntrada & { otraPersona?: 
 
   // El slug de SU app (/equipo/<slug>, 0089): queda fijo desde el alta, aunque
   // después le cambien el nombre. Antes de aplicar 0089 no hay columna: se crea
-  // sin él y el enlace sale del nombre (app-personal.ts, la misma regla).
+  // sin él (todavía sin app propia) y el backfill de 0089 se lo pone.
   const { data: conSlug, error: slugErr } = await admin.from("barberos").select("slug");
   const slug = slugErr
     ? null

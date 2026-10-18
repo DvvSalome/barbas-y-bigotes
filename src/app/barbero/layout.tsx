@@ -49,7 +49,9 @@ export default async function BarberoLayout({
   return (
     <div data-staff data-theme={tema} className="min-h-dvh">
       <RecordarEquipo ruta={ruta} />
-      <header className="sticky top-0 z-30 border-b border-line bg-bg/70 backdrop-blur-md">
+      {/* pt safe-area: en la app instalada del iPhone (status bar translúcida) la
+          cabecera queda debajo de la hora y la isla, no encima. */}
+      <header className="sticky top-0 z-30 border-b border-line bg-bg/70 pt-[env(safe-area-inset-top)] backdrop-blur-md">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-3.5">
           <Link href="/" aria-label="Barbas & Bigotes">
             <Image src="/brand/logo-lockup.png" alt="Barbas & Bigotes" width={1024} height={348} className="logo-staff h-10 w-auto" />

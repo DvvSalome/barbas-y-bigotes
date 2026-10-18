@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
-import { getDestinoApp, getStaffContext } from "@/lib/data/queries";
-import { entradaPara, tituloApp } from "@/lib/app-personal";
+import { getDestinoApp, getSedes, getStaffContext } from "@/lib/data/queries";
+import { descripcionEnlace, entradaPara, tituloApp, tituloEnlace } from "@/lib/app-personal";
 import { metaAppPersonal } from "@/lib/app-equipo";
 import { EntradaPersonal } from "@/components/staff/AppPersonal";
 import { OlvidarRuta } from "@/components/staff/AppEquipo";
@@ -30,9 +30,26 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const d = await getDestinoApp(slug);
   if (!d || !d.activo) return { title: "Enlace del equipo", robots: ROBOTS };
+  const titulo = tituloEnlace(d);
+  const descripcion = descripcionEnlace(d);
+  // La tarjeta que arma WhatsApp con el enlace: sin esto hereda la de la web de
+  // clientes ("Reserva tu cita online") y parece la página de reservas. El
+  // ícono es el mismo que le va a quedar en la pantalla de inicio.
+  const icono = { url: "/brand/icon-512x512.png", width: 512, height: 512, alt: tituloApp(d) };
   return {
     ...metaAppPersonal(d),
-    title: d.tipo === "sede" ? `Mostrador de ${d.nombre}` : `App de ${d.nombre}`,
+    title: titulo,
+    description: descripcion,
+    openGraph: {
+      type: "website",
+      locale: "es_CO",
+      siteName: "Barbas & Bigotes Barbershop",
+      url: d.ruta,
+      title: `${titulo} · Barbas & Bigotes`,
+      description: descripcion,
+      images: [icono],
+    },
+    twitter: { card: "summary", title: `${titulo} · Barbas & Bigotes`, description: descripcion, images: [icono.url] },
     robots: ROBOTS,
   };
 }
@@ -67,13 +84,19 @@ export default async function AppPersonal({ params }: Props) {
   }
 
   const staff = await getStaffContext();
+  // Con dos sedes, "Entraste como el mostrador" no dice de cuál.
+  const sedeDeLaSesion =
+    staff.rol === "sede" && staff.sedeId ? ((await getSedes()).find((s) => s.id === staff.sedeId)?.nombre ?? null) : null;
   return (
-    <main className="flex min-h-dvh items-start justify-center px-4 py-8 sm:items-center sm:py-10">
+    // En la app instalada del iPhone (status bar translúcida + viewport-fit
+    // cover) la página arranca DEBAJO de la hora y la isla: el margen de arriba
+    // suma el safe-area, o la foto del PIN queda tapada.
+    <main className="flex min-h-dvh items-start justify-center px-4 pt-[calc(env(safe-area-inset-top)+2rem)] pb-8 sm:items-center sm:pt-[calc(env(safe-area-inset-top)+2.5rem)] sm:pb-10">
       <EntradaPersonal
         destino={{ tipo: d.tipo, id: d.id, nombre: d.nombre, fotoUrl: d.fotoUrl }}
         titulo={tituloApp(d)}
         entrada={entradaPara(staff, d)}
-        sesion={{ nombre: staff.nombre, esSede: staff.rol === "sede" }}
+        sesion={{ nombre: staff.nombre, esSede: staff.rol === "sede", sede: sedeDeLaSesion }}
       />
     </main>
   );
