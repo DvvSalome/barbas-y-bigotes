@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { type SupabaseClient } from "@supabase/supabase-js";
 import { supabaseServer, supabaseServerAuth, supabaseAdmin } from "@/lib/supabase/server";
 import { calendarConfigurado } from "@/lib/google-calendar";
@@ -29,6 +30,13 @@ import { contratoDefinido } from "@/lib/equipo-reglas";
 import { esEmailEnviable } from "@/lib/email";
 import { faltaTablaAvisosDueno } from "@/lib/avisos-dueno";
 import { conteo } from "@/lib/avisos-reglas";
+import {
+  asignarSlugs,
+  leerRuta,
+  rutaBarbero,
+  rutaMostrador,
+  type DuenoApp,
+} from "@/lib/app-personal";
 
 export async function getSedes(): Promise<Sede[]> {
   const sb = supabaseServer();
@@ -2106,6 +2114,94 @@ export async function getStaffContext(): Promise<StaffContext> {
   };
 }
 
+// ---------- La app propia de cada barbero (/equipo/<slug>, 0089) ----------
+// Reglas en src/lib/app-personal.ts. Todo lo de acá es público (nombre, foto, si
+// trabaja, su slug): se lee con la anon key, como el catálogo de la web.
+
+/** ¿El error es "esa columna todavía no existe"? (antes de aplicar 0089). */
+function faltaColumnaSlug(error: { code?: string; message?: string } | null): boolean {
+  return !!error && (error.code === "42703" || error.code === "PGRST204" || /\bslug\b/i.test(error.message ?? ""));
+}
+
+/**
+ * id → slug de TODOS los barberos (activos y de baja). Antes de aplicar 0089 no
+ * hay columna: se calcula igual que el backfill de la migración, así el enlace
+ * que se mande hoy es el mismo después de aplicarla. Si la lectura falla por
+ * otra cosa, vacío: sin enlaces, pero sin inventar uno que después no abre.
+ */
+async function slugsDeBarberos(): Promise<Map<string, string>> {
+  const sb = supabaseServer();
+  type Fila = { id: string; nombre: string; activo: boolean | null; creado_en: string | null; slug?: string | null };
+  const con = await sb.from("barberos").select("id,nombre,activo,creado_en,slug");
+  let filas = (con.data ?? []) as Fila[];
+  if (con.error) {
+    if (!faltaColumnaSlug(con.error)) {
+      console.error("slugsDeBarberos:", con.error.message);
+      return new Map();
+    }
+    const sin = await sb.from("barberos").select("id,nombre,activo,creado_en");
+    if (sin.error) {
+      console.error("slugsDeBarberos (sin columna):", sin.error.message);
+      return new Map();
+    }
+    filas = (sin.data ?? []) as Fila[];
+  }
+  return asignarSlugs(
+    filas.map((f) => ({ id: f.id, nombre: f.nombre, activo: f.activo, creadoEn: f.creado_en, slug: f.slug ?? null })),
+  );
+}
+
+/** De quién es /equipo/<segmento>, con lo que muestra su pantalla de entrada. */
+export type DestinoApp = DuenoApp & { fotoUrl: string | null; activo: boolean; ruta: string };
+
+/**
+ * El dueño de la app de /equipo/<segmento>: un barbero (por su slug) o el
+ * mostrador de una sede (mostrador-<sede>). null = el enlace no es de nadie.
+ * Con cache(): la página y su generateMetadata lo piden en el mismo render.
+ */
+export const getDestinoApp = cache(async (segmento: string): Promise<DestinoApp | null> => {
+  const r = leerRuta(segmento);
+  if (!r) return null;
+  const sb = supabaseServer();
+  if (r.tipo === "sede") {
+    let res = await sb.from("sedes").select("id,nombre,activa").eq("id", r.sedeId).maybeSingle();
+    if (res.error) res = await sb.from("sedes").select("id,nombre").eq("id", r.sedeId).maybeSingle();
+    const s = res.data as { id: string; nombre: string; activa?: boolean | null } | null;
+    if (!s) return null;
+    return { tipo: "sede", id: s.id, nombre: s.nombre, fotoUrl: null, activo: s.activa !== false, ruta: rutaMostrador(s.id) };
+  }
+  const slugs = await slugsDeBarberos();
+  const id = [...slugs].find(([, s]) => s === r.slug)?.[0];
+  if (!id) return null;
+  const { data } = await sb.from("barberos").select("id,nombre,foto_url,activo").eq("id", id).maybeSingle();
+  const b = data as { id: string; nombre: string; foto_url: string | null; activo: boolean | null } | null;
+  if (!b) return null;
+  return {
+    tipo: "barbero",
+    id: b.id,
+    nombre: b.nombre,
+    fotoUrl: b.foto_url ?? null,
+    activo: b.activo !== false,
+    ruta: rutaBarbero(r.slug),
+  };
+});
+
+/**
+ * La ruta de la app propia de quien tiene la sesión: la del barbero, la del
+ * mostrador de su sede, o null (el dueño usa la app general del equipo). La usa
+ * el layout de /barbero para recordarla en el aparato y para el manifiesto.
+ */
+export async function getRutaApp(staff: Pick<StaffContext, "rol" | "barberoId" | "sedeId">): Promise<string | null> {
+  if (staff.rol === "sede" && staff.sedeId) return rutaMostrador(staff.sedeId);
+  if (staff.rol !== "barbero" || !staff.barberoId) return null;
+  // Con 0089: una sola fila. Sin la columna (o sin valor): el cálculo de siempre.
+  const { data, error } = await supabaseServer().from("barberos").select("slug").eq("id", staff.barberoId).maybeSingle();
+  const guardado = !error ? ((data as { slug?: string | null } | null)?.slug ?? null) : null;
+  if (guardado) return rutaBarbero(guardado);
+  const s = (await slugsDeBarberos()).get(staff.barberoId);
+  return s ? rutaBarbero(s) : null;
+}
+
 // ---------- Tarjeta de cortes (fidelización) ----------
 // El conteo de sellos se DERIVA de las ventas (no hay tabla nueva). "Corte" = un
 // servicio de categoría cortes/combos menos los cerquillos. Estas lecturas tocan
@@ -3369,6 +3465,8 @@ export type FichaBarbero = Barbero & {
   aparatos: number | null;
   /** ¿Salió una prueba al correo de avisos que tiene HOY? (0070) */
   correoProbado: boolean | null;
+  /** Su app propia: /equipo/<slug> (0089). null = no se pudo saber. */
+  slug: string | null;
 };
 
 /**
@@ -3379,7 +3477,7 @@ export type FichaBarbero = Barbero & {
 export async function getFichasEquipo(): Promise<FichaBarbero[]> {
   if (!(await soyAdmin())) return [];
   const admin = supabaseAdmin();
-  const [barbs, perfiles, subs, contactos, pruebas] = await Promise.all([
+  const [barbs, perfiles, subs, contactos, pruebas, slugs] = await Promise.all([
     admin
       .from("barberos")
       .select(
@@ -3393,6 +3491,9 @@ export async function getFichasEquipo(): Promise<FichaBarbero[]> {
     admin.from("barbero_contacto").select("barbero_id,email"),
     // La prueba "salió" cuando n8n la tomó de la cola (tomado_en).
     admin.from("barbero_correo_prueba").select("barbero_id,email").not("tomado_en", "is", null),
+    // Aparte y con su propio "antes de 0089": si fuera en el select de arriba,
+    // la columna que todavía no existe tumbaría la pantalla entera.
+    slugsDeBarberos(),
   ]);
   if (barbs.error) {
     console.error("getFichasEquipo:", barbs.error.message);
@@ -3463,6 +3564,7 @@ export async function getFichasEquipo(): Promise<FichaBarbero[]> {
       ultimoIngreso,
       aparatos: subs.error ? null : (aparatos.get(base.id) ?? 0),
       correoProbado: pruebas.error || !correo ? null : probados.has(`${base.id}|${correo.toLowerCase()}`),
+      slug: slugs.get(base.id) ?? null,
     };
   });
 }

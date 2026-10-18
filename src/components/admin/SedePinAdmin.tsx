@@ -4,6 +4,8 @@ import { botonClases } from "@/components/ui/Boton";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { setearPinSede } from "@/lib/barbero-auth";
+import { rutaMostrador } from "@/lib/app-personal";
+import { AppDelCelular } from "@/components/admin/AppDelCelular";
 import type { Sede } from "@/lib/data/types";
 
 // PIN del MOSTRADOR de cada sede (migración 0044). Es el que usa el aparato
@@ -122,6 +124,14 @@ export function SedePinAdmin({ sedes, estado }: { sedes: Sede[]; estado: Estado 
             {msg?.id === s.id && (
               <div className={`mt-2 text-xs ${msg.ok ? "text-ok" : "text-warn"}`}>{msg.text}</div>
             )}
+
+            {/* La app del mostrador, con su enlace propio: se deja instalada en
+                la tablet o el celular del local y abre directo en este PIN. */}
+            <div className="mt-4 border-t border-line/60 pt-3">
+              <p className="mb-2 text-[12px] font-bold uppercase tracking-[0.12em] text-muted">Su app en el celular</p>
+              {!e?.tienePin && <p className="mb-2 text-[12px] text-warn">Ponle el PIN primero: sin él la app no abre.</p>}
+              <AppDelCelular tipo="sede" nombre={s.nombre} ruta={rutaMostrador(s.id)} compacto />
+            </div>
           </div>
         );
       })}

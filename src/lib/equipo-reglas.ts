@@ -245,7 +245,7 @@ export function checklistBarbero(d: DatosChecklist, fecha: (iso: string) => stri
       clave: "acceso",
       estado: "ok",
       titulo: "Acceso a la app creado",
-      detalle: "Entra en barbasybigotes.com/login tocando su nombre y poniendo su PIN.",
+      detalle: "Entra con su PIN desde su app (aquí abajo, «Su app en el celular») o en barbasybigotes.com/login tocando su nombre.",
       corto: "acceso",
       bloquea: false,
     });
@@ -333,7 +333,7 @@ export function checklistBarbero(d: DatosChecklist, fecha: (iso: string) => stri
             clave: "ingreso",
             estado: "nota",
             titulo: "Nunca ha entrado",
-            detalle: "Esto lo hace él: dile que abra barbasybigotes.com/login, toque su nombre y ponga su PIN.",
+            detalle: "Esto lo hace él: mándale su app (aquí abajo, «Su app en el celular»), que la agregue a la pantalla de inicio y entre con su PIN.",
             corto: "nunca ha entrado",
             bloquea: false,
           },

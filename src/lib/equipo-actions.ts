@@ -24,6 +24,7 @@ import {
   type NuevoBarberoEntrada,
   type CampoAlta,
 } from "@/lib/equipo-reglas";
+import { slugBase, slugLibre } from "@/lib/app-personal";
 import { quitarAccesoAgenda } from "@/lib/calendar-sync";
 import { bogotaYmd, MON } from "@/lib/slots";
 import { esEmailEnviable } from "@/lib/email";
@@ -200,12 +201,29 @@ export async function crearBarbero(input: NuevoBarberoEntrada & { otraPersona?: 
   // Al final de su sede en la web (después se puede mover desde su ficha).
   const orden = Math.max(0, ...lista.filter((b) => b.sede_id === n.sedeId).map((b) => b.orden ?? 0)) + 1;
 
+  // El slug de SU app (/equipo/<slug>, 0089): queda fijo desde el alta, aunque
+  // después le cambien el nombre. Antes de aplicar 0089 no hay columna: se crea
+  // sin él y el enlace sale del nombre (app-personal.ts, la misma regla).
+  const { data: conSlug, error: slugErr } = await admin.from("barberos").select("slug");
+  const slug = slugErr
+    ? null
+    : slugLibre(
+        slugBase(n.nombre),
+        ((conSlug ?? []) as { slug: string | null }[]).map((x) => x.slug ?? "").filter(Boolean),
+      );
+
   // 1) La ficha, APAGADA: no sale en la web hasta el último paso.
-  const { data: fila, error: insErr } = await admin
+  const ficha: Record<string, unknown> = { nombre: n.nombre, sede_id: n.sedeId, activo: false, destacado: false, orden, ...n.contrato };
+  let { data: fila, error: insErr } = await admin
     .from("barberos")
-    .insert({ nombre: n.nombre, sede_id: n.sedeId, activo: false, destacado: false, orden, ...n.contrato })
+    .insert(slug ? { ...ficha, slug } : ficha)
     .select("id")
     .single();
+  // 23505 = otra alta se quedó con ese slug en el mismo instante: sin slug, el
+  // trigger de 0089 le pone el siguiente libre.
+  if (insErr?.code === "23505" && slug) {
+    ({ data: fila, error: insErr } = await admin.from("barberos").insert(ficha).select("id").single());
+  }
   if (insErr || !fila) return { ok: false, error: errorPublico("crearBarbero ficha", insErr, "No se pudo crear la ficha. Intenta de nuevo.") };
   const barberoId = (fila as { id: string }).id;
 
@@ -265,7 +283,7 @@ export async function crearBarbero(input: NuevoBarberoEntrada & { otraPersona?: 
   return {
     ok: true,
     id: barberoId,
-    aviso: `${primerNombre(n.nombre)} quedó creado y ya sale en la web. Dale su PIN en persona: entra en barbasybigotes.com/login tocando su nombre.`,
+    aviso: `${primerNombre(n.nombre)} quedó creado y ya sale en la web. Dale su PIN en persona y mándale su app desde su ficha («Su app en el celular»).`,
   };
 }
 

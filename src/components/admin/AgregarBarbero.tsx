@@ -375,7 +375,7 @@ function HojaAlta({ sedes, onCerrar, onAbrirFicha }: { sedes: Sede[]; onCerrar: 
           <p className="font-semibold text-ink">Qué pasa al crearlo</p>
           <ul className="mt-1.5 grid gap-1">
             <li>· Sale en la web y en la reserva apenas termine de crearse, al final de su sede.</li>
-            <li>· Se le crea su acceso a la app. No le llega ningún correo: entra en barbasybigotes.com/login tocando su nombre y poniendo el PIN.</li>
+            <li>· Se le crea su acceso y su propia app, con su nombre. No le llega ningún correo: desde su ficha le mandas el enlace por WhatsApp y entra con el PIN.</li>
             <li>· Si algo falla a mitad, no se crea nada y te decimos qué pasó.</li>
           </ul>
         </div>

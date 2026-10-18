@@ -51,8 +51,8 @@ export function EquipoLocal({
           onClick={() => setAbierta("pin")}
           icono={<PinIcon />}
           tinte="local"
-          titulo="PIN del mostrador"
-          subtitulo="Uno por sede, para el celular del local"
+          titulo="PIN y app del mostrador"
+          subtitulo="Uno por sede, y el enlace de la app del local"
           badge={sinPin || undefined}
           valor={sinPin ? undefined : "listo"}
         />
@@ -87,9 +87,11 @@ export function EquipoLocal({
       </Grupo>
 
       {abierta === "pin" && (
-        <Hoja titulo="PIN del mostrador" onCerrar={cerrar} ancho="max-w-lg">
+        <Hoja titulo="PIN y app del mostrador" onCerrar={cerrar} ancho="max-w-lg">
           <p className="mb-3 text-[13px] text-muted">
-            Es el que usa el celular del local, uno por sede. El PIN personal de cada barbero se pone en su ficha.
+            Es el que usa el celular del local, uno por sede. Debajo de cada sede está el enlace de su app: ábrelo en la
+            tablet o el celular del local, agrégalo a la pantalla de inicio y abre directo en este PIN. El PIN y la app de
+            cada barbero están en su ficha.
           </p>
           <SedePinAdmin sedes={sedes} estado={estadoSedes} />
         </Hoja>

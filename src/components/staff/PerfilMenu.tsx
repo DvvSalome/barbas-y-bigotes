@@ -23,7 +23,7 @@ import { LogoutIcon } from "@/components/icons";
  * los de la sede. Solo la fila de este perfil: los demás que comparten el
  * aparato siguen recibiendo. Con techo de 2 s: salir nunca se traba por esto.
  */
-async function soltarAvisosAlSalir(): Promise<void> {
+export async function soltarAvisosAlSalir(): Promise<void> {
   try {
     if (!("serviceWorker" in navigator)) return;
     const tarea = (async () => {
