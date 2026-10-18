@@ -128,7 +128,7 @@ export function armarPuesta(d: DatosPuesta): PendientePuesta[] {
       tono: "falta",
       titulo: `El mostrador de ${s.nombre} no recibe avisos`,
       detalle:
-        "Ni las reservas por la web ni «la caja sigue abierta» suenan en el local. En la tableta o el celular del local: entra al mostrador con el PIN de la sede y, en Turnos, toca «Activar avisos» (si dice que están bloqueados, ahí mismo explica cómo desbloquearlos). El PIN no se puede ver: si nadie lo recuerda, ponle uno nuevo en Equipo → El local → PIN del mostrador.",
+        "Ni las reservas por la web ni «la caja sigue abierta» suenan en el local. En la tableta o el celular del local: entra al mostrador con el PIN de la sede y, en Turnos, toca «Activar avisos» (si dice que están bloqueados, ahí mismo explica cómo desbloquearlos). El PIN no se puede ver: si nadie lo recuerda, ponle uno nuevo en Equipo → El local → PIN y app del mostrador.",
       href: "/admin/equipo",
       boton: "Ir a Equipo",
     });

@@ -30,6 +30,8 @@ import { FotoBarbero } from "@/components/admin/FotoBarbero";
 import { PasarCitas } from "@/components/admin/PasarCitas";
 import { BajaBarbero } from "@/components/admin/BajaBarbero";
 import { AgregarBarbero } from "@/components/admin/AgregarBarbero";
+import { AppDelCelular } from "@/components/admin/AppDelCelular";
+import { rutaBarbero } from "@/lib/app-personal";
 import { CaraBarbero } from "@/components/staff/Elegir";
 import { CheckIcon, AlertIcon } from "@/components/icons";
 import type { Sede } from "@/lib/data/types";
@@ -259,6 +261,8 @@ const BLOQUE: Partial<Record<PuntoChecklist["clave"], string>> = {
   contrato: "ficha-contrato",
   correo: "ficha-correo",
   agenda: "ficha-agenda",
+  // "Nunca ha entrado": lo que lo arregla es mandarle su app.
+  ingreso: "ficha-app",
 };
 
 function HojaBarbero({
@@ -407,7 +411,7 @@ function HojaBarbero({
                     onClick={() => ir(p.clave === "agenda" ? "ficha-correo" : (BLOQUE[p.clave] as string))}
                     className="mt-1 inline-flex min-h-10 items-center text-[12.5px] font-semibold text-ink/85 underline decoration-line underline-offset-4 hover:text-ink"
                   >
-                    {p.clave === "agenda" ? "Poner su correo" : "Arreglarlo aquí abajo"}
+                    {p.clave === "agenda" ? "Poner su correo" : p.clave === "ingreso" ? "Mandarle su app" : "Arreglarlo aquí abajo"}
                   </button>
                 )}
               </span>
@@ -586,6 +590,15 @@ function HojaBarbero({
         {editandoPin && pin.length === 6 && !esPinValido(pin) && <p className="mt-2 text-[12px] text-warn">{ERROR_PIN}</p>}
         <Mensaje msg={msg} bloque="pin" />
         <p className="mt-2 text-[12px] text-muted">El PIN no se puede ver, solo cambiar. Díselo en persona.</p>
+      </Bloque>
+
+      <Bloque id="ficha-app" titulo="Su app en el celular">
+        {(b.acceso === false || !estado?.tienePin) && (
+          <p className="mb-2.5 rounded-xl border border-warn/40 bg-warn/[0.08] px-3 py-2 text-[12.5px] font-semibold text-warn">
+            Todavía no le abre: {b.acceso === false ? "falta crear su acceso (arriba)" : "falta ponerle su PIN (aquí arriba)"}.
+          </p>
+        )}
+        <AppDelCelular tipo="barbero" nombre={b.nombre} ruta={b.slug ? rutaBarbero(b.slug) : null} />
       </Bloque>
 
       <Bloque id="ficha-correo" titulo="Correo de avisos">

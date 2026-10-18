@@ -1,37 +1,30 @@
-// La reseña redactada con Claude. SOLO SERVIDOR: lee ANTHROPIC_API_KEY.
+// La reseña redactada con IA (NVIDIA NIM). SOLO SERVIDOR: lee NVIDIA_API_KEY.
 // Módulo plano a propósito (sin "use server"): si viviera en un archivo de
 // server actions, redactarConIA quedaría como un endpoint POST público que
 // quema tokens sin validar el token de la visita ni el freno. El único camino
 // es redactarResena (cliente-actions.ts), que valida y frena antes.
 //
 // Contrato: NUNCA lanza y nunca hace esperar más de 6 s. Si no hay llave, si
-// falla, si tarda o si el modelo se niega, devuelve null y la action usa la
+// falla, si tarda o si el modelo corta, devuelve null y la action usa la
 // plantilla de resena-texto.ts. El cliente no se entera de cuál salió.
+//
+// Proveedor: decisión del usuario (18-oct): la llave NVIDIA de FourG. Medido ese
+// día: este modelo con el "thinking" apagado contesta en ~1 s y no inventa; con
+// el thinking prendido tarda 6-10 s y, con un max_tokens chico, devuelve
+// content null (se gasta todo pensando). llama-3.1-70b (el del asistente viejo)
+// ya no existe en NVIDIA.
 
-import Anthropic from "@anthropic-ai/sdk";
 import { SISTEMA_RESENA, pedidoResena, textoDeRespuestaIA } from "@/lib/resena-texto";
 
-// El modelo, en UNA sola constante. claude-opus-5-5 es el default de la casa.
-// Decisión del dueño si pesa el costo: "claude-haiku-5-5" es mucho más barato y
-// alcanza para 2 frases, PERO no tiene fallback del lado del servidor: al
-// cambiarlo hay que quitar `betas` y `fallbacks` de la llamada de abajo (con
-// Haiku 5.5 la lista de fallbacks devuelve 400).
-export const MODELO_RESENA = "claude-opus-5-5";
+export const MODELO_RESENA = "nvidia/nemotron-3-super-120b-a12b";
+const URL_NIM = "https://integrate.api.nvidia.com/v1/chat/completions";
 
 /** Lo máximo que el cliente espera la redacción antes de recibir la plantilla. */
 const ESPERA_MAX_MS = 6_000;
 
-let cliente: Anthropic | null = null;
-function anthropic(): Anthropic {
-  // Sin reintentos: con 6 s de presupuesto, reintentar solo alarga la espera
-  // del cliente; para eso está la plantilla.
-  cliente ??= new Anthropic({ timeout: ESPERA_MAX_MS, maxRetries: 0 });
-  return cliente;
-}
-
 /** ¿Está configurada la IA? (si no, ni se intenta: la plantilla sale al instante). */
 export function hayIA(): boolean {
-  return Boolean(process.env.ANTHROPIC_API_KEY);
+  return Boolean(process.env.NVIDIA_API_KEY);
 }
 
 export async function redactarConIA(p: {
@@ -42,43 +35,44 @@ export async function redactarConIA(p: {
   version?: number;
   anterior?: string | null;
 }): Promise<string | null> {
-  if (!hayIA()) return null;
+  const llave = process.env.NVIDIA_API_KEY;
+  if (!llave) return null;
   const control = new AbortController();
   const reloj = setTimeout(() => control.abort(), ESPERA_MAX_MS);
   try {
-    const r = await anthropic().beta.messages.create(
-      {
+    const r = await fetch(URL_NIM, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${llave}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
         model: MODELO_RESENA,
-        // La respuesta son 2-3 frases, pero el razonamiento adaptativo cuenta
-        // dentro de max_tokens: con menos, una respuesta podría cortarse.
-        max_tokens: 1500,
-        // Esfuerzo bajo: es redacción corta, no un problema difícil (y baja
-        // la espera y el costo).
-        output_config: { effort: "low" },
-        // Si el filtro de seguridad de Opus 5.5 se niega (falso positivo con
-        // algún comentario raro), el servidor reintenta en el modelo que
-        // recomienda Anthropic para esa categoría, dentro de la misma llamada.
-        betas: ["server-side-fallback-2026-07-01"],
-        fallbacks: "default",
-        system: SISTEMA_RESENA,
-        messages: [{ role: "user", content: pedidoResena(p) }],
-      },
-      { signal: control.signal },
-    );
-    // stop_reason se mira antes de leer el texto (refusal / max_tokens = null).
-    return textoDeRespuestaIA(r);
-  } catch (e) {
-    if (e instanceof Anthropic.APIUserAbortError || e instanceof Anthropic.APIConnectionTimeoutError) {
-      console.warn("[redactarConIA] tardó más de 6 s; va la plantilla");
-    } else if (e instanceof Anthropic.RateLimitError) {
-      console.warn("[redactarConIA] límite de la API; va la plantilla");
-    } else if (e instanceof Anthropic.AuthenticationError || e instanceof Anthropic.PermissionDeniedError) {
-      console.error("[redactarConIA] la llave de Anthropic no sirve:", e.status);
-    } else if (e instanceof Anthropic.APIError) {
-      console.error("[redactarConIA]", e.status, e.message);
-    } else {
-      console.error("[redactarConIA]", e);
+        temperature: 0.5,
+        // 2-3 frases caben de sobra; con el thinking apagado no hay razonamiento
+        // que se coma el tope.
+        max_tokens: 300,
+        chat_template_kwargs: { enable_thinking: false },
+        messages: [
+          { role: "system", content: SISTEMA_RESENA },
+          { role: "user", content: pedidoResena(p) },
+        ],
+      }),
+      signal: control.signal,
+    });
+    if (!r.ok) {
+      console.error("[redactarConIA] NVIDIA respondió", r.status);
+      return null;
     }
+    const j = (await r.json()) as {
+      choices?: { finish_reason?: string | null; message?: { content?: string | null } }[];
+    };
+    const c = j.choices?.[0];
+    // Mismo saneado que antes: "length" (se cortó) o sin texto = plantilla.
+    return textoDeRespuestaIA({
+      stop_reason: c?.finish_reason === "stop" ? "end_turn" : (c?.finish_reason ?? null),
+      content: [{ type: "text", text: c?.message?.content ?? "" }],
+    });
+  } catch (e) {
+    if ((e as { name?: string })?.name === "AbortError") console.warn("[redactarConIA] tardó más de 6 s; va la plantilla");
+    else console.error("[redactarConIA]", e);
     return null;
   } finally {
     clearTimeout(reloj);

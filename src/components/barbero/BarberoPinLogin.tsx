@@ -8,23 +8,29 @@ import { loginBarberoPin, loginSedePin } from "@/lib/barbero-auth";
 import type { Barbero, Sede } from "@/lib/data/types";
 
 /** Quién está entrando: el mostrador de una sede o un barbero puntual. */
-type Destino = { tipo: "sede"; id: string; nombre: string } | { tipo: "barbero"; id: string; nombre: string };
+export type Destino = { tipo: "sede" | "barbero"; id: string; nombre: string; fotoUrl?: string | null };
 
 export function BarberoPinLogin({
-  barberos,
-  sedes,
+  barberos = [],
+  sedes = [],
   onAdmin,
   onVolver,
+  fijo,
 }: {
-  barberos: Barbero[];
-  sedes: Sede[];
+  barberos?: Barbero[];
+  sedes?: Sede[];
   /** Cambiar al login de admin (dentro del gateway unificado /login). */
   onAdmin?: () => void;
   /** Volver al selector de perfil. */
   onVolver?: () => void;
+  /**
+   * La app PROPIA de alguien (/equipo/<slug>): su teclado de PIN directo, sin la
+   * lista de "¿Quién eres?". Para entrar como otro, el enlace lleva al login general.
+   */
+  fijo?: Destino;
 }) {
   const router = useRouter();
-  const [destino, setDestino] = useState<Destino | null>(null);
+  const [destino, setDestino] = useState<Destino | null>(fijo ?? null);
   const [pin, setPin] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -138,12 +144,30 @@ export function BarberoPinLogin({
   }
 
   return (
-    <div className="w-full max-w-xs text-center">
-      <button onClick={() => { setDestino(null); setPin(""); setErr(null); }} className="text-xs text-muted transition hover:text-ink">
-        ← Cambiar
-      </button>
+    <div className="mx-auto w-full max-w-xs text-center">
+      {fijo ? (
+        <span className="relative mx-auto block h-20 w-20 overflow-hidden rounded-full border border-line bg-panel">
+          {fijo.fotoUrl ? (
+            <Image src={fijo.fotoUrl} alt="" fill className="object-cover object-top" sizes="80px" priority />
+          ) : fijo.tipo === "sede" ? (
+            <span className="grid h-full w-full place-items-center text-accent">
+              <svg viewBox="0 0 24 24" fill="none" className="h-8 w-8" aria-hidden>
+                <path d="M3 9h18M4 9V6l2-2h12l2 2v3M5 9v11h14V9" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </span>
+          ) : (
+            <span className="grid h-full w-full place-items-center font-display text-3xl text-muted">{fijo.nombre.charAt(0)}</span>
+          )}
+        </span>
+      ) : (
+        <button onClick={() => { setDestino(null); setPin(""); setErr(null); }} className="text-xs text-muted transition hover:text-ink">
+          ← Cambiar
+        </button>
+      )}
       <h1 className="mt-3 font-display text-2xl font-semibold">
-        {destino.tipo === "sede" ? `Mostrador · ${destino.nombre}` : `Hola, ${destino.nombre}`}
+        {destino.tipo === "sede"
+          ? `Mostrador · ${destino.nombre}`
+          : `Hola, ${fijo ? destino.nombre.split(" ")[0] : destino.nombre}`}
       </h1>
       <p className="mt-1 text-sm text-muted">
         {destino.tipo === "sede" ? "PIN del local (6 dígitos)" : "Ingresa tu PIN de 6 dígitos"}
@@ -174,6 +198,11 @@ export function BarberoPinLogin({
         </button>
       </div>
       {busy && <div className="mt-4 text-sm text-muted">Entrando…</div>}
+      {fijo && (
+        <Link href="/login" className="mt-6 inline-flex min-h-11 items-center text-xs text-muted transition hover:text-ink">
+          {fijo.tipo === "sede" ? "¿No es el mostrador? Entra con otro perfil →" : `¿No eres ${fijo.nombre.split(" ")[0]}? Entra con otro perfil →`}
+        </Link>
+      )}
     </div>
   );
 }

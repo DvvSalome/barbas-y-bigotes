@@ -572,7 +572,7 @@ export async function calificarPorToken(input: {
  * NO guarda nada: guardar es calificarPorToken / calificarServicio.
  *
  * Misma credencial que guardar: el token del correo (sin login) o la cita del
- * cliente logueado en /cuenta. Con ANTHROPIC_API_KEY lo redacta Claude; sin
+ * cliente logueado en /cuenta. Con NVIDIA_API_KEY lo redacta la IA (resena-ia.ts); sin
  * llave, con la IA caída, lenta (>6 s) o con el freno puesto, sale la plantilla
  * de resena-texto.ts. Las dos siguen las mismas reglas (sin inventar, sin
  * nombrar al barbero) y el cliente no ve la diferencia.

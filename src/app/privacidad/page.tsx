@@ -79,6 +79,10 @@ export default function PrivacidadPage() {
           <li><strong>Vercel</strong> — sirve el sitio web.</li>
           <li><strong>Google</strong> — solo si eliges entrar con tu cuenta de Google.</li>
           <li><strong>Hostinger</strong> — envía los correos desde nuestro dominio.</li>
+          <li>
+            <strong>NVIDIA</strong> — cuando calificas una visita, redacta el borrador de tu reseña a partir de lo que
+            marcas y escribes. No recibe tu nombre ni tus datos de contacto.
+          </li>
         </ul>
         <p>
           Algunos de estos proveedores procesan la información en servidores fuera de Colombia.

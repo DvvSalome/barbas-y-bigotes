@@ -92,5 +92,10 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   // Solo las rutas que usan sesión (Google del cliente o PIN del barbero).
-  matcher: ["/admin/:path*", "/barbero/:path*", "/cuenta/:path*", "/login"],
+  // /equipo y /equipo/<slug> (la app propia de cada uno) leen la sesión para
+  // decidir a dónde va cada quien: sin el refresh de acá, un token vencido se
+  // renovaba en el Server Component sin poder guardarse, y "Entraste como X →
+  // Seguir" llegaba con un refresh token ya usado. `:slug` es UN segmento: el
+  // manifiesto (/equipo/<slug>/manifest.webmanifest) no pasa por acá.
+  matcher: ["/admin/:path*", "/barbero/:path*", "/cuenta/:path*", "/login", "/equipo", "/equipo/:slug"],
 };
